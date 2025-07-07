@@ -966,14 +966,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const homePenalties = activateForTeam(state.penalties.home);
       const awayPenalties = activateForTeam(state.penalties.away);
       
-      const newClockState = {
-        ...state.clock,
-        currentTime: state.clock.currentTime > 0 ? state.clock.currentTime - 1 : 0
-      };
-
       newStateWithoutMeta = { 
         ...state, 
-        clock: newClockState,
         penalties: { home: homePenalties, away: awayPenalties },
       };
       break;
@@ -1002,12 +996,17 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         }
 
         const processTeamPenaltiesTick = (currentPenalties: Penalty[], team: Team): Penalty[] => {
-            let processedPenalties = [...currentPenalties];
-            
-            // Part 1: Handle expired penalties
-            const stillActive: Penalty[] = [];
-            processedPenalties.forEach(p => {
-                if (p._status === 'running' && p.expirationTime !== undefined && liveAbsoluteElapsedTimeCs >= p.expirationTime) {
+            // Separate penalties into distinct groups for clarity
+            const running = currentPenalties.filter(p => p._status === 'running');
+            const waitingForSlot = currentPenalties.filter(p => p._status !== 'running' && p._status !== 'pending_puck');
+            const waitingForPuck = currentPenalties.filter(p => p._status === 'pending_puck');
+    
+            // --- Step 1: Process running penalties ---
+            // Find penalties that have completed their time.
+            const stillRunning: Penalty[] = [];
+            running.forEach(p => {
+                if (p.expirationTime !== undefined && liveAbsoluteElapsedTimeCs >= p.expirationTime) {
+                    // This penalty has finished. Log it and don't add to the next state's running list.
                     hasChanged = true;
                     significantChangeOccurred = true;
                     const logIndex = newGameSummary[team].penalties.findIndex(log => log.id === p.id && !log.endReason);
@@ -1022,52 +1021,59 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                         };
                     }
                 } else {
-                    stillActive.push(p);
+                    // This penalty is still running. Carry it over to the next state UNCHANGED.
+                    stillRunning.push(p);
                 }
             });
-            processedPenalties = stillActive;
-
-            // Part 2: Activate waiting penalties
-            let running = processedPenalties.filter(p => p._status === 'running');
-            let waiting = processedPenalties.filter(p => p._status !== 'running' && p._status !== 'pending_puck');
-            const puckWaiting = processedPenalties.filter(p => p._status === 'pending_puck');
-            
-            const runningPlayerNumbers = new Set(running.map(p => p.playerNumber).filter(Boolean));
-            const remainingWaiting: Penalty[] = [];
-
-            for (const penalty of waiting) {
-                if (running.length < state.maxConcurrentPenalties) {
-                    const playerCanServe = !penalty.playerNumber || !runningPlayerNumbers.has(penalty.playerNumber);
+    
+            // --- Step 2: Process waiting penalties ---
+            // Activate waiting penalties if there are open slots.
+            let newlyActivated: Penalty[] = [];
+            let runningPlayerNumbers = new Set(stillRunning.map(p => p.playerNumber).filter(Boolean));
+            let slotsAvailable = state.maxConcurrentPenalties - stillRunning.length;
+            let remainingWaitingForSlot = [...waitingForSlot];
+    
+            if (slotsAvailable > 0 && remainingWaitingForSlot.length > 0) {
+                const tempWaitingList = [...remainingWaitingForSlot];
+                remainingWaitingForSlot = []; // Clear the original list, we will rebuild it.
+    
+                tempWaitingList.forEach(p => {
+                    // Can this penalty be activated?
+                    const canActivate = slotsAvailable > 0 && (!p.playerNumber || !runningPlayerNumbers.has(p.playerNumber));
                     
-                    if (playerCanServe) {
-                        const activated = {
-                            ...penalty,
-                            _status: 'running',
-                            startTime: liveAbsoluteElapsedTimeCs,
-                            expirationTime: liveAbsoluteElapsedTimeCs + (penalty.initialDuration * CENTISECONDS_PER_SECOND),
-                        };
-                        running.push(activated);
-                        if (activated.playerNumber) {
-                            runningPlayerNumbers.add(activated.playerNumber);
-                        }
+                    if (canActivate) {
+                        // YES: Activate it, set its times, and add to newlyActivated list.
                         hasChanged = true;
                         significantChangeOccurred = true;
+                        
+                        newlyActivated.push({
+                            ...p,
+                            _status: 'running',
+                            startTime: liveAbsoluteElapsedTimeCs,
+                            expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND),
+                        });
+                        
+                        // Consume a slot and register the player number.
+                        slotsAvailable--;
+                        if (p.playerNumber) {
+                            runningPlayerNumbers.add(p.playerNumber);
+                        }
                     } else {
-                        remainingWaiting.push(penalty);
+                        // NO: It must remain waiting. Add it back to the waiting list.
+                        remainingWaitingForSlot.push(p);
                     }
-                } else {
-                    remainingWaiting.push(penalty);
-                }
+                });
             }
-
-            // Part 3: Update status for those still waiting
-            const updatedWaiting = remainingWaiting.map(p => {
+            
+            // --- Step 3: Update status for penalties that are still waiting ---
+            const updatedStillWaiting = remainingWaitingForSlot.map(p => {
                 const newStatus = p.playerNumber && runningPlayerNumbers.has(p.playerNumber) ? 'pending_player' : 'pending_concurrent';
                 if (p._status !== newStatus) { hasChanged = true; }
                 return { ...p, _status: newStatus };
             });
-
-            return [...running, ...updatedWaiting, ...puckWaiting];
+    
+            // --- Step 4: Combine all penalties for the final list ---
+            return [...stillRunning, ...newlyActivated, ...updatedStillWaiting, ...waitingForPuck];
         };
         
         let homePenaltiesResult = processTeamPenaltiesTick(state.penalties.home, 'home');
@@ -2382,3 +2388,4 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
