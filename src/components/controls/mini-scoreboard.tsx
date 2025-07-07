@@ -72,6 +72,21 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const [isAwayPlayersDialogOpen, setIsAwayPlayersDialogOpen] = useState(false);
   const [isTimeoutConfirmOpen, setIsTimeoutConfirmOpen] = useState(false);
   
+  const [liveAbsoluteTime, setLiveAbsoluteTime] = useState(state.clock.absoluteElapsedTimeCs);
+
+  useEffect(() => {
+    if (state.clock.isClockRunning && state.clock.clockStartTimeMs) {
+      const interval = setInterval(() => {
+        const elapsedSinceStart = Date.now() - (state.clock.clockStartTimeMs || 0);
+        setLiveAbsoluteTime(state.clock.absoluteElapsedTimeCs + Math.floor(elapsedSinceStart / 10));
+      }, 200);
+      return () => clearInterval(interval);
+    } else {
+      setLiveAbsoluteTime(state.clock.absoluteElapsedTimeCs);
+    }
+  }, [state.clock.isClockRunning, state.clock.absoluteElapsedTimeCs, state.clock.clockStartTimeMs]);
+
+  
   useEffect(() => {
     setLocalHomeTeamName(state.homeTeamName);
     setLocalHomeTeamSubName(state.homeTeamSubName);
@@ -581,28 +596,33 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   return (
     <div className="relative">
       <div className="absolute top-0 left-0 p-2 sm:p-3 md:p-4 z-20">
-        {state.availableCategories.length > 0 ? (
-            <Select value={state.selectedMatchCategory} onValueChange={handleMatchCategoryChange}>
-                <SelectTrigger className="w-auto min-w-[120px] max-w-[200px] h-8 text-xs bg-card/80 border-border/50 backdrop-blur-sm">
-                    <div className="flex items-center gap-1.5 truncate">
-                        <ListFilter className="h-3.5 w-3.5 text-muted-foreground" />
-                        <SelectValue placeholder="Categoría" />
-                    </div>
-                </SelectTrigger>
-                <SelectContent>
-                    {state.availableCategories.map(cat => (
-                        <SelectItem key={cat.id} value={cat.id} className="text-xs">
-                            {cat.name}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        ) : (
-            <div className="flex items-center gap-1.5 h-8 px-3 text-xs bg-card/80 border-border/50 rounded-md text-muted-foreground">
-                <ListFilter className="h-3.5 w-3.5" />
-                <span>Sin categorías</span>
-            </div>
-        )}
+        <div className="flex items-center gap-2">
+          {state.availableCategories.length > 0 ? (
+              <Select value={state.selectedMatchCategory} onValueChange={handleMatchCategoryChange}>
+                  <SelectTrigger className="w-auto min-w-[120px] max-w-[200px] h-8 text-xs bg-card/80 border-border/50 backdrop-blur-sm">
+                      <div className="flex items-center gap-1.5 truncate">
+                          <ListFilter className="h-3.5 w-3.5 text-muted-foreground" />
+                          <SelectValue placeholder="Categoría" />
+                      </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                      {state.availableCategories.map(cat => (
+                          <SelectItem key={cat.id} value={cat.id} className="text-xs">
+                              {cat.name}
+                          </SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+          ) : (
+              <div className="flex items-center gap-1.5 h-8 px-3 text-xs bg-card/80 border-border/50 rounded-md text-muted-foreground">
+                  <ListFilter className="h-3.5 w-3.5" />
+                  <span>Sin categorías</span>
+              </div>
+          )}
+          <div className="text-xs text-muted-foreground font-mono bg-card/80 p-1 rounded-md border border-border/50">
+            Abs: {formatTime(liveAbsoluteTime)} ({formatTime(state.clock.absoluteElapsedTimeCs)})
+          </div>
+        </div>
       </div>
 
       <div className="absolute top-0 right-0 p-2 sm:p-3 md:p-4 z-20">
