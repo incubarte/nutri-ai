@@ -3,9 +3,8 @@
 export interface Penalty {
   id: string;
   playerNumber: string;
-  expirationTime?: number; // Game time in centiseconds when penalty expires.
-  expirationPeriod?: number; // The period in which the penalty is set to expire
-  remainingTimeDuringBreakCs?: number; // Static remaining time stored during breaks/timeouts.
+  // This is now ALWAYS the absolute game time in centiseconds when penalty expires.
+  expirationTime?: number;
   initialDuration: number; // in seconds
   _status?: 'running' | 'pending_concurrent' | 'pending_player' | 'pending_puck'; // Transient status for display logic
 }
@@ -194,6 +193,7 @@ export interface ClockState {
   clockStartTimeMs: number | null;
   remainingTimeAtStartCs: number | null;
   absoluteElapsedTimeCs: number;
+  _liveAbsoluteElapsedTimeCs: number;
 }
 
 export interface ScoreState {

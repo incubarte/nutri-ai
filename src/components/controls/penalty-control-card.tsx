@@ -22,7 +22,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Trash2, UserPlus, Hourglass, ChevronsUpDown, Check, Info, Goal, X } from 'lucide-react';
+import { Trash2, UserPlus, Hourglass, ChevronsUpDown, Check, Info, Goal, X, Plus, Minus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -47,7 +47,7 @@ interface PenaltyControlCardProps {
   teamName: string;
 }
 
-const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onEditCancel, isDeleteSelectionMode, isSelectedForDeletion, onToggleSelection, onDragStart, onDragEnter, onDragLeave, onDragOver, onDrop, onEndForGoal }: {
+const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onEditCancel, isDeleteSelectionMode, isSelectedForDeletion, onToggleSelection, onDragStart, onDragEnter, onDragLeave, onDragOver, onDrop, onEndForGoal, onAdjust }: {
     penalty: Penalty;
     team: Team;
     isEditing: boolean;
@@ -63,10 +63,10 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
     onDrop: (e: React.DragEvent<HTMLDivElement>, targetPenaltyId: string) => void;
     onEndForGoal: (penalty: Penalty) => void;
+    onAdjust: (penaltyId: string, delta: number) => void;
 }) => {
     const { state } = useGameState();
     const [editTimeValue, setEditTimeValue] = useState('');
-    const { clock } = state;
 
     const teamSubName = team === 'home' ? state.homeTeamSubName : state.awayTeamSubName;
     const matchedTeam = useMemo(() => {
@@ -82,56 +82,9 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     );
     const displayPenaltyNumber = penalty.playerNumber || 'S/N';
     
-    const { periodDisplayOverride } = state.clock;
-    const isBreakOrTimeout = periodDisplayOverride === 'Break' || periodDisplayOverride === 'Pre-OT Break' || periodDisplayOverride === 'Time Out';
-    
-    let remainingTimeCs: number;
-    if (isBreakOrTimeout && penalty.remainingTimeDuringBreakCs !== undefined) {
-        remainingTimeCs = penalty.remainingTimeDuringBreakCs;
-    } else if (penalty._status === 'running' && penalty.expirationTime !== undefined) {
-        remainingTimeCs = Math.max(0, state.clock.currentTime - penalty.expirationTime);
-    } else {
-        remainingTimeCs = penalty.initialDuration * 100;
-    }
-    
-    const expirationInfo = React.useMemo(() => {
-        const { periodDisplayOverride, currentPeriod } = clock;
-        const { numberOfRegularPeriods, numberOfOvertimePeriods, defaultPeriodDuration, defaultOTPeriodDuration } = state;
-        const totalGamePeriods = numberOfRegularPeriods + numberOfOvertimePeriods;
-
-        // No tooltip during breaks, as the expiration point is not yet determined
-        if (periodDisplayOverride !== null) return null;
-        if (penalty.expirationTime === undefined || penalty.expirationPeriod === undefined || penalty._status !== 'running') return null;
-        
-        if (penalty.expirationPeriod === currentPeriod) {
-            if (penalty.expirationTime < 0) { // Crosses to next period
-                const nextPeriodNumber = currentPeriod + 1;
-                if (nextPeriodNumber > totalGamePeriods) return `Expira después del partido`;
-                
-                const periodText = getPeriodText(nextPeriodNumber, numberOfRegularPeriods);
-                const remainingTimeIntoNextPeriod = -penalty.expirationTime;
-                const nextPeriodDuration = nextPeriodNumber > numberOfRegularPeriods ? defaultOTPeriodDuration : defaultPeriodDuration;
-                const expirationTimeInNextPeriod = nextPeriodDuration - remainingTimeIntoNextPeriod;
-
-                if (expirationTimeInNextPeriod < 0) return `Expira en un período futuro`;
-
-                const timeText = formatTime(expirationTimeInNextPeriod);
-                return `Expira en ${periodText} a los ${timeText}`;
-            } else { // Expires in current period
-                const periodText = getPeriodText(penalty.expirationPeriod, numberOfRegularPeriods);
-                const timeText = formatTime(penalty.expirationTime);
-                return `Expira en ${periodText} a los ${timeText}`;
-            }
-        }
-        
-        if (penalty.expirationPeriod > currentPeriod) {
-            const periodText = getPeriodText(penalty.expirationPeriod, numberOfRegularPeriods);
-            const timeText = formatTime(penalty.expirationTime);
-            return `Expira en ${periodText} a los ${timeText}`;
-        }
-        
-        return null;
-    }, [penalty, clock, state]);
+    const remainingTimeCs = penalty.expirationTime !== undefined
+    ? Math.max(0, penalty.expirationTime - state.clock._liveAbsoluteElapsedTimeCs)
+    : penalty.initialDuration * 100;
 
     const isWaitingSlot = penalty._status === 'pending_player' || penalty._status === 'pending_concurrent';
     const isPendingPuck = penalty._status === 'pending_puck';
@@ -168,23 +121,14 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                         />
                     )}
                     <div className="flex-1 min-w-0">
-                        <TooltipProvider delayDuration={300}>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <p className="font-semibold text-card-foreground truncate">
-                                        Jugador {displayPenaltyNumber}
-                                        {state.enablePlayerSelectionForPenalties && state.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && (
-                                            <span className="ml-1 text-xs text-muted-foreground font-normal">
-                                                - {matchedPlayerForPenaltyDisplay.name}
-                                            </span>
-                                        )}
-                                    </p>
-                                </TooltipTrigger>
-                                {expirationInfo && (
-                                    <TooltipContent><p>{expirationInfo}</p></TooltipContent>
-                                )}
-                            </Tooltip>
-                        </TooltipProvider>
+                        <p className="font-semibold text-card-foreground truncate">
+                            Jugador {displayPenaltyNumber}
+                            {state.enablePlayerSelectionForPenalties && state.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && (
+                                <span className="ml-1 text-xs text-muted-foreground font-normal">
+                                    - {matchedPlayerForPenaltyDisplay.name}
+                                </span>
+                            )}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                             Total: {formatTime(penalty.initialDuration * 100)}
                         </p>
@@ -192,6 +136,15 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                 </div>
 
                 <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground"
+                        onClick={() => onAdjust(penalty.id, -1)}
+                        disabled={isDeleteSelectionMode || isEditing}
+                    >
+                        <Minus className="h-4 w-4" />
+                    </Button>
                     {isEditing ? (
                         <Input
                             type="text"
@@ -216,6 +169,15 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                             {formatTime(remainingTimeCs)}
                         </div>
                     )}
+                     <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground"
+                        onClick={() => onAdjust(penalty.id, 1)}
+                        disabled={isDeleteSelectionMode || isEditing}
+                    >
+                        <Plus className="h-4 w-4" />
+                    </Button>
                     <Button
                         variant="outline"
                         size="icon"
@@ -653,6 +615,9 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                     onEndForGoal={setPenaltyForGoalConfirmation}
+                    onAdjust={(penaltyId, delta) => {
+                      dispatch({ type: 'ADJUST_PENALTY_TIME', payload: { team, penaltyId, delta } });
+                    }}
                 />
             ))}
           </div>
