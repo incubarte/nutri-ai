@@ -75,16 +75,18 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const [liveAbsoluteTime, setLiveAbsoluteTime] = useState(state.clock.absoluteElapsedTimeCs);
 
   useEffect(() => {
-    if (state.clock.isClockRunning && state.clock.clockStartTimeMs) {
+    // Only run the live timer if the clock is running AND it's a game period
+    if (state.clock.isClockRunning && state.clock.clockStartTimeMs && state.clock.periodDisplayOverride === null) {
       const interval = setInterval(() => {
         const elapsedSinceStart = Date.now() - (state.clock.clockStartTimeMs || 0);
         setLiveAbsoluteTime(state.clock.absoluteElapsedTimeCs + Math.floor(elapsedSinceStart / 10));
       }, 200);
       return () => clearInterval(interval);
     } else {
+      // Otherwise, just display the last saved absolute time
       setLiveAbsoluteTime(state.clock.absoluteElapsedTimeCs);
     }
-  }, [state.clock.isClockRunning, state.clock.absoluteElapsedTimeCs, state.clock.clockStartTimeMs]);
+  }, [state.clock.isClockRunning, state.clock.absoluteElapsedTimeCs, state.clock.clockStartTimeMs, state.clock.periodDisplayOverride]);
 
   
   useEffect(() => {
@@ -1047,3 +1049,4 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     </div>
   );
 }
+
