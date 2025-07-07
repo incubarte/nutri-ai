@@ -996,12 +996,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         currentTimeSnapshot = 0;
       }
       
-      const processTeamPenaltiesTick = (currentPenalties: Penalty[], team: Team): Penalty[] => {
-        // STAGE 1: Filter out penalties that have expired.
-        const activePenalties = currentPenalties.filter(p => {
+      // STAGE 1: Process expirations for RUNNING penalties. This is a pure filter operation.
+      const processTeamExpirations = (currentPenalties: Penalty[], team: Team): Penalty[] => {
+        return currentPenalties.filter(p => {
           if (p._status === 'running') {
             if (liveAbsoluteElapsedTimeCs >= (p.expirationTime ?? Infinity)) {
-              // Expired. Log it and mark for removal.
               hasChanged = true;
               significantChangeOccurred = true;
               const logIndex = newGameSummary[team].penalties.findIndex(log => log.id === p.id && !log.endReason);
@@ -1022,41 +1021,38 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           }
           return true; // Keep it
         });
-  
-        // STAGE 2: Count how many slots are currently occupied by running penalties.
-        let runningCount = activePenalties.filter(p => p._status === 'running').length;
-  
-        // STAGE 3: Go through the list again. If a penalty is pending AND there is a slot, activate it.
-        const finalPenalties = activePenalties.map(p => {
-          // If it's already running, or waiting for puck, or if all slots are full, return it as is.
-          if (p._status === 'running' || p._status === 'pending_puck' || runningCount >= state.maxConcurrentPenalties) {
-            return p;
-          }
-  
-          // It's a pending penalty (concurrent/player) AND there's an available slot. Activate it.
-          if (p._status === 'pending_concurrent' || p._status === 'pending_player') {
-            runningCount++; // Take up a slot for the next iteration of this map.
-            hasChanged = true;
-            significantChangeOccurred = true;
-            // **This is the ONLY place an expirationTime is set for a pending penalty.**
-            return {
-              ...p,
-              _status: 'running',
-              startTime: liveAbsoluteElapsedTimeCs,
-              expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * 100)
-            };
-          }
-          
-          // Return unchanged if it's a type of pending we don't handle here or no slot is free
-          return p;
-        });
-  
-        return finalPenalties;
       };
       
-      let homePenaltiesResult = processTeamPenaltiesTick(state.penalties.home, 'home');
-      let awayPenaltiesResult = processTeamPenaltiesTick(state.penalties.away, 'away');
-  
+      const homePenaltiesAfterExpiration = processTeamExpirations(state.penalties.home, 'home');
+      const awayPenaltiesAfterExpiration = processTeamExpirations(state.penalties.away, 'away');
+
+      // STAGE 2: Activate pending penalties if slots are free. This is a map operation.
+      const activatePendingForTeam = (currentPenalties: Penalty[]): Penalty[] => {
+          let runningCount = currentPenalties.filter(p => p._status === 'running').length;
+          
+          return currentPenalties.map(p => {
+              // If it is pending (but not for puck) AND there is a free slot...
+              if (p._status !== 'running' && p._status !== 'pending_puck' && runningCount < state.maxConcurrentPenalties) {
+                  runningCount++;
+                  hasChanged = true;
+                  significantChangeOccurred = true;
+                  // Activate it, and ONLY HERE, set its expiration time.
+                  return {
+                      ...p,
+                      _status: 'running',
+                      startTime: liveAbsoluteElapsedTimeCs,
+                      expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * 100),
+                  };
+              }
+              // Otherwise, return the penalty untouched.
+              return p;
+          });
+      };
+      
+      let homePenaltiesResult = activatePendingForTeam(homePenaltiesAfterExpiration);
+      let awayPenaltiesResult = activatePendingForTeam(awayPenaltiesAfterExpiration);
+
+      // STAGE 3: Check for countdown beeps
       const checkPenaltyBeep = (penalties: Penalty[]) => {
           if (state.enablePenaltyCountdownSound && state.clock.isClockRunning && state.clock.periodDisplayOverride === null) {
               penalties.forEach(p => {
@@ -1078,6 +1074,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       checkPenaltyBeep(homePenaltiesResult);
       checkPenaltyBeep(awayPenaltiesResult);
       
+      // STAGE 4: Final checks and state update
       if (!isEqual(homePenaltiesResult, state.penalties.home)) {
           homePenaltiesResult = sortPenaltiesByStatus(homePenaltiesResult);
       }

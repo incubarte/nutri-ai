@@ -42,10 +42,12 @@ import { getActualPeriodText } from '@/contexts/game-state-context';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
-interface PenaltyControlCardProps {
-  team: Team;
-  teamName: string;
-}
+const statusTextMap: Record<NonNullable<Penalty['_status']>, string> = {
+    running: 'Corriendo',
+    pending_concurrent: 'Esperando Slot',
+    pending_player: 'Esperando Jugador',
+    pending_puck: 'Esperando Puck',
+};
 
 const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onEditCancel, isDeleteSelectionMode, isSelectedForDeletion, onToggleSelection, onDragStart, onDragEnter, onDragLeave, onDragOver, onDrop, onEndForGoal, onAdjust }: {
     penalty: Penalty;
@@ -97,6 +99,8 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     const expirationTimeContext = penalty.expirationTime !== undefined
         ? getPeriodContextFromAbsoluteTime(penalty.expirationTime, state)
         : null;
+        
+    const displayStatus = penalty._status ? statusTextMap[penalty._status] : 'Activa';
 
     return (
         <Card
@@ -162,6 +166,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                                     ) : (
                                         <p><strong>Fin:</strong> Pendiente</p>
                                     )}
+                                    <p><strong>Estado:</strong> {displayStatus}</p>
                                     <p className="text-xs text-muted-foreground pt-1 border-t mt-1">
                                       Absoluto: {penalty.startTime !== undefined ? formatTime(penalty.startTime) : 'N/A'} → {penalty.expirationTime !== undefined ? formatTime(penalty.expirationTime) : 'N/A'}
                                     </p>
