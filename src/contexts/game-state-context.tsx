@@ -997,18 +997,16 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         currentTimeSnapshot = 0;
       }
       
-      // --- PENALTY LOGIC REWRITE ---
       const processPenaltiesForTeam = (currentPenalties: Penalty[], team: Team): Penalty[] => {
-        // Step 1: Separate penalties into groups for easier processing.
         let runningPenalties = currentPenalties.filter(p => p._status === 'running');
-        let pendingPenalties = currentPenalties.filter(p => p._status === 'pending_concurrent');
+        let pendingConcurrentPenalties = currentPenalties.filter(p => p._status === 'pending_concurrent');
         const otherPenalties = currentPenalties.filter(p => p._status !== 'running' && p._status !== 'pending_concurrent');
 
-        // Step 2: Clean up expired running penalties.
+        // Stage 1: Check running penalties for expiration.
         const stillRunningPenalties: Penalty[] = [];
         for (const p of runningPenalties) {
-          if (liveAbsoluteElapsedTimeCs >= (p.expirationTime ?? Infinity)) {
-            hasChanged = true;
+          if (p.expirationTime !== undefined && liveAbsoluteElapsedTimeCs >= p.expirationTime) {
+            // Penalty expired. Log it and remove it.
             significantChangeOccurred = true;
             const logIndex = newGameSummary[team].penalties.findIndex(log => log.id === p.id && !log.endReason);
             if (logIndex > -1) {
@@ -1024,36 +1022,36 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
               };
             }
           } else {
-            stillRunningPenalties.push(p); // Keep the penalty.
+            // Penalty is still running. Keep it without modifications.
+            stillRunningPenalties.push(p);
           }
         }
         runningPenalties = stillRunningPenalties;
 
-        // Step 3: Activate pending penalties if there are slots.
+        // Stage 2: Activate pending penalties if there are slots.
         let availableSlots = state.maxConcurrentPenalties - runningPenalties.length;
-        if (availableSlots > 0 && pendingPenalties.length > 0) {
-          const activatablePenalties = pendingPenalties.splice(0, availableSlots);
-          for (const p of activatablePenalties) {
-            hasChanged = true;
-            significantChangeOccurred = true;
+        while (availableSlots > 0 && pendingConcurrentPenalties.length > 0) {
+          significantChangeOccurred = true;
+          const penaltyToActivate = pendingConcurrentPenalties.shift(); // Get the first one from the queue
+          if (penaltyToActivate) {
             runningPenalties.push({
-              ...p,
+              ...penaltyToActivate,
               _status: 'running',
               startTime: liveAbsoluteElapsedTimeCs,
-              expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND),
+              expirationTime: liveAbsoluteElapsedTimeCs + (penaltyToActivate.initialDuration * CENTISECONDS_PER_SECOND),
             });
+            availableSlots--;
           }
         }
-
-        // Step 4: Combine all penalties back into one list.
-        return [...runningPenalties, ...pendingPenalties, ...otherPenalties];
+        
+        return [...runningPenalties, ...pendingConcurrentPenalties, ...otherPenalties];
       };
 
 
       let homePenaltiesResult = processPenaltiesForTeam(state.penalties.home, 'home');
       let awayPenaltiesResult = processPenaltiesForTeam(state.penalties.away, 'away');
       
-      // STAGE 4: Check for countdown beeps
+      // Check for countdown beeps
       const checkPenaltyBeep = (penalties: Penalty[]) => {
           if (state.enablePenaltyCountdownSound && state.clock.isClockRunning && state.clock.periodDisplayOverride === null) {
               penalties.forEach(p => {
@@ -1075,7 +1073,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       checkPenaltyBeep(homePenaltiesResult);
       checkPenaltyBeep(awayPenaltiesResult);
       
-      // STAGE 5: Final state update
+      // Final state update
       if (!isEqual(homePenaltiesResult, state.penalties.home)) {
           hasChanged = true;
           significantChangeOccurred = true;
@@ -2183,45 +2181,32 @@ export const formatTime = (
   options: {
     showTenths?: boolean;
     includeMinutesForTenths?: boolean;
-    rounding?: 'up' | 'down';
   } = {}
 ): string => {
   if (isNaN(totalCentiseconds) || totalCentiseconds < 0) totalCentiseconds = 0;
 
   const isUnderMinute = totalCentiseconds < 6000;
 
+  // With tenths (always under a minute)
   if (isUnderMinute && options.showTenths) {
-    let totalSeconds: number;
-    if (options.rounding === 'up') {
-        totalSeconds = Math.ceil(totalCentiseconds / 100);
-    } else {
-        totalSeconds = Math.floor(totalCentiseconds / 100);
-    }
-
-    // Special case: if rounding up results in 60 seconds, display as 01:00
-    if (totalSeconds >= 60) {
-        return '01:00';
-    }
-
-    const tenthsValue = options.rounding === 'up' && totalCentiseconds % 100 !== 0
-        ? Math.floor(((totalCentiseconds % 100) - 1) / 10) // this is a bit tricky, but it works for display
-        : Math.floor((totalCentiseconds % 100) / 10);
-    const tenths = Math.max(0, tenthsValue); // ensure no negative tenths
+    // When under a minute and showing tenths, we DON'T round up. We floor to get the current second.
+    const totalSeconds = Math.floor(totalCentiseconds / 100);
+    
+    // tenths are always floored from the remainder
+    const tenths = Math.floor((totalCentiseconds % 100) / 10);
 
     if (options.includeMinutesForTenths) {
       return `00:${totalSeconds.toString().padStart(2, '0')}.${tenths.toString()}`;
     } else {
       return `${totalSeconds.toString().padStart(2, '0')}.${tenths.toString()}`;
     }
-  } else {
-    let totalSecondsOnly: number;
-    if (options.rounding === 'up') {
-      totalSecondsOnly = Math.ceil(totalCentiseconds / 100);
-    } else {
-      totalSecondsOnly = Math.floor(totalCentiseconds / 100); // Default 'down'
-    }
+  } else { // Without tenths
+    // When over a minute OR when not showing tenths, we DO round up.
+    const totalSecondsOnly = Math.ceil(totalCentiseconds / 100);
+    
     const minutes = Math.floor(totalSecondsOnly / 60);
     const seconds = totalSecondsOnly % 60;
+    
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   }
 };
@@ -2369,6 +2354,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 

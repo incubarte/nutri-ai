@@ -99,17 +99,28 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     return { minutes, seconds, tenths };
   }, []);
   
-  const getCeiledTimeParts = useCallback((timeCs: number) => {
+  const getDisplayTimeParts = useCallback((timeCs: number) => {
     const safeTimeCs = Math.max(0, timeCs);
-    const totalSecondsOnly = Math.ceil(safeTimeCs / 100);
+    const isUnderMinute = safeTimeCs < 6000;
+    
+    let totalSecondsOnly;
+    if (isUnderMinute) {
+      // When under a minute, we floor to show the current second.
+      totalSecondsOnly = Math.floor(safeTimeCs / 100);
+    } else {
+      // When over a minute, we ceil to show the upcoming second.
+      totalSecondsOnly = Math.ceil(safeTimeCs / 100);
+    }
+
     const minutes = Math.floor(totalSecondsOnly / 60);
     const seconds = totalSecondsOnly % 60;
-    const tenths = Math.floor((safeTimeCs % 100) / 10); // Tenths are always floored for display consistency
+    // Tenths are always floored for display consistency.
+    const tenths = Math.floor((safeTimeCs % 100) / 10);
     return { minutes, seconds, tenths };
   }, []);
 
   const timeParts = getFlooredTimeParts(state.clock.currentTime); // For editing logic
-  const displayTimeParts = getCeiledTimeParts(state.clock.currentTime); // For display
+  const displayTimeParts = getDisplayTimeParts(state.clock.currentTime); // For display
 
   useEffect(() => {
     if (editingSegment && inputRef.current) {
@@ -1070,6 +1081,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     </div>
   );
 }
+
 
 
 

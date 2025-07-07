@@ -148,7 +148,7 @@ export default function MobileScoreboard() {
         <CardContent className="p-4">
           <div className="text-center mb-4">
             <div className="font-bold font-headline tabular-nums tracking-tighter text-6xl text-accent">
-              {formatTime(gameState.clock.currentTime, { showTenths: gameState.clock.currentTime < 6000, includeMinutesForTenths: false, rounding: 'up' })}
+              {formatTime(gameState.clock.currentTime, { showTenths: gameState.clock.currentTime < 6000, includeMinutesForTenths: false })}
             </div>
             <div className="mt-1 font-semibold text-primary-foreground uppercase tracking-wider text-2xl">
               {getActualPeriodText(gameState.clock.currentPeriod, gameState.clock.periodDisplayOverride, gameState.numberOfRegularPeriods || 2)}
