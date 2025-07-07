@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -600,7 +601,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const newTimeCs = Math.max(0, (action.payload.minutes * 60 + action.payload.seconds) * CENTISECONDS_PER_SECOND);
         const newIsClockRunning = newTimeCs > 0 ? state.clock.isClockRunning : false;
 
-        const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.clock.currentPeriod, newTimeCs, state);
+        let newAbsoluteTime = state.clock.absoluteElapsedTimeCs;
+        let newLiveAbsoluteTime = state.clock._liveAbsoluteElapsedTimeCs;
+        
+        // Only recalculate absolute time if we are in a regular game period
+        if (state.clock.periodDisplayOverride === null) {
+            newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.clock.currentPeriod, newTimeCs, state);
+            newLiveAbsoluteTime = newAbsoluteTime;
+        }
 
         let newClockState = {
             ...state.clock,
@@ -609,7 +617,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             clockStartTimeMs: newIsClockRunning ? Date.now() : null,
             remainingTimeAtStartCs: newIsClockRunning ? newTimeCs : null,
             absoluteElapsedTimeCs: newAbsoluteTime,
-            _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
+            _liveAbsoluteElapsedTimeCs: newLiveAbsoluteTime,
         };
         
         newStateWithoutMeta = { ...state, clock: newClockState };
@@ -633,9 +641,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         }
         const newAdjustedTimeCs = Math.max(0, currentTimeSnapshotCs + action.payload);
 
-        // 2. Determine and set the new absolute time
-        const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.clock.currentPeriod, newAdjustedTimeCs, state);
+        // 2. Determine and set the new absolute time (conditionally)
+        let newAbsoluteTime = state.clock.absoluteElapsedTimeCs;
+        let newLiveAbsoluteTime = state.clock._liveAbsoluteElapsedTimeCs;
 
+        if (state.clock.periodDisplayOverride === null) {
+            newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.clock.currentPeriod, newAdjustedTimeCs, state);
+            newLiveAbsoluteTime = newAbsoluteTime;
+        }
+        
         // 3. Update the clock state
         const newIsClockRunning = newAdjustedTimeCs > 0 ? state.clock.isClockRunning : false;
         const newClockState = {
@@ -645,7 +659,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             clockStartTimeMs: newIsClockRunning ? Date.now() : null,
             remainingTimeAtStartCs: newIsClockRunning ? newAdjustedTimeCs : null,
             absoluteElapsedTimeCs: newAbsoluteTime,
-            _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
+            _liveAbsoluteElapsedTimeCs: newLiveAbsoluteTime,
         };
 
         newStateWithoutMeta = { ...state, clock: newClockState };
@@ -811,7 +825,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'REMOVE_PENALTY': {
       const penaltyToRemove = state.penalties[action.payload.team].find(p => p.id === action.payload.penaltyId);
       let penalties = state.penalties[action.payload.team].filter(p => p.id !== action.payload.penaltyId);
-      // No need to run updatePenaltyStatusesOnly here, TICK will handle it.
       penalties = sortPenaltiesByStatus(penalties);
 
       let newGameSummary = state.gameSummary;
@@ -862,7 +875,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
 
       let penalties = state.penalties[team].filter(p => p.id !== penaltyId);
-      // No need to run updatePenaltyStatusesOnly here, TICK will handle it.
       penalties = sortPenaltiesByStatus(penalties);
 
       const remainingTimeCs = penaltyToEnd.expirationTime !== undefined ? Math.max(0, penaltyToEnd.expirationTime - state.clock._liveAbsoluteElapsedTimeCs) : penaltyToEnd.initialDuration * 100;
@@ -937,7 +949,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       if (removed) {
         currentPenalties.splice(endIndex, 0, removed);
       }
-      // No need to run updatePenaltyStatusesOnly here, TICK will handle it.
       const reorderedPenalties = sortPenaltiesByStatus(currentPenalties);
       newStateWithoutMeta = { ...state, penalties: { ...state.penalties, [team]: reorderedPenalties } };
       break;
@@ -982,10 +993,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
       
       const processPenaltiesForTeam = (currentPenalties: Penalty[], team: Team): Penalty[] => {
-        // ETAPA 1: Limpieza - Filtrar penalidades que ya expiraron del estado `running`
+        // Separate penalties by status for clarity
         const runningPenalties = currentPenalties.filter(p => p._status === 'running');
-        const pendingPenalties = currentPenalties.filter(p => p._status !== 'running');
-        
+        const pendingPenalties = currentPenalties.filter(p => p._status === 'pending_concurrent');
+
+        // Stage 1: Clean up expired running penalties
         const remainingRunningPenalties = runningPenalties.filter(p => {
           if (liveAbsoluteElapsedTimeCs >= (p.expirationTime ?? Infinity)) {
             hasChanged = true;
@@ -1003,32 +1015,32 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                     timeServed: newGameSummary[team].penalties[logIndex].initialDuration,
                 };
             }
-            return false; // Eliminar la penalidad
+            return false; // Remove the penalty
           }
-          return true; // Mantener la penalidad
+          return true; // Keep the penalty
         });
 
-        // ETAPA 2: Activación - Activar penalidades pendientes si hay slots
+        // Stage 2: Activate pending penalties if there are slots
         let runningCount = remainingRunningPenalties.length;
-        const newlyActivatedPenalties: Penalty[] = [];
-
+        const stillPending: Penalty[] = [];
         for (const p of pendingPenalties) {
-            if (p._status === 'pending_concurrent' && runningCount < state.maxConcurrentPenalties) {
+            if (runningCount < state.maxConcurrentPenalties) {
                 runningCount++;
                 hasChanged = true;
                 significantChangeOccurred = true;
-                newlyActivatedPenalties.push({
+                remainingRunningPenalties.push({
                     ...p,
-                    _status: 'running' as const,
+                    _status: 'running',
                     startTime: liveAbsoluteElapsedTimeCs,
                     expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * 100),
                 });
             } else {
-                newlyActivatedPenalties.push(p); // keep it in the list as pending
+                stillPending.push(p); // Keep it pending
             }
         }
         
-        return [...remainingRunningPenalties, ...newlyActivatedPenalties];
+        const otherPenalties = currentPenalties.filter(p => p._status !== 'running' && p._status !== 'pending_concurrent');
+        return [...remainingRunningPenalties, ...stillPending, ...otherPenalties];
       };
 
       let homePenaltiesResult = processPenaltiesForTeam(state.penalties.home, 'home');
@@ -2347,4 +2359,5 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
