@@ -998,13 +998,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
       
       const processPenaltiesForTeam = (currentPenalties: Penalty[], team: Team): Penalty[] => {
-        let runningPenalties = currentPenalties.filter(p => p._status === 'running');
+        // Separate penalties by their current status
+        const initialRunningPenalties = currentPenalties.filter(p => p._status === 'running');
         let pendingConcurrentPenalties = currentPenalties.filter(p => p._status === 'pending_concurrent');
         const otherPenalties = currentPenalties.filter(p => p._status !== 'running' && p._status !== 'pending_concurrent');
 
         // Stage 1: Check running penalties for expiration.
         const stillRunningPenalties: Penalty[] = [];
-        for (const p of runningPenalties) {
+        for (const p of initialRunningPenalties) {
           if (p.expirationTime !== undefined && liveAbsoluteElapsedTimeCs >= p.expirationTime) {
             // Penalty expired. Log it and remove it.
             significantChangeOccurred = true;
@@ -1022,29 +1023,50 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
               };
             }
           } else {
-            // Penalty is still running. Keep it without modifications.
+            // Penalty is still running. Keep it.
             stillRunningPenalties.push(p);
           }
         }
-        runningPenalties = stillRunningPenalties;
-
-        // Stage 2: Activate pending penalties if there are slots.
-        let availableSlots = state.maxConcurrentPenalties - runningPenalties.length;
-        while (availableSlots > 0 && pendingConcurrentPenalties.length > 0) {
-          significantChangeOccurred = true;
-          const penaltyToActivate = pendingConcurrentPenalties.shift(); // Get the first one from the queue
-          if (penaltyToActivate) {
-            runningPenalties.push({
-              ...penaltyToActivate,
-              _status: 'running',
-              startTime: liveAbsoluteElapsedTimeCs,
-              expirationTime: liveAbsoluteElapsedTimeCs + (penaltyToActivate.initialDuration * CENTISECONDS_PER_SECOND),
-            });
-            availableSlots--;
-          }
-        }
         
-        return [...runningPenalties, ...pendingConcurrentPenalties, ...otherPenalties];
+        // Stage 2: Activate pending penalties if slots are available and the player isn't already serving.
+        const playersInTheBox = new Set(stillRunningPenalties.map(p => p.playerNumber));
+        let availableSlots = state.maxConcurrentPenalties - stillRunningPenalties.length;
+
+        const newlyActivatedPenalties: Penalty[] = [];
+        const remainingPendingPenalties: Penalty[] = [];
+        
+        // Iterate through pending penalties to see which can be activated
+        for (const penaltyToConsider of pendingConcurrentPenalties) {
+            // A player can only serve one penalty at a time.
+            const isPlayerAlreadyServing = playersInTheBox.has(penaltyToConsider.playerNumber);
+
+            if (availableSlots > 0 && !isPlayerAlreadyServing) {
+                significantChangeOccurred = true;
+                // Activate this penalty
+                newlyActivatedPenalties.push({
+                    ...penaltyToConsider,
+                    _status: 'running',
+                    startTime: liveAbsoluteElapsedTimeCs,
+                    expirationTime: liveAbsoluteElapsedTimeCs + (penaltyToConsider.initialDuration * CENTISECONDS_PER_SECOND),
+                });
+                // This player is now in the box for the remainder of this tick's logic
+                playersInTheBox.add(penaltyToConsider.playerNumber);
+                availableSlots--;
+            } else {
+                // This penalty must wait
+                remainingPendingPenalties.push(penaltyToConsider);
+            }
+        }
+
+        // Combine all penalties back into one list
+        const finalPenalties = [
+          ...stillRunningPenalties,
+          ...newlyActivatedPenalties,
+          ...remainingPendingPenalties,
+          ...otherPenalties
+        ];
+        
+        return finalPenalties;
       };
 
 
@@ -2181,18 +2203,17 @@ export const formatTime = (
   options: {
     showTenths?: boolean;
     includeMinutesForTenths?: boolean;
+    rounding?: 'up' | 'down';
   } = {}
 ): string => {
   if (isNaN(totalCentiseconds) || totalCentiseconds < 0) totalCentiseconds = 0;
 
   const isUnderMinute = totalCentiseconds < 6000;
+  const effectiveRounding = options.rounding || (isUnderMinute ? 'down' : 'up');
 
   // With tenths (always under a minute)
   if (isUnderMinute && options.showTenths) {
-    // When under a minute and showing tenths, we DON'T round up. We floor to get the current second.
     const totalSeconds = Math.floor(totalCentiseconds / 100);
-    
-    // tenths are always floored from the remainder
     const tenths = Math.floor((totalCentiseconds % 100) / 10);
 
     if (options.includeMinutesForTenths) {
@@ -2201,8 +2222,9 @@ export const formatTime = (
       return `${totalSeconds.toString().padStart(2, '0')}.${tenths.toString()}`;
     }
   } else { // Without tenths
-    // When over a minute OR when not showing tenths, we DO round up.
-    const totalSecondsOnly = Math.ceil(totalCentiseconds / 100);
+    const totalSecondsOnly = effectiveRounding === 'up'
+      ? Math.ceil(totalCentiseconds / 100)
+      : Math.floor(totalCentiseconds / 100);
     
     const minutes = Math.floor(totalSecondsOnly / 60);
     const seconds = totalSecondsOnly % 60;
@@ -2358,3 +2380,6 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
 
 
 
+
+
+    
