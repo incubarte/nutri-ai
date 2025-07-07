@@ -230,6 +230,7 @@ const initialGlobalState: GameState = {
     clockStartTimeMs: null,
     remainingTimeAtStartCs: null,
     absoluteElapsedTimeCs: 0,
+    _liveAbsoluteElapsedTimeCs: 0,
   },
   homeTeamName: 'Local',
   homeTeamSubName: undefined,
@@ -1197,7 +1198,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         significantChangeOccurred = true;
       }
       
-      const stateWithLiveAbsoluteTime = { ...state, clock: { ...state.clock, absoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs }};
+      const stateWithLiveAbsoluteTime = { ...state, clock: { ...state.clock, absoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs }};
       
       if (state.clock.isClockRunning && newCalculatedTimeCs <= 0) {
         significantChangeOccurred = true;
@@ -1212,6 +1213,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             clock: {
                 ...state.clock,
                 currentTime: newCalculatedTimeCs,
+                _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs,
             },
             penalties: { home: homePenaltiesResult, away: awayPenaltiesResult },
             gameSummary: newGameSummary,
@@ -1893,6 +1895,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           clockStartTimeMs: (autoStartWarmUp && initialWarmUpDurationCs > 0) ? Date.now() : null,
           remainingTimeAtStartCs: (autoStartWarmUp && initialWarmUpDurationCs > 0) ? initialWarmUpDurationCs : null,
           absoluteElapsedTimeCs: 0,
+          _liveAbsoluteElapsedTimeCs: 0,
         },
         penalties: {
           home: sortPenaltiesByStatus(updatePenaltyStatusesOnly([], state.maxConcurrentPenalties)),
@@ -2329,6 +2332,7 @@ export const formatTime = (
   options: {
     showTenths?: boolean;
     includeMinutesForTenths?: boolean;
+    rounding?: 'up' | 'down';
   } = {}
 ): string => {
   if (isNaN(totalCentiseconds) || totalCentiseconds < 0) totalCentiseconds = 0;
@@ -2344,7 +2348,12 @@ export const formatTime = (
       return `${seconds.toString().padStart(2, '0')}.${tenths.toString()}`;
     }
   } else {
-    const totalSecondsOnly = Math.floor(totalCentiseconds / 100);
+    let totalSecondsOnly: number;
+    if (options.rounding === 'up') {
+      totalSecondsOnly = Math.ceil(totalCentiseconds / 100);
+    } else {
+      totalSecondsOnly = Math.floor(totalCentiseconds / 100); // Default 'down'
+    }
     const minutes = Math.floor(totalSecondsOnly / 60);
     const seconds = totalSecondsOnly % 60;
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
@@ -2421,5 +2430,6 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
 
     
+
 
 

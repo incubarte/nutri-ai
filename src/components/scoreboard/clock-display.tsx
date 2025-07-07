@@ -48,7 +48,7 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
           )}
           style={{ fontSize: `${scoreboardLayout.clockSize}rem`, lineHeight: 1 }}
           >
-          {formatTime(clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false })}
+          {formatTime(clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false, rounding: 'up' })}
         </div>
       )}
       {clock.periodDisplayOverride !== "End of Game" && (
@@ -78,7 +78,7 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
           )}
           style={{ fontSize: `${scoreboardLayout.periodSize * 0.45}rem` }}
           >
-          {getPeriodText(clock.preTimeoutState.period, state.numberOfRegularPeriods)} - {formatTime(clock.preTimeoutState.time, { showTenths: isPreTimeoutLastMinute, includeMinutesForTenths: false })}
+          {getPeriodText(clock.preTimeoutState.period, state.numberOfRegularPeriods)} - {formatTime(clock.preTimeoutState.time, { showTenths: isPreTimeoutLastMinute, includeMinutesForTenths: false, rounding: 'up' })}
           {clock.preTimeoutState.override ? ` (${clock.preTimeoutState.override})` : ''}
         </div>
       )}

@@ -78,22 +78,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const [isAwayPlayersDialogOpen, setIsAwayPlayersDialogOpen] = useState(false);
   const [isTimeoutConfirmOpen, setIsTimeoutConfirmOpen] = useState(false);
   
-  const [liveAbsoluteTime, setLiveAbsoluteTime] = useState(state.clock.absoluteElapsedTimeCs);
-
-  useEffect(() => {
-    // Only run the live timer if the clock is running AND it's a game period
-    if (state.clock.isClockRunning && state.clock.clockStartTimeMs && state.clock.periodDisplayOverride === null) {
-      const interval = setInterval(() => {
-        const elapsedSinceStart = Date.now() - (state.clock.clockStartTimeMs || 0);
-        setLiveAbsoluteTime(state.clock.absoluteElapsedTimeCs + Math.floor(elapsedSinceStart / 10));
-      }, 200);
-      return () => clearInterval(interval);
-    } else {
-      // Otherwise, just display the last saved absolute time
-      setLiveAbsoluteTime(state.clock.absoluteElapsedTimeCs);
-    }
-  }, [state.clock.isClockRunning, state.clock.absoluteElapsedTimeCs, state.clock.clockStartTimeMs, state.clock.periodDisplayOverride]);
-
+  // No local timer needed, value comes directly from state._liveAbsoluteElapsedTimeCs
   
   useEffect(() => {
     setLocalHomeTeamName(state.homeTeamName);
@@ -105,8 +90,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     setLocalAwayTeamSubName(state.awayTeamSubName);
   }, [state.awayTeamName, state.awayTeamSubName]);
 
-
-  const getTimeParts = useCallback((timeCs: number) => {
+  const getFlooredTimeParts = useCallback((timeCs: number) => {
     const safeTimeCs = Math.max(0, timeCs);
     const totalSecondsOnly = Math.floor(safeTimeCs / 100);
     const minutes = Math.floor(totalSecondsOnly / 60);
@@ -114,8 +98,18 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     const tenths = Math.floor((safeTimeCs % 100) / 10);
     return { minutes, seconds, tenths };
   }, []);
+  
+  const getCeiledTimeParts = useCallback((timeCs: number) => {
+    const safeTimeCs = Math.max(0, timeCs);
+    const totalSecondsOnly = Math.ceil(safeTimeCs / 100);
+    const minutes = Math.floor(totalSecondsOnly / 60);
+    const seconds = totalSecondsOnly % 60;
+    const tenths = Math.floor((safeTimeCs % 100) / 10); // Tenths are always floored for display consistency
+    return { minutes, seconds, tenths };
+  }, []);
 
-  const timeParts = getTimeParts(state.clock.currentTime);
+  const timeParts = getFlooredTimeParts(state.clock.currentTime); // For editing logic
+  const displayTimeParts = getCeiledTimeParts(state.clock.currentTime); // For display
 
   useEffect(() => {
     if (editingSegment && inputRef.current) {
@@ -631,7 +625,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="text-xs text-muted-foreground font-mono bg-card/80 p-1 rounded-md border border-border/50 cursor-help">
-                  Abs: {formatTime(liveAbsoluteTime)} ({formatTime(state.clock.absoluteElapsedTimeCs)})
+                  Abs: {formatTime(state.clock._liveAbsoluteElapsedTimeCs)} ({formatTime(state.clock.absoluteElapsedTimeCs)})
                 </div>
               </TooltipTrigger>
               <TooltipContent className="text-xs">
@@ -828,7 +822,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                     />
                   ) : (
                     <span onClick={() => handleSegmentClick('minutes')} className={commonSpanClass}>
-                      {String(timeParts.minutes).padStart(2, '0')}
+                      {String(displayTimeParts.minutes).padStart(2, '0')}
                     </span>
                   )}
                   <span className={isMainClockLastMinute ? "text-orange-500" : "text-accent"}>:</span>
@@ -853,7 +847,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                     />
                   ) : (
                     <span onClick={() => handleSegmentClick('seconds')} className={commonSpanClass}>
-                      {String(timeParts.seconds).padStart(2, '0')}
+                      {String(displayTimeParts.seconds).padStart(2, '0')}
                     </span>
                   )}
                   {isMainClockLastMinute && (
@@ -880,7 +874,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                         />
                       ) : (
                         <span onClick={() => handleSegmentClick('tenths')} className={cn(commonSpanClass, "text-orange-500")}>
-                          {String(timeParts.tenths)}
+                          {String(displayTimeParts.tenths)}
                         </span>
                       )}
                     </>
@@ -1076,5 +1070,6 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     </div>
   );
 }
+
 
 
