@@ -293,10 +293,14 @@ const handleAutoTransition = (currentState: GameState): GameState => {
       // So timeServed = expirationTime + initialDuration.
       // Remaining = initialDuration - timeServed = initialDuration - (expirationTime + initialDuration) = -expirationTime.
       // This is only correct for carry-over penalties (where expirationTime is negative).
-      const remainingTimeCs = -p.expirationTime;
+      
+      const timeRemainingCs = p.expirationTime < 0 
+        ? -p.expirationTime // Carried over from a previous period
+        : p.expirationTime - currentState.clock.currentTime; // Expiring in this period
+
       return { 
           ...p, 
-          remainingTimeDuringBreakCs: Math.max(0, remainingTimeCs),
+          remainingTimeDuringBreakCs: Math.max(0, timeRemainingCs),
           expirationTime: undefined,
           expirationPeriod: undefined,
       };
@@ -602,8 +606,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
 
       if (state.clock.isClockRunning) {
-        // Removed precise time calculation on pause to prevent visual "jumps".
-        // The time is now frozen at the last `TICK`'s value.
+        // Upon pausing, calculate the precise current time and store it.
+        let preciseCurrentTimeCs = state.clock.currentTime;
+        if (state.clock.clockStartTimeMs && state.clock.remainingTimeAtStartCs !== null) {
+          const elapsedMs = Date.now() - state.clock.clockStartTimeMs;
+          const elapsedCs = Math.floor(elapsedMs / 10);
+          preciseCurrentTimeCs = Math.max(0, state.clock.remainingTimeAtStartCs - elapsedCs);
+        }
+        newClockState.currentTime = preciseCurrentTimeCs;
         newClockState.isClockRunning = false;
         newClockState.clockStartTimeMs = null;
         newClockState.remainingTimeAtStartCs = null;
@@ -1000,7 +1010,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           if (p._status === 'running' && originalStatuses.get(p.id) !== 'running') {
             return {
               ...p,
-              expirationTime: newCalculatedTimeCs - (p.initialDuration * 100),
+              expirationTime: currentTimeCs - (p.initialDuration * 100),
               expirationPeriod: state.clock.currentPeriod,
             };
           }
