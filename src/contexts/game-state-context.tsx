@@ -960,7 +960,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ACTIVATE_PENDING_PUCK_PENALTIES': {
       const activateForTeam = (penalties: Penalty[]): Penalty[] => {
-        return penalties.map(p => p._status === 'pending_puck' ? { ...p, _status: undefined } : p);
+        return penalties.map(p => p._status === 'pending_puck' ? { ...p, _status: 'pending_concurrent' } : p);
       };
 
       const homePenalties = activateForTeam(state.penalties.home);
@@ -973,171 +973,169 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'TICK': {
-        let hasChanged = false;
-        let significantChangeOccurred = false;
-        let currentTimeSnapshot = state.clock.currentTime;
-        let liveAbsoluteElapsedTimeCs = state.clock.absoluteElapsedTimeCs;
-        let newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.gameSummary));
-
-        if (state.clock.isClockRunning && state.clock.clockStartTimeMs && state.clock.remainingTimeAtStartCs !== null) {
-            const elapsedMs = Date.now() - state.clock.clockStartTimeMs;
-            const elapsedCs = Math.floor(elapsedMs / 10);
-            currentTimeSnapshot = Math.max(0, state.clock.remainingTimeAtStartCs - elapsedCs);
-            
-            if (state.clock.periodDisplayOverride === null) {
-                liveAbsoluteElapsedTimeCs = state.clock.absoluteElapsedTimeCs + elapsedCs;
-            }
-
-            if (currentTimeSnapshot !== state.clock.currentTime) {
-                hasChanged = true;
-            }
-        } else if (state.clock.isClockRunning && state.clock.currentTime <= 0) {
-            currentTimeSnapshot = 0;
+      let hasChanged = false;
+      let significantChangeOccurred = false;
+      let currentTimeSnapshot = state.clock.currentTime;
+      let liveAbsoluteElapsedTimeCs = state.clock.absoluteElapsedTimeCs;
+      let newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.gameSummary));
+  
+      if (state.clock.isClockRunning && state.clock.clockStartTimeMs && state.clock.remainingTimeAtStartCs !== null) {
+        const elapsedMs = Date.now() - state.clock.clockStartTimeMs;
+        const elapsedCs = Math.floor(elapsedMs / 10);
+        currentTimeSnapshot = Math.max(0, state.clock.remainingTimeAtStartCs - elapsedCs);
+        
+        if (state.clock.periodDisplayOverride === null) {
+          liveAbsoluteElapsedTimeCs = state.clock.absoluteElapsedTimeCs + elapsedCs;
         }
-
-        const processTeamPenaltiesTick = (currentPenalties: Penalty[], team: Team): Penalty[] => {
-            // Separate penalties into distinct groups for clarity
-            const running = currentPenalties.filter(p => p._status === 'running');
-            const waitingForSlot = currentPenalties.filter(p => p._status !== 'running' && p._status !== 'pending_puck');
-            const waitingForPuck = currentPenalties.filter(p => p._status === 'pending_puck');
-    
-            // --- Step 1: Process running penalties ---
-            // Find penalties that have completed their time.
-            const stillRunning: Penalty[] = [];
-            running.forEach(p => {
-                if (p.expirationTime !== undefined && liveAbsoluteElapsedTimeCs >= p.expirationTime) {
-                    // This penalty has finished. Log it and don't add to the next state's running list.
-                    hasChanged = true;
-                    significantChangeOccurred = true;
-                    const logIndex = newGameSummary[team].penalties.findIndex(log => log.id === p.id && !log.endReason);
-                    if (logIndex > -1) {
-                        newGameSummary[team].penalties[logIndex] = {
-                            ...newGameSummary[team].penalties[logIndex],
-                            endTimestamp: Date.now(),
-                            endGameTime: p.expirationTime,
-                            endPeriodText: getPeriodText(getPeriodContextFromAbsoluteTime(p.expirationTime, state).periodText, state.numberOfRegularPeriods),
-                            endReason: 'completed',
-                            timeServed: newGameSummary[team].penalties[logIndex].initialDuration,
-                        };
-                    }
-                } else {
-                    // This penalty is still running. Carry it over to the next state UNCHANGED.
-                    stillRunning.push(p);
-                }
-            });
-    
-            // --- Step 2: Process waiting penalties ---
-            // Activate waiting penalties if there are open slots.
-            let newlyActivated: Penalty[] = [];
-            let runningPlayerNumbers = new Set(stillRunning.map(p => p.playerNumber).filter(Boolean));
-            let slotsAvailable = state.maxConcurrentPenalties - stillRunning.length;
-            let remainingWaitingForSlot = [...waitingForSlot];
-    
-            if (slotsAvailable > 0 && remainingWaitingForSlot.length > 0) {
-                const tempWaitingList = [...remainingWaitingForSlot];
-                remainingWaitingForSlot = []; // Clear the original list, we will rebuild it.
-    
-                tempWaitingList.forEach(p => {
-                    // Can this penalty be activated?
-                    const canActivate = slotsAvailable > 0 && (!p.playerNumber || !runningPlayerNumbers.has(p.playerNumber));
-                    
-                    if (canActivate) {
-                        // YES: Activate it, set its times, and add to newlyActivated list.
-                        hasChanged = true;
-                        significantChangeOccurred = true;
-                        
-                        newlyActivated.push({
-                            ...p,
-                            _status: 'running',
-                            startTime: liveAbsoluteElapsedTimeCs,
-                            expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND),
-                        });
-                        
-                        // Consume a slot and register the player number.
-                        slotsAvailable--;
-                        if (p.playerNumber) {
-                            runningPlayerNumbers.add(p.playerNumber);
-                        }
-                    } else {
-                        // NO: It must remain waiting. Add it back to the waiting list.
-                        remainingWaitingForSlot.push(p);
-                    }
-                });
-            }
-            
-            // --- Step 3: Update status for penalties that are still waiting ---
-            const updatedStillWaiting = remainingWaitingForSlot.map(p => {
-                const newStatus = p.playerNumber && runningPlayerNumbers.has(p.playerNumber) ? 'pending_player' : 'pending_concurrent';
-                if (p._status !== newStatus) { hasChanged = true; }
-                return { ...p, _status: newStatus };
-            });
-    
-            // --- Step 4: Combine all penalties for the final list ---
-            return [...stillRunning, ...newlyActivated, ...updatedStillWaiting, ...waitingForPuck];
-        };
-        
-        let homePenaltiesResult = processTeamPenaltiesTick(state.penalties.home, 'home');
-        let awayPenaltiesResult = processTeamPenaltiesTick(state.penalties.away, 'away');
-
-        const checkPenaltyBeep = (penalties: Penalty[]) => {
-            if (state.enablePenaltyCountdownSound && state.clock.isClockRunning && state.clock.periodDisplayOverride === null) {
-                penalties.forEach(p => {
-                    if (p._status === 'running' && p.expirationTime !== undefined) {
-                        const previousRemainingTimeCs = p.expirationTime - state.clock._liveAbsoluteElapsedTimeCs; // Use previous live time for comparison
-                        const currentRemainingTimeCs = p.expirationTime - liveAbsoluteElapsedTimeCs;
-
-                        if (currentRemainingTimeCs / CENTISECONDS_PER_SECOND <= state.penaltyCountdownStartTime && currentRemainingTimeCs > 0) {
-                            if (Math.floor(previousRemainingTimeCs / CENTISECONDS_PER_SECOND) > Math.floor(currentRemainingTimeCs / CENTISECONDS_PER_SECOND)) {
-                                newPlayPenaltyBeepTrigger++;
-                                hasChanged = true;
-                            }
-                        }
-                    }
-                });
-            }
-        };
-        
-        checkPenaltyBeep(homePenaltiesResult);
-        checkPenaltyBeep(awayPenaltiesResult);
-        
-        if (!isEqual(homePenaltiesResult, state.penalties.home)) {
-            homePenaltiesResult = sortPenaltiesByStatus(homePenaltiesResult);
+  
+        if (currentTimeSnapshot !== state.clock.currentTime) {
+          hasChanged = true;
         }
-        if (!isEqual(awayPenaltiesResult, state.penalties.away)) {
-            awayPenaltiesResult = sortPenaltiesByStatus(awayPenaltiesResult);
-        }
-        
-        if (!isEqual(homePenaltiesResult, state.penalties.home) || !isEqual(awayPenaltiesResult, state.penalties.away)) {
-            hasChanged = true;
-            significantChangeOccurred = true;
-        }
-        
-        const stateWithLiveAbsoluteTime = { ...state, clock: { ...state.clock, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs }};
-        
-        if (state.clock.isClockRunning && currentTimeSnapshot <= 0) {
-            significantChangeOccurred = true;
-            const transitionResult = handleAutoTransition(stateWithLiveAbsoluteTime);
-            newStateWithoutMeta = transitionResult; 
-            newPlayHornTrigger = transitionResult.playHornTrigger;
-            newPlayPenaltyBeepTrigger = state.playPenaltyBeepTrigger;
-        } else if (hasChanged) {
-            newStateWithoutMeta = {
-                ...state,
-                clock: {
-                    ...state.clock,
-                    currentTime: currentTimeSnapshot,
-                    _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs,
-                },
-                penalties: { home: homePenaltiesResult, away: awayPenaltiesResult },
-                gameSummary: newGameSummary,
-            };
-        } else {
-            return { ...state, clock: { ...state.clock, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs } }; 
-        }
-        const originator = significantChangeOccurred ? TAB_ID : undefined;
-        const timestamp = significantChangeOccurred ? newTimestamp : state._lastUpdatedTimestamp;
-        return { ...newStateWithoutMeta, playHornTrigger: newPlayHornTrigger, playPenaltyBeepTrigger: newPlayPenaltyBeepTrigger, _lastActionOriginator: originator, _lastUpdatedTimestamp: timestamp, _initialConfigLoadComplete: state._initialConfigLoadComplete };
-    }
+      } else if (state.clock.isClockRunning && state.clock.currentTime <= 0) {
+        currentTimeSnapshot = 0;
+      }
+  
+      const processTeamPenaltiesTick = (currentPenalties: Penalty[], team: Team): Penalty[] => {
+          const runningPenalties = currentPenalties.filter(p => p._status === 'running');
+          const waitingPenalties = currentPenalties.filter(p => p._status && ['pending_concurrent', 'pending_player'].includes(p._status));
+          const puckPendingPenalties = currentPenalties.filter(p => p._status === 'pending_puck');
+  
+          // --- Step 1: Process RUNNING penalties ---
+          // Identify completed penalties and carry over those still running without modification.
+          const stillRunning: Penalty[] = [];
+          runningPenalties.forEach(p => {
+              if (p.expirationTime !== undefined && liveAbsoluteElapsedTimeCs >= p.expirationTime) {
+                  // Penalty finished. Log it. It will be removed from the active list.
+                  hasChanged = true;
+                  significantChangeOccurred = true;
+                  const logIndex = newGameSummary[team].penalties.findIndex(log => log.id === p.id && !log.endReason);
+                  if (logIndex > -1) {
+                      newGameSummary[team].penalties[logIndex] = {
+                          ...newGameSummary[team].penalties[logIndex],
+                          endTimestamp: Date.now(),
+                          endGameTime: p.expirationTime,
+                          endPeriodText: getPeriodText(getPeriodContextFromAbsoluteTime(p.expirationTime, state).periodText, state.numberOfRegularPeriods),
+                          endReason: 'completed',
+                          timeServed: newGameSummary[team].penalties[logIndex].initialDuration,
+                      };
+                  }
+              } else {
+                  // Penalty is still running. Keep it as is. DO NOT TOUCH IT.
+                  stillRunning.push(p);
+              }
+          });
+  
+          // --- Step 2: Process WAITING penalties ---
+          // Try to activate waiting penalties if slots are available.
+          let slotsAvailable = state.maxConcurrentPenalties - stillRunning.length;
+          let newlyActivated: Penalty[] = [];
+          const remainingWaiting = [...waitingPenalties];
+          const tempWaitingList: Penalty[] = [];
+  
+          if (slotsAvailable > 0) {
+              let runningPlayerNumbers = new Set(stillRunning.map(p => p.playerNumber).filter(Boolean));
+              
+              while (slotsAvailable > 0 && remainingWaiting.length > 0) {
+                  const p = remainingWaiting.shift()!;
+                  const canActivate = !p.playerNumber || !runningPlayerNumbers.has(p.playerNumber);
+                  
+                  if (canActivate) {
+                      // Activate it. This is the ONLY place a new expirationTime is set for a waiting penalty.
+                      hasChanged = true;
+                      significantChangeOccurred = true;
+                      newlyActivated.push({
+                          ...p,
+                          _status: 'running',
+                          startTime: liveAbsoluteElapsedTimeCs,
+                          expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND),
+                      });
+                      slotsAvailable--;
+                      if (p.playerNumber) {
+                          runningPlayerNumbers.add(p.playerNumber);
+                      }
+                  } else {
+                      // Cannot activate, put it in a temp list to re-evaluate status later.
+                      tempWaitingList.push(p);
+                  }
+              }
+          }
+          // Any penalties left in remainingWaiting couldn't be processed, add them to the temp list.
+          const allStillWaiting = [...tempWaitingList, ...remainingWaiting];
+          
+          // --- Step 3: Update status for penalties that are STILL waiting ---
+          const allCurrentlyRunningNumbers = new Set([...stillRunning, ...newlyActivated].map(p => p.playerNumber).filter(Boolean));
+          const updatedStillWaiting = allStillWaiting.map(p => {
+              const newStatus = p.playerNumber && allCurrentlyRunningNumbers.has(p.playerNumber) ? 'pending_player' : 'pending_concurrent';
+              if (p._status !== newStatus) { hasChanged = true; }
+              return { ...p, _status: newStatus };
+          });
+  
+          // --- Step 4: Combine all groups for the final list ---
+          return [...stillRunning, ...newlyActivated, ...updatedStillWaiting, ...puckPendingPenalties];
+      };
+      
+      let homePenaltiesResult = processTeamPenaltiesTick(state.penalties.home, 'home');
+      let awayPenaltiesResult = processTeamPenaltiesTick(state.penalties.away, 'away');
+  
+      const checkPenaltyBeep = (penalties: Penalty[]) => {
+          if (state.enablePenaltyCountdownSound && state.clock.isClockRunning && state.clock.periodDisplayOverride === null) {
+              penalties.forEach(p => {
+                  if (p._status === 'running' && p.expirationTime !== undefined) {
+                      const previousRemainingTimeCs = p.expirationTime - state.clock._liveAbsoluteElapsedTimeCs; // Use previous live time for comparison
+                      const currentRemainingTimeCs = p.expirationTime - liveAbsoluteElapsedTimeCs;
+  
+                      if (currentRemainingTimeCs / CENTISECONDS_PER_SECOND <= state.penaltyCountdownStartTime && currentRemainingTimeCs > 0) {
+                          if (Math.floor(previousRemainingTimeCs / CENTISECONDS_PER_SECOND) > Math.floor(currentRemainingTimeCs / CENTISECONDS_PER_SECOND)) {
+                              newPlayPenaltyBeepTrigger++;
+                              hasChanged = true;
+                          }
+                      }
+                  }
+              });
+          }
+      };
+      
+      checkPenaltyBeep(homePenaltiesResult);
+      checkPenaltyBeep(awayPenaltiesResult);
+      
+      if (!isEqual(homePenaltiesResult, state.penalties.home)) {
+          homePenaltiesResult = sortPenaltiesByStatus(homePenaltiesResult);
+      }
+      if (!isEqual(awayPenaltiesResult, state.penalties.away)) {
+          awayPenaltiesResult = sortPenaltiesByStatus(awayPenaltiesResult);
+      }
+      
+      if (!isEqual(homePenaltiesResult, state.penalties.home) || !isEqual(awayPenaltiesResult, state.penalties.away)) {
+          hasChanged = true;
+          significantChangeOccurred = true;
+      }
+      
+      const stateWithLiveAbsoluteTime = { ...state, clock: { ...state.clock, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs }};
+      
+      if (state.clock.isClockRunning && currentTimeSnapshot <= 0) {
+          significantChangeOccurred = true;
+          const transitionResult = handleAutoTransition(stateWithLiveAbsoluteTime);
+          newStateWithoutMeta = transitionResult; 
+          newPlayHornTrigger = transitionResult.playHornTrigger;
+          newPlayPenaltyBeepTrigger = state.playPenaltyBeepTrigger;
+      } else if (hasChanged) {
+          newStateWithoutMeta = {
+              ...state,
+              clock: {
+                  ...state.clock,
+                  currentTime: currentTimeSnapshot,
+                  _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs,
+              },
+              penalties: { home: homePenaltiesResult, away: awayPenaltiesResult },
+              gameSummary: newGameSummary,
+          };
+      } else {
+          return { ...state, clock: { ...state.clock, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs } }; 
+      }
+      const originator = significantChangeOccurred ? TAB_ID : undefined;
+      const timestamp = significantChangeOccurred ? newTimestamp : state._lastUpdatedTimestamp;
+      return { ...newStateWithoutMeta, playHornTrigger: newPlayHornTrigger, playPenaltyBeepTrigger: newPlayPenaltyBeepTrigger, _lastActionOriginator: originator, _lastUpdatedTimestamp: timestamp, _initialConfigLoadComplete: state._initialConfigLoadComplete };
+  }
     case 'SET_HOME_TEAM_NAME':
       newStateWithoutMeta = { ...state, homeTeamName: action.payload || 'Local' };
       break;
@@ -2388,4 +2386,5 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
