@@ -411,18 +411,27 @@ const updatePenaltyStatusesOnly = (penalties: Penalty[], maxConcurrent: number):
       continue;
     }
 
-    let currentStatus: Penalty['_status'] = undefined;
-    if (p.playerNumber && activePlayerTickets.has(p.playerNumber)) {
-      currentStatus = 'pending_player';
-    } else if (concurrentRunningCount < maxConcurrent) {
-      currentStatus = 'running';
+    let currentStatus: Penalty['_status'] = p._status;
+    
+    // Only evaluate status for penalties that don't have one, or are pending
+    if (currentStatus === undefined || currentStatus === 'pending_concurrent' || currentStatus === 'pending_player') {
+      if (p.playerNumber && activePlayerTickets.has(p.playerNumber)) {
+        currentStatus = 'pending_player';
+      } else if (concurrentRunningCount < maxConcurrent) {
+        currentStatus = 'running';
+      } else {
+        currentStatus = 'pending_concurrent';
+      }
+    }
+    
+    // If it became or stayed running, occupy a slot
+    if (currentStatus === 'running') {
       if (p.playerNumber) {
           activePlayerTickets.add(p.playerNumber);
       }
       concurrentRunningCount++;
-    } else {
-      currentStatus = 'pending_concurrent';
     }
+
     newPenalties.push({ ...p, _status: currentStatus });
   }
   return newPenalties;
@@ -817,13 +826,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         initialDuration: action.payload.penalty.initialDuration,
         id: newPenaltyId,
         _status: 'pending_puck',
+        startTime: undefined,
+        expirationTime: undefined,
       };
 
       let penalties = [...state.penalties[action.payload.team], newPenalty];
-      penalties = updatePenaltyStatusesOnly(penalties, state.maxConcurrentPenalties);
       penalties = sortPenaltiesByStatus(penalties);
       
-      const teamDetails = state.teams.find(t => t.name === state[`${action.payload.team}TeamName`]);
+      const teamDetails = state.teams.find(t => t.name === state[`${action.payload.team}TeamName`] && (t.subName || undefined) === (state[`${action.payload.team}TeamSubName`] || undefined) && t.category === state.selectedMatchCategory);
       const playerDetails = teamDetails?.players.find(p => p.number === newPenalty.playerNumber);
 
       const newPenaltyLog: PenaltyLog = {
@@ -965,9 +975,17 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     
       const updatedPenalties = state.penalties[team].map(p => {
         if (p.id === penaltyId) {
+          let liveAbsoluteElapsedTimeCs = state.clock.absoluteElapsedTimeCs;
+           if (state.clock.isClockRunning && state.clock.clockStartTimeMs && state.clock.remainingTimeAtStartCs !== null) {
+              const elapsedMs = Date.now() - state.clock.clockStartTimeMs;
+              const elapsedCs = Math.floor(elapsedMs / 10);
+              if (state.clock.periodDisplayOverride === null) {
+                  liveAbsoluteElapsedTimeCs += elapsedCs;
+              }
+           }
           return { 
             ...p, 
-            expirationTime: state.clock._liveAbsoluteElapsedTimeCs + newRemainingTimeCs,
+            expirationTime: liveAbsoluteElapsedTimeCs + newRemainingTimeCs,
           };
         }
         return p;
@@ -1011,7 +1029,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         let updatedPenalties = penalties.map(p => {
           if (p._status === 'pending_puck') {
             penaltiesWereActivated = true;
-            return { ...p, _status: undefined };
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { _status, ...rest } = p;
+            return rest as Penalty;
           }
           return p;
         });
@@ -1129,7 +1149,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 ...newGameSummary[team].penalties[logIndex],
                 endTimestamp: Date.now(),
                 endGameTime: p.expirationTime,
-                endPeriodText: getActualPeriodText(state.clock.currentPeriod, state.clock.periodDisplayOverride, state.numberOfRegularPeriods),
+                endPeriodText: getPeriodText(getPeriodContextFromAbsoluteTime(p.expirationTime, state).periodText, state.numberOfRegularPeriods),
                 endReason: 'completed',
                 timeServed: newGameSummary[team].penalties[logIndex].initialDuration,
               };
@@ -2330,7 +2350,7 @@ export const getPeriodText = (period: number, numRegPeriods: number): string => 
     return "---";
 };
 
-export const getPeriodContextFromAbsoluteTime = (absoluteTimeCs: number, state: GameState): { periodText: string, timeInPeriodCs: number } => {
+export const getPeriodContextFromAbsoluteTime = (absoluteTimeCs: number, state: GameState): { periodText: string, timeInPeriodCs: number, periodNumber: number } => {
     if (absoluteTimeCs < 0) absoluteTimeCs = 0;
 
     const {
@@ -2349,6 +2369,7 @@ export const getPeriodContextFromAbsoluteTime = (absoluteTimeCs: number, state: 
             return {
                 periodText: getPeriodText(i, numberOfRegularPeriods),
                 timeInPeriodCs: Math.max(0, periodDuration - timeIntoPeriod),
+                periodNumber: i,
             };
         }
         timeTracker = periodEnd;
@@ -2364,6 +2385,7 @@ export const getPeriodContextFromAbsoluteTime = (absoluteTimeCs: number, state: 
             return {
                 periodText: getPeriodText(periodNumber, numberOfRegularPeriods),
                 timeInPeriodCs: Math.max(0, periodDuration - timeIntoPeriod),
+                periodNumber: periodNumber,
             };
         }
         timeTracker = periodEnd;
@@ -2373,7 +2395,8 @@ export const getPeriodContextFromAbsoluteTime = (absoluteTimeCs: number, state: 
     const lastPeriodNumber = numberOfRegularPeriods + state.numberOfOvertimePeriods;
     return { 
         periodText: getPeriodText(lastPeriodNumber, numberOfRegularPeriods), 
-        timeInPeriodCs: 0
+        timeInPeriodCs: 0,
+        periodNumber: lastPeriodNumber,
     };
 };
 
@@ -2424,6 +2447,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
 
 
     
+
 
 
 
