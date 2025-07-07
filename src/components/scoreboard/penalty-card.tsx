@@ -1,11 +1,13 @@
+
 "use client";
 
 import type { Penalty, ClockState } from '@/types';
-import { useGameState, formatTime } from '@/contexts/game-state-context';
+import { useGameState, formatTime, getPeriodText } from '@/contexts/game-state-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React from 'react'; 
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface PenaltyCardProps {
   penalty: Penalty;
@@ -63,6 +65,37 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
     isPendingPuck && "border-yellow-500/40" 
   );
 
+  const expirationInfo = React.useMemo(() => {
+    if (penalty.expirationTime === undefined || penalty.expirationPeriod === undefined) return null;
+    
+    let periodText, timeText;
+    const { periodDisplayOverride, currentPeriod } = clock;
+    const { numberOfRegularPeriods, defaultPeriodDuration, defaultOTPeriodDuration } = state;
+
+    if (periodDisplayOverride === 'Break' || periodDisplayOverride === 'Pre-OT Break') {
+        const nextPeriodNumber = currentPeriod + 1;
+        // Only show if penalty was frozen from a previous period
+        if (penalty.expirationPeriod < nextPeriodNumber) {
+            periodText = getPeriodText(nextPeriodNumber, numberOfRegularPeriods);
+            const nextPeriodDuration = nextPeriodNumber > numberOfRegularPeriods ? defaultOTPeriodDuration : defaultPeriodDuration;
+            const expirationTimeInNextPeriod = nextPeriodDuration - penalty.expirationTime;
+            timeText = formatTime(expirationTimeInNextPeriod);
+        } else {
+            // Fallback for a penalty edited during a break
+            periodText = getPeriodText(penalty.expirationPeriod, numberOfRegularPeriods);
+            const periodDurationForCalc = penalty.expirationPeriod > numberOfRegularPeriods ? defaultOTPeriodDuration : defaultPeriodDuration;
+            timeText = formatTime(periodDurationForCalc - penalty.expirationTime);
+        }
+    } else {
+        periodText = getPeriodText(penalty.expirationPeriod, numberOfRegularPeriods);
+        timeText = formatTime(penalty.expirationTime);
+    }
+    
+    if (!periodText || !timeText) return null;
+    return `Expira en ${periodText} a los ${timeText}`;
+
+  }, [penalty, clock, state]);
+
   const renderPlayerAlias = () => {
     if (!state.showAliasInScoreboardPenalties || !matchedPlayer || !matchedPlayer.name) return null;
     
@@ -112,13 +145,24 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 md:gap-3">
             <CagedUserIcon size={styles.playerIconSize} className="text-primary-foreground" />
-            <span 
-              className="font-semibold"
-              style={{ fontSize: styles.playerNumberSize, lineHeight: 1 }}
-            >
-              {penalty.playerNumber || 'S/N'}
-              {renderPlayerAlias()}
-            </span>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span 
+                    className="font-semibold"
+                    style={{ fontSize: styles.playerNumberSize, lineHeight: 1 }}
+                  >
+                    {penalty.playerNumber || 'S/N'}
+                    {renderPlayerAlias()}
+                  </span>
+                </TooltipTrigger>
+                {expirationInfo && penalty._status === 'running' && (
+                  <TooltipContent>
+                    <p>{expirationInfo}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <div 
             className="flex items-center gap-1 md:gap-2 text-accent font-mono"

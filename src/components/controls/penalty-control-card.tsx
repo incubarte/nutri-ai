@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef } from 'react';
-import { useGameState, formatTime } from '@/contexts/game-state-context';
+import { useGameState, formatTime, getPeriodText } from '@/contexts/game-state-context';
 import type { Penalty, Team, PlayerData } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,12 +39,187 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from '@/components/ui/checkbox';
 import { getActualPeriodText } from '@/contexts/game-state-context';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 interface PenaltyControlCardProps {
   team: Team;
   teamName: string;
 }
+
+const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onEditCancel, isDeleteSelectionMode, isSelectedForDeletion, onToggleSelection, onDragStart, onDragEnter, onDragLeave, onDragOver, onDrop, onEndForGoal }: {
+    penalty: Penalty;
+    team: Team;
+    isEditing: boolean;
+    onEditStart: (penaltyId: string, currentTime: string) => void;
+    onEditConfirm: (penaltyId: string, newTimeValue: string) => void;
+    onEditCancel: () => void;
+    isDeleteSelectionMode: boolean;
+    isSelectedForDeletion: boolean;
+    onToggleSelection: (penaltyId: string) => void;
+    onDragStart: (e: React.DragEvent<HTMLDivElement>, penaltyId: string) => void;
+    onDragEnter: (e: React.DragEvent<HTMLDivElement>, penaltyId: string) => void;
+    onDragLeave: () => void;
+    onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
+    onDrop: (e: React.DragEvent<HTMLDivElement>, targetPenaltyId: string) => void;
+    onEndForGoal: (penalty: Penalty) => void;
+}) => {
+    const { state } = useGameState();
+    const [editTimeValue, setEditTimeValue] = useState('');
+    const { clock } = state;
+
+    const teamSubName = team === 'home' ? state.homeTeamSubName : state.awayTeamSubName;
+    const matchedTeam = useMemo(() => {
+      return state.teams.find(t =>
+          t.name === state[`${team}TeamName`] &&
+          (t.subName || undefined) === (teamSubName || undefined) &&
+          t.category === state.selectedMatchCategory
+      );
+    }, [state.teams, state, team, teamSubName]);
+    
+    const matchedPlayerForPenaltyDisplay = matchedTeam?.players.find(
+      pData => pData.number === penalty.playerNumber || (penalty.playerNumber === "S/N" && !pData.number)
+    );
+    const displayPenaltyNumber = penalty.playerNumber || 'S/N';
+    
+    const remainingTimeCs = (penalty._status === 'running' && penalty.expirationTime !== undefined)
+      ? Math.max(0, state.clock.currentTime - penalty.expirationTime)
+      : penalty.initialDuration * 100;
+    
+    const expirationInfo = React.useMemo(() => {
+        if (penalty.expirationTime === undefined || penalty.expirationPeriod === undefined) return null;
+        
+        let periodText, timeText;
+        const { periodDisplayOverride, currentPeriod } = clock;
+        const { numberOfRegularPeriods, defaultPeriodDuration, defaultOTPeriodDuration } = state;
+
+        if (periodDisplayOverride === 'Break' || periodDisplayOverride === 'Pre-OT Break') {
+            const nextPeriodNumber = currentPeriod + 1;
+            if (penalty.expirationPeriod <= currentPeriod) {
+                periodText = getPeriodText(nextPeriodNumber, numberOfRegularPeriods);
+                const nextPeriodDuration = nextPeriodNumber > numberOfRegularPeriods ? defaultOTPeriodDuration : defaultPeriodDuration;
+                const expirationTimeInNextPeriod = nextPeriodDuration - penalty.expirationTime;
+                timeText = formatTime(expirationTimeInNextPeriod);
+            } else {
+                periodText = getPeriodText(penalty.expirationPeriod, numberOfRegularPeriods);
+                const periodDurationForCalc = penalty.expirationPeriod > numberOfRegularPeriods ? defaultOTPeriodDuration : defaultPeriodDuration;
+                timeText = formatTime(periodDurationForCalc - penalty.expirationTime);
+            }
+        } else {
+            periodText = getPeriodText(penalty.expirationPeriod, numberOfRegularPeriods);
+            timeText = formatTime(penalty.expirationTime);
+        }
+        
+        if (!periodText || !timeText) return null;
+        return `Expira en ${periodText} a los ${timeText}`;
+
+    }, [penalty, clock, state]);
+
+    const isWaitingSlot = penalty._status === 'pending_player' || penalty._status === 'pending_concurrent';
+    const isPendingPuck = penalty._status === 'pending_puck';
+    const statusText = isPendingPuck ? 'Esperando Puck' : (isWaitingSlot ? 'Esperando Slot' : null);
+    const isEndingSoon = penalty._status === 'running' && remainingTimeCs > 0 && remainingTimeCs < 1000;
+
+    return (
+        <Card
+            draggable={!isEditing && !isDeleteSelectionMode}
+            onDragStart={(e) => onDragStart(e, penalty.id)}
+            onDragEnter={(e) => onDragEnter(e, penalty.id)}
+            onDragLeave={onDragLeave}
+            onDragOver={onDragOver}
+            onDrop={(e) => onDrop(e, penalty.id)}
+            onClick={() => isDeleteSelectionMode && onToggleSelection(penalty.id)}
+            className={cn(
+                "p-3 bg-muted/30 transition-all border",
+                !isEditing && !isDeleteSelectionMode && "cursor-move",
+                isDeleteSelectionMode && "cursor-pointer",
+                isSelectedForDeletion && "ring-2 ring-destructive border-destructive bg-destructive/10",
+                isWaitingSlot && "opacity-60 bg-muted/10",
+                isPendingPuck && "opacity-40 bg-yellow-500/5 border-yellow-500/30",
+                isEndingSoon && "animate-flashing-border border-2"
+            )}
+        >
+            <div className="flex justify-between items-center w-full gap-2">
+                <div className="flex items-center gap-3">
+                    {isDeleteSelectionMode && (
+                        <Checkbox
+                            checked={isSelectedForDeletion}
+                            onCheckedChange={() => onToggleSelection(penalty.id)}
+                            aria-label={`Seleccionar penalidad del jugador ${penalty.playerNumber}`}
+                            className="mr-2"
+                        />
+                    )}
+                    <div className="flex-1 min-w-0">
+                        <TooltipProvider delayDuration={300}>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <p className="font-semibold text-card-foreground truncate">
+                                        Jugador {displayPenaltyNumber}
+                                        {state.enablePlayerSelectionForPenalties && state.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && (
+                                            <span className="ml-1 text-xs text-muted-foreground font-normal">
+                                                - {matchedPlayerForPenaltyDisplay.name}
+                                            </span>
+                                        )}
+                                    </p>
+                                </TooltipTrigger>
+                                {expirationInfo && penalty._status === 'running' && (
+                                    <TooltipContent><p>{expirationInfo}</p></TooltipContent>
+                                )}
+                            </Tooltip>
+                        </TooltipProvider>
+                        <p className="text-xs text-muted-foreground">
+                            Total: {formatTime(penalty.initialDuration * 100)}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                    {isEditing ? (
+                        <Input
+                            type="text"
+                            value={editTimeValue}
+                            onChange={(e) => setEditTimeValue(e.target.value)}
+                            onBlur={() => onEditConfirm(penalty.id, editTimeValue)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') onEditConfirm(penalty.id, editTimeValue); if (e.key === 'Escape') onEditCancel(); }}
+                            className="w-20 h-8 text-center font-mono"
+                            autoFocus
+                            placeholder="MM:SS"
+                        />
+                    ) : (
+                        <div
+                            className="w-20 h-8 flex items-center justify-center font-mono text-lg cursor-pointer rounded-md hover:bg-white/10"
+                            onClick={(e) => {
+                                if (isDeleteSelectionMode) return;
+                                e.stopPropagation();
+                                onEditStart(penalty.id, formatTime(remainingTimeCs));
+                                setEditTimeValue(formatTime(remainingTimeCs));
+                            }}
+                        >
+                            {formatTime(remainingTimeCs)}
+                        </div>
+                    )}
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => { e.stopPropagation(); onEndForGoal(penalty); }}
+                        aria-label="Finalizar por gol"
+                        disabled={isDeleteSelectionMode}
+                    >
+                        <Goal className="h-4 w-4 text-green-500" />
+                    </Button>
+                </div>
+            </div>
+            {statusText && (
+                <div className={cn("text-xs italic mt-1 flex items-center", isPendingPuck ? "text-yellow-600 dark:text-yellow-400" : "text-muted-foreground")}>
+                    <Hourglass className="h-3 w-3 mr-1" />
+                    {statusText}
+                </div>
+            )}
+        </Card>
+    );
+};
+
 
 export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) {
   const { state, dispatch } = useGameState();
@@ -63,7 +238,6 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
 
   // New state for editing penalty time
   const [editingPenaltyId, setEditingPenaltyId] = useState<string | null>(null);
-  const [editTimeValue, setEditTimeValue] = useState('');
   
   const [penaltyForGoalConfirmation, setPenaltyForGoalConfirmation] = useState<Penalty | null>(null);
   const [isDeleteSelectionMode, setIsDeleteSelectionMode] = useState(false);
@@ -137,8 +311,8 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     setPlayerSearchTerm('');
   };
   
-  const handleSetPenaltyTime = (penaltyId: string) => {
-    const parts = editTimeValue.split(':');
+  const handleSetPenaltyTime = (penaltyId: string, newTimeValue: string) => {
+    const parts = newTimeValue.split(':');
     let minutes = 0;
     let seconds = 0;
 
@@ -256,13 +430,6 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     setIsMassDeleteConfirmOpen(false);
     setIsDeleteSelectionMode(false);
     setSelectedPenaltyIds([]);
-  };
-
-
-  const getStatusText = (status?: Penalty['_status']) => {
-    if (status === 'pending_player' || status === 'pending_concurrent') return 'Esperando Slot';
-    if (status === 'pending_puck') return 'Esperando Puck';
-    return null;
   };
 
   const renderPlayerNumberInput = () => {
@@ -450,123 +617,26 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
           <div
             className="max-h-60 overflow-y-auto space-y-2 pr-2"
           >
-            {penalties.map((p) => {
-              const isWaitingSlot = p._status === 'pending_player' || p._status === 'pending_concurrent';
-              const isPendingPuck = p._status === 'pending_puck';
-              const statusText = getStatusText(p._status);
-              
-              const matchedPlayerForPenaltyDisplay = matchedTeam?.players.find(
-                pData => pData.number === p.playerNumber || (p.playerNumber === "S/N" && !pData.number)
-              );
-              const displayPenaltyNumber = p.playerNumber || 'S/N';
-              const isEditingThisPenalty = editingPenaltyId === p.id;
-              
-              const remainingTimeCs = (p._status === 'running' && p.expirationTime !== undefined)
-                ? Math.max(0, state.clock.currentTime - p.expirationTime)
-                : p.initialDuration * 100;
-              const isEndingSoon = p._status === 'running' && remainingTimeCs > 0 && remainingTimeCs < 1000;
-
-              const isSelectedForDeletion = selectedPenaltyIds.includes(p.id);
-
-              return (
-                <Card
-                  key={p.id}
-                  draggable={!isEditingThisPenalty && !isDeleteSelectionMode}
-                  onDragStart={(e) => handleDragStart(e, p.id)}
-                  onDragEnter={(e) => handleDragEnter(e, p.id)}
-                  onDragLeave={handleDragLeave}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, p.id)}
-                  onDragEnd={handleDragEnd}
-                  onClick={() => isDeleteSelectionMode && handleTogglePenaltySelection(p.id)}
-                  className={cn(
-                    "p-3 bg-muted/30 transition-all border",
-                    !isEditingThisPenalty && !isDeleteSelectionMode && "cursor-move",
-                    isDeleteSelectionMode && "cursor-pointer",
-                    isSelectedForDeletion && "ring-2 ring-destructive border-destructive bg-destructive/10",
-                    draggedPenaltyId === p.id && "opacity-50 scale-95 shadow-lg",
-                    dragOverPenaltyId === p.id && draggedPenaltyId !== p.id && "border-2 border-primary ring-2 ring-primary",
-                    isWaitingSlot && "opacity-60 bg-muted/10",
-                    isPendingPuck && "opacity-40 bg-yellow-500/5 border-yellow-500/30",
-                    isEndingSoon && "animate-flashing-border border-2"
-                  )}
-                >
-                  <div className="flex justify-between items-center w-full gap-2">
-                     <div className="flex items-center gap-3">
-                        {isDeleteSelectionMode && (
-                          <Checkbox
-                            checked={isSelectedForDeletion}
-                            onCheckedChange={() => handleTogglePenaltySelection(p.id)}
-                            aria-label={`Seleccionar penalidad del jugador ${p.playerNumber}`}
-                            className="mr-2"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-card-foreground truncate">
-                            Jugador {displayPenaltyNumber}
-                            {state.enablePlayerSelectionForPenalties && state.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && (
-                              <span className="ml-1 text-xs text-muted-foreground font-normal">
-                                - {matchedPlayerForPenaltyDisplay.name}
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Total: {formatTime(p.initialDuration * 100)}
-                          </p>
-                        </div>
-                     </div>
-
-                    <div className="flex items-center gap-1">
-                      {isEditingThisPenalty ? (
-                        <Input
-                          type="text"
-                          value={editTimeValue}
-                          onChange={(e) => setEditTimeValue(e.target.value)}
-                          onBlur={() => handleSetPenaltyTime(p.id)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleSetPenaltyTime(p.id); if (e.key === 'Escape') setEditingPenaltyId(null); }}
-                          className="w-20 h-8 text-center font-mono"
-                          autoFocus
-                          placeholder="MM:SS"
-                        />
-                      ) : (
-                        <div
-                          className="w-20 h-8 flex items-center justify-center font-mono text-lg cursor-pointer rounded-md hover:bg-white/10"
-                          onClick={(e) => {
-                             if(isDeleteSelectionMode) return;
-                             e.stopPropagation();
-                             setEditingPenaltyId(p.id);
-                             const remainingSeconds = Math.round(remainingTimeCs / 100);
-                             setEditTimeValue(formatTime(remainingSeconds * 100));
-                          }}
-                        >
-                          {formatTime(remainingTimeCs)}
-                        </div>
-                      )}
-                      
-                       <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => { e.stopPropagation(); setPenaltyForGoalConfirmation(p); }}
-                        aria-label="Finalizar por gol"
-                        disabled={isDeleteSelectionMode}
-                       >
-                         <Goal className="h-4 w-4 text-green-500" />
-                       </Button>
-                    </div>
-                  </div>
-                  {statusText && (
-                    <div className={cn(
-                        "text-xs italic mt-1 flex items-center",
-                        isPendingPuck ? "text-yellow-600 dark:text-yellow-400" : "text-muted-foreground"
-                    )}>
-                      <Hourglass className="h-3 w-3 mr-1" />
-                      {statusText}
-                    </div>
-                  )}
-                </Card>
-              );
-            })}
+            {penalties.map((p) => (
+                <PenaltyItem
+                    key={p.id}
+                    penalty={p}
+                    team={team}
+                    isEditing={editingPenaltyId === p.id}
+                    onEditStart={(id, time) => { setEditingPenaltyId(id); }}
+                    onEditConfirm={handleSetPenaltyTime}
+                    onEditCancel={() => setEditingPenaltyId(null)}
+                    isDeleteSelectionMode={isDeleteSelectionMode}
+                    isSelectedForDeletion={selectedPenaltyIds.includes(p.id)}
+                    onToggleSelection={handleTogglePenaltySelection}
+                    onDragStart={handleDragStart}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onEndForGoal={setPenaltyForGoalConfirmation}
+                />
+            ))}
           </div>
         )}
       </div>

@@ -3,7 +3,8 @@
 export interface Penalty {
   id: string;
   playerNumber: string;
-  expirationTime?: number; // Game time in centiseconds when penalty expires
+  expirationTime?: number; // Game time in centiseconds when penalty expires. During breaks, this holds the remaining time.
+  expirationPeriod?: number; // The period in which the penalty is set to expire
   initialDuration: number; // in seconds
   _status?: 'running' | 'pending_concurrent' | 'pending_player' | 'pending_puck'; // Transient status for display logic
 }
