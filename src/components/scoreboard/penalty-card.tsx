@@ -94,16 +94,13 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
   }
   const statusText = getStatusTextForScoreboard();
   
-  const { periodDisplayOverride } = clock;
-  const isBreakOrTimeout = periodDisplayOverride === 'Break' || periodDisplayOverride === 'Pre-OT Break' || periodDisplayOverride === 'Time Out';
-  
   let remainingTimeCs: number;
-  if (isBreakOrTimeout && penalty.remainingTimeDuringBreakCs !== undefined) {
-      remainingTimeCs = penalty.remainingTimeDuringBreakCs;
-  } else if (penalty._status === 'running' && penalty.expirationTime !== undefined) {
-      remainingTimeCs = Math.max(0, clock.currentTime - penalty.expirationTime);
+  if (penalty._status === 'running' && penalty.expirationTime !== undefined) {
+    // Correct calculation: The penalty's absolute expiration time minus the game's current absolute elapsed time.
+    remainingTimeCs = Math.max(0, penalty.expirationTime - clock._liveAbsoluteElapsedTimeCs);
   } else {
-      remainingTimeCs = penalty.initialDuration * 100;
+    // For pending penalties, just show the full initial duration.
+    remainingTimeCs = penalty.initialDuration * 100;
   }
 
   const styles = {
