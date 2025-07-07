@@ -1008,68 +1008,61 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'ACTIVATE_PENDING_PUCK_PENALTIES': {
-      let currentTimeCs = state.clock.currentTime;
-      let absoluteTimeCs = state.clock.absoluteElapsedTimeCs;
+        let absoluteTimeCs = state.clock.absoluteElapsedTimeCs;
+        let currentTimeCs = state.clock.currentTime;
+        if (state.clock.isClockRunning && state.clock.clockStartTimeMs && state.clock.remainingTimeAtStartCs !== null) {
+            const elapsedMs = Date.now() - state.clock.clockStartTimeMs;
+            const elapsedCs = Math.floor(elapsedMs / 10);
+            currentTimeCs = Math.max(0, state.clock.remainingTimeAtStartCs - elapsedCs);
+            if (state.clock.periodDisplayOverride === null) {
+                absoluteTimeCs = state.clock.absoluteElapsedTimeCs + elapsedCs;
+            }
+        }
 
-      // Ensure we have the most up-to-date time
-      if (state.clock.isClockRunning && state.clock.clockStartTimeMs && state.clock.remainingTimeAtStartCs !== null) {
-          const elapsedMs = Date.now() - state.clock.clockStartTimeMs;
-          const elapsedCs = Math.floor(elapsedMs / 10);
-          currentTimeCs = Math.max(0, state.clock.remainingTimeAtStartCs - elapsedCs);
-          if (state.clock.periodDisplayOverride === null) {
-            absoluteTimeCs += elapsedCs;
-          }
-      }
+        let penaltiesWereActivated = false;
 
-      let penaltiesWereActivated = false;
+        const processTeamPenalties = (penalties: Penalty[]): Penalty[] => {
+            const penaltiesToActivate = penalties.filter(p => p._status === 'pending_puck');
+            if (penaltiesToActivate.length > 0) {
+                penaltiesWereActivated = true;
+            }
 
-      const activateAndSetExpirations = (penalties: Penalty[]): Penalty[] => {
-        const originalStatuses = new Map(penalties.map(p => [p.id, p._status]));
+            let tempPenalties = penalties.map(p => p._status === 'pending_puck' ? { ...p, _status: undefined } : p);
+            tempPenalties = updatePenaltyStatusesOnly(tempPenalties, state.maxConcurrentPenalties);
+
+            const finalPenalties = tempPenalties.map(p => {
+                const wasPendingPuck = penaltiesToActivate.some(pa => pa.id === p.id);
+                if (p._status === 'running' && wasPendingPuck) {
+                    return {
+                        ...p,
+                        startTime: absoluteTimeCs,
+                        expirationTime: absoluteTimeCs + (p.initialDuration * 100),
+                    };
+                }
+                return p;
+            });
+
+            return sortPenaltiesByStatus(finalPenalties);
+        };
         
-        let updatedPenalties = penalties.map(p => {
-          if (p._status === 'pending_puck') {
-            penaltiesWereActivated = true;
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { _status, ...rest } = p;
-            return rest as Penalty;
-          }
-          return p;
-        });
+        const homePenalties = processTeamPenalties(state.penalties.home);
+        const awayPenalties = processTeamPenalties(state.penalties.away);
+        
+        const shouldStartClock = penaltiesWereActivated && !state.clock.isClockRunning && state.clock.currentTime > 0 && state.clock.periodDisplayOverride === null;
 
-        updatedPenalties = updatePenaltyStatusesOnly(updatedPenalties, state.maxConcurrentPenalties);
-
-        updatedPenalties = updatedPenalties.map(p => {
-          if (p._status === 'running' && originalStatuses.get(p.id) !== 'running') {
-            return {
-              ...p,
-              startTime: absoluteTimeCs,
-              expirationTime: absoluteTimeCs + (p.initialDuration * 100),
-            };
-          }
-          return p;
-        });
-
-        return sortPenaltiesByStatus(updatedPenalties);
-      };
-      
-      const homePenalties = activateAndSetExpirations(state.penalties.home);
-      const awayPenalties = activateAndSetExpirations(state.penalties.away);
-
-      const shouldStartClock = penaltiesWereActivated && !state.clock.isClockRunning && state.clock.currentTime > 0 && state.clock.periodDisplayOverride === null;
-
-      newStateWithoutMeta = { 
-        ...state, 
-        penalties: { home: homePenalties, away: awayPenalties },
-        clock: shouldStartClock ? {
-          ...state.clock,
-          currentTime: currentTimeCs,
-          absoluteElapsedTimeCs: absoluteTimeCs,
-          isClockRunning: true,
-          clockStartTimeMs: Date.now(),
-          remainingTimeAtStartCs: state.clock.currentTime,
-        } : { ...state.clock, currentTime: currentTimeCs, absoluteElapsedTimeCs: absoluteTimeCs }
-      };
-      break;
+        newStateWithoutMeta = { 
+            ...state, 
+            penalties: { home: homePenalties, away: awayPenalties },
+            clock: shouldStartClock ? {
+                ...state.clock,
+                currentTime: currentTimeCs,
+                absoluteElapsedTimeCs: absoluteTimeCs,
+                isClockRunning: true,
+                clockStartTimeMs: Date.now(),
+                remainingTimeAtStartCs: currentTimeCs,
+            } : { ...state.clock, currentTime: currentTimeCs, absoluteElapsedTimeCs: absoluteTimeCs }
+        };
+        break;
     }
     case 'TICK': {
       let hasChanged = false;
@@ -2452,3 +2445,6 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
 
 
 
+
+
+    
