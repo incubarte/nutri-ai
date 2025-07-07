@@ -693,8 +693,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             absoluteElapsedTimeCs: newAbsoluteTime,
             _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
         };
+        
+        // 4. Update penalties
+        const timeDeltaCs = newAdjustedTimeCs - currentTimeSnapshotCs;
+        const newPenalties = {
+            home: state.penalties.home.map(p => ({...p, expirationTime: p.expirationTime !== undefined ? p.expirationTime + timeDeltaCs : undefined })),
+            away: state.penalties.away.map(p => ({...p, expirationTime: p.expirationTime !== undefined ? p.expirationTime + timeDeltaCs : undefined })),
+        };
 
-        newStateWithoutMeta = { ...state, clock: newClockState };
+        newStateWithoutMeta = { ...state, clock: newClockState, penalties: newPenalties };
 
         if (!newIsClockRunning && newAdjustedTimeCs <= 0 && state.clock.currentTime > 0) {
             newPlayHornTrigger = state.playHornTrigger + 1;
@@ -1204,6 +1211,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 clockStartTimeMs: autoStart ? Date.now() : null,
                 remainingTimeAtStartCs: autoStart ? state.defaultBreakDuration : null,
                 absoluteElapsedTimeCs: newAbsoluteTime, // Update absolute time to end of period
+                _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
             }
         };
         break;
@@ -1222,6 +1230,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           clockStartTimeMs: autoStart ? Date.now() : null,
           remainingTimeAtStartCs: autoStart ? state.defaultPreOTBreakDuration : null,
           absoluteElapsedTimeCs: newAbsoluteTime,
+          _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
         }
       };
       break;
@@ -1260,6 +1269,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           clockStartTimeMs: autoStart && breakDurationCs > 0 ? Date.now() : null,
           remainingTimeAtStartCs: autoStart && breakDurationCs > 0 ? breakDurationCs : null,
           absoluteElapsedTimeCs: newAbsoluteTime,
+          _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
         }
       };
       break;
@@ -2372,4 +2382,5 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
 
 
     
+
 
