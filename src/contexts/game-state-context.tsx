@@ -608,7 +608,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           const elapsedMs = Date.now() - state.clock.clockStartTimeMs;
           const elapsedCs = Math.floor(elapsedMs / 10);
           preciseCurrentTimeCs = Math.max(0, state.clock.remainingTimeAtStartCs - elapsedCs);
-          preciseAbsoluteElapsedTimeCs = state.clock.absoluteElapsedTimeCs + elapsedCs;
+          
+          // Only accumulate absolute time if it's a game period (not a break or timeout)
+          if (state.clock.periodDisplayOverride === null) {
+            preciseAbsoluteElapsedTimeCs = state.clock.absoluteElapsedTimeCs + elapsedCs;
+          }
         }
         newClockState.currentTime = preciseCurrentTimeCs;
         newClockState.absoluteElapsedTimeCs = preciseAbsoluteElapsedTimeCs;
@@ -658,25 +662,46 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         newStateWithoutMeta = state; break;
       }
       let currentTimeSnapshotCs = state.clock.currentTime;
+      let absoluteTimeSnapshotCs = state.clock.absoluteElapsedTimeCs;
+
       if (state.clock.isClockRunning && state.clock.clockStartTimeMs && state.clock.remainingTimeAtStartCs !== null) {
         const elapsedMs = Date.now() - state.clock.clockStartTimeMs;
         const elapsedCs = Math.floor(elapsedMs / 10);
         currentTimeSnapshotCs = Math.max(0, state.clock.remainingTimeAtStartCs - elapsedCs);
+        
+        if (state.clock.periodDisplayOverride === null) {
+          absoluteTimeSnapshotCs = state.clock.absoluteElapsedTimeCs + elapsedCs;
+        }
       }
 
       const deltaCs = action.payload;
       const newAdjustedTimeCs = Math.max(0, currentTimeSnapshotCs + deltaCs);
 
       const newIsClockRunning = newAdjustedTimeCs > 0 ? state.clock.isClockRunning : false;
+      
+      const newHomePenalties = state.penalties.home.map(p => {
+        if (p._status === 'running' && p.expirationTime !== undefined) {
+          return { ...p, expirationTime: p.expirationTime + deltaCs };
+        }
+        return p;
+      });
+      const newAwayPenalties = state.penalties.away.map(p => {
+        if (p._status === 'running' && p.expirationTime !== undefined) {
+          return { ...p, expirationTime: p.expirationTime + deltaCs };
+        }
+        return p;
+      });
+      
       const newClockState = {
         ...state.clock,
         currentTime: newAdjustedTimeCs,
         isClockRunning: newIsClockRunning,
         clockStartTimeMs: newIsClockRunning ? Date.now() : null,
         remainingTimeAtStartCs: newIsClockRunning ? newAdjustedTimeCs : null,
+        absoluteElapsedTimeCs: state.clock.periodDisplayOverride === null ? absoluteTimeSnapshotCs : state.clock.absoluteElapsedTimeCs,
       };
 
-      newStateWithoutMeta = { ...state, clock: newClockState };
+      newStateWithoutMeta = { ...state, clock: newClockState, penalties: { home: newHomePenalties, away: newAwayPenalties } };
 
       if (!newIsClockRunning && newAdjustedTimeCs <= 0 && state.clock.currentTime > 0) {
         newPlayHornTrigger = state.playHornTrigger + 1;
@@ -699,7 +724,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         autoStartClock = false;
       }
       
-      // FIX 2: Unfreeze penalties when manually advancing from a break
       const wasOnBreak = state.clock.periodDisplayOverride === 'Break' || state.clock.periodDisplayOverride === 'Pre-OT Break';
       let newHomePenalties = state.penalties.home;
       let newAwayPenalties = state.penalties.away;
@@ -1017,7 +1041,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           const elapsedMs = Date.now() - state.clock.clockStartTimeMs;
           const elapsedCs = Math.floor(elapsedMs / 10);
           currentTimeCs = Math.max(0, state.clock.remainingTimeAtStartCs - elapsedCs);
-          absoluteTimeCs = state.clock.absoluteElapsedTimeCs + elapsedCs;
+          if (state.clock.periodDisplayOverride === null) {
+            absoluteTimeCs = state.clock.absoluteElapsedTimeCs + elapsedCs;
+          }
       }
 
       let penaltiesWereActivated = false;
@@ -1081,7 +1107,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const elapsedMs = Date.now() - state.clock.clockStartTimeMs;
         const elapsedCs = Math.floor(elapsedMs / 10);
         newCalculatedTimeCs = Math.max(0, state.clock.remainingTimeAtStartCs - elapsedCs);
-        liveAbsoluteElapsedTimeCs = state.clock.absoluteElapsedTimeCs + elapsedCs;
+        
+        if (state.clock.periodDisplayOverride === null) {
+            liveAbsoluteElapsedTimeCs = state.clock.absoluteElapsedTimeCs + elapsedCs;
+        }
+
         if (newCalculatedTimeCs !== state.clock.currentTime) {
           hasChanged = true;
         }
@@ -1281,7 +1311,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const elapsedMs = Date.now() - state.clock.clockStartTimeMs;
         const elapsedCs = Math.floor(elapsedMs / 10);
         preciseCurrentTimeCs = Math.max(0, state.clock.remainingTimeAtStartCs - elapsedCs);
-        preciseAbsoluteElapsedTimeCs = state.clock.absoluteElapsedTimeCs + elapsedCs;
+        
+        if (state.clock.periodDisplayOverride === null) { // Only accumulate if it was a game period
+            preciseAbsoluteElapsedTimeCs = state.clock.absoluteElapsedTimeCs + elapsedCs;
+        }
       }
       
       const freezePenaltiesForTimeout = (penalties: Penalty[]): Penalty[] => {
@@ -2388,4 +2421,5 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
 
     
+
 
