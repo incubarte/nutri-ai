@@ -1,0 +1,175 @@
+{
+  "date": "2025-07-07T04:01:10.880Z",
+  "category": "A",
+  "homeTeam": "Local",
+  "awayTeam": "Visitante",
+  "finalScore": "0 - 0",
+  "summary": {
+    "home": {
+      "goals": [],
+      "penalties": [
+        {
+          "id": "5f065921-d892-482d-8682-500c56a71433",
+          "team": "home",
+          "playerNumber": "3",
+          "initialDuration": 120,
+          "addTimestamp": 1751243843165,
+          "addGameTime": 119759,
+          "addPeriodText": "1ST",
+          "endTimestamp": 1751243918900,
+          "endGameTime": 233993,
+          "endPeriodText": "2ND",
+          "endReason": "completed",
+          "timeServed": 120
+        },
+        {
+          "id": "913611a9-f622-4c0b-8c17-3290deb96266",
+          "team": "home",
+          "playerNumber": "3",
+          "initialDuration": 120,
+          "addTimestamp": 1751243916387,
+          "addGameTime": 119599,
+          "addPeriodText": "2ND",
+          "endTimestamp": 1751244609940,
+          "endGameTime": 11714,
+          "endPeriodText": "1ST",
+          "endReason": "completed",
+          "timeServed": 120
+        },
+        {
+          "id": "3c5b0ead-f087-4ff7-9a15-630088001f57",
+          "team": "home",
+          "playerNumber": "4",
+          "initialDuration": 120,
+          "addTimestamp": 1751244584141,
+          "addGameTime": 120000,
+          "addPeriodText": "1ST",
+          "endTimestamp": 1751244609940,
+          "endGameTime": 11714,
+          "endPeriodText": "1ST",
+          "endReason": "completed",
+          "timeServed": 120
+        },
+        {
+          "id": "255d2a5d-5074-4ffb-bed7-8b455b445553",
+          "team": "home",
+          "playerNumber": "4",
+          "initialDuration": 120,
+          "addTimestamp": 1751244597551,
+          "addGameTime": 120000,
+          "addPeriodText": "1ST"
+        },
+        {
+          "id": "471dc9c8-9a8d-4093-9942-f8ad6c89f198",
+          "team": "home",
+          "playerNumber": "4",
+          "initialDuration": 120,
+          "addTimestamp": 1751244600007,
+          "addGameTime": 120000,
+          "addPeriodText": "1ST"
+        },
+        {
+          "id": "85a343d0-5c0e-40dc-9129-58b2e6c86c01",
+          "team": "home",
+          "playerNumber": "2",
+          "initialDuration": 120,
+          "addTimestamp": 1751517562101,
+          "addGameTime": 119419,
+          "addPeriodText": "1ST",
+          "endTimestamp": 1751517569819,
+          "endGameTime": 119260,
+          "endPeriodText": "1ST",
+          "endReason": "goal_on_pp",
+          "timeServed": 2
+        },
+        {
+          "id": "a99441af-53b8-4eef-8cdf-66b42f5f0e62",
+          "team": "home",
+          "playerNumber": "4",
+          "initialDuration": 120,
+          "addTimestamp": 1751517679422,
+          "addGameTime": 118895,
+          "addPeriodText": "1ST",
+          "endTimestamp": 1751517800509,
+          "endGameTime": 106895,
+          "endPeriodText": "1ST",
+          "endReason": "completed",
+          "timeServed": 120
+        },
+        {
+          "id": "b2aee12d-a996-44a9-ae7e-d4bbb54d905f",
+          "team": "home",
+          "playerNumber": "5",
+          "initialDuration": 120,
+          "addTimestamp": 1751517688999,
+          "addGameTime": 118040,
+          "addPeriodText": "1ST",
+          "endTimestamp": 1751517695728,
+          "endGameTime": 117363,
+          "endPeriodText": "1ST",
+          "endReason": "goal_on_pp",
+          "timeServed": 6
+        },
+        {
+          "id": "7f0fe313-509c-4654-b9f9-abf002e0570b",
+          "team": "home",
+          "playerNumber": "4",
+          "initialDuration": 120,
+          "addTimestamp": 1751517697796,
+          "addGameTime": 117155,
+          "addPeriodText": "1ST",
+          "endTimestamp": 1751857314596,
+          "endGameTime": 94854,
+          "endPeriodText": "1ST",
+          "endReason": "completed",
+          "timeServed": 120
+        },
+        {
+          "id": "4facbc14-7e7a-485b-bc34-0acbe4316ed0",
+          "team": "home",
+          "playerNumber": "5",
+          "initialDuration": 120,
+          "addTimestamp": 1751517714177,
+          "addGameTime": 115523,
+          "addPeriodText": "1ST",
+          "endTimestamp": 1751857314596,
+          "endGameTime": 103420,
+          "endPeriodText": "1ST",
+          "endReason": "completed",
+          "timeServed": 120
+        },
+        {
+          "id": "b1f80f18-06ae-4ffb-b5dc-13f5dcfb5a5d",
+          "team": "home",
+          "playerNumber": "2",
+          "initialDuration": 120,
+          "addTimestamp": 1751857324931,
+          "addGameTime": 11664,
+          "addPeriodText": "Break",
+          "endTimestamp": 1751860865433,
+          "endGameTime": 200,
+          "endPeriodText": "2ND",
+          "endReason": "goal_on_pp",
+          "timeServed": -2
+        },
+        {
+          "id": "dd441cd1-d543-4db5-8435-0dec28ee7ed1",
+          "team": "home",
+          "playerNumber": "2",
+          "initialDuration": 120,
+          "addTimestamp": 1751860862372,
+          "addGameTime": 200,
+          "addPeriodText": "2ND"
+        }
+      ]
+    },
+    "away": {
+      "goals": [],
+      "penalties": []
+    },
+    "attendance": {
+      "home": [],
+      "away": []
+    }
+  }
+}

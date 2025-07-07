@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -290,7 +289,11 @@ const handleAutoTransition = (currentState: GameState): GameState => {
 
   const freezePenaltyTime = (p: Penalty): Penalty => {
     if (p._status === 'running' && p.expirationPeriod === currentState.clock.currentPeriod && p.expirationTime !== undefined) {
-      const remainingTimeCs = p.expirationTime - currentState.clock.currentTime;
+      // Time served in this period is (startTime - endTime). EndTime is 0. StartTime is (expirationTime + initialDuration).
+      // So timeServed = expirationTime + initialDuration.
+      // Remaining = initialDuration - timeServed = initialDuration - (expirationTime + initialDuration) = -expirationTime.
+      // This is only correct for carry-over penalties (where expirationTime is negative).
+      const remainingTimeCs = -p.expirationTime;
       return { 
           ...p, 
           remainingTimeDuringBreakCs: Math.max(0, remainingTimeCs),
@@ -599,15 +602,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
 
       if (state.clock.isClockRunning) {
-        if (state.clock.clockStartTimeMs && state.clock.remainingTimeAtStartCs !== null) {
-          const elapsedMs = Date.now() - state.clock.clockStartTimeMs;
-          const elapsedCs = Math.floor(elapsedMs / 10);
-          newClockState.currentTime = Math.max(0, state.clock.remainingTimeAtStartCs - elapsedCs);
-        }
+        // Removed precise time calculation on pause to prevent visual "jumps".
+        // The time is now frozen at the last `TICK`'s value.
         newClockState.isClockRunning = false;
         newClockState.clockStartTimeMs = null;
         newClockState.remainingTimeAtStartCs = null;
-        if (newClockState.currentTime <= 0) {
+        if (state.clock.currentTime <= 0) { // Check original state's time
             newPlayHornTrigger = state.playHornTrigger + 1;
         }
       } else {
@@ -998,7 +998,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
         updatedPenalties = updatedPenalties.map(p => {
           if (p._status === 'running' && originalStatuses.get(p.id) !== 'running') {
-            return { ...p, expirationTime: currentTimeCs - (p.initialDuration * 100), expirationPeriod: state.clock.currentPeriod };
+            return {
+              ...p,
+              expirationTime: newCalculatedTimeCs - (p.initialDuration * 100),
+              expirationPeriod: state.clock.currentPeriod,
+            };
           }
           return p;
         });
@@ -2046,7 +2050,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
                 teamsConfig
             ] = await Promise.all([
                 fetchConfig('/defaults/format-timings.custom.json', '/defaults/default-format-timings.json', initialGlobalState.formatAndTimingsProfiles, data => Array.isArray(data) && data.length > 0),
-                fetchConfig('/defaults/sound-display.custom.json', '/defaults/default-sound-display.json', { playSoundAtPeriodEnd: initialGlobalState.playSoundAtPeriodEnd, customHornSoundDataUrl: initialGlobalState.customHornSoundDataUrl, enableTeamSelectionInMiniScoreboard: initialGlobalState.enableTeamSelectionInMiniScoreboard, enablePlayerSelectionForPenalties: initialGlobalState.enablePlayerSelectionForPenalties, showAliasInPenaltyPlayerSelector: initialGlobalState.showAliasInPenaltyPlayerSelector, showAliasInControlsPenaltyList: initialGlobalState.showAliasInControlsPenaltyList, showAliasInScoreboardPenalties: initialGlobalState.showAliasInScoreboardPenalties, scoreboardLayoutProfiles: initialGlobalState.scoreboardLayoutProfiles, enablePenaltyCountdownSound: initialGlobalState.enablePenaltyCountdownSound, penaltyCountdownStartTime: initialGlobalState.penaltyCountdownStartTime, customPenaltyBeepSoundDataUrl: initialGlobalState.customPenaltyBeepSoundDataUrl }),
+                fetchConfig('/defaults/sound-display.custom.json', '/defaults/default-sound-display.json', { playSoundAtPeriodEnd: initialGlobalState.playSoundAtPeriodEnd, customHornSoundDataUrl: initialGlobalState.customHornSoundDataUrl, enableTeamSelectionInMiniScoreboard: initialGlobalState.enableTeamSelectionForPenalties, showAliasInPenaltyPlayerSelector: initialGlobalState.showAliasInPenaltyList, showAliasInControlsPenaltyList: initialGlobalState.scoreboardLayoutProfiles, enablePenaltyCountdownSound: initialGlobalState.enablePenaltyCountdownSound, customPenaltyBeepSoundDataUrl: initialGlobalState.customPenaltyBeepSoundDataUrl }),
                 fetchConfig('/defaults/categories.custom.json', '/defaults/default-categories.json', initialGlobalState.availableCategories, data => Array.isArray(data)),
                 fetchConfig('/defaults/teams.custom.json', '/defaults/default-teams.json', initialGlobalState.teams, data => Array.isArray(data))
             ]);
@@ -2112,7 +2116,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
             'enablePlayerSelectionForPenalties', 'showAliasInPenaltyPlayerSelector',
             'showAliasInControlsPenaltyList', 'showAliasInScoreboardPenalties', 'scoreboardLayout',
             'scoreboardLayoutProfiles', 'selectedScoreboardLayoutProfileId', 'availableCategories', 'selectedMatchCategory', 'teams',
-            'enablePenaltyCountdownSound', 'penaltyCountdownStartTime', 'customPenaltyBeepSoundDataUrl',
+            'enablePenaltyCountdownSound', 'customPenaltyBeepSoundDataUrl',
             'defaultWarmUpDuration', 'defaultPeriodDuration', 'defaultOTPeriodDuration', 'defaultBreakDuration',
             'defaultPreOTBreakDuration', 'defaultTimeoutDuration', 'maxConcurrentPenalties', 'autoStartWarmUp',
             'autoStartBreaks', 'autoStartPreOTBreaks', 'autoStartTimeouts', 'numberOfRegularPeriods',
@@ -2149,8 +2153,8 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
               penalties: state.penalties,
               goals: state.goals,
               homeTeamName: state.homeTeamName,
-              awayTeamName: state.awayTeamName,
               homeTeamSubName: state.homeTeamSubName,
+              awayTeamName: state.awayTeamName,
               awayTeamSubName: state.awayTeamSubName,
           };
           updateGameStateOnServer(liveStatePayload).catch(err => console.error("Failed to sync game state to server:", err));
@@ -2322,3 +2326,5 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
+    
