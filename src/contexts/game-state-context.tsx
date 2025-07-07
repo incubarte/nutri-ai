@@ -308,7 +308,7 @@ const handleAutoTransition = (currentState: GameState): GameState => {
     // "Unfreeze" penalties for the new period
     const unfreezePenalty = (p: Penalty): Penalty => {
         if (p._status === 'running' && p.expirationTime !== undefined) {
-            // When frozen, expirationTime holds the remaining duration.
+            // When frozen, expirationTime holds the remaining time.
             const remainingTimeCs = p.expirationTime;
             return {
                 ...p,
@@ -323,14 +323,13 @@ const handleAutoTransition = (currentState: GameState): GameState => {
 
   } else if (currentState.clock.periodDisplayOverride === 'Time Out') {
     if (currentState.clock.preTimeoutState) {
-      const { period, time, isClockRunning: preTimeoutIsRunning, override: preTimeoutOverride, clockStartTimeMs: preTimeoutClockStart, remainingTimeAtStartCs: preTimeoutRemaining } = currentState.clock.preTimeoutState;
-      const shouldResumeClock = preTimeoutIsRunning && time > 0;
+      const { period, time, override: preTimeoutOverride } = currentState.clock.preTimeoutState;
       newGameStateAfterTransition.clock.currentPeriod = period;
       newGameStateAfterTransition.clock.currentTime = time;
-      newGameStateAfterTransition.clock.isClockRunning = shouldResumeClock;
+      newGameStateAfterTransition.clock.isClockRunning = false;
       newGameStateAfterTransition.clock.periodDisplayOverride = preTimeoutOverride;
-      newGameStateAfterTransition.clock.clockStartTimeMs = shouldResumeClock ? Date.now() : null;
-      newGameStateAfterTransition.clock.remainingTimeAtStartCs = shouldResumeClock ? time : null;
+      newGameStateAfterTransition.clock.clockStartTimeMs = null;
+      newGameStateAfterTransition.clock.remainingTimeAtStartCs = null;
       newGameStateAfterTransition.clock.preTimeoutState = null;
     } else {
       newGameStateAfterTransition.clock.currentTime = currentState.clock.currentTime;
@@ -1252,23 +1251,17 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'END_TIMEOUT':
       if (state.clock.preTimeoutState) {
-        const { period, time, isClockRunning: preTimeoutIsRunning, override: preTimeoutOverride, clockStartTimeMs: preTimeoutClockStart, remainingTimeAtStartCs: preTimeoutRemaining } = state.clock.preTimeoutState;
-        const shouldResumeClock = preTimeoutIsRunning && time > 0;
+        const { period, time, override: preTimeoutOverride } = state.clock.preTimeoutState;
         const newClockState = {
           ...state.clock,
           currentPeriod: period,
           currentTime: time,
-          isClockRunning: shouldResumeClock,
+          isClockRunning: false, // Always paused
           periodDisplayOverride: preTimeoutOverride,
-          clockStartTimeMs: shouldResumeClock ? (preTimeoutClockStart || Date.now()) : null,
-          remainingTimeAtStartCs: shouldResumeClock ? (preTimeoutRemaining !== null ? preTimeoutRemaining : time) : null,
+          clockStartTimeMs: null,
+          remainingTimeAtStartCs: null,
           preTimeoutState: null,
-        }
-
-         if (shouldResumeClock && newClockState.clockStartTimeMs === preTimeoutClockStart) {
-            newClockState.clockStartTimeMs = Date.now();
-            newClockState.remainingTimeAtStartCs = time;
-        }
+        };
         newStateWithoutMeta = { ...state, clock: newClockState };
       } else {
         newStateWithoutMeta = state;
