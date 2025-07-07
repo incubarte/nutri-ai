@@ -4,6 +4,7 @@ export interface Penalty {
   id: string;
   playerNumber: string;
   // This is now ALWAYS the absolute game time in centiseconds when penalty expires.
+  startTime?: number; // Absolute game time when penalty starts running
   expirationTime?: number;
   initialDuration: number; // in seconds
   _status?: 'running' | 'pending_concurrent' | 'pending_player' | 'pending_puck'; // Transient status for display logic

@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef } from 'react';
-import { useGameState, formatTime, getPeriodText } from '@/contexts/game-state-context';
+import { useGameState, formatTime, getPeriodText, getPeriodContextFromAbsoluteTime } from '@/contexts/game-state-context';
 import type { Penalty, Team, PlayerData } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -91,6 +91,13 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     const statusText = isPendingPuck ? 'Esperando Puck' : (isWaitingSlot ? 'Esperando Slot' : null);
     const isEndingSoon = penalty._status === 'running' && remainingTimeCs > 0 && remainingTimeCs < 1000;
 
+    const startTimeContext = penalty.startTime !== undefined 
+        ? getPeriodContextFromAbsoluteTime(penalty.startTime, state) 
+        : null;
+    const expirationTimeContext = penalty.expirationTime !== undefined
+        ? getPeriodContextFromAbsoluteTime(penalty.expirationTime, state)
+        : null;
+
     return (
         <Card
             draggable={!isEditing && !isDeleteSelectionMode}
@@ -120,19 +127,48 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                             className="mr-2"
                         />
                     )}
-                    <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-card-foreground truncate">
-                            Jugador {displayPenaltyNumber}
-                            {state.enablePlayerSelectionForPenalties && state.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && (
-                                <span className="ml-1 text-xs text-muted-foreground font-normal">
-                                    - {matchedPlayerForPenaltyDisplay.name}
-                                </span>
-                            )}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                            Total: {formatTime(penalty.initialDuration * 100)}
-                        </p>
-                    </div>
+                     <TooltipProvider delayDuration={200}>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className="flex-1 min-w-0 cursor-help">
+                                    <p className="font-semibold text-card-foreground truncate">
+                                        Jugador {displayPenaltyNumber}
+                                        {state.enablePlayerSelectionForPenalties && state.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && (
+                                            <span className="ml-1 text-xs text-muted-foreground font-normal">
+                                                - {matchedPlayerForPenaltyDisplay.name}
+                                            </span>
+                                        )}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Total: {formatTime(penalty.initialDuration * 100)}
+                                    </p>
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <div className="text-sm space-y-1">
+                                    {startTimeContext ? (
+                                        <p>
+                                            <strong>Inicio:</strong> {formatTime(startTimeContext.timeInPeriodCs)}
+                                            <span className="text-muted-foreground"> ({startTimeContext.periodText})</span>
+                                        </p>
+                                    ) : (
+                                        <p><strong>Inicio:</strong> Aún no ha comenzado</p>
+                                    )}
+                                    {expirationTimeContext ? (
+                                        <p>
+                                            <strong>Fin:</strong> {formatTime(expirationTimeContext.timeInPeriodCs)}
+                                            <span className="text-muted-foreground"> ({expirationTimeContext.periodText})</span>
+                                        </p>
+                                    ) : (
+                                        <p><strong>Fin:</strong> Pendiente</p>
+                                    )}
+                                    <p className="text-xs text-muted-foreground pt-1 border-t mt-1">
+                                      Absoluto: {penalty.startTime !== undefined ? formatTime(penalty.startTime) : 'N/A'} → {penalty.expirationTime !== undefined ? formatTime(penalty.expirationTime) : 'N/A'}
+                                    </p>
+                                </div>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
 
                 <div className="flex items-center gap-1">
