@@ -693,6 +693,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             const deltaAbsolute = newAbsoluteTime - oldAbsoluteTime;
 
             newClockState.absoluteElapsedTimeCs = newAbsoluteTime;
+            newClockState._liveAbsoluteElapsedTimeCs = newAbsoluteTime;
 
             const updatePenaltyExpiration = (p: Penalty) => {
                 if (p.expirationTime !== undefined) {
@@ -758,6 +759,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             clockStartTimeMs: newIsClockRunning ? Date.now() : null,
             remainingTimeAtStartCs: newIsClockRunning ? newAdjustedTimeCs : null,
             absoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
+            _liveAbsoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
         };
 
         newStateWithoutMeta = { ...state, clock: newClockState, penalties: newPenalties };
@@ -818,6 +820,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 clockStartTimeMs: autoStartClock ? Date.now() : null,
                 remainingTimeAtStartCs: autoStartClock ? periodDurationCs : null,
                 absoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
+                _liveAbsoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
             }
         };
         break;
