@@ -7,7 +7,7 @@ export interface Penalty {
   startTime?: number; // Absolute game time when penalty starts running
   expirationTime?: number;
   initialDuration: number; // in seconds
-  _status?: 'running' | 'pending_concurrent' | 'pending_player' | 'pending_puck'; // Transient status for display logic
+  _status?: 'running' | 'pending_concurrent' | 'pending_puck'; // Transient status for display logic
 }
 
 export type Team = 'home' | 'away';

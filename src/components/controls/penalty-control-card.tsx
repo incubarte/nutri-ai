@@ -45,7 +45,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 const statusTextMap: Record<NonNullable<Penalty['_status']>, string> = {
     running: 'Corriendo',
     pending_concurrent: 'Esperando Slot',
-    pending_player: 'Esperando Jugador',
     pending_puck: 'Esperando Puck',
 };
 
@@ -84,11 +83,11 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     );
     const displayPenaltyNumber = penalty.playerNumber || 'S/N';
     
-    const remainingTimeCs = penalty.expirationTime !== undefined
-    ? Math.max(0, penalty.expirationTime - state.clock._liveAbsoluteElapsedTimeCs)
-    : penalty.initialDuration * 100;
+    const remainingTimeCs = (penalty._status === 'running' && penalty.expirationTime !== undefined)
+      ? Math.max(0, penalty.expirationTime - state.clock._liveAbsoluteElapsedTimeCs)
+      : penalty.initialDuration * 100;
 
-    const isWaitingSlot = penalty._status === 'pending_player' || penalty._status === 'pending_concurrent';
+    const isWaitingSlot = penalty._status === 'pending_concurrent';
     const isPendingPuck = penalty._status === 'pending_puck';
     const statusText = isPendingPuck ? 'Esperando Puck' : (isWaitingSlot ? 'Esperando Slot' : null);
     const isEndingSoon = penalty._status === 'running' && remainingTimeCs > 0 && remainingTimeCs < 1000;
