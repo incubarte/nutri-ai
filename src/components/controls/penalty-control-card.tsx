@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useState, useMemo, useRef } from 'react';
@@ -99,7 +97,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
         ? getPeriodContextFromAbsoluteTime(penalty.expirationTime, state)
         : null;
         
-    const displayStatus = penalty._status ? statusTextMap[penalty._status] : 'Activa';
+    const displayStatus = penalty._status ? statusTextMap[penalty._status] : 'Estado Desconocido';
 
     return (
         <Card
@@ -726,3 +724,4 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     </>
   );
 }
+

@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -418,19 +416,6 @@ const sortPenaltiesByStatus = (penalties: Penalty[]): Penalty[] => {
     return 0;
   });
 };
-
-const cleanPenaltiesForStorage = (penalties?: Penalty[]): Penalty[] => {
-  if (!penalties) return [];
-  return penalties.map(p => {
-    if (p._status && p._status !== 'pending_puck') {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { _status, ...rest } = p;
-      return rest as Penalty;
-    }
-    return p;
-  });
-};
-
 
 const applyFormatAndTimingsProfileToState = (state: GameState, profileId: string | null): GameState => {
   const profileToApply = state.formatAndTimingsProfiles.find(p => p.id === profileId) || state.formatAndTimingsProfiles[0] || createDefaultFormatAndTimingsProfile();
@@ -997,54 +982,53 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
       
       const processPenaltiesForTeam = (currentPenalties: Penalty[], team: Team): Penalty[] => {
-        // ETAPA 1: Limpieza - Filtrar penalidades que ya expiraron
-        const stillRunningPenalties = currentPenalties.filter(p => {
-          if (p._status === 'running') {
-            if (liveAbsoluteElapsedTimeCs >= (p.expirationTime ?? Infinity)) {
-              hasChanged = true;
-              significantChangeOccurred = true;
-              const logIndex = newGameSummary[team].penalties.findIndex(log => log.id === p.id && !log.endReason);
-              if (logIndex > -1) {
-                  const absoluteEndTime = p.expirationTime ?? liveAbsoluteElapsedTimeCs;
-                  const endTimeContext = getPeriodContextFromAbsoluteTime(absoluteEndTime, state);
-                  newGameSummary[team].penalties[logIndex] = {
-                      ...newGameSummary[team].penalties[logIndex],
-                      endTimestamp: Date.now(),
-                      endGameTime: endTimeContext.timeInPeriodCs,
-                      endPeriodText: endTimeContext.periodText,
-                      endReason: 'completed',
-                      timeServed: newGameSummary[team].penalties[logIndex].initialDuration,
-                  };
-              }
-              return false; // Eliminar la penalidad
+        // ETAPA 1: Limpieza - Filtrar penalidades que ya expiraron del estado `running`
+        const runningPenalties = currentPenalties.filter(p => p._status === 'running');
+        const pendingPenalties = currentPenalties.filter(p => p._status !== 'running');
+        
+        const remainingRunningPenalties = runningPenalties.filter(p => {
+          if (liveAbsoluteElapsedTimeCs >= (p.expirationTime ?? Infinity)) {
+            hasChanged = true;
+            significantChangeOccurred = true;
+            const logIndex = newGameSummary[team].penalties.findIndex(log => log.id === p.id && !log.endReason);
+            if (logIndex > -1) {
+                const absoluteEndTime = p.expirationTime ?? liveAbsoluteElapsedTimeCs;
+                const endTimeContext = getPeriodContextFromAbsoluteTime(absoluteEndTime, state);
+                newGameSummary[team].penalties[logIndex] = {
+                    ...newGameSummary[team].penalties[logIndex],
+                    endTimestamp: Date.now(),
+                    endGameTime: endTimeContext.timeInPeriodCs,
+                    endPeriodText: endTimeContext.periodText,
+                    endReason: 'completed',
+                    timeServed: newGameSummary[team].penalties[logIndex].initialDuration,
+                };
             }
+            return false; // Eliminar la penalidad
           }
           return true; // Mantener la penalidad
         });
 
         // ETAPA 2: Activación - Activar penalidades pendientes si hay slots
-        let runningCount = stillRunningPenalties.filter(p => p._status === 'running').length;
-        
-        const finalPenalties = stillRunningPenalties.map(p => {
-          // Si es una penalidad que espera slot Y hay espacio...
-          if (p._status === 'pending_concurrent' && runningCount < state.maxConcurrentPenalties) {
-            runningCount++;
-            hasChanged = true;
-            significantChangeOccurred = true;
+        let runningCount = remainingRunningPenalties.length;
+        const newlyActivatedPenalties: Penalty[] = [];
 
-            // Calcular y sellar el expirationTime UNA SOLA VEZ
-            return {
-              ...p,
-              _status: 'running' as const,
-              startTime: liveAbsoluteElapsedTimeCs,
-              expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * 100),
-            };
-          }
-          // Devolver sin cambios si ya está corriendo o no se puede activar
-          return p;
-        });
+        for (const p of pendingPenalties) {
+            if (p._status === 'pending_concurrent' && runningCount < state.maxConcurrentPenalties) {
+                runningCount++;
+                hasChanged = true;
+                significantChangeOccurred = true;
+                newlyActivatedPenalties.push({
+                    ...p,
+                    _status: 'running' as const,
+                    startTime: liveAbsoluteElapsedTimeCs,
+                    expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * 100),
+                });
+            } else {
+                newlyActivatedPenalties.push(p); // keep it in the list as pending
+            }
+        }
         
-        return finalPenalties;
+        return [...remainingRunningPenalties, ...newlyActivatedPenalties];
       };
 
       let homePenaltiesResult = processPenaltiesForTeam(state.penalties.home, 'home');
@@ -2111,8 +2095,6 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
     if (state._lastActionOriginator === TAB_ID) {
         try {
             const stateForStorage: GameState = { ...state };
-            stateForStorage.penalties.home = cleanPenaltiesForStorage(state.penalties.home);
-            stateForStorage.penalties.away = cleanPenaltiesForStorage(state.penalties.away);
             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateForStorage));
         } catch (error) {
             console.error("Error saving state to localStorage:", error);
@@ -2146,8 +2128,6 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
       if (state._initialConfigLoadComplete) {
         try {
           const stateForStorage: GameState = { ...state };
-          stateForStorage.penalties.home = cleanPenaltiesForStorage(state.penalties.home);
-          stateForStorage.penalties.away = cleanPenaltiesForStorage(state.penalties.away);
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateForStorage));
         } catch (error) {
           console.error("Error saving state on beforeunload:", error);
@@ -2367,3 +2347,4 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
