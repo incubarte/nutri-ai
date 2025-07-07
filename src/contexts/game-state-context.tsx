@@ -928,8 +928,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'SET_PENALTY_TIME': {
       const { team, penaltyId, time } = action.payload;
-      const newDurationInSeconds = time;
-      const newDurationCs = newDurationInSeconds * 100;
+      const newRemainingTimeCs = time * 100;
     
       const updatedPenalties = state.penalties[team].map(p => {
         if (p.id === penaltyId) {
@@ -937,18 +936,18 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           let newExpirationPeriod: number;
     
           if (state.clock.periodDisplayOverride === 'Break' || state.clock.periodDisplayOverride === 'Pre-OT Break') {
-            // We are in a break. The time set is the remaining time for the next period.
-            newExpirationTime = newDurationCs; 
+            // We are in a break. The time set is the remaining time.
+            // This time will be used when the next period starts.
+            newExpirationTime = newRemainingTimeCs;
             newExpirationPeriod = state.clock.currentPeriod + 1;
           } else {
             // We are in a game period. Calculate expiration point on current timeline.
-            newExpirationTime = state.clock.currentTime - newDurationCs;
+            newExpirationTime = state.clock.currentTime - newRemainingTimeCs;
             newExpirationPeriod = state.clock.currentPeriod;
           }
     
           return { 
             ...p, 
-            initialDuration: newDurationInSeconds, 
             expirationTime: newExpirationTime,
             expirationPeriod: newExpirationPeriod
           };
@@ -1116,13 +1115,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       if (state.clock.isClockRunning && newCalculatedTimeCs <= 0) {
         significantChangeOccurred = true;
 
-        // "Freeze" penalty times before transition by storing remaining time.
         const freezePenaltyTime = (p: Penalty): Penalty => {
           if (p._status === 'running' && p.expirationPeriod === state.clock.currentPeriod && p.expirationTime !== undefined) {
-            return { ...p, expirationTime: p.expirationTime };
+            const remainingTimeCs = newCalculatedTimeCs - p.expirationTime;
+            return { ...p, expirationTime: remainingTimeCs };
           }
           return p;
         };
+
         stateBeforeTransition.penalties.home = stateBeforeTransition.penalties.home.map(freezePenaltyTime);
         stateBeforeTransition.penalties.away = stateBeforeTransition.penalties.away.map(freezePenaltyTime);
 
