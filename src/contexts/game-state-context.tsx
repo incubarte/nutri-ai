@@ -289,11 +289,6 @@ const handleAutoTransition = (currentState: GameState): GameState => {
 
   const freezePenaltyTime = (p: Penalty): Penalty => {
     if (p._status === 'running' && p.expirationPeriod === currentState.clock.currentPeriod && p.expirationTime !== undefined) {
-      // Time served in this period is (startTime - endTime). EndTime is 0. StartTime is (expirationTime + initialDuration).
-      // So timeServed = expirationTime + initialDuration.
-      // Remaining = initialDuration - timeServed = initialDuration - (expirationTime + initialDuration) = -expirationTime.
-      // This is only correct for carry-over penalties (where expirationTime is negative).
-      
       const timeRemainingCs = p.expirationTime < 0 
         ? -p.expirationTime // Carried over from a previous period
         : p.expirationTime - currentState.clock.currentTime; // Expiring in this period
@@ -665,7 +660,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const elapsedCs = Math.floor(elapsedMs / 10);
         currentTimeSnapshotCs = Math.max(0, state.clock.remainingTimeAtStartCs - elapsedCs);
       }
-      const newAdjustedTimeCs = Math.max(0, currentTimeSnapshotCs + action.payload);
+
+      const deltaCs = action.payload;
+      const newAdjustedTimeCs = Math.max(0, currentTimeSnapshotCs + deltaCs);
 
       const newIsClockRunning = newAdjustedTimeCs > 0 ? state.clock.isClockRunning : false;
       const newClockState = {
@@ -676,8 +673,22 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         remainingTimeAtStartCs: newIsClockRunning ? newAdjustedTimeCs : null,
       };
 
-      newStateWithoutMeta = { ...state, clock: newClockState };
-       if (!newIsClockRunning && newAdjustedTimeCs <=0 && state.clock.currentTime > 0) {
+      // FIX 1: Adjust penalty expiration times along with the main clock
+      const adjustPenaltyExpiration = (penalties: Penalty[]): Penalty[] => {
+        return penalties.map(p => {
+          if (p._status === 'running' && p.expirationTime !== undefined) {
+            return { ...p, expirationTime: p.expirationTime + deltaCs };
+          }
+          return p;
+        });
+      };
+
+      const newHomePenalties = adjustPenaltyExpiration(state.penalties.home);
+      const newAwayPenalties = adjustPenaltyExpiration(state.penalties.away);
+      
+      newStateWithoutMeta = { ...state, clock: newClockState, penalties: { home: newHomePenalties, away: newAwayPenalties } };
+
+      if (!newIsClockRunning && newAdjustedTimeCs <= 0 && state.clock.currentTime > 0) {
         newPlayHornTrigger = state.playHornTrigger + 1;
       }
       break;
@@ -692,18 +703,36 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         periodDurationCs = state.defaultWarmUpDuration;
         displayOverride = 'Warm-up';
         autoStartClock = state.autoStartWarmUp && periodDurationCs > 0;
-      } else if (newPeriod > state.numberOfRegularPeriods) {
-        periodDurationCs = state.defaultOTPeriodDuration;
-        displayOverride = null;
-        autoStartClock = false;
       } else {
-        periodDurationCs = state.defaultPeriodDuration;
+        periodDurationCs = newPeriod > state.numberOfRegularPeriods ? state.defaultOTPeriodDuration : state.defaultPeriodDuration;
         displayOverride = null;
         autoStartClock = false;
+      }
+      
+      // FIX 2: Unfreeze penalties when manually advancing from a break
+      const wasOnBreak = state.clock.periodDisplayOverride === 'Break' || state.clock.periodDisplayOverride === 'Pre-OT Break';
+      let newHomePenalties = state.penalties.home;
+      let newAwayPenalties = state.penalties.away;
+
+      if (wasOnBreak && newPeriod > state.clock.currentPeriod) {
+          const unfreezePenalty = (p: Penalty): Penalty => {
+              if (p.remainingTimeDuringBreakCs !== undefined) {
+                  return {
+                      ...p,
+                      expirationPeriod: newPeriod,
+                      expirationTime: periodDurationCs - p.remainingTimeDuringBreakCs,
+                      remainingTimeDuringBreakCs: undefined
+                  };
+              }
+              return p;
+          };
+          newHomePenalties = state.penalties.home.map(unfreezePenalty);
+          newAwayPenalties = state.penalties.away.map(unfreezePenalty);
       }
 
       newStateWithoutMeta = {
         ...state,
+        penalties: { home: newHomePenalties, away: newAwayPenalties },
         clock: {
           ...state.clock,
           currentPeriod: newPeriod,
@@ -2133,7 +2162,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
             'numberOfOvertimePeriods', 'playersPerTeamOnIce'
         ];
         
-        const liveGameStateKeys: (keyof Omit<LiveGameState, 'homeTeamName' | 'awayTeamName' | 'homeTeamSubName' | 'awayTeamSubName'>)[] = [
+        const liveGameStateKeys: (keyof Omit<LiveGameState, 'homeTeamName' | 'awayTeamName' | 'homeTeamSubName' | 'awayTeamName'>)[] = [
             'score', 'clock', 'penalties', 'goals'
         ];
 
