@@ -182,6 +182,7 @@ export interface PreTimeoutState {
   override: PeriodDisplayOverrideType;
   clockStartTimeMs: number | null;
   remainingTimeAtStartCs: number | null;
+  absoluteElapsedTimeCs: number;
 }
 
 export interface ClockState {
@@ -192,6 +193,7 @@ export interface ClockState {
   preTimeoutState: PreTimeoutState | null;
   clockStartTimeMs: number | null;
   remainingTimeAtStartCs: number | null;
+  absoluteElapsedTimeCs: number;
 }
 
 export interface ScoreState {
