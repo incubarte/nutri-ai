@@ -660,12 +660,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
         };
         
-        const newPenalties = {
-          home: state.penalties.home.map(p => ({...p, expirationTime: p.startTime !== undefined ? p.startTime + (p.initialDuration * 100) : undefined})),
-          away: state.penalties.away.map(p => ({...p, expirationTime: p.startTime !== undefined ? p.startTime + (p.initialDuration * 100) : undefined})),
-        };
-        
-        newStateWithoutMeta = { ...state, clock: newClockState, penalties: newPenalties };
+        newStateWithoutMeta = { ...state, clock: newClockState };
 
         if (!newIsClockRunning && newTimeCs <= 0 && state.clock.currentTime > 0) {
             newPlayHornTrigger = state.playHornTrigger + 1;
@@ -700,14 +695,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             absoluteElapsedTimeCs: newAbsoluteTime,
             _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
         };
-        
-        // 4. Update penalties based on the *new* absolute time
-        const newPenalties = {
-            home: state.penalties.home.map(p => ({...p, expirationTime: p.startTime !== undefined ? p.startTime + (p.initialDuration * 100) : undefined })),
-            away: state.penalties.away.map(p => ({...p, expirationTime: p.startTime !== undefined ? p.startTime + (p.initialDuration * 100) : undefined })),
-        };
 
-        newStateWithoutMeta = { ...state, clock: newClockState, penalties: newPenalties };
+        newStateWithoutMeta = { ...state, clock: newClockState };
 
         if (!newIsClockRunning && newAdjustedTimeCs <= 0 && state.clock.currentTime > 0) {
             newPlayHornTrigger = state.playHornTrigger + 1;
@@ -731,11 +720,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         }
 
         const newAbsoluteElapsedTimeCs = calculateAbsoluteTimeForPeriod(newPeriod, periodDurationCs, state);
-        
-        const newPenalties = {
-          home: state.penalties.home.map(p => ({...p, expirationTime: p.startTime !== undefined ? p.startTime + (p.initialDuration * 100) : undefined})),
-          away: state.penalties.away.map(p => ({...p, expirationTime: p.startTime !== undefined ? p.startTime + (p.initialDuration * 100) : undefined})),
-        };
 
         newStateWithoutMeta = {
             ...state,
@@ -751,7 +735,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 absoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
                 _liveAbsoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
             },
-            penalties: newPenalties,
         };
         break;
     }
@@ -2359,12 +2342,13 @@ export const getPeriodContextFromAbsoluteTime = (absoluteTimeCs: number, state: 
     let timeTracker = 0;
     // Regular periods
     for (let i = 1; i <= numberOfRegularPeriods; i++) {
-        const periodEnd = timeTracker + defaultPeriodDuration;
+        const periodDuration = defaultPeriodDuration;
+        const periodEnd = timeTracker + periodDuration;
         if (absoluteTimeCs <= periodEnd) {
             const timeIntoPeriod = absoluteTimeCs - timeTracker;
             return {
                 periodText: getPeriodText(i, numberOfRegularPeriods),
-                timeInPeriodCs: timeIntoPeriod,
+                timeInPeriodCs: Math.max(0, periodDuration - timeIntoPeriod),
             };
         }
         timeTracker = periodEnd;
@@ -2373,22 +2357,23 @@ export const getPeriodContextFromAbsoluteTime = (absoluteTimeCs: number, state: 
     // Overtime periods
     for (let i = 1; i <= state.numberOfOvertimePeriods; i++) {
         const periodNumber = numberOfRegularPeriods + i;
-        const periodEnd = timeTracker + defaultOTPeriodDuration;
+        const periodDuration = defaultOTPeriodDuration;
+        const periodEnd = timeTracker + periodDuration;
         if (absoluteTimeCs <= periodEnd) {
             const timeIntoPeriod = absoluteTimeCs - timeTracker;
             return {
                 periodText: getPeriodText(periodNumber, numberOfRegularPeriods),
-                timeInPeriodCs: timeIntoPeriod,
+                timeInPeriodCs: Math.max(0, periodDuration - timeIntoPeriod),
             };
         }
         timeTracker = periodEnd;
     }
 
-    // If time is beyond all defined periods
+    // If time is beyond all defined periods, remaining time is 0.
     const lastPeriodNumber = numberOfRegularPeriods + state.numberOfOvertimePeriods;
     return { 
         periodText: getPeriodText(lastPeriodNumber, numberOfRegularPeriods), 
-        timeInPeriodCs: (lastPeriodNumber > numberOfRegularPeriods ? defaultOTPeriodDuration : defaultPeriodDuration) 
+        timeInPeriodCs: 0
     };
 };
 
@@ -2439,6 +2424,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
 
 
     
+
 
 
 
