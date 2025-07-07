@@ -28,6 +28,13 @@ const CagedUserIcon = ({ size, className }: { size: number; className?: string }
 );
 
 
+interface PenaltyCardProps {
+  penalty: Penalty;
+  teamName: string;
+  mode?: 'desktop' | 'mobile';
+  clock?: ClockState;
+}
+
 export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobileClock }: PenaltyCardProps) {
   const { state } = useGameState();
   // Use the passed-in mobile clock if available, otherwise use the global context clock from desktop.
@@ -87,9 +94,17 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
   }
   const statusText = getStatusTextForScoreboard();
   
-  const remainingTimeCs = penalty._status === 'running' && penalty.expirationTime !== undefined
-    ? Math.max(0, clock.currentTime - penalty.expirationTime)
-    : penalty.initialDuration * 100;
+  const { periodDisplayOverride } = clock;
+  const isBreakOrTimeout = periodDisplayOverride === 'Break' || periodDisplayOverride === 'Pre-OT Break' || periodDisplayOverride === 'Time Out';
+  
+  let remainingTimeCs: number;
+  if (isBreakOrTimeout && penalty.remainingTimeDuringBreakCs !== undefined) {
+      remainingTimeCs = penalty.remainingTimeDuringBreakCs;
+  } else if (penalty._status === 'running' && penalty.expirationTime !== undefined) {
+      remainingTimeCs = Math.max(0, clock.currentTime - penalty.expirationTime);
+  } else {
+      remainingTimeCs = penalty.initialDuration * 100;
+  }
 
   const styles = {
     playerIconSize: isMobile ? 2 : state.scoreboardLayout.penaltyPlayerIconSize,

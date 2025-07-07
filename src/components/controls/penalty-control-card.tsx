@@ -82,40 +82,36 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     );
     const displayPenaltyNumber = penalty.playerNumber || 'S/N';
     
-    const remainingTimeCs = (penalty._status === 'running' && penalty.expirationTime !== undefined)
-      ? Math.max(0, state.clock.currentTime - penalty.expirationTime)
-      : penalty.initialDuration * 100;
+    const { periodDisplayOverride } = state.clock;
+    const isBreakOrTimeout = periodDisplayOverride === 'Break' || periodDisplayOverride === 'Pre-OT Break' || periodDisplayOverride === 'Time Out';
+    
+    let remainingTimeCs: number;
+    if (isBreakOrTimeout && penalty.remainingTimeDuringBreakCs !== undefined) {
+        remainingTimeCs = penalty.remainingTimeDuringBreakCs;
+    } else if (penalty._status === 'running' && penalty.expirationTime !== undefined) {
+        remainingTimeCs = Math.max(0, state.clock.currentTime - penalty.expirationTime);
+    } else {
+        remainingTimeCs = penalty.initialDuration * 100;
+    }
     
     const expirationInfo = React.useMemo(() => {
-        if (penalty.expirationTime === undefined || penalty.expirationPeriod === undefined || penalty._status !== 'running') return null;
-
         const { periodDisplayOverride, currentPeriod } = clock;
         const { numberOfRegularPeriods, numberOfOvertimePeriods, defaultPeriodDuration, defaultOTPeriodDuration } = state;
         const totalGamePeriods = numberOfRegularPeriods + numberOfOvertimePeriods;
 
-        // Case 1: Penalty is "frozen" during a break. `expirationTime` holds remaining time.
-        if ((periodDisplayOverride === 'Break' || periodDisplayOverride === 'Pre-OT Break') && penalty.expirationPeriod <= currentPeriod) {
-            const nextPeriodNumber = currentPeriod + 1;
-            if (nextPeriodNumber > totalGamePeriods) return null;
-
-            const periodText = getPeriodText(nextPeriodNumber, numberOfRegularPeriods);
-            const nextPeriodDuration = nextPeriodNumber > numberOfRegularPeriods ? defaultOTPeriodDuration : defaultPeriodDuration;
-            const expirationTimeInNextPeriod = nextPeriodDuration - penalty.expirationTime;
-            const timeText = formatTime(expirationTimeInNextPeriod);
-            return `Expira en ${periodText} a los ${timeText}`;
-        }
-
-        // Case 2: Penalty is active during a game period.
-        if (penalty.expirationPeriod === currentPeriod && periodDisplayOverride === null) {
-            if (penalty.expirationTime < 0) { // Will it cross to the next period?
+        // No tooltip during breaks, as the expiration point is not yet determined
+        if (periodDisplayOverride !== null) return null;
+        if (penalty.expirationTime === undefined || penalty.expirationPeriod === undefined || penalty._status !== 'running') return null;
+        
+        if (penalty.expirationPeriod === currentPeriod) {
+            if (penalty.expirationTime < 0) { // Crosses to next period
                 const nextPeriodNumber = currentPeriod + 1;
                 if (nextPeriodNumber > totalGamePeriods) return `Expira después del partido`;
-
-                const periodText = getPeriodText(nextPeriodNumber, numberOfRegularPeriods);
-                const remainingTimeCs = -penalty.expirationTime;
                 
+                const periodText = getPeriodText(nextPeriodNumber, numberOfRegularPeriods);
+                const remainingTimeIntoNextPeriod = -penalty.expirationTime;
                 const nextPeriodDuration = nextPeriodNumber > numberOfRegularPeriods ? defaultOTPeriodDuration : defaultPeriodDuration;
-                const expirationTimeInNextPeriod = nextPeriodDuration - remainingTimeCs;
+                const expirationTimeInNextPeriod = nextPeriodDuration - remainingTimeIntoNextPeriod;
 
                 if (expirationTimeInNextPeriod < 0) return `Expira en un período futuro`;
 
@@ -128,7 +124,6 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
             }
         }
         
-        // Case 3: Penalty is scheduled for a future period (e.g. editing during a break)
         if (penalty.expirationPeriod > currentPeriod) {
             const periodText = getPeriodText(penalty.expirationPeriod, numberOfRegularPeriods);
             const timeText = formatTime(penalty.expirationTime);
@@ -136,7 +131,6 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
         }
         
         return null;
-
     }, [penalty, clock, state]);
 
     const isWaitingSlot = penalty._status === 'pending_player' || penalty._status === 'pending_concurrent';
