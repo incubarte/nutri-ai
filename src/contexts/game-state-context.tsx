@@ -428,7 +428,8 @@ const sortPenaltiesByStatus = (penalties: Penalty[]): Penalty[] => {
 };
 
 const applyFormatAndTimingsProfileToState = (state: GameState, profileId: string | null): GameState => {
-  const profileToApply = state.formatAndTimingsProfiles.find(p => p.id === profileId) || state.formatAndTimingsProfiles[0] || createDefaultFormatAndTimingsProfile();
+  const profiles = state.formatAndTimingsProfiles || [];
+  const profileToApply = profiles.find(p => p.id === profileId) || profiles[0] || createDefaultFormatAndTimingsProfile();
   if (!profileToApply) return state; 
 
   return {
@@ -452,7 +453,8 @@ const applyFormatAndTimingsProfileToState = (state: GameState, profileId: string
 };
 
 const applyScoreboardLayoutProfileToState = (state: GameState, profileId: string | null): GameState => {
-  const profileToApply = state.scoreboardLayoutProfiles.find(p => p.id === profileId) || state.scoreboardLayoutProfiles[0] || createDefaultScoreboardLayoutProfile();
+  const profiles = state.scoreboardLayoutProfiles || [];
+  const profileToApply = profiles.find(p => p.id === profileId) || profiles[0] || createDefaultScoreboardLayoutProfile();
   if (!profileToApply) return state;
 
   const { id, name, ...layoutSettings } = profileToApply;
@@ -534,8 +536,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const rawHomePenaltiesFromStorage = action.payload?.penalties?.home || [];
       const rawAwayPenaltiesFromStorage = action.payload?.penalties?.away || [];
 
-      hydratedBase.penalties.home = rawHomePenaltiesFromStorage.map(p => ({ ...p, _status: p.expirationTime ? 'running' : 'pending_concurrent' }));
-      hydratedBase.penalties.away = rawAwayPenaltiesFromStorage.map(p => ({ ...p, _status: p.expirationTime ? 'running' : 'pending_concurrent' }));
+      hydratedBase.penalties.home = rawHomePenaltiesFromStorage.map(p => ({ ...p, _status: p._status ?? (p.expirationTime ? 'running' : 'pending_concurrent') }));
+      hydratedBase.penalties.away = rawAwayPenaltiesFromStorage.map(p => ({ ...p, _status: p._status ?? (p.expirationTime ? 'running' : 'pending_concurrent') }));
 
       
       const { _lastActionOriginator, _lastUpdatedTimestamp, playHornTrigger: hydratedHornTrigger, playPenaltyBeepTrigger: hydratedBeepTrigger, _initialConfigLoadComplete, ...restOfHydrated } = hydratedBase;
@@ -2383,5 +2385,6 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
 
 
     
+
 
 

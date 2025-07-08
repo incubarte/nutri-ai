@@ -137,11 +137,13 @@ export default function ConfigPage() {
   }, [activeTab, router, searchParams]);
 
   const selectedFTProfile = useMemo(() => {
-    return state.formatAndTimingsProfiles.find(p => p.id === state.selectedFormatAndTimingsProfileId) || state.formatAndTimingsProfiles[0] || createDefaultFormatAndTimingsProfile();
+    const profiles = state.formatAndTimingsProfiles || [];
+    return profiles.find(p => p.id === state.selectedFormatAndTimingsProfileId) || profiles[0] || createDefaultFormatAndTimingsProfile();
   }, [state.formatAndTimingsProfiles, state.selectedFormatAndTimingsProfileId]);
 
   const selectedLayoutProfile = useMemo(() => {
-    return state.scoreboardLayoutProfiles.find(p => p.id === state.selectedScoreboardLayoutProfileId) || state.scoreboardLayoutProfiles[0] || createDefaultScoreboardLayoutProfile();
+    const profiles = state.scoreboardLayoutProfiles || [];
+    return profiles.find(p => p.id === state.selectedScoreboardLayoutProfileId) || profiles[0] || createDefaultScoreboardLayoutProfile();
   }, [state.scoreboardLayoutProfiles, state.selectedScoreboardLayoutProfileId]);
 
   const isLayoutDirty = useMemo(() => {
@@ -467,9 +469,10 @@ export default function ConfigPage() {
   };
 
   const handlePrepareDeleteFTProfile = () => {
-    if (selectedFTProfile && state.formatAndTimingsProfiles.length > 1) {
+    const profiles = state.formatAndTimingsProfiles || [];
+    if (selectedFTProfile && profiles.length > 1) {
       setFtProfileToDelete(selectedFTProfile);
-    } else if (state.formatAndTimingsProfiles.length <= 1) {
+    } else if (profiles.length <= 1) {
         toast({ title: "Acción no permitida", description: "Debe existir al menos un perfil de formato y tiempos.", variant: "destructive" });
     }
   };
@@ -533,9 +536,10 @@ export default function ConfigPage() {
   };
 
   const handlePrepareDeleteLayoutProfile = () => {
-    if (selectedLayoutProfile && state.scoreboardLayoutProfiles.length > 1) {
+    const profiles = state.scoreboardLayoutProfiles || [];
+    if (selectedLayoutProfile && profiles.length > 1) {
       setLayoutProfileToDelete(selectedLayoutProfile);
-    } else if (state.scoreboardLayoutProfiles.length <= 1) {
+    } else if (profiles.length <= 1) {
       toast({ title: "Acción no permitida", description: "Debe existir al menos un perfil de diseño.", variant: "destructive" });
     }
   };
@@ -615,7 +619,7 @@ export default function ConfigPage() {
                             <SelectValue placeholder="Seleccionar perfil..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {state.formatAndTimingsProfiles.map(profile => (
+                            {(state.formatAndTimingsProfiles || []).map(profile => (
                                 <SelectItem key={profile.id} value={profile.id} className="text-sm">{profile.name}</SelectItem>
                             ))}
                         </SelectContent>
@@ -626,7 +630,7 @@ export default function ConfigPage() {
                     <Button variant="outline" size="icon" onClick={handlePrepareEditFTProfileName} disabled={!selectedFTProfile} aria-label="Editar nombre del perfil seleccionado">
                         <Edit3 className="h-4 w-4" />
                     </Button>
-                    <Button variant="destructive" size="icon" onClick={handlePrepareDeleteFTProfile} disabled={!selectedFTProfile || state.formatAndTimingsProfiles.length <= 1} aria-label="Eliminar perfil seleccionado">
+                    <Button variant="destructive" size="icon" onClick={handlePrepareDeleteFTProfile} disabled={!selectedFTProfile || (state.formatAndTimingsProfiles || []).length <= 1} aria-label="Eliminar perfil seleccionado">
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </div>
@@ -693,7 +697,7 @@ export default function ConfigPage() {
                             <SelectValue placeholder="Seleccionar perfil de diseño..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {state.scoreboardLayoutProfiles.map(profile => (
+                            {(state.scoreboardLayoutProfiles || []).map(profile => (
                                 <SelectItem key={profile.id} value={profile.id} className="text-sm">{profile.name}</SelectItem>
                             ))}
                         </SelectContent>
@@ -704,7 +708,7 @@ export default function ConfigPage() {
                     <Button variant="outline" size="icon" onClick={handlePrepareEditLayoutProfileName} disabled={!selectedLayoutProfile} aria-label="Editar nombre del perfil de diseño">
                         <Edit3 className="h-4 w-4" />
                     </Button>
-                    <Button variant="destructive" size="icon" onClick={handlePrepareDeleteLayoutProfile} disabled={!selectedLayoutProfile || state.scoreboardLayoutProfiles.length <= 1} aria-label="Eliminar perfil de diseño">
+                    <Button variant="destructive" size="icon" onClick={handlePrepareDeleteLayoutProfile} disabled={!selectedLayoutProfile || (state.scoreboardLayoutProfiles || []).length <= 1} aria-label="Eliminar perfil de diseño">
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </div>
