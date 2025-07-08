@@ -28,10 +28,11 @@ function AddGoalForm({ team }: { team: Team }) {
   const [assistNumber, setAssistNumber] = useState('');
 
   const teamData = useMemo(() => {
-    const teamName = team === 'home' ? state.homeTeamName : state.awayTeamName;
-    const teamSubName = team === 'home' ? state.homeTeamSubName : state.awayTeamSubName;
-    return state.teams.find(t => t.name === teamName && (t.subName || undefined) === (teamSubName || undefined) && t.category === state.selectedMatchCategory);
-  }, [team, state.homeTeamName, state.awayTeamName, state.homeTeamSubName, state.awayTeamSubName, state.selectedMatchCategory, state.teams]);
+    if (!state.config || !state.live) return null;
+    const teamName = team === 'home' ? state.live.homeTeamName : state.live.awayTeamName;
+    const teamSubName = team === 'home' ? state.live.homeTeamSubName : state.live.awayTeamSubName;
+    return state.config.teams.find(t => t.name === teamName && (t.subName || undefined) === (teamSubName || undefined) && t.category === state.config.selectedMatchCategory);
+  }, [team, state.live, state.config]);
 
   const selectedPlayer = useMemo(() => teamData?.players.find(p => p.number === scorerNumber), [teamData, scorerNumber]);
   const selectedAssistPlayer = useMemo(() => teamData?.players.find(p => p.number === assistNumber), [teamData, assistNumber]);
@@ -39,6 +40,8 @@ function AddGoalForm({ team }: { team: Team }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!state.live || !state.config) return;
+
     const trimmedScorerNumber = scorerNumber.trim();
     const trimmedAssistNumber = assistNumber.trim();
 
@@ -54,8 +57,8 @@ function AddGoalForm({ team }: { team: Team }) {
     const payload: Omit<GoalLog, 'id'> = {
         team,
         timestamp: Date.now(),
-        gameTime: state.clock.currentTime,
-        periodText: getActualPeriodText(state.clock.currentPeriod, state.clock.periodDisplayOverride, state.numberOfRegularPeriods),
+        gameTime: state.live.clock.currentTime,
+        periodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
         scorer: {
           playerNumber: trimmedScorerNumber,
           playerName: selectedPlayer?.name,
@@ -145,14 +148,15 @@ function EditableGoalItem({ goal }: { goal: GoalLog }) {
   const [assistNumberInput, setAssistNumberInput] = useState(goal.assist?.playerNumber || '');
 
   const periodOptions = useMemo(() => {
+    if (!state.config) return [];
     const options: { value: string, label: string }[] = [];
-    const totalPeriods = state.numberOfRegularPeriods + state.numberOfOvertimePeriods;
+    const totalPeriods = state.config.numberOfRegularPeriods + state.config.numberOfOvertimePeriods;
     for (let i = 1; i <= totalPeriods; i++) {
-        const periodText = getPeriodText(i, state.numberOfRegularPeriods);
+        const periodText = getPeriodText(i, state.config.numberOfRegularPeriods);
         options.push({ value: periodText, label: periodText });
     }
     return options;
-  }, [state.numberOfRegularPeriods, state.numberOfOvertimePeriods]);
+  }, [state.config]);
 
   useEffect(() => {
     if (!isEditing) {
@@ -166,10 +170,11 @@ function EditableGoalItem({ goal }: { goal: GoalLog }) {
   }, [isEditing, goal]);
 
   const teamData = useMemo(() => {
-    const teamName = goal.team === 'home' ? state.homeTeamName : state.awayTeamName;
-    const teamSubName = goal.team === 'home' ? state.homeTeamSubName : state.awayTeamSubName;
-    return state.teams.find(t => t.name === teamName && (t.subName || undefined) === (teamSubName || undefined) && t.category === state.selectedMatchCategory);
-  }, [goal.team, state.homeTeamName, state.awayTeamName, state.homeTeamSubName, state.awayTeamSubName, state.selectedMatchCategory, state.teams]);
+    if (!state.config || !state.live) return null;
+    const teamName = goal.team === 'home' ? state.live.homeTeamName : state.live.awayTeamName;
+    const teamSubName = goal.team === 'home' ? state.live.homeTeamSubName : state.live.awayTeamSubName;
+    return state.config.teams.find(t => t.name === teamName && (t.subName || undefined) === (teamSubName || undefined) && t.category === state.config.selectedMatchCategory);
+  }, [goal.team, state.live, state.config]);
 
   const handleSave = () => {
     const trimmedScorerNumber = scorerNumberInput.trim();
@@ -306,13 +311,16 @@ function EditableGoalItem({ goal }: { goal: GoalLog }) {
 
 export function GoalManagementDialog({ isOpen, onOpenChange, team }: GoalManagementDialogProps) {
   const { state } = useGameState();
-  const teamName = team === 'home' ? state.homeTeamName : state.awayTeamName;
+
+  if (!state.live || !state.config) return null;
+
+  const teamName = team === 'home' ? state.live.homeTeamName : state.live.awayTeamName;
   
   const displayedGoals = useMemo(() => {
-    if (!team) return [];
-    const goalsList = (team === 'home' ? state.score.homeGoals : state.score.awayGoals) || [];
+    if (!team || !state.live.score) return [];
+    const goalsList = (team === 'home' ? state.live.score.homeGoals : state.live.score.awayGoals) || [];
     return [...goalsList].sort((a, b) => b.timestamp - a.timestamp);
-  }, [state.score.homeGoals, state.score.awayGoals, team]);
+  }, [state.live.score, team]);
 
   if (!team) return null;
 
