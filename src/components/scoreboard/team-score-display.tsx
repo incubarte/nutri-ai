@@ -14,7 +14,7 @@ interface TeamScoreDisplayProps {
   score: number;
   playersOnIce?: number;
   configuredPlayersPerTeam?: number;
-  layout: ScoreboardLayoutSettings;
+  layout?: ScoreboardLayoutSettings;
   className?: string;
   onScoreClick?: () => void;
 }
@@ -105,6 +105,10 @@ export function TeamScoreDisplay({
     return clearCurrentAnimationTimeout;
   }, [teamActualName, isLongName]);
 
+
+  if (!layout) {
+    return null; // Return nothing if layout is not ready
+  }
 
   return (
     <div className={cn(

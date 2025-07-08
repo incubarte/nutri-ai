@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { Penalty, ClockState } from '@/types';
@@ -17,6 +18,10 @@ interface PenaltiesDisplayProps {
 export function PenaltiesDisplay({ teamDisplayType, teamName, penalties, mode = 'desktop', clock }: PenaltiesDisplayProps) {
   const { state } = useGameState();
   const isMobile = mode === 'mobile';
+
+  if (!state.config) {
+    return null; // or a loading component
+  }
 
   const titleStyle = isMobile ? { fontSize: '1.125rem' } : { fontSize: `${state.config.scoreboardLayout.penaltiesTitleSize}rem` };
   const noPenaltiesStyle = isMobile ? { fontSize: '0.875rem' } : { fontSize: `${state.config.scoreboardLayout.penaltyPlayerNumberSize * 0.5}rem` };

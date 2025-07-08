@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { Penalty, ClockState } from '@/types';
@@ -37,6 +38,12 @@ interface PenaltyCardProps {
 
 export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobileClock }: PenaltyCardProps) {
   const { state } = useGameState();
+  
+  // Guard against rendering if the state is not ready
+  if (!state.config || !state.live) {
+    return null;
+  }
+
   const { config, live } = state;
   const clock = mobileClock || live.clock;
   const isMobile = mode === 'mobile';

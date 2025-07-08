@@ -9,6 +9,11 @@ import { ListFilter } from 'lucide-react'; // Icon for category
 
 export function CompactHeaderScoreboard() {
   const { state } = useGameState();
+
+  if (!state.config || !state.live) {
+    return null; // or a loading component
+  }
+
   const { config, live } = state;
   const { scoreboardLayout, playersPerTeamOnIce, selectedMatchCategory, availableCategories } = config;
   const { penalties, score, homeTeamName, awayTeamName } = live;
