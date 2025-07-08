@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useRef } from 'react';
@@ -38,7 +39,13 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { getActualPeriodText } from '@/contexts/game-state-context';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { LoadingSpinner } from '../ui/loading-spinner';
 
+
+interface PenaltyControlCardProps {
+  team: Team;
+  teamName: string;
+}
 
 const statusTextMap: Record<NonNullable<Penalty['_status']>, string> = {
     running: 'Corriendo',
@@ -67,14 +74,14 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     const { state } = useGameState();
     const [editTimeValue, setEditTimeValue] = useState('');
 
-    const teamSubName = team === 'home' ? state.homeTeamSubName : state.awayTeamSubName;
+    const teamSubName = team === 'home' ? state.live.homeTeamSubName : state.live.awayTeamSubName;
     const matchedTeam = useMemo(() => {
-      return state.teams.find(t =>
-          t.name === state[`${team}TeamName`] &&
+      return state.config.teams.find(t =>
+          t.name === state.live[`${team}TeamName`] &&
           (t.subName || undefined) === (teamSubName || undefined) &&
-          t.category === state.selectedMatchCategory
+          t.category === state.config.selectedMatchCategory
       );
-    }, [state.teams, state, team, teamSubName]);
+    }, [state.config.teams, state.config.selectedMatchCategory, state.live, team, teamSubName]);
     
     const matchedPlayerForPenaltyDisplay = matchedTeam?.players.find(
       pData => pData.number === penalty.playerNumber || (penalty.playerNumber === "S/N" && !pData.number)
@@ -82,7 +89,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     const displayPenaltyNumber = penalty.playerNumber || 'S/N';
     
     const remainingTimeCs = (penalty._status === 'running' && penalty.expirationTime !== undefined)
-      ? Math.max(0, penalty.expirationTime - state.clock._liveAbsoluteElapsedTimeCs)
+      ? Math.max(0, penalty.expirationTime - state.live.clock._liveAbsoluteElapsedTimeCs)
       : penalty.initialDuration * 100;
 
     const isWaitingSlot = penalty._status === 'pending_concurrent';
@@ -134,7 +141,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                                 <div className="flex-1 min-w-0 cursor-help">
                                     <p className="font-semibold text-card-foreground truncate">
                                         Jugador {displayPenaltyNumber}
-                                        {state.enablePlayerSelectionForPenalties && state.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && (
+                                        {state.config.enablePlayerSelectionForPenalties && state.config.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && (
                                             <span className="ml-1 text-xs text-muted-foreground font-normal">
                                                 - {matchedPlayerForPenaltyDisplay.name}
                                             </span>
@@ -240,7 +247,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
 
 
 export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) {
-  const { state, dispatch } = useGameState();
+  const { state, dispatch, isLoading } = useGameState();
   const [playerNumberForPenalty, setPlayerNumberForPenalty] = useState('');
   const [selectedPlayerName, setSelectedPlayerName] = useState<string | null>(null);
   const [penaltyDurationSeconds, setPenaltyDurationSeconds] = useState('120');
@@ -262,22 +269,29 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
   const [selectedPenaltyIds, setSelectedPenaltyIds] = useState<string[]>([]);
   const [isMassDeleteConfirmOpen, setIsMassDeleteConfirmOpen] = useState(false);
 
+  if (isLoading || !state.live || !state.config) {
+    return (
+      <Card className="bg-card shadow-md flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner className="h-8 w-8 text-primary" />
+      </Card>
+    );
+  }
 
-  const penalties = state.penalties[team];
-  const teamSubName = team === 'home' ? state.homeTeamSubName : state.awayTeamSubName;
+  const penalties = state.live.penalties[team];
+  const teamSubName = team === 'home' ? state.live.homeTeamSubName : state.live.awayTeamSubName;
 
   const matchedTeam = useMemo(() => {
-    return state.teams.find(t =>
+    return state.config.teams.find(t =>
         t.name === teamName &&
         (t.subName || undefined) === (teamSubName || undefined) &&
-        t.category === state.selectedMatchCategory
+        t.category === state.config.selectedMatchCategory
     );
-  }, [state.teams, teamName, teamSubName, state.selectedMatchCategory]);
+  }, [state.config.teams, teamName, teamSubName, state.config.selectedMatchCategory]);
   
   const teamHasPlayers = useMemo(() => {
-      if (!state.enablePlayerSelectionForPenalties) return false;
+      if (!state.config.enablePlayerSelectionForPenalties) return false;
       return matchedTeam && matchedTeam.players.length > 0;
-  }, [matchedTeam, state.enablePlayerSelectionForPenalties]);
+  }, [matchedTeam, state.config.enablePlayerSelectionForPenalties]);
 
   const filteredPlayers = useMemo(() => {
     if (!matchedTeam || !teamHasPlayers) return [];
@@ -297,9 +311,9 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     return playersToFilter.filter(
       (player: PlayerData) =>
         (player.number.toLowerCase().includes(searchTermLower)) ||
-        (state.showAliasInPenaltyPlayerSelector && player.name.toLowerCase().includes(searchTermLower))
+        (state.config.showAliasInPenaltyPlayerSelector && player.name.toLowerCase().includes(searchTermLower))
     );
-  }, [matchedTeam, teamHasPlayers, playerSearchTerm, state.showAliasInPenaltyPlayerSelector]);
+  }, [matchedTeam, teamHasPlayers, playerSearchTerm, state.config.showAliasInPenaltyPlayerSelector]);
 
   const handleAddPenalty = (e: React.FormEvent) => {
     e.preventDefault();
@@ -389,7 +403,7 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     if (isDeleteSelectionMode) return;
     e.preventDefault();
     if (draggedPenaltyId && draggedPenaltyId !== targetPenaltyId) {
-      const currentTeamPenalties = state.penalties[team];
+      const currentTeamPenalties = state.live.penalties[team];
       const startIndex = currentTeamPenalties.findIndex(p => p.id === draggedPenaltyId);
       const endIndex = currentTeamPenalties.findIndex(p => p.id === targetPenaltyId);
 
@@ -475,7 +489,7 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
                   <span className="truncate flex items-baseline">
                     <span className="text-xs text-muted-foreground mr-0.5">#</span>
                     <span className="font-semibold">{playerNumberForPenalty || 'S/N'}</span>
-                    {(state.showAliasInPenaltyPlayerSelector && selectedPlayerName) && (
+                    {(state.config.showAliasInPenaltyPlayerSelector && selectedPlayerName) && (
                       <span className="text-xs text-muted-foreground ml-1 truncate"> - {selectedPlayerName}</span>
                     )}
                   </span>
@@ -520,7 +534,7 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
                   {filteredPlayers.map((player: PlayerData) => (
                     <CommandItem
                       key={player.id}
-                      value={`${player.number} - ${state.showAliasInPenaltyPlayerSelector ? player.name : ''}`}
+                      value={`${player.number} - ${state.config.showAliasInPenaltyPlayerSelector ? player.name : ''}`}
                       onSelect={() => {
                         setPlayerNumberForPenalty(player.number);
                         setSelectedPlayerName(player.name);
@@ -537,7 +551,7 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
                       />
                       <span className="text-xs text-muted-foreground mr-0.5">#</span>
                       <span className="font-semibold text-sm mr-1">{player.number}</span>
-                      {state.showAliasInPenaltyPlayerSelector && player.name && (
+                      {state.config.showAliasInPenaltyPlayerSelector && player.name && (
                          <span className="text-xs text-muted-foreground truncate">{player.name}</span>
                       )}
                     </CommandItem>
@@ -724,4 +738,3 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     </>
   );
 }
-
