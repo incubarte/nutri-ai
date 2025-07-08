@@ -420,68 +420,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'HYDRATE_FROM_STORAGE': {
         const payload = action.payload ?? {};
 
-        // Migration for old flat state
-        if (payload.clock && !payload.live && !payload.config) {
-            console.log("Migrating old state format to new {config, live} structure.");
-            const oldState = payload as any; // Treat as old structure
-            const config: ConfigState = {
-                formatAndTimingsProfiles: oldState.formatAndTimingsProfiles || [createDefaultFormatAndTimingsProfile()],
-                selectedFormatAndTimingsProfileId: oldState.selectedFormatAndTimingsProfileId || (oldState.formatAndTimingsProfiles && oldState.formatAndTimingsProfiles[0]?.id) || null,
-                playSoundAtPeriodEnd: oldState.playSoundAtPeriodEnd ?? true,
-                customHornSoundDataUrl: oldState.customHornSoundDataUrl ?? null,
-                enableTeamSelectionInMiniScoreboard: oldState.enableTeamSelectionInMiniScoreboard ?? true,
-                enablePlayerSelectionForPenalties: oldState.enablePlayerSelectionForPenalties ?? true,
-                showAliasInPenaltyPlayerSelector: oldState.showAliasInPenaltyPlayerSelector ?? true,
-                showAliasInControlsPenaltyList: oldState.showAliasInControlsPenaltyList ?? true,
-                showAliasInScoreboardPenalties: oldState.showAliasInScoreboardPenalties ?? true,
-                enablePenaltyCountdownSound: oldState.enablePenaltyCountdownSound ?? true,
-                penaltyCountdownStartTime: oldState.penaltyCountdownStartTime ?? 10,
-                customPenaltyBeepSoundDataUrl: oldState.customPenaltyBeepSoundDataUrl ?? null,
-                scoreboardLayout: oldState.scoreboardLayout || IN_CODE_INITIAL_LAYOUT_SETTINGS,
-                scoreboardLayoutProfiles: oldState.scoreboardLayoutProfiles || [createDefaultScoreboardLayoutProfile()],
-                selectedScoreboardLayoutProfileId: oldState.selectedScoreboardLayoutProfileId || (oldState.scoreboardLayoutProfiles && oldState.scoreboardLayoutProfiles[0]?.id) || null,
-                availableCategories: oldState.availableCategories || IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
-                selectedMatchCategory: oldState.selectedMatchCategory || IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
-                teams: oldState.teams || [],
-                enableDebugMode: oldState.enableDebugMode ?? false,
-                defaultWarmUpDuration: oldState.defaultWarmUpDuration || IN_CODE_INITIAL_WARM_UP_DURATION,
-                defaultPeriodDuration: oldState.defaultPeriodDuration || IN_CODE_INITIAL_PERIOD_DURATION,
-                defaultOTPeriodDuration: oldState.defaultOTPeriodDuration || IN_CODE_INITIAL_OT_PERIOD_DURATION,
-                defaultBreakDuration: oldState.defaultBreakDuration || IN_CODE_INITIAL_BREAK_DURATION,
-                defaultPreOTBreakDuration: oldState.defaultPreOTBreakDuration || IN_CODE_INITIAL_PRE_OT_BREAK_DURATION,
-                defaultTimeoutDuration: oldState.defaultTimeoutDuration || IN_CODE_INITIAL_TIMEOUT_DURATION,
-                maxConcurrentPenalties: oldState.maxConcurrentPenalties || IN_CODE_INITIAL_MAX_CONCURRENT_PENALTIES,
-                autoStartWarmUp: oldState.autoStartWarmUp ?? true,
-                autoStartBreaks: oldState.autoStartBreaks ?? true,
-                autoStartPreOTBreaks: oldState.autoStartPreOTBreaks ?? false,
-                autoStartTimeouts: oldState.autoStartTimeouts ?? true,
-                numberOfRegularPeriods: oldState.numberOfRegularPeriods || IN_CODE_INITIAL_NUMBER_OF_REGULAR_PERIODS,
-                numberOfOvertimePeriods: oldState.numberOfOvertimePeriods || IN_CODE_INITIAL_NUMBER_OF_OVERTIME_PERIODS,
-                playersPerTeamOnIce: oldState.playersPerTeamOnIce || IN_CODE_INITIAL_PLAYERS_PER_TEAM_ON_ICE,
-            };
-            const live: LiveState = {
-                clock: oldState.clock,
-                score: oldState.score,
-                penalties: oldState.penalties,
-                homeTeamName: oldState.homeTeamName || 'Local',
-                homeTeamSubName: oldState.homeTeamSubName,
-                awayTeamName: oldState.awayTeamName || 'Visitante',
-                awayTeamSubName: oldState.awayTeamSubName,
-                gameSummary: oldState.gameSummary || IN_CODE_INITIAL_GAME_SUMMARY,
-                playHornTrigger: oldState.playHornTrigger || 0,
-                playPenaltyBeepTrigger: oldState.playPenaltyBeepTrigger || 0,
-            };
-            newState = { config, live, _initialConfigLoadComplete: true, _lastUpdatedTimestamp: oldState._lastUpdatedTimestamp };
-        } else {
-            // New format or initial load
-             newState = {
-                ...initialGlobalState,
-                config: { ...initialGlobalState.config, ...(payload.config || {}) },
-                live: { ...initialGlobalState.live, ...(payload.live || {}) },
-                _lastUpdatedTimestamp: payload._lastUpdatedTimestamp,
-                _initialConfigLoadComplete: true,
-            };
-        }
+        // Assumes state from localStorage is always in the new {config, live} format.
+        newState = {
+            ...initialGlobalState,
+            config: { ...initialGlobalState.config, ...(payload.config || {}) },
+            live: { ...initialGlobalState.live, ...(payload.live || {}) },
+            _lastUpdatedTimestamp: payload._lastUpdatedTimestamp,
+            _initialConfigLoadComplete: true,
+        };
 
         newState = applyFormatAndTimingsProfileToState(newState, newState.config.selectedFormatAndTimingsProfileId);
         newState = applyScoreboardLayoutProfileToState(newState, newState.config.selectedScoreboardLayoutProfileId);
@@ -598,8 +544,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_GOAL': {
       const newGoal: GoalLog = { ...action.payload, id: crypto.randomUUID() };
-      const homeGoals = (action.payload.team === 'home' ? [...state.live.score.homeGoals, newGoal] : state.live.score.homeGoals);
-      const awayGoals = (action.payload.team === 'away' ? [...state.live.score.awayGoals, newGoal] : state.live.score.awayGoals);
+      const homeGoals = (action.payload.team === 'home' ? [...(state.live.score.homeGoals || []), newGoal] : (state.live.score.homeGoals || []));
+      const awayGoals = (action.payload.team === 'away' ? [...(state.live.score.awayGoals || []), newGoal] : (state.live.score.awayGoals || []));
       newState = { ...state, live: { ...state.live, score: {
           home: homeGoals.length,
           away: awayGoals.length,
@@ -612,14 +558,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const { goalId, updates } = action.payload;
       newState = { ...state, live: { ...state.live, score: {
         ...state.live.score,
-        homeGoals: state.live.score.homeGoals.map(g => g.id === goalId ? { ...g, ...updates } : g),
-        awayGoals: state.live.score.awayGoals.map(g => g.id === goalId ? { ...g, ...updates } : g),
+        homeGoals: (state.live.score.homeGoals || []).map(g => g.id === goalId ? { ...g, ...updates } : g),
+        awayGoals: (state.live.score.awayGoals || []).map(g => g.id === goalId ? { ...g, ...updates } : g),
       }}};
       break;
     }
     case 'DELETE_GOAL': {
-      const homeGoals = state.live.score.homeGoals.filter(g => g.id !== action.payload.goalId);
-      const awayGoals = state.live.score.awayGoals.filter(g => g.id !== action.payload.goalId);
+      const homeGoals = (state.live.score.homeGoals || []).filter(g => g.id !== action.payload.goalId);
+      const awayGoals = (state.live.score.awayGoals || []).filter(g => g.id !== action.payload.goalId);
       newState = { ...state, live: { ...state.live, score: {
           home: homeGoals.length,
           away: awayGoals.length,
