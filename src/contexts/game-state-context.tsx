@@ -230,11 +230,13 @@ const handleAutoTransition = (currentState: GameState): GameState => {
     newGameStateAfterTransition.live.clock.currentPeriod = 1;
     newGameStateAfterTransition.live.clock.currentTime = currentState.config.defaultPeriodDuration;
     newGameStateAfterTransition.live.clock.periodDisplayOverride = null;
+    newGameStateAfterTransition.live.clock.isClockRunning = false; // Always start the first period paused
   } else if (periodDisplayOverride === 'Break' || periodDisplayOverride === 'Pre-OT Break') {
     const nextPeriod = currentPeriod + 1;
     newGameStateAfterTransition.live.clock.currentPeriod = nextPeriod;
     newGameStateAfterTransition.live.clock.currentTime = (nextPeriod > numberOfRegularPeriods) ? currentState.config.defaultOTPeriodDuration : currentState.config.defaultPeriodDuration;
     newGameStateAfterTransition.live.clock.periodDisplayOverride = null;
+    newGameStateAfterTransition.live.clock.isClockRunning = false; // Always start the next period paused
   } else if (periodDisplayOverride === 'Time Out') {
     if (preTimeoutState) {
       newGameStateAfterTransition.live.clock = {
@@ -343,18 +345,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
   switch (action.type) {
     case 'HYDRATE_FROM_STORAGE': {
-        const payload = action.payload ?? {};
+        let loadedState: Partial<GameState> | null = null;
+        try {
+            const rawState = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (rawState) loadedState = JSON.parse(rawState);
+        } catch (error) {
+            console.error("Error reading state from localStorage:", error);
+        }
 
-        // Assumes state from localStorage is always in the new {config, live} format.
-        newState = {
+        const hydratedState = {
             ...initialGlobalState,
-            config: { ...initialGlobalState.config, ...(payload.config || {}) },
-            live: { ...initialGlobalState.live, ...(payload.live || {}) },
-            _lastUpdatedTimestamp: payload._lastUpdatedTimestamp,
+            config: { ...initialGlobalState.config, ...(loadedState?.config || {}) },
+            live: { ...initialGlobalState.live, ...(loadedState?.live || {}) },
+            _lastUpdatedTimestamp: loadedState?._lastUpdatedTimestamp,
             _initialConfigLoadComplete: true,
         };
-
-        newState = applyFormatAndTimingsProfileToState(newState, newState.config.selectedFormatAndTimingsProfileId);
+        
+        newState = applyFormatAndTimingsProfileToState(hydratedState, hydratedState.config.selectedFormatAndTimingsProfileId);
         newState = applyScoreboardLayoutProfileToState(newState, newState.config.selectedScoreboardLayoutProfileId);
         
         break;
@@ -937,14 +944,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
        return;
     }
     const loadInitialState = () => {
-        let loadedState: Partial<GameState> | null = null;
-        try {
-            const rawState = localStorage.getItem(LOCAL_STORAGE_KEY);
-            if (rawState) loadedState = JSON.parse(rawState);
-        } catch (error) {
-            console.error("Error reading state from localStorage:", error);
-        }
-        dispatch({ type: 'HYDRATE_FROM_STORAGE', payload: loadedState || {} });
+        dispatch({ type: 'HYDRATE_FROM_STORAGE' });
         setIsLoading(false);
     };
     loadInitialState();
