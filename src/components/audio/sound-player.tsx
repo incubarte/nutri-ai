@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useGameState, DEFAULT_SOUND_PATH, DEFAULT_PENALTY_BEEP_PATH } from '@/contexts/game-state-context';
 import { useToast } from '@/hooks/use-toast';
 
@@ -9,33 +8,25 @@ export function SoundPlayer() {
   const { state, isLoading } = useGameState();
   const { toast } = useToast();
 
-  // --- Hooks Section ---
-  // All hooks must be called unconditionally at the top to respect the Rules of Hooks.
   const lastPlayedHornTriggerRef = useRef<number>(0);
   const hornAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const lastPlayedBeepTriggerRef = useRef<number>(0);
   const penaltyAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const [isMounted, setIsMounted] = useState(false);
-  const didMountRef = useRef(false); // Ref to track initial mount
+  const didMountRef = useRef(false);
 
+  // This single useEffect handles all logic and is called on every render.
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    // Do not run any logic until the state is fully loaded.
+    if (isLoading || !state.config || !state.live) {
+      return;
+    }
 
-  // --- Early Return Guard ---
-  // It's safe to return early *after* all hooks have been called.
-  if (isLoading || !state.config || !state.live) {
-    return null;
-  }
-  
-  const { config, live } = state;
+    const { config, live } = state;
 
-  // This single useEffect handles both sounds and mounting logic.
-  useEffect(() => {
-    // On the first render cycle (mount), we don't play sounds.
-    // We sync the refs to the current state and set didMount to true.
+    // On the first render cycle after state is loaded, we just sync the refs and then exit.
+    // This prevents sounds from playing on initial page load/hydration.
     if (!didMountRef.current) {
         lastPlayedHornTriggerRef.current = live.playHornTrigger;
         lastPlayedBeepTriggerRef.current = live.playPenaltyBeepTrigger;
@@ -76,10 +67,7 @@ export function SoundPlayer() {
         });
       }
     }
-  }, [live.playHornTrigger, live.playPenaltyBeepTrigger, config.playSoundAtPeriodEnd, config.enablePenaltyCountdownSound, toast]);
-
-  const hornSoundSrc = config.customHornSoundDataUrl || DEFAULT_SOUND_PATH;
-  const penaltyBeepSoundSrc = config.customPenaltyBeepSoundDataUrl || DEFAULT_PENALTY_BEEP_PATH;
+  }, [state, isLoading, toast]);
 
   const handleAudioError = (e: React.SyntheticEvent<HTMLAudioElement, Event>, soundName: string) => {
     const error = e.currentTarget.error;
@@ -112,9 +100,13 @@ export function SoundPlayer() {
     });
   };
 
-  if (!isMounted) {
+  // It's safe to return early here because all hooks have been called above.
+  if (isLoading || !state.config) {
     return null;
   }
+
+  const hornSoundSrc = state.config.customHornSoundDataUrl || DEFAULT_SOUND_PATH;
+  const penaltyBeepSoundSrc = state.config.customPenaltyBeepSoundDataUrl || DEFAULT_PENALTY_BEEP_PATH;
 
   return (
     <>
