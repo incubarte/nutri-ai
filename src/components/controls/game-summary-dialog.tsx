@@ -104,11 +104,11 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
   const { toast } = useToast();
   
   const homeGoals = useMemo(() => {
-    return [...state.score.homeGoals].sort((a, b) => a.timestamp - b.timestamp);
+    return [...(state.score.homeGoals || [])].sort((a, b) => a.timestamp - b.timestamp);
   }, [state.score.homeGoals]);
   
   const awayGoals = useMemo(() => {
-    return [...state.score.awayGoals].sort((a, b) => a.timestamp - b.timestamp);
+    return [...(state.score.awayGoals || [])].sort((a, b) => a.timestamp - b.timestamp);
   }, [state.score.awayGoals]);
   
   const homePenalties = useMemo(() => {
