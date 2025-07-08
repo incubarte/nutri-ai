@@ -1,0 +1,31 @@
+{
+  "date": "2025-07-08T04:44:45.084Z",
+  "category": "A",
+  "homeTeam": "Local",
+  "awayTeam": "Visitante",
+  "finalScore": "1 - 1",
+  "summary": {
+    "home": {
+      "goals": [],
+      "penalties": [
+        {
+          "id": "c828e7d2-6786-4b3a-a107-d357f38e60f7",
+          "team": "home",
+          "playerNumber": "5",
+          "initialDuration": 120,
+          "addTimestamp": 1751949238472,
+          "addGameTime": 120000,
+          "addPeriodText": "1ST"
+        }
+      ]
+    },
+    "away": {
+      "goals": [],
+      "penalties": []
+    },
+    "attendance": {
+      "home": [],
+      "away": []
+    }
+  }
+}
