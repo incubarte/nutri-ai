@@ -310,8 +310,9 @@ export function GoalManagementDialog({ isOpen, onOpenChange, team }: GoalManagem
   
   const displayedGoals = useMemo(() => {
     if (!team) return [];
-    return state.goals.filter(g => g.team === team).sort((a, b) => b.timestamp - a.timestamp);
-  }, [state.goals, team]);
+    const goalsList = team === 'home' ? state.score.homeGoals : state.score.awayGoals;
+    return [...goalsList].sort((a, b) => b.timestamp - a.timestamp);
+  }, [state.score.homeGoals, state.score.awayGoals, team]);
 
   if (!team) return null;
 

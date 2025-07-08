@@ -166,8 +166,6 @@ export interface ConfigFields extends FormatAndTimingsProfileData {
   // Teams
   teams: TeamData[];
 
-  // Game Events
-  goals: GoalLog[];
   // Game Summary
   gameSummary: GameSummary;
 
@@ -202,6 +200,8 @@ export interface ClockState {
 export interface ScoreState {
   home: number;
   away: number;
+  homeGoals: GoalLog[];
+  awayGoals: GoalLog[];
 }
 
 export interface PenaltiesState {
@@ -213,7 +213,6 @@ export interface LiveGameState {
     clock: ClockState;
     score: ScoreState;
     penalties: PenaltiesState;
-    goals: GoalLog[];
     homeTeamName: string;
     homeTeamSubName?: string;
     awayTeamName: string;

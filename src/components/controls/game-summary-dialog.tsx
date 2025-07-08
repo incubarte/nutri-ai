@@ -104,12 +104,12 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
   const { toast } = useToast();
   
   const homeGoals = useMemo(() => {
-    return state.goals.filter(g => g.team === 'home').sort((a, b) => a.timestamp - b.timestamp);
-  }, [state.goals]);
+    return [...state.score.homeGoals].sort((a, b) => a.timestamp - b.timestamp);
+  }, [state.score.homeGoals]);
   
   const awayGoals = useMemo(() => {
-    return state.goals.filter(g => g.team === 'away').sort((a, b) => a.timestamp - b.timestamp);
-  }, [state.goals]);
+    return [...state.score.awayGoals].sort((a, b) => a.timestamp - b.timestamp);
+  }, [state.score.awayGoals]);
   
   const homePenalties = useMemo(() => {
       return [...state.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
@@ -171,7 +171,7 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
             <TeamSummaryColumn 
               team="home"
               teamName={state.homeTeamName}
-              score={state.homeScore}
+              score={state.score.home}
               goals={homeGoals}
               penalties={homePenalties}
             />
@@ -180,7 +180,7 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
              <TeamSummaryColumn 
               team="away"
               teamName={state.awayTeamName}
-              score={state.awayScore}
+              score={state.score.away}
               goals={awayGoals}
               penalties={awayPenalties}
             />

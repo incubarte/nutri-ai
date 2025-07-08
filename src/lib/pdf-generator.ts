@@ -95,8 +95,8 @@ export const exportGameSummaryPDF = (state: GameState) => {
     doc.setFontSize(12);
     doc.text(`Resultado Final: ${finalScore}`, 14, 29);
 
-    const homeGoals = state.goals.filter(g => g.team === 'home').sort((a, b) => a.timestamp - b.timestamp);
-    const awayGoals = state.goals.filter(g => g.team === 'away').sort((a, b) => a.timestamp - b.timestamp);
+    const homeGoals = [...state.score.homeGoals].sort((a, b) => a.timestamp - b.timestamp);
+    const awayGoals = [...state.score.awayGoals].sort((a, b) => a.timestamp - b.timestamp);
     const homePenalties = [...state.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
     const awayPenalties = [...state.gameSummary.away.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
 

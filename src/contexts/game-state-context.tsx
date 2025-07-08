@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -217,6 +218,8 @@ const initialGlobalState: GameState = {
   score: {
     home: 0,
     away: 0,
+    homeGoals: [],
+    awayGoals: [],
   },
   penalties: {
     home: [],
@@ -269,7 +272,6 @@ const initialGlobalState: GameState = {
   selectedScoreboardLayoutProfileId: defaultInitialLayoutProfile.id,
   availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES, 
   selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
-  goals: [],
   gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
   playHornTrigger: 0,
   playPenaltyBeepTrigger: 0,
@@ -532,8 +534,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const rawHomePenaltiesFromStorage = action.payload?.penalties?.home || [];
       const rawAwayPenaltiesFromStorage = action.payload?.penalties?.away || [];
 
-      hydratedBase.penalties.home = rawHomePenaltiesFromStorage as Penalty[];
-      hydratedBase.penalties.away = rawAwayPenaltiesFromStorage as Penalty[];
+      hydratedBase.penalties.home = rawHomePenaltiesFromStorage.map(p => ({ ...p, _status: p.expirationTime ? 'running' : 'pending_concurrent' }));
+      hydratedBase.penalties.away = rawAwayPenaltiesFromStorage.map(p => ({ ...p, _status: p.expirationTime ? 'running' : 'pending_concurrent' }));
+
       
       const { _lastActionOriginator, _lastUpdatedTimestamp, playHornTrigger: hydratedHornTrigger, playPenaltyBeepTrigger: hydratedBeepTrigger, _initialConfigLoadComplete, ...restOfHydrated } = hydratedBase;
       newStateWithoutMeta = restOfHydrated;
@@ -747,39 +750,46 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'ADD_GOAL': {
-      const newGoal: GoalLog = {
-        ...action.payload,
-        id: crypto.randomUUID(),
-      };
-      const newGoals = [...state.goals, newGoal];
-      const newHomeScore = newGoals.filter(g => g.team === 'home').length;
-      const newAwayScore = newGoals.filter(g => g.team === 'away').length;
+      const newGoal: GoalLog = { ...action.payload, id: crypto.randomUUID() };
+      const newHomeGoals = action.payload.team === 'home' ? [...state.score.homeGoals, newGoal] : state.score.homeGoals;
+      const newAwayGoals = action.payload.team === 'away' ? [...state.score.awayGoals, newGoal] : state.score.awayGoals;
       newStateWithoutMeta = {
         ...state,
-        goals: newGoals,
-        score: { home: newHomeScore, away: newAwayScore },
+        score: {
+          home: newHomeGoals.length,
+          away: newAwayGoals.length,
+          homeGoals: newHomeGoals,
+          awayGoals: newAwayGoals,
+        },
       };
       break;
     }
     case 'EDIT_GOAL': {
-      const newGoals = state.goals.map(g => g.id === action.payload.goalId ? { ...g, ...action.payload.updates } : g);
-      const newHomeScore = newGoals.filter(g => g.team === 'home').length;
-      const newAwayScore = newGoals.filter(g => g.team === 'away').length;
+      const { goalId, updates } = action.payload;
+      const newHomeGoals = state.score.homeGoals.map(g => g.id === goalId ? { ...g, ...updates } : g);
+      const newAwayGoals = state.score.awayGoals.map(g => g.id === goalId ? { ...g, ...updates } : g);
+
       newStateWithoutMeta = {
         ...state,
-        goals: newGoals,
-        score: { home: newHomeScore, away: newAwayScore },
+        score: {
+          ...state.score,
+          homeGoals: newHomeGoals,
+          awayGoals: newAwayGoals,
+        },
       };
       break;
     }
     case 'DELETE_GOAL': {
-      const newGoals = state.goals.filter(g => g.id !== action.payload.goalId);
-      const newHomeScore = newGoals.filter(g => g.team === 'home').length;
-      const newAwayScore = newGoals.filter(g => g.team === 'away').length;
+      const newHomeGoals = state.score.homeGoals.filter(g => g.id !== action.payload.goalId);
+      const newAwayGoals = state.score.awayGoals.filter(g => g.id !== action.payload.goalId);
       newStateWithoutMeta = {
         ...state,
-        goals: newGoals,
-        score: { home: newHomeScore, away: newAwayScore },
+        score: {
+          home: newHomeGoals.length,
+          away: newAwayGoals.length,
+          homeGoals: newHomeGoals,
+          awayGoals: newAwayGoals,
+        },
       };
       break;
     }
@@ -1758,6 +1768,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         score: {
           home: 0,
           away: 0,
+          homeGoals: [],
+          awayGoals: [],
         },
         clock: {
           currentTime: initialWarmUpDurationCs,
@@ -1778,7 +1790,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         homeTeamSubName: undefined,
         awayTeamName: 'Visitante',
         awayTeamSubName: undefined,
-        goals: [],
         gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
       };
       newPlayHornTrigger = state.playHornTrigger;
@@ -2093,7 +2104,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
         ];
         
         const liveGameStateKeys: (keyof Omit<LiveGameState, 'homeTeamName' | 'awayTeamName' | 'homeTeamSubName' | 'awayTeamName'>)[] = [
-            'score', 'clock', 'penalties', 'goals'
+            'score', 'clock', 'penalties'
         ];
 
         const configChanged = configKeys.some(key => !isEqual(prevState[key as keyof GameState], state[key as keyof GameState]));
@@ -2120,7 +2131,6 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
               clock: state.clock,
               score: state.score,
               penalties: state.penalties,
-              goals: state.goals,
               homeTeamName: state.homeTeamName,
               homeTeamSubName: state.homeTeamSubName,
               awayTeamName: state.awayTeamName,
@@ -2358,14 +2368,6 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
 
     
 
-
-
-
-
-
-
-    
-
     
 
 
@@ -2381,3 +2383,4 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
 
 
     
+
