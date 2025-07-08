@@ -7,27 +7,76 @@ import { useToast } from '@/hooks/use-toast';
 
 export function SoundPlayer() {
   const { state, isLoading } = useGameState();
-  const { config, live } = state;
   const { toast } = useToast();
 
-  // Return null immediately if the necessary state isn't ready.
-  // This prevents any hooks or logic from running with undefined data.
-  if (isLoading || !config || !live) {
-    return null;
-  }
-  
-  const lastPlayedHornTriggerRef = useRef<number>(live.playHornTrigger);
+  // --- Hooks Section ---
+  // All hooks must be called unconditionally at the top to respect the Rules of Hooks.
+  const lastPlayedHornTriggerRef = useRef<number>(0);
   const hornAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const lastPlayedBeepTriggerRef = useRef<number>(live.playPenaltyBeepTrigger);
+  const lastPlayedBeepTriggerRef = useRef<number>(0);
   const penaltyAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
+  const didMountRef = useRef(false); // Ref to track initial mount
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  // --- Early Return Guard ---
+  // It's safe to return early *after* all hooks have been called.
+  if (isLoading || !state.config || !state.live) {
+    return null;
+  }
+  
+  const { config, live } = state;
+
+  // This single useEffect handles both sounds and mounting logic.
+  useEffect(() => {
+    // On the first render cycle (mount), we don't play sounds.
+    // We sync the refs to the current state and set didMount to true.
+    if (!didMountRef.current) {
+        lastPlayedHornTriggerRef.current = live.playHornTrigger;
+        lastPlayedBeepTriggerRef.current = live.playPenaltyBeepTrigger;
+        didMountRef.current = true;
+        return;
+    }
+
+    // Horn sound effect logic for subsequent renders
+    if (live.playHornTrigger > lastPlayedHornTriggerRef.current) {
+      lastPlayedHornTriggerRef.current = live.playHornTrigger;
+
+      if (config.playSoundAtPeriodEnd && hornAudioRef.current) {
+        hornAudioRef.current.currentTime = 0;
+        hornAudioRef.current.play().catch(error => {
+          console.warn("Playback prevented for horn sound:", error);
+          toast({
+            title: "Error de Sonido de Bocina",
+            description: "El navegador impidió la reproducción automática del sonido.",
+            variant: "destructive"
+          });
+        });
+      }
+    }
+
+    // Penalty beep sound effect logic for subsequent renders
+    if (live.playPenaltyBeepTrigger > lastPlayedBeepTriggerRef.current) {
+      lastPlayedBeepTriggerRef.current = live.playPenaltyBeepTrigger;
+      
+      if (config.enablePenaltyCountdownSound && penaltyAudioRef.current) {
+        penaltyAudioRef.current.currentTime = 0;
+        penaltyAudioRef.current.play().catch(error => {
+          console.warn("Playback prevented for penalty beep:", error);
+          toast({
+            title: "Error de Sonido de Beep",
+            description: "El navegador impidió la reproducción automática del sonido.",
+            variant: "destructive"
+          });
+        });
+      }
+    }
+  }, [live.playHornTrigger, live.playPenaltyBeepTrigger, config.playSoundAtPeriodEnd, config.enablePenaltyCountdownSound, toast]);
 
   const hornSoundSrc = config.customHornSoundDataUrl || DEFAULT_SOUND_PATH;
   const penaltyBeepSoundSrc = config.customPenaltyBeepSoundDataUrl || DEFAULT_PENALTY_BEEP_PATH;
@@ -62,46 +111,6 @@ export function SoundPlayer() {
         variant: "destructive"
     });
   };
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    if (live.playHornTrigger > lastPlayedHornTriggerRef.current) {
-      lastPlayedHornTriggerRef.current = live.playHornTrigger;
-
-      if (config.playSoundAtPeriodEnd && hornAudioRef.current) {
-        hornAudioRef.current.currentTime = 0;
-        hornAudioRef.current.play().catch(error => {
-          console.warn("Playback prevented for horn sound:", error);
-          toast({
-            title: "Error de Sonido de Bocina",
-            description: "El navegador impidió la reproducción automática del sonido.",
-            variant: "destructive"
-          });
-        });
-      }
-    }
-  }, [live.playHornTrigger, config.playSoundAtPeriodEnd, isLoading, toast]);
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    if (live.playPenaltyBeepTrigger > lastPlayedBeepTriggerRef.current) {
-      lastPlayedBeepTriggerRef.current = live.playPenaltyBeepTrigger;
-      
-      if (config.enablePenaltyCountdownSound && penaltyAudioRef.current) {
-        penaltyAudioRef.current.currentTime = 0;
-        penaltyAudioRef.current.play().catch(error => {
-          console.warn("Playback prevented for penalty beep:", error);
-          toast({
-            title: "Error de Sonido de Beep",
-            description: "El navegador impidió la reproducción automática del sonido.",
-            variant: "destructive"
-          });
-        });
-      }
-    }
-  }, [live.playPenaltyBeepTrigger, config.enablePenaltyCountdownSound, isLoading, toast]);
 
   if (!isMounted) {
     return null;
