@@ -220,3 +220,60 @@ export interface LiveGameState {
     playersPerTeamOnIce?: number; 
     numberOfRegularPeriods?: number; 
 }
+
+
+export type GameAction =
+  | { type: 'TOGGLE_CLOCK' }
+  | { type: 'SET_TIME'; payload: { minutes: number; seconds: number } }
+  | { type: 'ADJUST_TIME'; payload: number }
+  | { type: 'SET_PERIOD'; payload: number }
+  | { type: 'RESET_PERIOD_CLOCK' }
+  | { type: 'ADD_GOAL'; payload: Omit<GoalLog, 'id'> }
+  | { type: 'EDIT_GOAL'; payload: { goalId: string; updates: Partial<GoalLog> } }
+  | { type: 'DELETE_GOAL'; payload: { goalId: string } }
+  | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; initialDuration: number; } } }
+  | { type: 'REMOVE_PENALTY'; payload: { team: Team; penaltyId: string } }
+  | { type: 'END_PENALTY_FOR_GOAL'; payload: { team: Team; penaltyId: string } }
+  | { type: 'ADJUST_PENALTY_TIME'; payload: { team: Team; penaltyId: string; delta: number } }
+  | { type: 'SET_PENALTY_TIME'; payload: { team: Team; penaltyId: string; time: number } }
+  | { type: 'REORDER_PENALTIES'; payload: { team: Team; startIndex: number; endIndex: number } }
+  | { type: 'ACTIVATE_PENDING_PUCK_PENALTIES' }
+  | { type: 'TICK' }
+  | { type: 'SET_HOME_TEAM_NAME'; payload: string }
+  | { type: 'SET_HOME_TEAM_SUB_NAME'; payload?: string }
+  | { type: 'SET_AWAY_TEAM_NAME'; payload: string }
+  | { type: 'SET_AWAY_TEAM_SUB_NAME'; payload?: string }
+  | { type: 'START_BREAK' }
+  | { type: 'START_PRE_OT_BREAK' }
+  | { type: 'START_BREAK_AFTER_PREVIOUS_PERIOD' }
+  | { type: 'START_TIMEOUT' }
+  | { type: 'END_TIMEOUT' }
+  | { type: 'MANUAL_END_GAME' }
+  | { type: 'ADD_FORMAT_AND_TIMINGS_PROFILE'; payload: { name: string; profileData?: Partial<FormatAndTimingsProfileData> } }
+  | { type: 'UPDATE_SELECTED_FT_PROFILE_DATA', payload: Partial<FormatAndTimingsProfileData> }
+  | { type: 'UPDATE_FORMAT_AND_TIMINGS_PROFILE_NAME'; payload: { profileId: string; newName: string } }
+  | { type: 'DELETE_FORMAT_AND_TIMINGS_PROFILE'; payload: { profileId: string } }
+  | { type: 'SELECT_FORMAT_AND_TIMINGS_PROFILE'; payload: { profileId: string | null } }
+  | { type: 'LOAD_FORMAT_AND_TIMINGS_PROFILES'; payload: FormatAndTimingsProfile[] }
+  | { type: 'UPDATE_CONFIG_FIELDS'; payload: Partial<ConfigState> }
+  | { type: 'UPDATE_LAYOUT_SETTINGS'; payload: Partial<ScoreboardLayoutSettings> }
+  | { type: 'ADD_SCOREBOARD_LAYOUT_PROFILE'; payload: { name: string } }
+  | { type: 'UPDATE_SCOREBOARD_LAYOUT_PROFILE_NAME'; payload: { profileId: string; newName: string } }
+  | { type: 'DELETE_SCOREBOARD_LAYOUT_PROFILE'; payload: { profileId: string } }
+  | { type: 'SELECT_SCOREBOARD_LAYOUT_PROFILE'; payload: { profileId: string } }
+  | { type: 'SAVE_CURRENT_LAYOUT_TO_PROFILE' }
+  | { type: 'LOAD_SOUND_AND_DISPLAY_CONFIG'; payload: Partial<Pick<ConfigState, 'playSoundAtPeriodEnd' | 'customHornSoundDataUrl' | 'enableTeamSelectionInMiniScoreboard' | 'enablePlayerSelectionForPenalties' | 'showAliasInPenaltyPlayerSelector' | 'showAliasInControlsPenaltyList' | 'showAliasInScoreboardPenalties' | 'scoreboardLayoutProfiles' | 'enablePenaltyCountdownSound' | 'penaltyCountdownStartTime' | 'customPenaltyBeepSoundDataUrl' | 'enableDebugMode'>> }
+  | { type: 'SET_AVAILABLE_CATEGORIES'; payload: CategoryData[] }
+  | { type: 'SET_SELECTED_MATCH_CATEGORY'; payload: string }
+  | { type: 'HYDRATE_FROM_STORAGE'; payload: Partial<GameState> }
+  | { type: 'SET_STATE_FROM_LOCAL_BROADCAST'; payload: GameState }
+  | { type: 'RESET_CONFIG_TO_DEFAULTS' }
+  | { type: 'RESET_GAME_STATE' }
+  | { type: 'ADD_TEAM'; payload: Omit<TeamData, 'players'> & { id: string; players: PlayerData[] } }
+  | { type: 'UPDATE_TEAM_DETAILS'; payload: { teamId: string; name: string; subName?: string; category: string; logoDataUrl?: string | null } }
+  | { type: 'DELETE_TEAM'; payload: { teamId: string } }
+  | { type: 'ADD_PLAYER_TO_TEAM'; payload: { teamId: string; player: Omit<PlayerData, 'id'> } }
+  | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
+  | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
+  | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
+  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from "react";
@@ -28,9 +29,9 @@ export const PenaltyCountdownSoundCard = forwardRef<PenaltyCountdownSoundCardRef
   const { onDirtyChange } = props;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [localEnableSound, setLocalEnableSound] = useState(state.enablePenaltyCountdownSound);
-  const [localCountdownTime, setLocalCountdownTime] = useState(String(state.penaltyCountdownStartTime));
-  const [localCustomSoundDataUrl, setLocalCustomSoundDataUrl] = useState(state.customPenaltyBeepSoundDataUrl);
+  const [localEnableSound, setLocalEnableSound] = useState(state.config.enablePenaltyCountdownSound);
+  const [localCountdownTime, setLocalCountdownTime] = useState(String(state.config.penaltyCountdownStartTime));
+  const [localCustomSoundDataUrl, setLocalCustomSoundDataUrl] = useState(state.config.customPenaltyBeepSoundDataUrl);
   const [customSoundFileName, setCustomSoundFileName] = useState<string | null>(null);
   const [isDirtyLocal, setIsDirtyLocal] = useState(false);
 
@@ -40,12 +41,12 @@ export const PenaltyCountdownSoundCard = forwardRef<PenaltyCountdownSoundCardRef
 
   useEffect(() => {
     if (!isDirtyLocal) {
-      setLocalEnableSound(state.enablePenaltyCountdownSound);
-      setLocalCountdownTime(String(state.penaltyCountdownStartTime));
-      setLocalCustomSoundDataUrl(state.customPenaltyBeepSoundDataUrl);
+      setLocalEnableSound(state.config.enablePenaltyCountdownSound);
+      setLocalCountdownTime(String(state.config.penaltyCountdownStartTime));
+      setLocalCustomSoundDataUrl(state.config.customPenaltyBeepSoundDataUrl);
       setCustomSoundFileName(null);
     }
-  }, [state.enablePenaltyCountdownSound, state.penaltyCountdownStartTime, state.customPenaltyBeepSoundDataUrl, isDirtyLocal]);
+  }, [state.config.enablePenaltyCountdownSound, state.config.penaltyCountdownStartTime, state.config.customPenaltyBeepSoundDataUrl, isDirtyLocal]);
 
   const markDirty = () => setIsDirtyLocal(true);
 
@@ -55,17 +56,22 @@ export const PenaltyCountdownSoundCard = forwardRef<PenaltyCountdownSoundCardRef
 
       const countdownTime = parseInt(localCountdownTime, 10);
       
-      dispatch({ type: "SET_ENABLE_PENALTY_COUNTDOWN_SOUND", payload: localEnableSound });
-      dispatch({ type: "SET_PENALTY_COUNTDOWN_START_TIME", payload: isNaN(countdownTime) ? 10 : countdownTime });
-      dispatch({ type: "SET_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL", payload: localCustomSoundDataUrl });
+      dispatch({ 
+        type: "UPDATE_CONFIG_FIELDS", 
+        payload: {
+          enablePenaltyCountdownSound: localEnableSound,
+          penaltyCountdownStartTime: isNaN(countdownTime) ? 10 : countdownTime,
+          customPenaltyBeepSoundDataUrl: localCustomSoundDataUrl,
+        }
+      });
       
       setIsDirtyLocal(false);
       return true;
     },
     handleDiscard: () => {
-      setLocalEnableSound(state.enablePenaltyCountdownSound);
-      setLocalCountdownTime(String(state.penaltyCountdownStartTime));
-      setLocalCustomSoundDataUrl(state.customPenaltyBeepSoundDataUrl);
+      setLocalEnableSound(state.config.enablePenaltyCountdownSound);
+      setLocalCountdownTime(String(state.config.penaltyCountdownStartTime));
+      setLocalCustomSoundDataUrl(state.config.customPenaltyBeepSoundDataUrl);
       setCustomSoundFileName(null);
       setIsDirtyLocal(false);
     },

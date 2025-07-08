@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
@@ -50,11 +51,17 @@ export const PenaltySettingsCard = forwardRef<PenaltySettingsCardRef, PenaltySet
 
       const maxPenNum = parseInt(localMaxPenaltiesInput, 10);
       const finalMaxPenalties = (isNaN(maxPenNum) || maxPenNum < 1) ? 1 : maxPenNum;
-      dispatch({ type: "SET_MAX_CONCURRENT_PENALTIES", payload: finalMaxPenalties });
 
       const playersNum = parseInt(localPlayersPerTeamInput, 10);
       const finalPlayersPerTeam = (isNaN(playersNum) || playersNum < 1) ? 1 : playersNum;
-      dispatch({ type: "SET_PLAYERS_PER_TEAM_ON_ICE", payload: finalPlayersPerTeam });
+      
+      dispatch({
+        type: "UPDATE_SELECTED_FT_PROFILE_DATA",
+        payload: {
+          maxConcurrentPenalties: finalMaxPenalties,
+          playersPerTeamOnIce: finalPlayersPerTeam,
+        }
+      });
       
       setIsDirtyLocal(false);
       return true;

@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from "react";
@@ -32,8 +34,8 @@ export const SoundSettingsCard = forwardRef<SoundSettingsCardRef, SoundSettingsC
   const { onDirtyChange } = props;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [localPlaySound, setLocalPlaySound] = useState(state.playSoundAtPeriodEnd);
-  const [localCustomSoundDataUrl, setLocalCustomSoundDataUrl] = useState(state.customHornSoundDataUrl);
+  const [localPlaySound, setLocalPlaySound] = useState(state.config.playSoundAtPeriodEnd);
+  const [localCustomSoundDataUrl, setLocalCustomSoundDataUrl] = useState(state.config.customHornSoundDataUrl);
   const [customSoundFileName, setCustomSoundFileName] = useState<string | null>(null);
   const [isDirtyLocal, setIsDirtyLocal] = useState(false);
 
@@ -43,11 +45,11 @@ export const SoundSettingsCard = forwardRef<SoundSettingsCardRef, SoundSettingsC
 
   useEffect(() => {
      if (!isDirtyLocal) {
-      setLocalPlaySound(state.playSoundAtPeriodEnd);
-      setLocalCustomSoundDataUrl(state.customHornSoundDataUrl);
+      setLocalPlaySound(state.config.playSoundAtPeriodEnd);
+      setLocalCustomSoundDataUrl(state.config.customHornSoundDataUrl);
       setCustomSoundFileName(null); 
     }
-  }, [state.playSoundAtPeriodEnd, state.customHornSoundDataUrl, isDirtyLocal]);
+  }, [state.config.playSoundAtPeriodEnd, state.config.customHornSoundDataUrl, isDirtyLocal]);
 
   const markDirty = () => setIsDirtyLocal(true);
 
@@ -55,15 +57,20 @@ export const SoundSettingsCard = forwardRef<SoundSettingsCardRef, SoundSettingsC
     handleSave: () => {
       if (!isDirtyLocal) return true;
 
-      dispatch({ type: "SET_PLAY_SOUND_AT_PERIOD_END", payload: localPlaySound });
-      dispatch({ type: "SET_CUSTOM_HORN_SOUND_DATA_URL", payload: localCustomSoundDataUrl });
+      dispatch({ 
+        type: "UPDATE_CONFIG_FIELDS", 
+        payload: {
+          playSoundAtPeriodEnd: localPlaySound,
+          customHornSoundDataUrl: localCustomSoundDataUrl,
+        }
+      });
       
       setIsDirtyLocal(false);
       return true; 
     },
     handleDiscard: () => {
-      setLocalPlaySound(state.playSoundAtPeriodEnd);
-      setLocalCustomSoundDataUrl(state.customHornSoundDataUrl);
+      setLocalPlaySound(state.config.playSoundAtPeriodEnd);
+      setLocalCustomSoundDataUrl(state.config.customHornSoundDataUrl);
       setCustomSoundFileName(null);
       setIsDirtyLocal(false);
     },

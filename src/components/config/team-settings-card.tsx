@@ -1,8 +1,10 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { useGameState } from "@/contexts/game-state-context";
+import type { ConfigState } from "@/types";
 import { ControlCardWrapper } from "@/components/controls/control-card-wrapper";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -24,11 +26,11 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
   const { toast } = useToast();
   const { onDirtyChange } = props;
 
-  const [localEnableTeamUsage, setLocalEnableTeamUsage] = useState(state.enableTeamSelectionInMiniScoreboard);
-  const [localEnablePlayerSelection, setLocalEnablePlayerSelection] = useState(state.enablePlayerSelectionForPenalties);
-  const [localShowAliasInSelector, setLocalShowAliasInSelector] = useState(state.showAliasInPenaltyPlayerSelector);
-  const [localShowAliasInControlsList, setLocalShowAliasInControlsList] = useState(state.showAliasInControlsPenaltyList);
-  const [localShowAliasInScoreboard, setLocalShowAliasInScoreboard] = useState(state.showAliasInScoreboardPenalties);
+  const [localEnableTeamUsage, setLocalEnableTeamUsage] = useState(state.config.enableTeamSelectionInMiniScoreboard);
+  const [localEnablePlayerSelection, setLocalEnablePlayerSelection] = useState(state.config.enablePlayerSelectionForPenalties);
+  const [localShowAliasInSelector, setLocalShowAliasInSelector] = useState(state.config.showAliasInPenaltyPlayerSelector);
+  const [localShowAliasInControlsList, setLocalShowAliasInControlsList] = useState(state.config.showAliasInControlsPenaltyList);
+  const [localShowAliasInScoreboard, setLocalShowAliasInScoreboard] = useState(state.config.showAliasInScoreboardPenalties);
   const [isDirtyLocal, setIsDirtyLocal] = useState(false);
 
   useEffect(() => {
@@ -37,18 +39,18 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
   
   useEffect(() => {
     if (!isDirtyLocal) {
-      setLocalEnableTeamUsage(state.enableTeamSelectionInMiniScoreboard);
-      setLocalEnablePlayerSelection(state.enablePlayerSelectionForPenalties);
-      setLocalShowAliasInSelector(state.showAliasInPenaltyPlayerSelector);
-      setLocalShowAliasInControlsList(state.showAliasInControlsPenaltyList);
-      setLocalShowAliasInScoreboard(state.showAliasInScoreboardPenalties);
+      setLocalEnableTeamUsage(state.config.enableTeamSelectionInMiniScoreboard);
+      setLocalEnablePlayerSelection(state.config.enablePlayerSelectionForPenalties);
+      setLocalShowAliasInSelector(state.config.showAliasInPenaltyPlayerSelector);
+      setLocalShowAliasInControlsList(state.config.showAliasInControlsPenaltyList);
+      setLocalShowAliasInScoreboard(state.config.showAliasInScoreboardPenalties);
     }
   }, [
-    state.enableTeamSelectionInMiniScoreboard, 
-    state.enablePlayerSelectionForPenalties,
-    state.showAliasInPenaltyPlayerSelector,
-    state.showAliasInControlsPenaltyList,
-    state.showAliasInScoreboardPenalties,
+    state.config.enableTeamSelectionInMiniScoreboard, 
+    state.config.enablePlayerSelectionForPenalties,
+    state.config.showAliasInPenaltyPlayerSelector,
+    state.config.showAliasInControlsPenaltyList,
+    state.config.showAliasInScoreboardPenalties,
     isDirtyLocal,
   ]);
 
@@ -57,47 +59,46 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
   useImperativeHandle(ref, () => ({
     handleSave: () => {
       if (!isDirtyLocal) return true;
-
-      dispatch({ type: "SET_ENABLE_TEAM_SELECTION_IN_MINI_SCOREBOARD", payload: localEnableTeamUsage });
       
+      const updates: Partial<ConfigState> = {};
+      updates.enableTeamSelectionInMiniScoreboard = localEnableTeamUsage;
+
       if (localEnableTeamUsage) {
-        dispatch({ type: "SET_ENABLE_PLAYER_SELECTION_FOR_PENALTIES", payload: localEnablePlayerSelection });
-        
+        updates.enablePlayerSelectionForPenalties = localEnablePlayerSelection;
         if (localEnablePlayerSelection) {
-            dispatch({ type: "SET_SHOW_ALIAS_IN_PENALTY_PLAYER_SELECTOR", payload: localShowAliasInSelector });
-            dispatch({ type: "SET_SHOW_ALIAS_IN_CONTROLS_PENALTY_LIST", payload: localShowAliasInControlsList });
-            dispatch({ type: "SET_SHOW_ALIAS_IN_SCOREBOARD_PENALTIES", payload: localShowAliasInScoreboard });
+            updates.showAliasInPenaltyPlayerSelector = localShowAliasInSelector;
+            updates.showAliasInControlsPenaltyList = localShowAliasInControlsList;
+            updates.showAliasInScoreboardPenalties = localShowAliasInScoreboard;
         } else {
-            // Player selection is OFF, but team usage is ON
-            dispatch({ type: "SET_SHOW_ALIAS_IN_PENALTY_PLAYER_SELECTOR", payload: false });
-            dispatch({ type: "SET_SHOW_ALIAS_IN_CONTROLS_PENALTY_LIST", payload: false });
-            dispatch({ type: "SET_SHOW_ALIAS_IN_SCOREBOARD_PENALTIES", payload: false });
+            updates.showAliasInPenaltyPlayerSelector = false;
+            updates.showAliasInControlsPenaltyList = false;
+            updates.showAliasInScoreboardPenalties = false;
         }
       } else {
-        // Team usage is OFF, all sub-settings must be OFF
-        dispatch({ type: "SET_ENABLE_PLAYER_SELECTION_FOR_PENALTIES", payload: false });
-        dispatch({ type: "SET_SHOW_ALIAS_IN_PENALTY_PLAYER_SELECTOR", payload: false });
-        dispatch({ type: "SET_SHOW_ALIAS_IN_CONTROLS_PENALTY_LIST", payload: false });
-        dispatch({ type: "SET_SHOW_ALIAS_IN_SCOREBOARD_PENALTIES", payload: false });
+        updates.enablePlayerSelectionForPenalties = false;
+        updates.showAliasInPenaltyPlayerSelector = false;
+        updates.showAliasInControlsPenaltyList = false;
+        updates.showAliasInScoreboardPenalties = false;
       }
       
+      dispatch({ type: "UPDATE_CONFIG_FIELDS", payload: updates });
       setIsDirtyLocal(false);
       return true; 
     },
     handleDiscard: () => {
-      setLocalEnableTeamUsage(state.enableTeamSelectionInMiniScoreboard);
-      setLocalEnablePlayerSelection(state.enablePlayerSelectionForPenalties);
-      setLocalShowAliasInSelector(state.showAliasInPenaltyPlayerSelector);
-      setLocalShowAliasInControlsList(state.showAliasInControlsPenaltyList);
-      setLocalShowAliasInScoreboard(state.showAliasInScoreboardPenalties);
+      setLocalEnableTeamUsage(state.config.enableTeamSelectionInMiniScoreboard);
+      setLocalEnablePlayerSelection(state.config.enablePlayerSelectionForPenalties);
+      setLocalShowAliasInSelector(state.config.showAliasInPenaltyPlayerSelector);
+      setLocalShowAliasInControlsList(state.config.showAliasInControlsPenaltyList);
+      setLocalShowAliasInScoreboard(state.config.showAliasInScoreboardPenalties);
       setIsDirtyLocal(false);
     },
     getIsDirty: () => {
-      if (localEnableTeamUsage !== state.enableTeamSelectionInMiniScoreboard) return true;
-      if (localEnablePlayerSelection !== state.enablePlayerSelectionForPenalties) return true;
-      if (localShowAliasInSelector !== state.showAliasInPenaltyPlayerSelector) return true;
-      if (localShowAliasInControlsList !== state.showAliasInControlsPenaltyList) return true;
-      if (localShowAliasInScoreboard !== state.showAliasInScoreboardPenalties) return true;
+      if (localEnableTeamUsage !== state.config.enableTeamSelectionInMiniScoreboard) return true;
+      if (localEnablePlayerSelection !== state.config.enablePlayerSelectionForPenalties) return true;
+      if (localShowAliasInSelector !== state.config.showAliasInPenaltyPlayerSelector) return true;
+      if (localShowAliasInControlsList !== state.config.showAliasInControlsPenaltyList) return true;
+      if (localShowAliasInScoreboard !== state.config.showAliasInScoreboardPenalties) return true;
       return false;
     },
   }));
@@ -119,7 +120,7 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
     if (!checked) {
         setLocalShowAliasInSelector(false);
         setLocalShowAliasInControlsList(false);
-        setLocalShowAliasInScoreboard(false); // Also disable scoreboard alias if player selection is off
+        setLocalShowAliasInScoreboard(false);
     }
   };
 

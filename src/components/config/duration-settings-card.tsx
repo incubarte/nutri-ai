@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
@@ -6,7 +7,7 @@ import {
   useGameState, 
   centisecondsToDisplayMinutes, 
   centisecondsToDisplaySeconds,
-  type FormatAndTimingsProfileData // Import this
+  type FormatAndTimingsProfileData
 } from "@/contexts/game-state-context";
 import { ControlCardWrapper } from "@/components/controls/control-card-wrapper";
 import { Label } from "@/components/ui/label";
@@ -18,19 +19,18 @@ export interface DurationSettingsCardRef {
   handleSave: () => boolean; 
   handleDiscard: () => void;
   getIsDirty: () => boolean;
-  setValues: (values: FormatAndTimingsProfileData) => void; // To set values from selected profile
+  setValues: (values: FormatAndTimingsProfileData) => void;
 }
 
 interface DurationSettingsCardProps {
   onDirtyChange: (isDirty: boolean) => void;
-  initialValues: FormatAndTimingsProfileData; // Pass initial values from selected profile
-  // No need for selectedProfileId here, dispatch will handle it from parent
+  initialValues: FormatAndTimingsProfileData;
 }
 
 const narrowInputStyle = "w-24 text-sm";
 
 export const DurationSettingsCard = forwardRef<DurationSettingsCardRef, DurationSettingsCardProps>((props, ref) => {
-  const { dispatch } = useGameState(); // Only need dispatch
+  const { dispatch } = useGameState();
   const { onDirtyChange, initialValues } = props;
 
   const [localWarmUpDurationInput, setLocalWarmUpDurationInput] = useState(centisecondsToDisplayMinutes(initialValues.defaultWarmUpDuration));
@@ -63,7 +63,7 @@ export const DurationSettingsCard = forwardRef<DurationSettingsCardRef, Duration
     setLocalAutoStartTimeouts(values.autoStartTimeouts);
     setLocalNumRegularPeriodsInput(String(values.numberOfRegularPeriods));
     setLocalNumOTPeriodsInput(String(values.numberOfOvertimePeriods));
-    setIsDirtyLocal(false); // Reset dirty state when loading new profile
+    setIsDirtyLocal(false);
   };
   
   useEffect(() => {
@@ -82,55 +82,44 @@ export const DurationSettingsCard = forwardRef<DurationSettingsCardRef, Duration
     handleSave: () => {
       if (!isDirtyLocal) return true;
 
+      const updates: Partial<FormatAndTimingsProfileData> = {};
+
       const warmUpDurationMin = parseInt(localWarmUpDurationInput, 10);
-      const finalWarmUpDurationCs = (isNaN(warmUpDurationMin) || warmUpDurationMin < 1) ? (60 * 100) : warmUpDurationMin * 60 * 100;
-      dispatch({ type: "SET_DEFAULT_WARM_UP_DURATION", payload: finalWarmUpDurationCs });
+      updates.defaultWarmUpDuration = (isNaN(warmUpDurationMin) || warmUpDurationMin < 1) ? (60 * 100) : warmUpDurationMin * 60 * 100;
 
       const periodDurationMin = parseInt(localPeriodDurationInput, 10);
-      const finalPeriodDurationCs = (isNaN(periodDurationMin) || periodDurationMin < 1) ? (60 * 100) : periodDurationMin * 60 * 100;
-      dispatch({ type: "SET_DEFAULT_PERIOD_DURATION", payload: finalPeriodDurationCs });
+      updates.defaultPeriodDuration = (isNaN(periodDurationMin) || periodDurationMin < 1) ? (60 * 100) : periodDurationMin * 60 * 100;
 
       const otPeriodDurationMin = parseInt(localOTPeriodDurationInput, 10);
-      const finalOTPeriodDurationCs = (isNaN(otPeriodDurationMin) || otPeriodDurationMin < 1) ? (60 * 100) : otPeriodDurationMin * 60 * 100;
-      dispatch({ type: "SET_DEFAULT_OT_PERIOD_DURATION", payload: finalOTPeriodDurationCs });
+      updates.defaultOTPeriodDuration = (isNaN(otPeriodDurationMin) || otPeriodDurationMin < 1) ? (60 * 100) : otPeriodDurationMin * 60 * 100;
 
       const breakDurationSec = parseInt(localBreakDurationInput, 10);
-      const finalBreakDurationCs = (isNaN(breakDurationSec) || breakDurationSec < 1) ? (1 * 100) : breakDurationSec * 100;
-      dispatch({ type: "SET_DEFAULT_BREAK_DURATION", payload: finalBreakDurationCs });
+      updates.defaultBreakDuration = (isNaN(breakDurationSec) || breakDurationSec < 1) ? (1 * 100) : breakDurationSec * 100;
 
       const preOTBreakDurationSec = parseInt(localPreOTBreakDurationInput, 10);
-      const finalPreOTBreakDurationCs = (isNaN(preOTBreakDurationSec) || preOTBreakDurationSec < 1) ? (1 * 100) : preOTBreakDurationSec * 100;
-      dispatch({ type: "SET_DEFAULT_PRE_OT_BREAK_DURATION", payload: finalPreOTBreakDurationCs });
+      updates.defaultPreOTBreakDuration = (isNaN(preOTBreakDurationSec) || preOTBreakDurationSec < 1) ? (1 * 100) : preOTBreakDurationSec * 100;
       
       const timeoutDurationSec = parseInt(localTimeoutDurationInput, 10);
-      const finalTimeoutDurationCs = (isNaN(timeoutDurationSec) || timeoutDurationSec < 1) ? (1 * 100) : timeoutDurationSec * 100;
-      dispatch({ type: "SET_DEFAULT_TIMEOUT_DURATION", payload: finalTimeoutDurationCs });
+      updates.defaultTimeoutDuration = (isNaN(timeoutDurationSec) || timeoutDurationSec < 1) ? (1 * 100) : timeoutDurationSec * 100;
 
       const numRegularPeriods = parseInt(localNumRegularPeriodsInput, 10);
-      const finalNumRegularPeriods = (isNaN(numRegularPeriods) || numRegularPeriods < 1) ? 3 : numRegularPeriods;
-      dispatch({ type: "SET_NUMBER_OF_REGULAR_PERIODS", payload: finalNumRegularPeriods });
+      updates.numberOfRegularPeriods = (isNaN(numRegularPeriods) || numRegularPeriods < 1) ? 3 : numRegularPeriods;
 
       const numOTPeriods = parseInt(localNumOTPeriodsInput, 10);
-      const finalNumOTPeriods = (isNaN(numOTPeriods) || numOTPeriods < 0) ? 1 : numOTPeriods;
-      dispatch({ type: "SET_NUMBER_OF_OVERTIME_PERIODS", payload: finalNumOTPeriods });
-
-      // No direct dispatch for auto-start values, parent will handle using new values
-      // dispatch({ type: "SET_AUTO_START_WARM_UP_VALUE", payload: localAutoStartWarmUp });
-      // dispatch({ type: "SET_AUTO_START_BREAKS_VALUE", payload: localAutoStartBreaks });
-      // dispatch({ type: "SET_AUTO_START_PRE_OT_BREAKS_VALUE", payload: localAutoStartPreOTBreaks });
-      // dispatch({ type: "SET_AUTO_START_TIMEOUTS_VALUE", payload: localAutoStartTimeouts });
-
-      // Dispatch all auto-start values
-      dispatch({ type: "SET_AUTO_START_WARM_UP_VALUE", payload: localAutoStartWarmUp });
-      dispatch({ type: "SET_AUTO_START_BREAKS_VALUE", payload: localAutoStartBreaks });
-      dispatch({ type: "SET_AUTO_START_PRE_OT_BREAKS_VALUE", payload: localAutoStartPreOTBreaks });
-      dispatch({ type: "SET_AUTO_START_TIMEOUTS_VALUE", payload: localAutoStartTimeouts });
+      updates.numberOfOvertimePeriods = (isNaN(numOTPeriods) || numOTPeriods < 0) ? 1 : numOTPeriods;
+      
+      updates.autoStartWarmUp = localAutoStartWarmUp;
+      updates.autoStartBreaks = localAutoStartBreaks;
+      updates.autoStartPreOTBreaks = localAutoStartPreOTBreaks;
+      updates.autoStartTimeouts = localAutoStartTimeouts;
+      
+      dispatch({ type: "UPDATE_SELECTED_FT_PROFILE_DATA", payload: updates });
       
       setIsDirtyLocal(false);
       return true;
     },
     handleDiscard: () => {
-      setValuesFromProfile(initialValues); // Discard to initialValues of the current profile
+      setValuesFromProfile(initialValues);
     },
     getIsDirty: () => isDirtyLocal,
     setValues: setValuesFromProfile,

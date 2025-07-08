@@ -1,9 +1,10 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
@@ -115,82 +116,6 @@ const createDefaultScoreboardLayoutProfile = (id?: string, name?: string): Score
     name: name || IN_CODE_INITIAL_LAYOUT_PROFILE_NAME,
     ...IN_CODE_INITIAL_LAYOUT_SETTINGS
 });
-
-export type GameAction =
-  | { type: 'TOGGLE_CLOCK' }
-  | { type: 'SET_TIME'; payload: { minutes: number; seconds: number } }
-  | { type: 'ADJUST_TIME'; payload: number }
-  | { type: 'SET_PERIOD'; payload: number }
-  | { type: 'RESET_PERIOD_CLOCK' }
-  | { type: 'ADD_GOAL'; payload: Omit<GoalLog, 'id'> }
-  | { type: 'EDIT_GOAL'; payload: { goalId: string; updates: Partial<GoalLog> } }
-  | { type: 'DELETE_GOAL'; payload: { goalId: string } }
-  | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; initialDuration: number; } } }
-  | { type: 'REMOVE_PENALTY'; payload: { team: Team; penaltyId: string } }
-  | { type: 'END_PENALTY_FOR_GOAL'; payload: { team: Team; penaltyId: string } }
-  | { type: 'ADJUST_PENALTY_TIME'; payload: { team: Team; penaltyId: string; delta: number } }
-  | { type: 'SET_PENALTY_TIME'; payload: { team: Team; penaltyId: string; time: number } }
-  | { type: 'REORDER_PENALTIES'; payload: { team: Team; startIndex: number; endIndex: number } }
-  | { type: 'ACTIVATE_PENDING_PUCK_PENALTIES' }
-  | { type: 'TICK' }
-  | { type: 'SET_HOME_TEAM_NAME'; payload: string }
-  | { type: 'SET_HOME_TEAM_SUB_NAME'; payload?: string }
-  | { type: 'SET_AWAY_TEAM_NAME'; payload: string }
-  | { type: 'SET_AWAY_TEAM_SUB_NAME'; payload?: string }
-  | { type: 'START_BREAK' }
-  | { type: 'START_PRE_OT_BREAK' }
-  | { type: 'START_BREAK_AFTER_PREVIOUS_PERIOD' }
-  | { type: 'START_TIMEOUT' }
-  | { type: 'END_TIMEOUT' }
-  | { type: 'MANUAL_END_GAME' }
-  | { type: 'ADD_FORMAT_AND_TIMINGS_PROFILE'; payload: { name: string; profileData?: Partial<FormatAndTimingsProfileData> } }
-  | { type: 'UPDATE_FORMAT_AND_TIMINGS_PROFILE_DATA'; payload: { profileId: string; updates: Partial<FormatAndTimingsProfileData> } }
-  | { type: 'UPDATE_FORMAT_AND_TIMINGS_PROFILE_NAME'; payload: { profileId: string; newName: string } }
-  | { type: 'DELETE_FORMAT_AND_TIMINGS_PROFILE'; payload: { profileId: string } }
-  | { type: 'SELECT_FORMAT_AND_TIMINGS_PROFILE'; payload: { profileId: string | null } }
-  | { type: 'LOAD_FORMAT_AND_TIMINGS_PROFILES'; payload: FormatAndTimingsProfile[] }
-  | { type: 'SET_DEFAULT_WARM_UP_DURATION'; payload: number }
-  | { type: 'SET_DEFAULT_PERIOD_DURATION'; payload: number }
-  | { type: 'SET_DEFAULT_OT_PERIOD_DURATION'; payload: number }
-  | { type: 'SET_DEFAULT_BREAK_DURATION'; payload: number }
-  | { type: 'SET_DEFAULT_PRE_OT_BREAK_DURATION'; payload: number }
-  | { type: 'SET_DEFAULT_TIMEOUT_DURATION'; payload: number }
-  | { type: 'SET_MAX_CONCURRENT_PENALTIES'; payload: number }
-  | { type: 'SET_NUMBER_OF_REGULAR_PERIODS'; payload: number }
-  | { type: 'SET_NUMBER_OF_OVERTIME_PERIODS'; payload: number }
-  | { type: 'SET_PLAYERS_PER_TEAM_ON_ICE'; payload: number }
-  | { type: 'SET_AUTO_START_WARM_UP_VALUE'; payload: boolean }
-  | { type: 'SET_AUTO_START_BREAKS_VALUE'; payload: boolean }
-  | { type: 'SET_AUTO_START_PRE_OT_BREAKS_VALUE'; payload: boolean }
-  | { type: 'SET_AUTO_START_TIMEOUTS_VALUE'; payload: boolean }
-  | { type: 'SET_PLAY_SOUND_AT_PERIOD_END'; payload: boolean }
-  | { type: 'SET_CUSTOM_HORN_SOUND_DATA_URL'; payload: string | null }
-  | { type: 'SET_ENABLE_PENALTY_COUNTDOWN_SOUND'; payload: boolean }
-  | { type: 'SET_PENALTY_COUNTDOWN_START_TIME'; payload: number }
-  | { type: 'SET_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL'; payload: string | null }
-  | { type: 'UPDATE_LAYOUT_SETTINGS'; payload: Partial<ScoreboardLayoutSettings> }
-  | { type: 'ADD_SCOREBOARD_LAYOUT_PROFILE'; payload: { name: string } }
-  | { type: 'UPDATE_SCOREBOARD_LAYOUT_PROFILE_NAME'; payload: { profileId: string; newName: string } }
-  | { type: 'DELETE_SCOREBOARD_LAYOUT_PROFILE'; payload: { profileId: string } }
-  | { type: 'SELECT_SCOREBOARD_LAYOUT_PROFILE'; payload: { profileId: string } }
-  | { type: 'SAVE_CURRENT_LAYOUT_TO_PROFILE' }
-  | { type: 'LOAD_SOUND_AND_DISPLAY_CONFIG'; payload: Partial<Pick<ConfigState, 'playSoundAtPeriodEnd' | 'customHornSoundDataUrl' | 'enableTeamSelectionInMiniScoreboard' | 'enablePlayerSelectionForPenalties' | 'showAliasInPenaltyPlayerSelector' | 'showAliasInControlsPenaltyList' | 'showAliasInScoreboardPenalties' | 'scoreboardLayoutProfiles' | 'enablePenaltyCountdownSound' | 'penaltyCountdownStartTime' | 'customPenaltyBeepSoundDataUrl' | 'enableDebugMode'>> }
-  | { type: 'SET_AVAILABLE_CATEGORIES'; payload: CategoryData[] }
-  | { type: 'SET_SELECTED_MATCH_CATEGORY'; payload: string }
-  | { type: 'HYDRATE_FROM_STORAGE'; payload: Partial<GameState> }
-  | { type: 'SET_STATE_FROM_LOCAL_BROADCAST'; payload: GameState }
-  | { type: 'RESET_CONFIG_TO_DEFAULTS' }
-  | { type: 'RESET_GAME_STATE' }
-  | { type: 'ADD_TEAM'; payload: Omit<TeamData, 'players'> & { id: string; players: PlayerData[] } }
-  | { type: 'UPDATE_TEAM_DETAILS'; payload: { teamId: string; name: string; subName?: string; category: string; logoDataUrl?: string | null } }
-  | { type: 'DELETE_TEAM'; payload: { teamId: string } }
-  | { type: 'ADD_PLAYER_TO_TEAM'; payload: { teamId: string; player: Omit<PlayerData, 'id'> } }
-  | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
-  | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
-  | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
-  | { type: 'SET_ENABLE_DEBUG_MODE'; payload: boolean }
-  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
-
 
 const defaultInitialProfile = createDefaultFormatAndTimingsProfile();
 const defaultInitialLayoutProfile = createDefaultScoreboardLayoutProfile();
@@ -757,7 +682,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newState._lastUpdatedTimestamp = significantChangeOccurred ? newTimestamp : state._lastUpdatedTimestamp;
       return newState;
     }
-    // ... all other cases need to be updated to use state.config and state.live
     case 'SET_HOME_TEAM_NAME': newState = { ...state, live: { ...state.live, homeTeamName: action.payload || 'Local' } }; break;
     case 'SET_HOME_TEAM_SUB_NAME': newState = { ...state, live: { ...state.live, homeTeamSubName: action.payload } }; break;
     case 'SET_AWAY_TEAM_NAME': newState = { ...state, live: { ...state.live, awayTeamName: action.payload || 'Visitante' } }; break;
@@ -858,7 +782,83 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }};
       break;
     }
-    // All config actions
+    case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
+        const { selectedFormatAndTimingsProfileId, formatAndTimingsProfiles } = state.config;
+        if (!selectedFormatAndTimingsProfileId) break;
+
+        const newProfiles = formatAndTimingsProfiles.map(p => {
+            if (p.id === selectedFormatAndTimingsProfileId) {
+                return { ...p, ...action.payload };
+            }
+            return p;
+        });
+        
+        const newConfig = {
+            ...state.config,
+            ...action.payload,
+            formatAndTimingsProfiles: newProfiles,
+        };
+
+        newState = { ...state, config: newConfig };
+        break;
+    }
+    case 'UPDATE_CONFIG_FIELDS': {
+        newState = {
+            ...state,
+            config: {
+                ...state.config,
+                ...action.payload,
+            }
+        };
+        break;
+    }
+    case 'ADD_FORMAT_AND_TIMINGS_PROFILE': newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: [...state.config.formatAndTimingsProfiles, createDefaultFormatAndTimingsProfile(undefined, action.payload.name)] }}; break;
+    case 'UPDATE_FORMAT_AND_TIMINGS_PROFILE_NAME': newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: state.config.formatAndTimingsProfiles.map(p => p.id === action.payload.profileId ? {...p, name: action.payload.newName} : p) }}; break;
+    case 'DELETE_FORMAT_AND_TIMINGS_PROFILE': {
+        let newProfiles = state.config.formatAndTimingsProfiles.filter(p => p.id !== action.payload.profileId);
+        if (newProfiles.length === 0) newProfiles = [createDefaultFormatAndTimingsProfile()];
+        const newSelectedId = action.payload.profileId === state.config.selectedFormatAndTimingsProfileId ? newProfiles[0].id : state.config.selectedFormatAndTimingsProfileId;
+        newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: newProfiles, selectedFormatAndTimingsProfileId: newSelectedId }};
+        newState = applyFormatAndTimingsProfileToState(newState, newSelectedId);
+        break;
+    }
+    case 'SELECT_FORMAT_AND_TIMINGS_PROFILE': {
+      newState = applyFormatAndTimingsProfileToState(state, action.payload.profileId);
+      break;
+    }
+    case 'LOAD_FORMAT_AND_TIMINGS_PROFILES': {
+        const newProfiles = action.payload.length > 0 ? action.payload : [createDefaultFormatAndTimingsProfile()];
+        newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: newProfiles, selectedFormatAndTimingsProfileId: newProfiles[0].id } };
+        newState = applyFormatAndTimingsProfileToState(newState, newProfiles[0].id);
+        break;
+    }
+    case 'UPDATE_LAYOUT_SETTINGS': newState = { ...state, config: { ...state.config, scoreboardLayout: { ...state.config.scoreboardLayout, ...action.payload } }}; break;
+    case 'SAVE_CURRENT_LAYOUT_TO_PROFILE': {
+        if (!state.config.selectedScoreboardLayoutProfileId) break;
+        newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: state.config.scoreboardLayoutProfiles.map(p => p.id === state.config.selectedScoreboardLayoutProfileId ? { ...p, ...state.config.scoreboardLayout } : p) }};
+        break;
+    }
+    case 'ADD_SCOREBOARD_LAYOUT_PROFILE': newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: [...state.config.scoreboardLayoutProfiles, createDefaultScoreboardLayoutProfile(undefined, action.payload.name)] }}; break;
+    case 'UPDATE_SCOREBOARD_LAYOUT_PROFILE_NAME': newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: state.config.scoreboardLayoutProfiles.map(p => p.id === action.payload.profileId ? {...p, name: action.payload.newName} : p) }}; break;
+    case 'DELETE_SCOREBOARD_LAYOUT_PROFILE': {
+        let newProfiles = state.config.scoreboardLayoutProfiles.filter(p => p.id !== action.payload.profileId);
+        if (newProfiles.length === 0) newProfiles = [createDefaultScoreboardLayoutProfile()];
+        const newSelectedId = action.payload.profileId === state.config.selectedScoreboardLayoutProfileId ? newProfiles[0].id : state.config.selectedScoreboardLayoutProfileId;
+        newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: newProfiles, selectedScoreboardLayoutProfileId: newSelectedId }};
+        newState = applyScoreboardLayoutProfileToState(newState, newSelectedId);
+        break;
+    }
+    case 'SELECT_SCOREBOARD_LAYOUT_PROFILE': {
+        newState = applyScoreboardLayoutProfileToState(state, action.payload.profileId);
+        break;
+    }
+    case 'LOAD_SOUND_AND_DISPLAY_CONFIG': {
+        const { scoreboardLayoutProfiles, ...otherSettings } = action.payload;
+        const newProfiles = scoreboardLayoutProfiles && scoreboardLayoutProfiles.length > 0 ? scoreboardLayoutProfiles : [createDefaultScoreboardLayoutProfile()];
+        newState = { ...state, config: { ...state.config, ...otherSettings, scoreboardLayoutProfiles: newProfiles, selectedScoreboardLayoutProfileId: newProfiles[0].id }};
+        newState = applyScoreboardLayoutProfileToState(newState, newProfiles[0].id);
+        break;
+    }
     case 'SET_AVAILABLE_CATEGORIES': newState = { ...state, config: { ...state.config, availableCategories: action.payload, selectedMatchCategory: (action.payload.find(c => c.id === state.config.selectedMatchCategory) ? state.config.selectedMatchCategory : (action.payload[0]?.id || '')) } }; break;
     case 'SET_SELECTED_MATCH_CATEGORY': newState = { ...state, config: { ...state.config, selectedMatchCategory: action.payload } }; break;
     case 'ADD_TEAM': newState = { ...state, config: { ...state.config, teams: [...state.config.teams, { ...action.payload, id: action.payload.id || crypto.randomUUID() }] } }; break;
@@ -898,18 +898,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
       break;
     }
-    //... More config cases
-    default:
-        // This is a temporary way to handle config changes until all are moved.
-        // It assumes the payload is a simple key-value for a config property.
-        if (action.type.startsWith('SET_')) {
-            const key = action.type.replace('SET_', '').replace(/_(\w)/g, (m, p1) => p1.toUpperCase());
-            const camelCaseKey = key.charAt(0).toLowerCase() + key.slice(1);
-            if (camelCaseKey in state.config) {
-                newState = { ...state, config: { ...state.config, [camelCaseKey]: (action as any).payload }};
-            }
-        }
-      break;
   }
 
   const nonOriginatingActionTypes: GameAction['type'][] = ['HYDRATE_FROM_STORAGE', 'SET_STATE_FROM_LOCAL_BROADCAST'];
