@@ -10,6 +10,12 @@ interface ClockDisplayProps {
 
 export function ClockDisplay({ className }: ClockDisplayProps) {
   const { state } = useGameState();
+
+  // Guard against rendering with incomplete state during hydration
+  if (!state.config || !state.live || !state.live.clock) {
+    return null; 
+  }
+
   const { scoreboardLayout } = state.config;
   const { clock, score, homeTeamName, awayTeamName } = state.live;
 
