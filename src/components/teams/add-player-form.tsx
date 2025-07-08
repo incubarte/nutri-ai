@@ -26,7 +26,6 @@ export function AddPlayerForm({ teamId }: AddPlayerFormProps) {
 
   const handlePlayerNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Allow only digits or empty string
     if (/^\d*$/.test(value)) {
       setPlayerNumber(value);
     }
@@ -37,7 +36,7 @@ export function AddPlayerForm({ teamId }: AddPlayerFormProps) {
     const trimmedPlayerNumber = playerNumber.trim();
     const trimmedPlayerName = playerName.trim();
 
-    if (!trimmedPlayerName) { // Only name is strictly required
+    if (!trimmedPlayerName) {
       toast({
         title: "Nombre Requerido",
         description: "El nombre/apodo del jugador es obligatorio.",
@@ -46,7 +45,7 @@ export function AddPlayerForm({ teamId }: AddPlayerFormProps) {
       return;
     }
 
-    if (trimmedPlayerNumber) { // Validate number only if provided
+    if (trimmedPlayerNumber) {
         if (!/^\d+$/.test(trimmedPlayerNumber)) {
             toast({
                 title: "Número de Jugador Inválido",
@@ -56,7 +55,7 @@ export function AddPlayerForm({ teamId }: AddPlayerFormProps) {
             return;
         }
 
-        const currentTeam = state.teams.find(t => t.id === teamId);
+        const currentTeam = state.config.teams.find(t => t.id === teamId);
         if (currentTeam && currentTeam.players.some(p => p.number === trimmedPlayerNumber)) {
           toast({
             title: "Número de Jugador Duplicado",
@@ -73,7 +72,7 @@ export function AddPlayerForm({ teamId }: AddPlayerFormProps) {
       payload: {
         teamId,
         player: {
-          number: trimmedPlayerNumber, // Can be empty
+          number: trimmedPlayerNumber,
           name: trimmedPlayerName,
           type: playerType,
         },
@@ -85,7 +84,6 @@ export function AddPlayerForm({ teamId }: AddPlayerFormProps) {
       description: `Jugador ${trimmedPlayerNumber ? `#${trimmedPlayerNumber} ` : ''}${trimmedPlayerName} añadido al equipo.`,
     });
 
-    // Reset form
     setPlayerNumber("");
     setPlayerName("");
     setPlayerType("player");

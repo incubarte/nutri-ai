@@ -27,7 +27,7 @@ export const CategorySettingsCard = forwardRef<CategorySettingsCardRef, Category
   const { onDirtyChange } = props;
 
   const [localCategoriesString, setLocalCategoriesString] = useState(
-    state.availableCategories.map(c => c.name).join(", ")
+    state.config.availableCategories.map(c => c.name).join(", ")
   );
   const [isDirtyLocal, setIsDirtyLocal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -38,9 +38,9 @@ export const CategorySettingsCard = forwardRef<CategorySettingsCardRef, Category
 
   useEffect(() => {
      if (!isDirtyLocal) {
-      setLocalCategoriesString(state.availableCategories.map(c => c.name).join(", "));
+      setLocalCategoriesString(state.config.availableCategories.map(c => c.name).join(", "));
     }
-  }, [state.availableCategories, isDirtyLocal]);
+  }, [state.config.availableCategories, isDirtyLocal]);
 
   const markDirty = () => setIsDirtyLocal(true);
 
@@ -73,7 +73,7 @@ export const CategorySettingsCard = forwardRef<CategorySettingsCardRef, Category
       return true; 
     },
     handleDiscard: () => {
-      setLocalCategoriesString(state.availableCategories.map(c => c.name).join(", "));
+      setLocalCategoriesString(state.config.availableCategories.map(c => c.name).join(", "));
       setIsDirtyLocal(false);
       setIsEditing(false); // Exit editing mode after discard
     },
@@ -82,9 +82,8 @@ export const CategorySettingsCard = forwardRef<CategorySettingsCardRef, Category
 
   const handleEditToggle = () => {
     if (isEditing && isDirtyLocal) {
-        // If currently editing and dirty, treat X as discard changes specific to this card
-        setLocalCategoriesString(state.availableCategories.map(c => c.name).join(", "));
-        setIsDirtyLocal(false); // This will also trigger onDirtyChange(false)
+        setLocalCategoriesString(state.config.availableCategories.map(c => c.name).join(", "));
+        setIsDirtyLocal(false);
     }
     setIsEditing(!isEditing);
   };
@@ -129,4 +128,3 @@ export const CategorySettingsCard = forwardRef<CategorySettingsCardRef, Category
 });
 
 CategorySettingsCard.displayName = "CategorySettingsCard";
-

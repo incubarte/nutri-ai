@@ -1,11 +1,11 @@
 
 import { setConfig } from '@/lib/server-side-store';
 import { NextResponse } from 'next/server';
-import type { ConfigFields } from '@/types';
+import type { ConfigState } from '@/types';
 
 export async function POST(request: Request) {
   try {
-    const configData = (await request.json()) as ConfigFields;
+    const configData = (await request.json()) as ConfigState;
     if (!configData) {
       return NextResponse.json({ message: 'Invalid config data provided.' }, { status: 400 });
     }

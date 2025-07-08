@@ -21,7 +21,7 @@ export const DebugSettingsCard = forwardRef<DebugSettingsCardRef, DebugSettingsC
   const { state, dispatch } = useGameState();
   const { onDirtyChange } = props;
 
-  const [localEnableDebugMode, setLocalEnableDebugMode] = useState(state.enableDebugMode);
+  const [localEnableDebugMode, setLocalEnableDebugMode] = useState(state.config.enableDebugMode);
   const [isDirtyLocal, setIsDirtyLocal] = useState(false);
 
   useEffect(() => {
@@ -30,9 +30,9 @@ export const DebugSettingsCard = forwardRef<DebugSettingsCardRef, DebugSettingsC
 
   useEffect(() => {
     if (!isDirtyLocal) {
-      setLocalEnableDebugMode(state.enableDebugMode);
+      setLocalEnableDebugMode(state.config.enableDebugMode);
     }
-  }, [state.enableDebugMode, isDirtyLocal]);
+  }, [state.config.enableDebugMode, isDirtyLocal]);
 
   const markDirty = () => setIsDirtyLocal(true);
 
@@ -44,7 +44,7 @@ export const DebugSettingsCard = forwardRef<DebugSettingsCardRef, DebugSettingsC
       return true;
     },
     handleDiscard: () => {
-      setLocalEnableDebugMode(state.enableDebugMode);
+      setLocalEnableDebugMode(state.config.enableDebugMode);
       setIsDirtyLocal(false);
     },
     getIsDirty: () => isDirtyLocal,

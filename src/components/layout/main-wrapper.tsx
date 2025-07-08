@@ -10,17 +10,21 @@ import { useGameState } from '@/contexts/game-state-context';
 export function MainWrapper({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { state } = useGameState();
-  const { scoreboardLayout } = state;
+
+  // Safely access scoreboardLayout. If state or state.config is not ready,
+  // we cannot apply custom styles yet, but the component can still render.
+  const scoreboardLayout = state.config?.scoreboardLayout;
   const isScoreboardPage = pathname === '/';
 
   useEffect(() => {
-    if (typeof document !== 'undefined') {
+    // The effect will only run if scoreboardLayout is defined.
+    if (typeof document !== 'undefined' && scoreboardLayout) {
       const root = document.documentElement;
       root.style.setProperty('--background', scoreboardLayout.backgroundColor);
       root.style.setProperty('--primary', scoreboardLayout.primaryColor);
       root.style.setProperty('--accent', scoreboardLayout.accentColor);
     }
-  }, [scoreboardLayout.backgroundColor, scoreboardLayout.primaryColor, scoreboardLayout.accentColor]);
+  }, [scoreboardLayout]); // Depend on the whole object
 
   let mainClassName;
   if (isScoreboardPage) {

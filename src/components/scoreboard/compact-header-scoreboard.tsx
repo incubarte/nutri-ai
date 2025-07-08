@@ -9,15 +9,17 @@ import { ListFilter } from 'lucide-react'; // Icon for category
 
 export function CompactHeaderScoreboard() {
   const { state } = useGameState();
-  const { scoreboardLayout } = state;
+  const { config, live } = state;
+  const { scoreboardLayout, playersPerTeamOnIce, selectedMatchCategory, availableCategories } = config;
+  const { penalties, score, homeTeamName, awayTeamName } = live;
 
-  const activeHomePenaltiesCount = state.penalties.home.filter(p => p._status === 'running').length;
-  const playersOnIceForHome = Math.max(0, state.playersPerTeamOnIce - activeHomePenaltiesCount);
+  const activeHomePenaltiesCount = penalties.home.filter(p => p._status === 'running').length;
+  const playersOnIceForHome = Math.max(0, playersPerTeamOnIce - activeHomePenaltiesCount);
 
-  const activeAwayPenaltiesCount = state.penalties.away.filter(p => p._status === 'running').length;
-  const playersOnIceForAway = Math.max(0, state.playersPerTeamOnIce - activeAwayPenaltiesCount);
+  const activeAwayPenaltiesCount = penalties.away.filter(p => p._status === 'running').length;
+  const playersOnIceForAway = Math.max(0, playersPerTeamOnIce - activeAwayPenaltiesCount);
 
-  const matchCategoryName = getCategoryNameById(state.selectedMatchCategory, state.availableCategories);
+  const matchCategoryName = getCategoryNameById(selectedMatchCategory, availableCategories);
 
   return (
     <Card className="bg-card shadow-xl relative">
@@ -32,20 +34,20 @@ export function CompactHeaderScoreboard() {
       )}
       <CardContent className="p-4 md:p-6 grid grid-cols-[auto_1fr_auto] items-center gap-x-6 md:gap-x-8 lg:gap-x-10">
         <TeamScoreDisplay 
-          teamActualName={state.homeTeamName} 
+          teamActualName={homeTeamName} 
           teamDisplayName="Local" 
-          score={state.score.home}
+          score={score.home}
           playersOnIce={playersOnIceForHome}
-          configuredPlayersPerTeam={state.playersPerTeamOnIce}
+          configuredPlayersPerTeam={playersPerTeamOnIce}
           layout={scoreboardLayout}
         />
         <ClockDisplay />
         <TeamScoreDisplay 
-          teamActualName={state.awayTeamName} 
+          teamActualName={awayTeamName} 
           teamDisplayName="Visitante" 
-          score={state.score.away} 
+          score={score.away} 
           playersOnIce={playersOnIceForAway}
-          configuredPlayersPerTeam={state.playersPerTeamOnIce}
+          configuredPlayersPerTeam={playersPerTeamOnIce}
           layout={scoreboardLayout}
         />
       </CardContent>

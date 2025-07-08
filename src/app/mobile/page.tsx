@@ -35,7 +35,6 @@ export default function MobileScoreboard() {
         setIsLoading(false);
       }
 
-      // Subscribe to future updates
       eventSource = new EventSource('/api/game-state/events');
 
       eventSource.onopen = () => {
@@ -62,7 +61,6 @@ export default function MobileScoreboard() {
 
     connect();
 
-    // Cleanup on component unmount
     return () => {
       if (eventSource) {
         eventSource.close();
@@ -70,22 +68,17 @@ export default function MobileScoreboard() {
     };
   }, []);
 
-  // Effect for the client-side visual timer tick
   useEffect(() => {
-    // Stop if we have no state, or if the clock shouldn't be running.
     if (!gameState || !gameState.clock.isClockRunning || gameState.clock.currentTime <= 0) {
       return;
     }
 
-    // This interval makes the clock tick down smoothly on the client's screen.
     const timerId = setInterval(() => {
       setGameState(prevState => {
-        // Double-check state in case it became null between ticks
         if (!prevState || !prevState.clock.isClockRunning || prevState.clock.currentTime <= 0) {
           return prevState;
         }
 
-        // Decrement by 10 centiseconds (because the interval is 100ms)
         const newTime = prevState.clock.currentTime - 10;
 
         return {
@@ -132,7 +125,6 @@ export default function MobileScoreboard() {
     );
   }
 
-  // Calculate players on ice
   const playersPerTeam = gameState.playersPerTeamOnIce || 5;
   const activeHomePenaltiesCount = gameState.penalties.home.filter(p => p._status === 'running').length;
   const playersOnIceForHome = Math.max(0, playersPerTeam - activeHomePenaltiesCount);
@@ -140,22 +132,19 @@ export default function MobileScoreboard() {
   const activeAwayPenaltiesCount = gameState.penalties.away.filter(p => p._status === 'running').length;
   const playersOnIceForAway = Math.max(0, playersPerTeam - activeAwayPenaltiesCount);
 
-  // Render the scoreboard using `gameState`
   return (
     <div className="flex flex-col h-screen p-2 sm:p-4 gap-4 bg-background text-foreground">
-      {/* Main Info Card: Clock and Scores */}
       <Card className="bg-card shadow-lg">
         <CardContent className="p-4">
           <div className="text-center mb-4">
             <div className="font-bold font-headline tabular-nums tracking-tighter text-6xl text-accent">
-              {formatTime(gameState.clock.currentTime, { showTenths: gameState.clock.currentTime < 6000, includeMinutesForTenths: false })}
+              {formatTime(gameState.clock.currentTime, { showTenths: gameState.clock.currentTime < 6000, includeMinutesForTenths: false, rounding: 'down' })}
             </div>
             <div className="mt-1 font-semibold text-primary-foreground uppercase tracking-wider text-2xl">
               {getActualPeriodText(gameState.clock.currentPeriod, gameState.clock.periodDisplayOverride, gameState.numberOfRegularPeriods || 2)}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4 border-t pt-4">
-            {/* Home Team */}
             <div className="text-center">
               <div className="flex justify-center items-center gap-1 mb-1 h-5">
                 {playersOnIceForHome > 0 && Array(playersOnIceForHome).fill(null).map((_, index) => (
@@ -166,7 +155,6 @@ export default function MobileScoreboard() {
               <div className="text-sm text-muted-foreground">(Local)</div>
               <div className="text-6xl font-bold text-accent">{gameState.score.home}</div>
             </div>
-            {/* Away Team */}
             <div className="text-center">
               <div className="flex justify-center items-center gap-1 mb-1 h-5">
                  {playersOnIceForAway > 0 && Array(playersOnIceForAway).fill(null).map((_, index) => (
@@ -181,7 +169,6 @@ export default function MobileScoreboard() {
         </CardContent>
       </Card>
 
-      {/* Penalties */}
       <div className="flex-grow grid grid-cols-1 gap-4 overflow-y-auto pb-4">
          <PenaltiesDisplay teamDisplayType="Local" teamName={gameState.homeTeamName} penalties={gameState.penalties.home} mode="mobile" clock={gameState.clock} />
          <PenaltiesDisplay teamDisplayType="Visitante" teamName={gameState.awayTeamName} penalties={gameState.penalties.away} mode="mobile" clock={gameState.clock} />

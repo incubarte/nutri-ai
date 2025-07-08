@@ -6,13 +6,20 @@ import { useGameState, DEFAULT_SOUND_PATH, DEFAULT_PENALTY_BEEP_PATH } from '@/c
 import { useToast } from '@/hooks/use-toast';
 
 export function SoundPlayer() {
-  const { state } = useGameState();
+  const { state, isLoading } = useGameState();
+  const { config, live } = state;
   const { toast } = useToast();
+
+  // Return null immediately if the necessary state isn't ready.
+  // This prevents any hooks or logic from running with undefined data.
+  if (isLoading || !config || !live) {
+    return null;
+  }
   
-  const lastPlayedHornTriggerRef = useRef<number>(state.playHornTrigger);
+  const lastPlayedHornTriggerRef = useRef<number>(live.playHornTrigger);
   const hornAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const lastPlayedBeepTriggerRef = useRef<number>(state.playPenaltyBeepTrigger);
+  const lastPlayedBeepTriggerRef = useRef<number>(live.playPenaltyBeepTrigger);
   const penaltyAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
@@ -22,8 +29,8 @@ export function SoundPlayer() {
   }, []);
 
 
-  const hornSoundSrc = state.customHornSoundDataUrl || DEFAULT_SOUND_PATH;
-  const penaltyBeepSoundSrc = state.customPenaltyBeepSoundDataUrl || DEFAULT_PENALTY_BEEP_PATH;
+  const hornSoundSrc = config.customHornSoundDataUrl || DEFAULT_SOUND_PATH;
+  const penaltyBeepSoundSrc = config.customPenaltyBeepSoundDataUrl || DEFAULT_PENALTY_BEEP_PATH;
 
   const handleAudioError = (e: React.SyntheticEvent<HTMLAudioElement, Event>, soundName: string) => {
     const error = e.currentTarget.error;
@@ -57,12 +64,12 @@ export function SoundPlayer() {
   };
 
   useEffect(() => {
-    if (state.isLoading) return;
+    if (isLoading) return;
 
-    if (state.playHornTrigger > lastPlayedHornTriggerRef.current) {
-      lastPlayedHornTriggerRef.current = state.playHornTrigger;
+    if (live.playHornTrigger > lastPlayedHornTriggerRef.current) {
+      lastPlayedHornTriggerRef.current = live.playHornTrigger;
 
-      if (state.playSoundAtPeriodEnd && hornAudioRef.current) {
+      if (config.playSoundAtPeriodEnd && hornAudioRef.current) {
         hornAudioRef.current.currentTime = 0;
         hornAudioRef.current.play().catch(error => {
           console.warn("Playback prevented for horn sound:", error);
@@ -74,15 +81,15 @@ export function SoundPlayer() {
         });
       }
     }
-  }, [state.playHornTrigger, state.playSoundAtPeriodEnd, state.isLoading, toast]);
+  }, [live.playHornTrigger, config.playSoundAtPeriodEnd, isLoading, toast]);
 
   useEffect(() => {
-    if (state.isLoading) return;
+    if (isLoading) return;
 
-    if (state.playPenaltyBeepTrigger > lastPlayedBeepTriggerRef.current) {
-      lastPlayedBeepTriggerRef.current = state.playPenaltyBeepTrigger;
+    if (live.playPenaltyBeepTrigger > lastPlayedBeepTriggerRef.current) {
+      lastPlayedBeepTriggerRef.current = live.playPenaltyBeepTrigger;
       
-      if (state.enablePenaltyCountdownSound && penaltyAudioRef.current) {
+      if (config.enablePenaltyCountdownSound && penaltyAudioRef.current) {
         penaltyAudioRef.current.currentTime = 0;
         penaltyAudioRef.current.play().catch(error => {
           console.warn("Playback prevented for penalty beep:", error);
@@ -94,7 +101,7 @@ export function SoundPlayer() {
         });
       }
     }
-  }, [state.playPenaltyBeepTrigger, state.enablePenaltyCountdownSound, state.isLoading, toast]);
+  }, [live.playPenaltyBeepTrigger, config.enablePenaltyCountdownSound, isLoading, toast]);
 
   if (!isMounted) {
     return null;

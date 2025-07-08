@@ -36,6 +36,7 @@ const NO_CATEGORIES_PLACEHOLDER_VALUE_TAB = "__NO_CATEGORIES_DEFINED_TAB__";
 
 export function TeamsManagementTab() {
   const { state, dispatch } = useGameState();
+  const { teams, availableCategories } = state.config;
   const router = useRouter();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -53,7 +54,7 @@ export function TeamsManagementTab() {
   const [isConfirmMassDeleteOpen, setIsConfirmMassDeleteOpen] = useState(false);
 
   const filteredTeams = useMemo(() => {
-    let teamsToFilter = state.teams;
+    let teamsToFilter = teams;
 
     if (categoryFilter && categoryFilter !== ALL_CATEGORIES_FILTER_KEY) {
       teamsToFilter = teamsToFilter.filter((team) => team.category === categoryFilter);
@@ -66,7 +67,7 @@ export function TeamsManagementTab() {
       team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (team.subName && team.subName.toLowerCase().includes(searchTerm.toLowerCase()))
     ).sort((a, b) => a.name.localeCompare(b.name));
-  }, [state.teams, searchTerm, categoryFilter]);
+  }, [teams, searchTerm, categoryFilter]);
 
   const handleTeamSaved = (teamId: string) => {
     // Potentially navigate to the new/edited team's page, or just close dialog
@@ -93,7 +94,7 @@ export function TeamsManagementTab() {
         return;
     }
 
-    const jsonString = JSON.stringify(state.teams, null, 2); // subName will be included if present
+    const jsonString = JSON.stringify(teams, null, 2);
     const blob = new Blob([jsonString], { type: "application/json" });
     const href = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -106,7 +107,7 @@ export function TeamsManagementTab() {
 
     toast({
       title: "Equipos Exportados",
-      description: `Archivo ${filename.trim()} descargado con ${state.teams.length} equipo(s).`,
+      description: `Archivo ${filename.trim()} descargado con ${teams.length} equipo(s).`,
     });
     setIsExportDialogOpen(false);
   };
@@ -130,7 +131,7 @@ export function TeamsManagementTab() {
             item && typeof item.id === 'string' &&
             typeof item.name === 'string' &&
             (typeof item.category === 'string' || item.category === undefined || item.category === null) &&
-            (typeof item.subName === 'string' || item.subName === undefined || item.subName === null) && // Check for subName
+            (typeof item.subName === 'string' || item.subName === undefined || item.subName === null) &&
             Array.isArray(item.players))
            ) {
           throw new Error("Archivo de equipos no válido o formato incorrecto. Se esperaba un array de equipos.");
@@ -139,9 +140,9 @@ export function TeamsManagementTab() {
         const validatedTeams = importedData.map(team => ({
           id: team.id,
           name: team.name,
-          subName: team.subName || undefined, // Add subName
+          subName: team.subName || undefined,
           logoDataUrl: team.logoDataUrl || getSpecificDefaultLogoUrlForCsv(team.name),
-          category: team.category || (state.availableCategories.length > 0 ? state.availableCategories[0].id : ''),
+          category: team.category || (availableCategories.length > 0 ? availableCategories[0].id : ''),
           players: Array.isArray(team.players) ? team.players.map((player: any) => ({
             id: player.id || crypto.randomUUID(),
             number: String(player.number || ''),
@@ -151,7 +152,7 @@ export function TeamsManagementTab() {
         }));
 
 
-        if (state.teams.length > 0) {
+        if (teams.length > 0) {
             setPendingImportData(validatedTeams as TeamData[]);
             setIsImportConfirmOpen(true);
         } else {
@@ -237,20 +238,11 @@ export function TeamsManagementTab() {
 
             if (teamDataParts.length === 3) {
                 teamNameCsv = teamDataParts[0].trim();
-                subNameCsv = teamDataParts[1].trim() || undefined; // if empty string, make it undefined
+                subNameCsv = teamDataParts[1].trim() || undefined;
                 categoryNameCsv = teamDataParts[2].trim();
-            } else if (teamDataParts.length === 2) { // Legacy format or subName is empty
+            } else if (teamDataParts.length === 2) {
                 teamNameCsv = teamDataParts[0].trim();
-                const potentialCategory = state.availableCategories.find(
-                    (cat) => cat.name.toLowerCase() === teamDataParts[1].trim().toLowerCase()
-                );
-                if (potentialCategory) { 
-                    subNameCsv = undefined;
-                    categoryNameCsv = teamDataParts[1].trim();
-                } else { 
-                    subNameCsv = undefined;
-                    categoryNameCsv = teamDataParts[1].trim();
-                }
+                categoryNameCsv = teamDataParts[1].trim();
             } else {
                 throw new Error(`Error en la línea ${lineCounter} del CSV (encabezado de equipo): Formato incorrecto. Se esperan 2 o 3 columnas: 'NombreEquipo,[SubNombreOpcional],NombreCategoria'.`);
             }
@@ -259,7 +251,7 @@ export function TeamsManagementTab() {
                 throw new Error(`Error en la línea ${lineCounter} del CSV (encabezado de equipo): Nombre de equipo y nombre de categoría son obligatorios.`);
             }
 
-            const category = state.availableCategories.find(
+            const category = availableCategories.find(
               (cat) => cat.name.toLowerCase() === categoryNameCsv.toLowerCase()
             );
             if (!category) {
@@ -274,7 +266,7 @@ export function TeamsManagementTab() {
             )) {
                  throw new Error(`Equipo duplicado en CSV: "${teamNameCsv}" ${subNameCsv ? `(sub: "${subNameCsv}") ` : ''}en categoría "${categoryNameCsv}" (línea ${lineCounter}) ya fue definido en este archivo.`);
             }
-            const existingTeamInState = state.teams.find(
+            const existingTeamInState = teams.find(
               (t) => t.name.toLowerCase() === teamNameCsv.toLowerCase() &&
                      (t.subName?.toLowerCase() || '') === (subNameCsv?.toLowerCase() || '') &&
                      t.category === categoryId
@@ -320,7 +312,7 @@ export function TeamsManagementTab() {
 
             currentTeamData.players.push({
               id: crypto.randomUUID(),
-              number: playerNumber, // Can be empty string if not provided in CSV
+              number: playerNumber,
               name: playerName,
               type: playerType,
             });
@@ -343,7 +335,7 @@ export function TeamsManagementTab() {
         }
 
         importedTeams.forEach(team => {
-            dispatch({ type: 'ADD_TEAM', payload: team as TeamData }); // Cast to TeamData
+            dispatch({ type: 'ADD_TEAM', payload: team as TeamData });
         });
         
         toast({
@@ -423,12 +415,12 @@ export function TeamsManagementTab() {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value={ALL_CATEGORIES_FILTER_KEY}>Todas las Categorías</SelectItem>
-                    {state.availableCategories.map((cat) => (
+                    {availableCategories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id} className="text-sm">
                             {cat.name}
                         </SelectItem>
                     ))}
-                     {state.availableCategories.length === 0 && (
+                     {availableCategories.length === 0 && (
                         <SelectItem value={NO_CATEGORIES_PLACEHOLDER_VALUE_TAB} disabled>No hay categorías definidas</SelectItem>
                     )}
                 </SelectContent>
@@ -455,20 +447,20 @@ export function TeamsManagementTab() {
         <div className="text-center py-12">
           <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-xl font-semibold text-card-foreground mb-2">
-            {state.teams.length === 0
+            {teams.length === 0
               ? "No hay equipos creados"
               : (searchTerm || (categoryFilter && categoryFilter !== ALL_CATEGORIES_FILTER_KEY))
                 ? "No se encontraron equipos con los filtros aplicados"
                 : "No se encontraron equipos"}
           </h3>
           <p className="text-muted-foreground mb-4">
-            {state.teams.length === 0
+            {teams.length === 0
               ? "Comienza creando tu primer equipo."
               : (searchTerm || (categoryFilter && categoryFilter !== ALL_CATEGORIES_FILTER_KEY))
                 ? "Intenta con otros filtros o crea un nuevo equipo."
                 : "Crea un nuevo equipo para empezar."}
           </p>
-          {(searchTerm || (categoryFilter && categoryFilter !== ALL_CATEGORIES_FILTER_KEY)) && state.teams.length > 0 && !isDeleteSelectionMode && (
+          {(searchTerm || (categoryFilter && categoryFilter !== ALL_CATEGORIES_FILTER_KEY)) && teams.length > 0 && !isDeleteSelectionMode && (
              <Button variant="outline" onClick={() => { setSearchTerm(""); setCategoryFilter(ALL_CATEGORIES_FILTER_KEY); }}>Limpiar filtros</Button>
           )}
         </div>
@@ -502,7 +494,7 @@ export function TeamsManagementTab() {
                 <Button
                     variant="outline"
                     onClick={() => setIsDeleteSelectionMode(true)}
-                    disabled={state.teams.length === 0}
+                    disabled={teams.length === 0}
                 >
                     <Trash2 className="mr-2 h-4 w-4" /> Seleccionar para Eliminar
                 </Button>
@@ -518,7 +510,7 @@ export function TeamsManagementTab() {
               Si no hay SubNombre, usar: <code>NombreEquipo,,NombreCategoría</code> (doble coma) o <code>NombreEquipo,NombreCategoría</code> (2 columnas).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Button onClick={prepareExportTeams} variant="outline" className="flex-1" disabled={state.teams.length === 0}>
+              <Button onClick={prepareExportTeams} variant="outline" className="flex-1" disabled={teams.length === 0}>
                 <Download className="mr-2 h-4 w-4" /> Exportar (JSON)
               </Button>
               <Button onClick={handleImportJsonClick} variant="outline" className="flex-1">
@@ -622,4 +614,3 @@ export function TeamsManagementTab() {
     </div>
   );
 }
-

@@ -1,7 +1,8 @@
 
-import { getGameState, setGameState, getConfig } from '@/lib/server-side-store';
+import { getGameState } from '@/lib/server-side-store';
 import { NextResponse } from 'next/server';
 import type { LiveGameState } from '@/types';
+import { setGameState as setServerGameState } from '@/lib/server-side-store';
 
 export async function GET(request: Request) {
   const gameState = getGameState();
@@ -15,8 +16,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Invalid game state data provided.' }, { status: 400 });
     }
 
-    // setGameState now also handles broadcasting the update to SSE subscribers
-    setGameState(gameStateData);
+    setServerGameState(gameStateData);
 
     return NextResponse.json({ message: 'Game state updated successfully.' }, { status: 200 });
   } catch (error) {

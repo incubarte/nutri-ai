@@ -33,16 +33,16 @@ export default function ManageTeamPage() {
   const { toast } = useToast();
 
   const teamId = typeof params.teamId === 'string' ? params.teamId : undefined;
-  const [team, setTeam] = useState(teamId ? state.teams.find(t => t.id === teamId) : undefined);
+  const [team, setTeam] = useState(teamId ? state.config.teams.find(t => t.id === teamId) : undefined);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (teamId) {
-      setTeam(state.teams.find(t => t.id === teamId));
+      setTeam(state.config.teams.find(t => t.id === teamId));
     }
-  }, [teamId, state.teams]);
+  }, [teamId, state.config.teams]);
 
   const sortedPlayers = useMemo(() => {
     if (!team?.players) return [];
@@ -96,7 +96,7 @@ export default function ManageTeamPage() {
     router.push('/config?tab=categoriesAndTeams');
   };
   
-  const categoryName = getCategoryNameById(team.category, state.availableCategories);
+  const categoryName = getCategoryNameById(team.category, state.config.availableCategories);
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">

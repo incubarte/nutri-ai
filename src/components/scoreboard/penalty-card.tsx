@@ -37,25 +37,25 @@ interface PenaltyCardProps {
 
 export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobileClock }: PenaltyCardProps) {
   const { state } = useGameState();
-  // Use the passed-in mobile clock if available, otherwise use the global context clock from desktop.
-  const clock = mobileClock || state.clock;
+  const { config, live } = state;
+  const clock = mobileClock || live.clock;
   const isMobile = mode === 'mobile';
-
-  const currentTeamSubName = state.homeTeamName === teamName ? state.homeTeamSubName : state.awayTeamName;
+  
+  const currentTeamSubName = live.homeTeamName === teamName ? live.homeTeamSubName : live.awayTeamSubName;
 
   const matchedPlayer = React.useMemo(() => {
-    const currentTeam = state.teams.find(t =>
+    const currentTeam = config.teams.find(t =>
         t.name === teamName &&
         (t.subName || undefined) === (currentTeamSubName || undefined) &&
-        t.category === state.selectedMatchCategory
+        t.category === config.selectedMatchCategory
     );
     if (currentTeam) {
       return currentTeam.players.find(p => p.number === penalty.playerNumber || (penalty.playerNumber === "S/N" && !p.number));
     }
     return null;
-  }, [state.teams, teamName, currentTeamSubName, state.selectedMatchCategory, penalty.playerNumber]);
+  }, [config.teams, teamName, currentTeamSubName, config.selectedMatchCategory, penalty.playerNumber]);
 
-  const isWaitingSlot = penalty._status === 'pending_player' || penalty._status === 'pending_concurrent';
+  const isWaitingSlot = penalty._status === 'pending_concurrent';
   const isPendingPuck = penalty._status === 'pending_puck';
 
   const cardClasses = cn(
@@ -65,7 +65,7 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
   );
 
   const renderPlayerAlias = () => {
-    if (!state.showAliasInScoreboardPenalties || !matchedPlayer || !matchedPlayer.name) return null;
+    if (!config.showAliasInScoreboardPenalties || !matchedPlayer || !matchedPlayer.name) return null;
     
     const name = matchedPlayer.name;
     let displayName = name;
@@ -96,20 +96,18 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
   
   let remainingTimeCs: number;
   if (penalty._status === 'running' && penalty.expirationTime !== undefined) {
-    // Correct calculation: The penalty's absolute expiration time minus the game's current absolute elapsed time.
     remainingTimeCs = Math.max(0, penalty.expirationTime - clock._liveAbsoluteElapsedTimeCs);
   } else {
-    // For pending penalties, just show the full initial duration.
     remainingTimeCs = penalty.initialDuration * 100;
   }
 
   const styles = {
-    playerIconSize: isMobile ? 2 : state.scoreboardLayout.penaltyPlayerIconSize,
-    playerNumberSize: isMobile ? '1.5rem' : `${state.scoreboardLayout.penaltyPlayerNumberSize}rem`,
-    timeSize: isMobile ? '1.5rem' : `${state.scoreboardLayout.penaltyTimeSize}rem`,
-    clockIconSize: isMobile ? '1.25rem' : `${state.scoreboardLayout.penaltyTimeSize * 0.5}rem`,
-    totalDurationSize: isMobile ? '0.75rem' : `${state.scoreboardLayout.penaltyTimeSize * 0.4}rem`,
-    statusSize: isMobile ? '0.75rem' : `${state.scoreboardLayout.penaltyTimeSize * 0.4}rem`,
+    playerIconSize: isMobile ? 2 : config.scoreboardLayout.penaltyPlayerIconSize,
+    playerNumberSize: isMobile ? '1.5rem' : `${config.scoreboardLayout.penaltyPlayerNumberSize}rem`,
+    timeSize: isMobile ? '1.5rem' : `${config.scoreboardLayout.penaltyTimeSize}rem`,
+    clockIconSize: isMobile ? '1.25rem' : `${config.scoreboardLayout.penaltyTimeSize * 0.5}rem`,
+    totalDurationSize: isMobile ? '0.75rem' : `${config.scoreboardLayout.penaltyTimeSize * 0.4}rem`,
+    statusSize: isMobile ? '0.75rem' : `${config.scoreboardLayout.penaltyTimeSize * 0.4}rem`,
   };
 
   return (

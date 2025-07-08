@@ -2,9 +2,9 @@
 
 'use client';
 
-import type { LiveGameState, ConfigFields } from './types';
+import type { LiveGameState, ConfigState } from '@/types';
 
-export async function updateConfigOnServer(config: ConfigFields) {
+export async function updateConfigOnServer(config: ConfigState) {
   try {
     await fetch('/api/config', {
       method: 'POST',

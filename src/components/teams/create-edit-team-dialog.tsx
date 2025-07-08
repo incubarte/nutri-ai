@@ -43,7 +43,6 @@ function getSpecificDefaultLogoUrl(teamName: string): string | null {
   }
   return null;
 }
-// Export for CSV import usage
 export { getSpecificDefaultLogoUrl as getSpecificDefaultLogoUrlForCsv };
 
 
@@ -63,19 +62,19 @@ export function CreateEditTeamDialog({
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
   const [teamName, setTeamName] = useState("");
-  const [teamSubName, setTeamSubName] = useState(""); // New state for subName
+  const [teamSubName, setTeamSubName] = useState("");
   const [teamCategory, setTeamCategory] = useState("");
-  const [logoPreview, setLogoPreview] = useState<string | null>(null); // Can be data URI or null
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!teamToEdit;
-  const { availableCategories } = state;
+  const { availableCategories, teams } = state.config;
 
   useEffect(() => {
     if (isOpen) {
       if (isEditing && teamToEdit) {
         setTeamName(teamToEdit.name);
-        setTeamSubName(teamToEdit.subName || ""); // Initialize subName
+        setTeamSubName(teamToEdit.subName || "");
         setTeamCategory(teamToEdit.category || (availableCategories.length > 0 ? availableCategories[0].id : ""));
         if (teamToEdit.logoDataUrl && teamToEdit.logoDataUrl.startsWith('data:image')) {
             setLogoPreview(teamToEdit.logoDataUrl);
@@ -84,7 +83,7 @@ export function CreateEditTeamDialog({
         }
       } else {
         setTeamName("");
-        setTeamSubName(""); // Reset subName for new team
+        setTeamSubName("");
         setTeamCategory(availableCategories.length > 0 ? availableCategories[0].id : "");
         setLogoPreview(null);
       }
@@ -135,7 +134,7 @@ export function CreateEditTeamDialog({
 
   const handleSubmit = () => {
     const trimmedTeamName = teamName.trim();
-    const trimmedTeamSubName = teamSubName.trim(); // Get trimmed subName
+    const trimmedTeamSubName = teamSubName.trim();
 
     if (!trimmedTeamName) {
       toast({
@@ -162,7 +161,7 @@ export function CreateEditTeamDialog({
         return;
     }
 
-    const isDuplicate = state.teams.some(
+    const isDuplicate = teams.some(
       (t) =>
         t.id !== teamToEdit?.id &&
         t.name.toLowerCase() === trimmedTeamName.toLowerCase() &&
@@ -194,7 +193,7 @@ export function CreateEditTeamDialog({
 
     const teamPayload = {
       name: trimmedTeamName,
-      subName: trimmedTeamSubName || undefined, // Set to undefined if empty
+      subName: trimmedTeamSubName || undefined,
       category: teamCategory,
       logoDataUrl: finalLogoDataUrl,
     };
@@ -365,9 +364,3 @@ export function CreateEditTeamDialog({
     </Dialog>
   );
 }
-    
-
-    
-
-
-

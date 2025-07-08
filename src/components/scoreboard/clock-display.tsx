@@ -10,7 +10,8 @@ interface ClockDisplayProps {
 
 export function ClockDisplay({ className }: ClockDisplayProps) {
   const { state } = useGameState();
-  const { scoreboardLayout, clock } = state;
+  const { scoreboardLayout } = state.config;
+  const { clock, score, homeTeamName, awayTeamName } = state.live;
 
   const isMainClockLastMinute = clock.currentTime < 6000 && clock.currentTime >= 0 &&
                                 (clock.periodDisplayOverride !== "End of Game" && (clock.periodDisplayOverride !== null || clock.currentPeriod >= 0));
@@ -19,10 +20,10 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
   const isPreTimeoutLastMinute = typeof preTimeoutTimeCs === 'number' && preTimeoutTimeCs < 6000 && preTimeoutTimeCs >= 0;
 
   const getWinnerName = () => {
-    if (state.homeScore > state.awayScore) {
-      return state.homeTeamName || 'Local';
-    } else if (state.awayScore > state.homeScore) {
-      return state.awayTeamName || 'Visitante';
+    if (score.home > score.away) {
+      return homeTeamName || 'Local';
+    } else if (score.away > score.home) {
+      return awayTeamName || 'Visitante';
     } else {
       return "Empate";
     }
@@ -48,7 +49,7 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
           )}
           style={{ fontSize: `${scoreboardLayout.clockSize}rem`, lineHeight: 1 }}
           >
-          {formatTime(clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false })}
+          {formatTime(clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false, rounding: 'down' })}
         </div>
       )}
       {clock.periodDisplayOverride !== "End of Game" && (
@@ -58,7 +59,7 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
         >
           <div className="inline-block relative">
             <span>
-              {getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.numberOfRegularPeriods)}
+              {getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods)}
             </span>
             {!clock.isClockRunning && clock.currentTime > 0 && clock.periodDisplayOverride !== "End of Game" && (
               <span
@@ -78,12 +79,10 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
           )}
           style={{ fontSize: `${scoreboardLayout.periodSize * 0.45}rem` }}
           >
-          {getPeriodText(clock.preTimeoutState.period, state.numberOfRegularPeriods)} - {formatTime(clock.preTimeoutState.time, { showTenths: isPreTimeoutLastMinute, includeMinutesForTenths: false })}
+          {getPeriodText(clock.preTimeoutState.period, state.config.numberOfRegularPeriods)} - {formatTime(clock.preTimeoutState.time, { showTenths: isPreTimeoutLastMinute, includeMinutesForTenths: false, rounding: 'down' })}
           {clock.preTimeoutState.override ? ` (${clock.preTimeoutState.override})` : ''}
         </div>
       )}
     </div>
   );
 }
-
-    

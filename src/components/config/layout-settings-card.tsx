@@ -146,7 +146,7 @@ interface LayoutSettingsCardProps {
 
 export const LayoutSettingsCard = forwardRef<LayoutSettingsCardRef, LayoutSettingsCardProps>((props, ref) => {
   const { state, dispatch } = useGameState();
-  const { initialValues } = props;
+  const { scoreboardLayout, selectedScoreboardLayoutProfileId } = state.config;
   
   const handleValueChange = (key: keyof ScoreboardLayoutSettings, value: number | string) => {
     dispatch({ type: 'UPDATE_LAYOUT_SETTINGS', payload: { [key]: value } });
@@ -158,15 +158,11 @@ export const LayoutSettingsCard = forwardRef<LayoutSettingsCardRef, LayoutSettin
       return true;
     },
     handleDiscard: () => {
-      if (state.selectedScoreboardLayoutProfileId) {
-        dispatch({ type: 'SELECT_SCOREBOARD_LAYOUT_PROFILE', payload: { profileId: state.selectedScoreboardLayoutProfileId }});
+      if (selectedScoreboardLayoutProfileId) {
+        dispatch({ type: 'SELECT_SCOREBOARD_LAYOUT_PROFILE', payload: { profileId: selectedScoreboardLayoutProfileId }});
       }
     }
   }));
-
-  // This useEffect was removed to prevent overwriting live state with profile state on re-entry.
-  // The live state (from localStorage) is now the source of truth for the controls upon page load.
-  // The state is only reset to the profile's values when a profile is explicitly selected or changes are discarded.
 
   return (
     <ControlCardWrapper title="Diseño del Scoreboard (Vista Previa en Vivo)">
@@ -174,34 +170,34 @@ export const LayoutSettingsCard = forwardRef<LayoutSettingsCardRef, LayoutSettin
         <div>
           <h4 className="text-base font-semibold mb-3">Posición y Espaciado (en rem)</h4>
            <div className="space-y-4">
-            <SliderControl label="Posición Vertical" value={state.scoreboardLayout.scoreboardVerticalPosition} onValueChange={(v) => handleValueChange('scoreboardVerticalPosition', v)} min={-4} max={20} step={0.5} />
-            <SliderControl label="Posición Horizontal" value={state.scoreboardLayout.scoreboardHorizontalPosition} onValueChange={(v) => handleValueChange('scoreboardHorizontalPosition', v)} min={-20} max={20} step={0.5} />
-            <SliderControl label="Espacio Principal" value={state.scoreboardLayout.mainContentGap} onValueChange={(v) => handleValueChange('mainContentGap', v)} min={0} max={10} step={0.25} />
+            <SliderControl label="Posición Vertical" value={scoreboardLayout.scoreboardVerticalPosition} onValueChange={(v) => handleValueChange('scoreboardVerticalPosition', v)} min={-4} max={20} step={0.5} />
+            <SliderControl label="Posición Horizontal" value={scoreboardLayout.scoreboardHorizontalPosition} onValueChange={(v) => handleValueChange('scoreboardHorizontalPosition', v)} min={-20} max={20} step={0.5} />
+            <SliderControl label="Espacio Principal" value={scoreboardLayout.mainContentGap} onValueChange={(v) => handleValueChange('mainContentGap', v)} min={0} max={10} step={0.25} />
           </div>
         </div>
         <div className="border-t pt-6">
           <h4 className="text-base font-semibold mb-3">Tamaños de Texto e Iconos (en rem)</h4>
            <div className="space-y-4">
-            <SliderControl label="Reloj Principal" value={state.scoreboardLayout.clockSize} onValueChange={(v) => handleValueChange('clockSize', v)} min={6} max={20} step={0.5} />
-            <SliderControl label="Nombre Equipo" value={state.scoreboardLayout.teamNameSize} onValueChange={(v) => handleValueChange('teamNameSize', v)} min={1.5} max={6} step={0.1} />
-            <SliderControl label="Puntuación (Goles)" value={state.scoreboardLayout.scoreSize} onValueChange={(v) => handleValueChange('scoreSize', v)} min={4} max={12} step={0.25} />
-            <SliderControl label="Espacio Goles/Label" value={state.scoreboardLayout.scoreLabelGap} onValueChange={(v) => handleValueChange('scoreLabelGap', v)} min={-2} max={2} step={0.05} />
-            <SliderControl label="Período" value={state.scoreboardLayout.periodSize} onValueChange={(v) => handleValueChange('periodSize', v)} min={2} max={8} step={0.1} />
-            <SliderControl label="Iconos Jugadores" value={state.scoreboardLayout.playersOnIceIconSize} onValueChange={(v) => handleValueChange('playersOnIceIconSize', v)} min={1} max={4} step={0.1} />
-            <SliderControl label="Categoría Partido" value={state.scoreboardLayout.categorySize} onValueChange={(v) => handleValueChange('categorySize', v)} min={0.75} max={3} step={0.05} />
-            <SliderControl label="Label Local/Visitante" value={state.scoreboardLayout.teamLabelSize} onValueChange={(v) => handleValueChange('teamLabelSize', v)} min={0.75} max={3} step={0.05} />
-            <SliderControl label="Título Penalidades" value={state.scoreboardLayout.penaltiesTitleSize} onValueChange={(v) => handleValueChange('penaltiesTitleSize', v)} min={1} max={4} step={0.1} />
-            <SliderControl label="Nº Jugador Penalidad" value={state.scoreboardLayout.penaltyPlayerNumberSize} onValueChange={(v) => handleValueChange('penaltyPlayerNumberSize', v)} min={1.5} max={7} step={0.1} />
-            <SliderControl label="Tiempo Penalidad" value={state.scoreboardLayout.penaltyTimeSize} onValueChange={(v) => handleValueChange('penaltyTimeSize', v)} min={1.5} max={7} step={0.1} />
-            <SliderControl label="Icono Jugador Penalidad" value={state.scoreboardLayout.penaltyPlayerIconSize} onValueChange={(v) => handleValueChange('penaltyPlayerIconSize', v)} min={1} max={5} step={0.1} />
+            <SliderControl label="Reloj Principal" value={scoreboardLayout.clockSize} onValueChange={(v) => handleValueChange('clockSize', v)} min={6} max={20} step={0.5} />
+            <SliderControl label="Nombre Equipo" value={scoreboardLayout.teamNameSize} onValueChange={(v) => handleValueChange('teamNameSize', v)} min={1.5} max={6} step={0.1} />
+            <SliderControl label="Puntuación (Goles)" value={scoreboardLayout.scoreSize} onValueChange={(v) => handleValueChange('scoreSize', v)} min={4} max={12} step={0.25} />
+            <SliderControl label="Espacio Goles/Label" value={scoreboardLayout.scoreLabelGap} onValueChange={(v) => handleValueChange('scoreLabelGap', v)} min={-2} max={2} step={0.05} />
+            <SliderControl label="Período" value={scoreboardLayout.periodSize} onValueChange={(v) => handleValueChange('periodSize', v)} min={2} max={8} step={0.1} />
+            <SliderControl label="Iconos Jugadores" value={scoreboardLayout.playersOnIceIconSize} onValueChange={(v) => handleValueChange('playersOnIceIconSize', v)} min={1} max={4} step={0.1} />
+            <SliderControl label="Categoría Partido" value={scoreboardLayout.categorySize} onValueChange={(v) => handleValueChange('categorySize', v)} min={0.75} max={3} step={0.05} />
+            <SliderControl label="Label Local/Visitante" value={scoreboardLayout.teamLabelSize} onValueChange={(v) => handleValueChange('teamLabelSize', v)} min={0.75} max={3} step={0.05} />
+            <SliderControl label="Título Penalidades" value={scoreboardLayout.penaltiesTitleSize} onValueChange={(v) => handleValueChange('penaltiesTitleSize', v)} min={1} max={4} step={0.1} />
+            <SliderControl label="Nº Jugador Penalidad" value={scoreboardLayout.penaltyPlayerNumberSize} onValueChange={(v) => handleValueChange('penaltyPlayerNumberSize', v)} min={1.5} max={7} step={0.1} />
+            <SliderControl label="Tiempo Penalidad" value={scoreboardLayout.penaltyTimeSize} onValueChange={(v) => handleValueChange('penaltyTimeSize', v)} min={1.5} max={7} step={0.1} />
+            <SliderControl label="Icono Jugador Penalidad" value={scoreboardLayout.penaltyPlayerIconSize} onValueChange={(v) => handleValueChange('penaltyPlayerIconSize', v)} min={1} max={5} step={0.1} />
           </div>
         </div>
         <div className="border-t pt-6">
            <h4 className="text-base font-semibold mb-3">Colores Principales</h4>
            <div className="space-y-3">
-             <ColorControl label="Color de Fondo" value={state.scoreboardLayout.backgroundColor} onValueChange={(v) => handleValueChange('backgroundColor', v)} defaultValue={IN_CODE_INITIAL_LAYOUT_SETTINGS.backgroundColor} />
-             <ColorControl label="Color Primario" value={state.scoreboardLayout.primaryColor} onValueChange={(v) => handleValueChange('primaryColor', v)} defaultValue={IN_CODE_INITIAL_LAYOUT_SETTINGS.primaryColor} />
-             <ColorControl label="Color de Acento" value={state.scoreboardLayout.accentColor} onValueChange={(v) => handleValueChange('accentColor', v)} defaultValue={IN_CODE_INITIAL_LAYOUT_SETTINGS.accentColor} />
+             <ColorControl label="Color de Fondo" value={scoreboardLayout.backgroundColor} onValueChange={(v) => handleValueChange('backgroundColor', v)} defaultValue={IN_CODE_INITIAL_LAYOUT_SETTINGS.backgroundColor} />
+             <ColorControl label="Color Primario" value={scoreboardLayout.primaryColor} onValueChange={(v) => handleValueChange('primaryColor', v)} defaultValue={IN_CODE_INITIAL_LAYOUT_SETTINGS.primaryColor} />
+             <ColorControl label="Color de Acento" value={scoreboardLayout.accentColor} onValueChange={(v) => handleValueChange('accentColor', v)} defaultValue={IN_CODE_INITIAL_LAYOUT_SETTINGS.accentColor} />
            </div>
         </div>
       </div>

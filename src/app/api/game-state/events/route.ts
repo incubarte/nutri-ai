@@ -12,7 +12,6 @@ export async function GET(request: Request) {
       let intervalId: NodeJS.Timeout;
 
       const onUpdate = (state: LiveGameState) => {
-        // The try/catch is a good safeguard, but the main cleanup is handled elsewhere.
         try {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(state)}\n\n`));
         } catch (e) {
@@ -26,31 +25,21 @@ export async function GET(request: Request) {
         gameStateEmitter.off('update', onUpdate);
       };
 
-      // Subscribe to game state updates
       gameStateEmitter.on('update', onUpdate);
 
-      // Send a ping every 30 seconds to keep the connection alive
       intervalId = setInterval(() => {
         try {
-            // This also acts as a check to see if the connection is still alive.
             controller.enqueue(encoder.encode(':ping\n\n'));
         } catch (e) {
-            // If this fails, the client has disconnected.
             console.log('SSE: Ping failed, client disconnected.');
             cleanup();
-            // We don't need to call controller.close() because this error
-            // means the controller is already in a closed/errored state.
         }
       }, 30000);
 
-      // Handle client disconnection (the primary way)
       request.signal.onabort = () => {
         console.log('SSE: Client disconnected via abort signal.');
         cleanup();
-        // The stream is automatically closed by the browser on abort, no need to call controller.close().
       };
-
-      // Initial state is no longer sent from here. The client will fetch it separately.
     },
   });
 
@@ -59,7 +48,7 @@ export async function GET(request: Request) {
       'Content-Type': 'text/event-stream',
       'Connection': 'keep-alive',
       'Cache-Control': 'no-cache, no-transform',
-      'X-Accel-Buffering': 'no', // For NGINX proxies
+      'X-Accel-Buffering': 'no',
     },
   });
 }

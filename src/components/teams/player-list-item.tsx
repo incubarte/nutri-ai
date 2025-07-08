@@ -52,7 +52,6 @@ export function PlayerListItem({ player, teamId, onRemovePlayer }: PlayerListIte
     let changesMade = false;
     const updates: Partial<Pick<PlayerData, 'name' | 'number'>> = {};
 
-    // Validate Name (still required)
     if (!trimmedName) {
       toast({ title: "Nombre Requerido", description: "El nombre no puede estar vacío.", variant: "destructive" });
       return;
@@ -62,19 +61,17 @@ export function PlayerListItem({ player, teamId, onRemovePlayer }: PlayerListIte
       changesMade = true;
     }
     
-    // Validate Number only if provided
     if (trimmedNumber) {
         if (!/^\d+$/.test(trimmedNumber)) {
           toast({ title: "Número Inválido", description: "El número solo debe contener dígitos si se proporciona.", variant: "destructive" });
           return;
         }
-        const currentTeam = state.teams.find(t => t.id === teamId);
+        const currentTeam = state.config.teams.find(t => t.id === teamId);
         if (currentTeam && currentTeam.players.some(p => p.id !== player.id && p.number === trimmedNumber)) {
           toast({ title: "Número Duplicado", description: `El número #${trimmedNumber} ya existe en este equipo.`, variant: "destructive" });
           return;
         }
     }
-    // Update number if it changed (even if it becomes empty or was empty and now has a value)
     if (trimmedNumber !== player.number) {
         updates.number = trimmedNumber;
         changesMade = true;

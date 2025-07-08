@@ -3,41 +3,36 @@
 export interface Penalty {
   id: string;
   playerNumber: string;
-  // This is now ALWAYS the absolute game time in centiseconds when penalty expires.
-  startTime?: number; // Absolute game time when penalty starts running
+  startTime?: number; 
   expirationTime?: number;
-  initialDuration: number; // in seconds
-  _status?: 'running' | 'pending_concurrent' | 'pending_puck'; // Transient status for display logic
+  initialDuration: number; 
+  _status?: 'running' | 'pending_concurrent' | 'pending_puck'; 
 }
 
 export type Team = 'home' | 'away';
-
-// New types for Team Management
 export type PlayerType = 'player' | 'goalkeeper';
 
 export interface PlayerData {
   id: string;
   number: string;
   type: PlayerType;
-  name: string; // Combined field for Apellido, Nombre o Apodo
+  name: string; 
 }
 
 export interface TeamData {
   id: string;
   name: string;
-  subName?: string; // Optional sub-name for the team
-  logoDataUrl?: string | null; // Optional: string (Data URL) or null
+  subName?: string; 
+  logoDataUrl?: string | null; 
   players: PlayerData[];
-  category: string; // New mandatory field for team category
+  category: string; 
 }
 
-// For category management
 export interface CategoryData {
-  id: string; // Could be same as name if names are unique, or a separate UUID
+  id: string; 
   name: string;
 }
 
-// Data fields for a single Format & Timings Profile
 export interface FormatAndTimingsProfileData {
   defaultWarmUpDuration: number;
   defaultPeriodDuration: number;
@@ -55,13 +50,11 @@ export interface FormatAndTimingsProfileData {
   playersPerTeamOnIce: number;
 }
 
-// Full Format & Timings Profile structure (including id and name)
 export interface FormatAndTimingsProfile extends FormatAndTimingsProfileData {
   id: string;
   name: string;
 }
 
-// New: Settings for scoreboard visual layout
 export interface ScoreboardLayoutSettings {
   scoreboardVerticalPosition: number;
   scoreboardHorizontalPosition: number;
@@ -83,18 +76,16 @@ export interface ScoreboardLayoutSettings {
   scoreLabelGap: number;
 }
 
-// New: Full Scoreboard Layout Profile structure
 export interface ScoreboardLayoutProfile extends ScoreboardLayoutSettings {
   id: string;
   name: string;
 }
 
-// --- Game Event Types ---
 export interface GoalLog {
   id: string;
   team: Team;
-  timestamp: number; // Machine time (Date.now())
-  gameTime: number; // Game time in centiseconds
+  timestamp: number; 
+  gameTime: number; 
   periodText: string;
   scorer?: {
     playerNumber: string;
@@ -107,16 +98,14 @@ export interface GoalLog {
 }
 
 export interface PenaltyLog {
-  id: string; // Matches the penalty's original ID
+  id: string; 
   team: Team;
   playerNumber: string;
   playerName?: string;
   initialDuration: number;
-  // Penalty Add Event
   addTimestamp: number;
   addGameTime: number;
   addPeriodText: string;
-  // Penalty End Event
   endTimestamp?: number;
   endGameTime?: number;
   endPeriodText?: string;
@@ -134,19 +123,14 @@ export interface GameSummary {
     penalties: PenaltyLog[];
   };
   attendance: {
-    home: string[]; // Array of player IDs who attended
-    away: string[]; // Array of player IDs who attended
+    home: string[]; 
+    away: string[]; 
   };
 }
 
-
-// Combined ConfigFields - Represents the *active/effective* settings from the selected profile
-export interface ConfigFields extends FormatAndTimingsProfileData {
-  // Format & Timings Profile settings
+export interface ConfigState extends FormatAndTimingsProfileData {
   formatAndTimingsProfiles: FormatAndTimingsProfile[];
   selectedFormatAndTimingsProfileId: string | null;
-
-  // Sound & Display settings
   playSoundAtPeriodEnd: boolean;
   customHornSoundDataUrl: string | null;
   enableTeamSelectionInMiniScoreboard: boolean;
@@ -157,24 +141,12 @@ export interface ConfigFields extends FormatAndTimingsProfileData {
   enablePenaltyCountdownSound: boolean;
   penaltyCountdownStartTime: number;
   customPenaltyBeepSoundDataUrl: string | null;
-
-  // Layout settings (the active/live one)
   scoreboardLayout: ScoreboardLayoutSettings;
-  // Saved layout profiles
   scoreboardLayoutProfiles: ScoreboardLayoutProfile[];
   selectedScoreboardLayoutProfileId: string | null;
-
-  // Categories settings
   availableCategories: CategoryData[];
   selectedMatchCategory: string;
-
-  // Teams
   teams: TeamData[];
-
-  // Game Summary
-  gameSummary: GameSummary;
-
-  // Debug settings
   enableDebugMode: boolean;
 }
 
@@ -214,6 +186,28 @@ export interface PenaltiesState {
   away: Penalty[];
 }
 
+export interface LiveState {
+  clock: ClockState;
+  score: ScoreState;
+  penalties: PenaltiesState;
+  homeTeamName: string;
+  homeTeamSubName?: string;
+  awayTeamName: string;
+  awayTeamSubName?: string;
+  gameSummary: GameSummary;
+  playHornTrigger: number;
+  playPenaltyBeepTrigger: number;
+}
+
+export interface GameState {
+  config: ConfigState;
+  live: LiveState;
+  _lastActionOriginator?: string;
+  _lastUpdatedTimestamp?: number;
+  _initialConfigLoadComplete?: boolean;
+}
+
+
 export interface LiveGameState {
     clock: ClockState;
     score: ScoreState;
@@ -222,6 +216,7 @@ export interface LiveGameState {
     homeTeamSubName?: string;
     awayTeamName: string;
     awayTeamSubName?: string;
-    playersPerTeamOnIce?: number; // Optional: For mobile client
-    numberOfRegularPeriods?: number; // Optional: For mobile client
+    // These are from config but useful for display
+    playersPerTeamOnIce?: number; 
+    numberOfRegularPeriods?: number; 
 }

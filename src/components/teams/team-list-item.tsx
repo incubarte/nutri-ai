@@ -21,14 +21,13 @@ interface TeamListItemProps {
 
 export function TeamListItem({ team, isSelectionMode = false, isSelected = false, onToggleSelection }: TeamListItemProps) {
   const { state } = useGameState();
-  const categoryName = getCategoryNameById(team.category, state.availableCategories);
+  const categoryName = getCategoryNameById(team.category, state.config.availableCategories);
 
   const handleCardInteraction = (e: React.MouseEvent) => {
     if (isSelectionMode && onToggleSelection) {
-      e.preventDefault(); // Previene la navegación si el Link está activo debajo
+      e.preventDefault(); 
       onToggleSelection(team.id);
     }
-    // Si no está en modo selección, el Link se encargará de la navegación
   };
   
   const cardContent = (
@@ -94,7 +93,7 @@ export function TeamListItem({ team, isSelectionMode = false, isSelected = false
   );
 
   if (isSelectionMode) {
-    return <div>{cardContent}</div>; // Renderiza como div si está en modo selección para manejar el clic
+    return <div>{cardContent}</div>;
   }
 
   return (
@@ -103,6 +102,3 @@ export function TeamListItem({ team, isSelectionMode = false, isSelected = false
     </Link>
   );
 }
-
-    
-

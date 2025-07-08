@@ -1,16 +1,10 @@
 
-import type { LiveGameState, ConfigFields } from '@/types';
+import type { LiveGameState, ConfigState } from '@/types';
 import { EventEmitter } from 'events';
 
-// This is an in-memory store that runs on the server.
-// It will be reset every time the server restarts.
-
-let storedConfig: ConfigFields | null = null;
+let storedConfig: ConfigState | null = null;
 let storedGameState: LiveGameState | null = null;
 
-// To avoid issues with Next.js dev server Hot Module Replacement (HMR),
-// we store the emitter on the global object to make it a true singleton,
-// ensuring it persists across reloads in development environments.
 const globalForEmitter = globalThis as unknown as {
   gameStateEmitter: EventEmitter | undefined;
 };
@@ -23,11 +17,11 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 
-export function getConfig(): ConfigFields | null {
+export function getConfig(): ConfigState | null {
   return storedConfig;
 }
 
-export function setConfig(newConfig: ConfigFields): void {
+export function setConfig(newConfig: ConfigState): void {
   storedConfig = newConfig;
 }
 
@@ -37,6 +31,5 @@ export function getGameState(): LiveGameState | null {
 
 export function setGameState(newGameState: LiveGameState): void {
   storedGameState = newGameState;
-  // Broadcast the update to all listeners
   gameStateEmitter.emit('update', newGameState);
 }
