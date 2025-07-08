@@ -43,6 +43,7 @@ import type { PenaltyCountdownSoundCardRef } from "@/components/config/penalty-c
 import type { TeamSettingsCardRef } from "@/components/config/team-settings-card";
 import type { CategorySettingsCardRef } from "@/components/config/category-settings-card";
 import type { LayoutSettingsCardRef } from "@/components/config/layout-settings-card";
+import type { DebugSettingsCardRef } from "@/components/config/debug-settings-card";
 
 
 // Lazy load heavy components
@@ -56,6 +57,7 @@ const TeamSettingsCard = dynamic(() => import('@/components/config/team-settings
 const CategorySettingsCard = dynamic(() => import('@/components/config/category-settings-card').then(mod => mod.CategorySettingsCard), { loading: loadingComponent });
 const LayoutSettingsCard = dynamic(() => import('@/components/config/layout-settings-card').then(mod => mod.LayoutSettingsCard), { loading: loadingComponent });
 const TeamsManagementTab = dynamic(() => import('@/components/config/teams-management-tab').then(mod => mod.TeamsManagementTab), { loading: loadingComponent });
+const DebugSettingsCard = dynamic(() => import('@/components/config/debug-settings-card').then(mod => mod.DebugSettingsCard), { loading: loadingComponent });
 
 
 const VALID_TAB_VALUES = ["formatAndTimings", "soundAndDisplay", "categoriesAndTeams"];
@@ -65,7 +67,7 @@ type ExportableSoundAndDisplayConfig = Pick<ConfigFields,
   | 'enablePenaltyCountdownSound' | 'penaltyCountdownStartTime' | 'customPenaltyBeepSoundDataUrl'
   | 'enableTeamSelectionInMiniScoreboard' | 'enablePlayerSelectionForPenalties'
   | 'showAliasInPenaltyPlayerSelector' | 'showAliasInControlsPenaltyList' | 'showAliasInScoreboardPenalties'
-  | 'scoreboardLayoutProfiles'
+  | 'scoreboardLayoutProfiles' | 'enableDebugMode'
 >;
 
 
@@ -82,6 +84,7 @@ export default function ConfigPage() {
   const teamSettingsRef = useRef<TeamSettingsCardRef>(null);
   const categorySettingsRef = useRef<CategorySettingsCardRef>(null);
   const layoutSettingsRef = useRef<LayoutSettingsCardRef>(null);
+  const debugSettingsRef = useRef<DebugSettingsCardRef>(null);
   
   const fileInputFormatAndTimingsRef = useRef<HTMLInputElement>(null);
   const fileInputSoundAndDisplayRef = useRef<HTMLInputElement>(null);
@@ -92,6 +95,7 @@ export default function ConfigPage() {
   const [isPenaltyCountdownSoundDirty, setIsPenaltyCountdownSoundDirty] = useState(false);
   const [isTeamSettingsDirty, setIsTeamSettingsDirty] = useState(false);
   const [isCategorySettingsDirty, setIsCategorySettingsDirty] = useState(false);
+  const [isDebugDirty, setIsDebugDirty] = useState(false);
   
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [currentExportFilename, setCurrentExportFilename] = useState('');
@@ -155,7 +159,7 @@ export default function ConfigPage() {
   }, [selectedFTProfile.id]); 
 
   const isFormatAndTimingsSectionDirty = isDurationDirty || isPenaltyDirty;
-  const isSoundAndDisplaySectionDirty = isSoundDirty || isPenaltyCountdownSoundDirty || isTeamSettingsDirty || isLayoutDirty;
+  const isSoundAndDisplaySectionDirty = isSoundDirty || isPenaltyCountdownSoundDirty || isTeamSettingsDirty || isLayoutDirty || isDebugDirty;
 
   const handleSaveChanges_FormatAndTimings = () => {
     let durationSaveSuccess = true;
@@ -192,10 +196,12 @@ export default function ConfigPage() {
     if (penaltyCountdownSoundRef.current && isPenaltyCountdownSoundDirty) penaltyCountdownSoundRef.current.handleSave();
     if (teamSettingsRef.current && isTeamSettingsDirty) teamSettingsRef.current.handleSave();
     if (layoutSettingsRef.current && isLayoutDirty) layoutSettingsRef.current.handleSave();
+    if (debugSettingsRef.current && isDebugDirty) debugSettingsRef.current.handleSave();
     
     setIsSoundDirty(false);
     setIsPenaltyCountdownSoundDirty(false);
     setIsTeamSettingsDirty(false);
+    setIsDebugDirty(false);
     // isLayoutDirty will update via memoization, becoming false after save
     
     toast({ title: "Sonido y Display Guardados", description: "Los cambios en Sonido y Display han sido guardados en la configuración activa." });
@@ -206,6 +212,7 @@ export default function ConfigPage() {
     if (penaltyCountdownSoundRef.current && isPenaltyCountdownSoundDirty) { penaltyCountdownSoundRef.current.handleDiscard(); setIsPenaltyCountdownSoundDirty(false); }
     if (teamSettingsRef.current && isTeamSettingsDirty) { teamSettingsRef.current.handleDiscard(); setIsTeamSettingsDirty(false); }
     if (layoutSettingsRef.current && isLayoutDirty) { layoutSettingsRef.current.handleDiscard(); }
+    if (debugSettingsRef.current && isDebugDirty) { debugSettingsRef.current.handleDiscard(); setIsDebugDirty(false); }
     
     toast({ title: "Cambios Descartados", description: "Los cambios no guardados en Sonido y Display han sido revertidos." });
   };
@@ -291,6 +298,7 @@ export default function ConfigPage() {
       showAliasInControlsPenaltyList: state.showAliasInControlsPenaltyList,
       showAliasInScoreboardPenalties: state.showAliasInScoreboardPenalties,
       scoreboardLayoutProfiles: state.scoreboardLayoutProfiles,
+      enableDebugMode: state.enableDebugMode,
     };
     exportSection("Configuración de Sonido y Display", configToExport, "icevision_sonido_display");
   };
@@ -347,6 +355,7 @@ export default function ConfigPage() {
             setIsSoundDirty(false);
             setIsTeamSettingsDirty(false);
             setIsPenaltyCountdownSoundDirty(false);
+            setIsDebugDirty(false);
         }
 
         toast({
@@ -379,7 +388,7 @@ export default function ConfigPage() {
 
   const handleImportSoundAndDisplay = (event: React.ChangeEvent<HTMLInputElement>) => {
     genericImportHandler(event, "Sonido y Display",
-      ['playSoundAtPeriodEnd', 'scoreboardLayoutProfiles', 'enablePenaltyCountdownSound', 'penaltyCountdownStartTime'], 
+      ['playSoundAtPeriodEnd', 'scoreboardLayoutProfiles', 'enablePenaltyCountdownSound', 'penaltyCountdownStartTime', 'enableDebugMode'], 
       'LOAD_SOUND_AND_DISPLAY_CONFIG',
       fileInputSoundAndDisplayRef
     );
@@ -397,6 +406,7 @@ export default function ConfigPage() {
     setIsPenaltyCountdownSoundDirty(false);
     setIsTeamSettingsDirty(false);
     setIsCategorySettingsDirty(false);
+    setIsDebugDirty(false);
 
     toast({
       title: "Configuración Restablecida",
@@ -703,6 +713,8 @@ export default function ConfigPage() {
                 </p>
             </div>
             <LayoutSettingsCard ref={layoutSettingsRef} initialValues={selectedLayoutProfile} />
+            <Separator />
+            <DebugSettingsCard ref={debugSettingsRef} onDirtyChange={setIsDebugDirty} />
             
             {isSoundAndDisplaySectionDirty && (
               <div className={sectionActionsContainerClass}>

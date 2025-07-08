@@ -1,5 +1,4 @@
 
-
 export interface Penalty {
   id: string;
   playerNumber: string;
@@ -171,6 +170,9 @@ export interface ConfigFields extends FormatAndTimingsProfileData {
   goals: GoalLog[];
   // Game Summary
   gameSummary: GameSummary;
+
+  // Debug settings
+  enableDebugMode: boolean;
 }
 
 export type PeriodDisplayOverrideType = 'Warm-up' | 'Break' | 'Pre-OT Break' | 'Time Out' | 'End of Game' | null;

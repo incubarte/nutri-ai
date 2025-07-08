@@ -632,30 +632,32 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                   <span>Sin categorías</span>
               </div>
           )}
-          <TooltipProvider delayDuration={100}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="text-xs text-muted-foreground font-mono bg-card/80 p-1 rounded-md border border-border/50 cursor-help">
-                  Abs: {formatTime(state.clock._liveAbsoluteElapsedTimeCs)} ({formatTime(state.clock.absoluteElapsedTimeCs)})
-                </div>
-              </TooltipTrigger>
-              <TooltipContent className="text-xs">
-                <p className="font-bold mb-2">Variables del Reloj (Debug)</p>
-                <div className="grid grid-cols-[auto_1fr] gap-x-2">
-                  <strong>currentTime:</strong>
-                  <span>{state.clock.currentTime}cs ({formatTime(state.clock.currentTime)})</span>
-                  <strong>isClockRunning:</strong>
-                  <span>{String(state.clock.isClockRunning)}</span>
-                  <strong>absoluteElapsedTimeCs:</strong>
-                  <span>{state.clock.absoluteElapsedTimeCs}cs ({formatTime(state.clock.absoluteElapsedTimeCs)})</span>
-                  <strong>clockStartTimeMs:</strong>
-                  <span>{state.clock.clockStartTimeMs ? new Date(state.clock.clockStartTimeMs).toLocaleTimeString() : 'null'}</span>
-                  <strong>remainingTimeAtStartCs:</strong>
-                  <span>{state.clock.remainingTimeAtStartCs !== null ? `${state.clock.remainingTimeAtStartCs}cs` : 'null'}</span>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {state.enableDebugMode && (
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="text-xs text-muted-foreground font-mono bg-card/80 p-1 rounded-md border border-border/50 cursor-help">
+                    Abs: {formatTime(state.clock._liveAbsoluteElapsedTimeCs)} ({formatTime(state.clock.absoluteElapsedTimeCs)})
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">
+                  <p className="font-bold mb-2">Variables del Reloj (Debug)</p>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-2">
+                    <strong>currentTime:</strong>
+                    <span>{state.clock.currentTime}cs ({formatTime(state.clock.currentTime)})</span>
+                    <strong>isClockRunning:</strong>
+                    <span>{String(state.clock.isClockRunning)}</span>
+                    <strong>absoluteElapsedTimeCs:</strong>
+                    <span>{state.clock.absoluteElapsedTimeCs}cs ({formatTime(state.clock.absoluteElapsedTimeCs)})</span>
+                    <strong>clockStartTimeMs:</strong>
+                    <span>{state.clock.clockStartTimeMs ? new Date(state.clock.clockStartTimeMs).toLocaleTimeString() : 'null'}</span>
+                    <strong>remainingTimeAtStartCs:</strong>
+                    <span>{state.clock.remainingTimeAtStartCs !== null ? `${state.clock.remainingTimeAtStartCs}cs` : 'null'}</span>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
       </div>
 
@@ -1081,7 +1083,3 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     </div>
   );
 }
-
-
-
-

@@ -61,6 +61,7 @@ const IN_CODE_INITIAL_SHOW_ALIAS_IN_SCOREBOARD_PENALTIES = true;
 const IN_CODE_INITIAL_ENABLE_PENALTY_COUNTDOWN_SOUND = true;
 const IN_CODE_INITIAL_PENALTY_COUNTDOWN_START_TIME = 10;
 const IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL = null;
+const IN_CODE_INITIAL_ENABLE_DEBUG_MODE = false;
 
 
 export const IN_CODE_INITIAL_LAYOUT_SETTINGS: ScoreboardLayoutSettings = {
@@ -192,7 +193,7 @@ export type GameAction =
   | { type: 'DELETE_SCOREBOARD_LAYOUT_PROFILE'; payload: { profileId: string } }
   | { type: 'SELECT_SCOREBOARD_LAYOUT_PROFILE'; payload: { profileId: string } }
   | { type: 'SAVE_CURRENT_LAYOUT_TO_PROFILE' }
-  | { type: 'LOAD_SOUND_AND_DISPLAY_CONFIG'; payload: Partial<Pick<ConfigFields, 'playSoundAtPeriodEnd' | 'customHornSoundDataUrl' | 'enableTeamSelectionInMiniScoreboard' | 'enablePlayerSelectionForPenalties' | 'showAliasInPenaltyPlayerSelector' | 'showAliasInControlsPenaltyList' | 'showAliasInScoreboardPenalties' | 'scoreboardLayoutProfiles' | 'enablePenaltyCountdownSound' | 'penaltyCountdownStartTime' | 'customPenaltyBeepSoundDataUrl'>> }
+  | { type: 'LOAD_SOUND_AND_DISPLAY_CONFIG'; payload: Partial<Pick<ConfigFields, 'playSoundAtPeriodEnd' | 'customHornSoundDataUrl' | 'enableTeamSelectionInMiniScoreboard' | 'enablePlayerSelectionForPenalties' | 'showAliasInPenaltyPlayerSelector' | 'showAliasInControlsPenaltyList' | 'showAliasInScoreboardPenalties' | 'scoreboardLayoutProfiles' | 'enablePenaltyCountdownSound' | 'penaltyCountdownStartTime' | 'customPenaltyBeepSoundDataUrl' | 'enableDebugMode'>> }
   | { type: 'SET_AVAILABLE_CATEGORIES'; payload: CategoryData[] }
   | { type: 'SET_SELECTED_MATCH_CATEGORY'; payload: string }
   | { type: 'HYDRATE_FROM_STORAGE'; payload: Partial<GameState> }
@@ -206,6 +207,7 @@ export type GameAction =
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
+  | { type: 'SET_ENABLE_DEBUG_MODE'; payload: boolean }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
 
 
@@ -262,6 +264,7 @@ const initialGlobalState: GameState = {
   enablePenaltyCountdownSound: IN_CODE_INITIAL_ENABLE_PENALTY_COUNTDOWN_SOUND,
   penaltyCountdownStartTime: IN_CODE_INITIAL_PENALTY_COUNTDOWN_START_TIME,
   customPenaltyBeepSoundDataUrl: IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL,
+  enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
   scoreboardLayout: IN_CODE_INITIAL_LAYOUT_SETTINGS,
   scoreboardLayoutProfiles: [defaultInitialLayoutProfile],
   selectedScoreboardLayoutProfileId: defaultInitialLayoutProfile.id,
@@ -998,75 +1001,66 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
       
       const processPenaltiesForTeam = (currentPenalties: Penalty[], team: Team): Penalty[] => {
-        // Separate penalties by their current status
-        const initialRunningPenalties = currentPenalties.filter(p => p._status === 'running');
-        let pendingConcurrentPenalties = currentPenalties.filter(p => p._status === 'pending_concurrent');
-        const otherPenalties = currentPenalties.filter(p => p._status !== 'running' && p._status !== 'pending_concurrent');
+        // Stage 1: Clean up expired running penalties
+        const stillRunningOrNewlyActivated: Penalty[] = [];
+        const remainingPending: Penalty[] = [];
+        const otherPenalties: Penalty[] = []; // e.g., 'pending_puck'
 
-        // Stage 1: Check running penalties for expiration.
-        const stillRunningPenalties: Penalty[] = [];
-        for (const p of initialRunningPenalties) {
-          if (p.expirationTime !== undefined && liveAbsoluteElapsedTimeCs >= p.expirationTime) {
-            // Penalty expired. Log it and remove it.
-            significantChangeOccurred = true;
-            const logIndex = newGameSummary[team].penalties.findIndex(log => log.id === p.id && !log.endReason);
-            if (logIndex > -1) {
-              const absoluteEndTime = p.expirationTime ?? liveAbsoluteElapsedTimeCs;
-              const endTimeContext = getPeriodContextFromAbsoluteTime(absoluteEndTime, state);
-              newGameSummary[team].penalties[logIndex] = {
-                ...newGameSummary[team].penalties[logIndex],
-                endTimestamp: Date.now(),
-                endGameTime: endTimeContext.timeInPeriodCs,
-                endPeriodText: endTimeContext.periodText,
-                endReason: 'completed',
-                timeServed: newGameSummary[team].penalties[logIndex].initialDuration,
-              };
-            }
-          } else {
-            // Penalty is still running. Keep it.
-            stillRunningPenalties.push(p);
-          }
-        }
-        
-        // Stage 2: Activate pending penalties if slots are available and the player isn't already serving.
-        const playersInTheBox = new Set(stillRunningPenalties.map(p => p.playerNumber));
-        let availableSlots = state.maxConcurrentPenalties - stillRunningPenalties.length;
-
-        const newlyActivatedPenalties: Penalty[] = [];
-        const remainingPendingPenalties: Penalty[] = [];
-        
-        // Iterate through pending penalties to see which can be activated
-        for (const penaltyToConsider of pendingConcurrentPenalties) {
-            // A player can only serve one penalty at a time.
-            const isPlayerAlreadyServing = playersInTheBox.has(penaltyToConsider.playerNumber);
-
-            if (availableSlots > 0 && !isPlayerAlreadyServing) {
+        const runningPenalties = currentPenalties.filter(p => p._status === 'running');
+        for (const p of runningPenalties) {
+            if (p.expirationTime !== undefined && liveAbsoluteElapsedTimeCs >= p.expirationTime) {
+                // Expired: Log and remove.
                 significantChangeOccurred = true;
+                const logIndex = newGameSummary[team].penalties.findIndex(log => log.id === p.id && !log.endReason);
+                if (logIndex > -1) {
+                    const absoluteEndTime = p.expirationTime ?? liveAbsoluteElapsedTimeCs;
+                    const endTimeContext = getPeriodContextFromAbsoluteTime(absoluteEndTime, state);
+                    newGameSummary[team].penalties[logIndex] = {
+                        ...newGameSummary[team].penalties[logIndex],
+                        endTimestamp: Date.now(),
+                        endGameTime: endTimeContext.timeInPeriodCs,
+                        endPeriodText: endTimeContext.periodText,
+                        endReason: 'completed',
+                        timeServed: newGameSummary[team].penalties[logIndex].initialDuration,
+                    };
+                }
+            } else {
+                // Still running: Keep it.
+                stillRunningOrNewlyActivated.push(p);
+            }
+        }
+
+        // Stage 2: Activate pending penalties
+        let availableSlots = state.maxConcurrentPenalties - stillRunningOrNewlyActivated.length;
+        let pendingConcurrentPenalties = currentPenalties.filter(p => p._status === 'pending_concurrent');
+        const playersServingPenalties = new Set(stillRunningOrNewlyActivated.map(p => p.playerNumber));
+
+        for (const p of pendingConcurrentPenalties) {
+            if (availableSlots > 0 && !playersServingPenalties.has(p.playerNumber)) {
                 // Activate this penalty
-                newlyActivatedPenalties.push({
-                    ...penaltyToConsider,
+                significantChangeOccurred = true;
+                stillRunningOrNewlyActivated.push({
+                    ...p,
                     _status: 'running',
                     startTime: liveAbsoluteElapsedTimeCs,
-                    expirationTime: liveAbsoluteElapsedTimeCs + (penaltyToConsider.initialDuration * CENTISECONDS_PER_SECOND),
+                    expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND),
                 });
-                // This player is now in the box for the remainder of this tick's logic
-                playersInTheBox.add(penaltyToConsider.playerNumber);
+                playersServingPenalties.add(p.playerNumber); // Player is now serving
                 availableSlots--;
             } else {
-                // This penalty must wait
-                remainingPendingPenalties.push(penaltyToConsider);
+                // Must remain pending
+                remainingPending.push(p);
             }
         }
+        
+        currentPenalties.forEach(p => {
+          if (p._status !== 'running' && p._status !== 'pending_concurrent') {
+            otherPenalties.push(p);
+          }
+        });
 
         // Combine all penalties back into one list
-        const finalPenalties = [
-          ...stillRunningPenalties,
-          ...newlyActivatedPenalties,
-          ...remainingPendingPenalties,
-          ...otherPenalties
-        ];
-        
-        return finalPenalties;
+        return [...stillRunningOrNewlyActivated, ...remainingPending, ...otherPenalties];
       };
 
 
@@ -1568,6 +1562,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'SET_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL':
         newStateWithoutMeta = { ...state, customPenaltyBeepSoundDataUrl: action.payload };
         break;
+    case 'SET_ENABLE_DEBUG_MODE':
+      newStateWithoutMeta = { ...state, enableDebugMode: action.payload };
+      break;
     case 'UPDATE_LAYOUT_SETTINGS':
       newStateWithoutMeta = { ...state, scoreboardLayout: { ...state.scoreboardLayout, ...action.payload } };
       break;
@@ -1688,6 +1685,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             enablePenaltyCountdownSound: config.enablePenaltyCountdownSound ?? state.enablePenaltyCountdownSound,
             penaltyCountdownStartTime: config.penaltyCountdownStartTime ?? state.penaltyCountdownStartTime,
             customPenaltyBeepSoundDataUrl: config.customPenaltyBeepSoundDataUrl === undefined ? state.customPenaltyBeepSoundDataUrl : config.customPenaltyBeepSoundDataUrl,
+            enableDebugMode: config.enableDebugMode ?? state.enableDebugMode,
             scoreboardLayout: layoutSettings,
             scoreboardLayoutProfiles: profilesToLoad,
             selectedScoreboardLayoutProfileId: newSelectedId,
@@ -1740,6 +1738,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         showAliasInPenaltyPlayerSelector: IN_CODE_INITIAL_SHOW_ALIAS_IN_PENALTY_PLAYER_SELECTOR,
         showAliasInControlsPenaltyList: IN_CODE_INITIAL_SHOW_ALIAS_IN_CONTROLS_PENALTY_LIST,
         showAliasInScoreboardPenalties: IN_CODE_INITIAL_SHOW_ALIAS_IN_SCOREBOARD_PENALTIES,
+        enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
         availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
         selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
         gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
@@ -2087,7 +2086,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
             'enablePlayerSelectionForPenalties', 'showAliasInPenaltyPlayerSelector',
             'showAliasInControlsPenaltyList', 'showAliasInScoreboardPenalties', 'scoreboardLayout',
             'scoreboardLayoutProfiles', 'selectedScoreboardLayoutProfileId', 'availableCategories', 'selectedMatchCategory', 'teams',
-            'enablePenaltyCountdownSound', 'customPenaltyBeepSoundDataUrl',
+            'enablePenaltyCountdownSound', 'customPenaltyBeepSoundDataUrl', 'enableDebugMode',
             'defaultWarmUpDuration', 'defaultPeriodDuration', 'defaultOTPeriodDuration', 'defaultBreakDuration',
             'defaultPreOTBreakDuration', 'defaultTimeoutDuration', 'maxConcurrentPenalties', 'autoStartWarmUp',
             'autoStartBreaks', 'autoStartPreOTBreaks', 'autoStartTimeouts', 'numberOfRegularPeriods',
