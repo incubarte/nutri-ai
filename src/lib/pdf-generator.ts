@@ -79,15 +79,21 @@ const addTeamSection = (doc: jsPDF, teamName: string, goals: GoalLog[], penaltie
 };
 
 export const exportGameSummaryPDF = (state: GameState) => {
+    if (!state.config || !state.live) {
+        console.error("Cannot generate PDF: game state is not fully loaded.");
+        return "error_no_state.pdf";
+    }
+
+    const { config, live } = state;
     const doc = new jsPDF();
-    const teamTitle = `${state.homeTeamName} vs ${state.awayTeamName}`;
-    const categoryName = getCategoryNameById(state.selectedMatchCategory, state.availableCategories) || 'N/A';
+    const teamTitle = `${live.homeTeamName} vs ${live.awayTeamName}`;
+    const categoryName = getCategoryNameById(config.selectedMatchCategory, config.availableCategories) || 'N/A';
     
     const date = new Date();
     const dateString = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-    const filename = `${dateString} - Cat ${categoryName} - ${state.homeTeamName} vs ${state.awayTeamName}.pdf`;
+    const filename = `${dateString} - Cat ${categoryName} - ${live.homeTeamName} vs ${live.awayTeamName}.pdf`;
 
-    const finalScore = `${state.score.home} - ${state.score.away}`;
+    const finalScore = `${live.score.home} - ${live.score.away}`;
 
     doc.text(`Resumen del Partido: ${teamTitle} (Cat. ${categoryName})`, 14, 15);
     doc.setFontSize(10);
@@ -95,26 +101,26 @@ export const exportGameSummaryPDF = (state: GameState) => {
     doc.setFontSize(12);
     doc.text(`Resultado Final: ${finalScore}`, 14, 29);
 
-    const homeGoals = [...state.score.homeGoals].sort((a, b) => a.timestamp - b.timestamp);
-    const awayGoals = [...state.score.awayGoals].sort((a, b) => a.timestamp - b.timestamp);
-    const homePenalties = [...state.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
-    const awayPenalties = [...state.gameSummary.away.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
+    const homeGoals = [...live.score.homeGoals].sort((a, b) => a.timestamp - b.timestamp);
+    const awayGoals = [...live.score.awayGoals].sort((a, b) => a.timestamp - b.timestamp);
+    const homePenalties = [...live.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
+    const awayPenalties = [...live.gameSummary.away.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
 
-    const homeTeamData = state.teams.find(t => t.name === state.homeTeamName && (t.subName || undefined) === (state.homeTeamSubName || undefined) && t.category === state.selectedMatchCategory);
-    const awayTeamData = state.teams.find(t => t.name === state.awayTeamName && (t.subName || undefined) === (state.awayTeamSubName || undefined) && t.category === state.selectedMatchCategory);
+    const homeTeamData = config.teams.find(t => t.name === live.homeTeamName && (t.subName || undefined) === (live.homeTeamSubName || undefined) && t.category === config.selectedMatchCategory);
+    const awayTeamData = config.teams.find(t => t.name === live.awayTeamName && (t.subName || undefined) === (live.awayTeamSubName || undefined) && t.category === config.selectedMatchCategory);
 
-    const homeAttendanceIds = new Set(state.gameSummary.attendance?.home || []);
+    const homeAttendanceIds = new Set(live.gameSummary.attendance?.home || []);
     const homeAttendedPlayers = homeTeamData?.players
         .filter(p => homeAttendanceIds.has(p.id))
         .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999)) || [];
 
-    const awayAttendanceIds = new Set(state.gameSummary.attendance?.away || []);
+    const awayAttendanceIds = new Set(live.gameSummary.attendance?.away || []);
     const awayAttendedPlayers = awayTeamData?.players
         .filter(p => awayAttendanceIds.has(p.id))
         .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999)) || [];
     
-    const homeFinalY = addTeamSection(doc, state.homeTeamName, homeGoals, homePenalties, homeAttendedPlayers, 40);
-    addTeamSection(doc, state.awayTeamName, awayGoals, awayPenalties, awayAttendedPlayers, homeFinalY + 15);
+    const homeFinalY = addTeamSection(doc, live.homeTeamName, homeGoals, homePenalties, homeAttendedPlayers, 40);
+    addTeamSection(doc, live.awayTeamName, awayGoals, awayPenalties, awayAttendedPlayers, homeFinalY + 15);
 
     doc.save(filename);
     
