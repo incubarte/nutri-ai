@@ -1,4 +1,5 @@
 
+
 export interface Penalty {
   id: string;
   playerNumber: string;
@@ -141,6 +142,10 @@ export interface GameSummary {
 
 // Combined ConfigFields - Represents the *active/effective* settings from the selected profile
 export interface ConfigFields extends FormatAndTimingsProfileData {
+  // Format & Timings Profile settings
+  formatAndTimingsProfiles: FormatAndTimingsProfile[];
+  selectedFormatAndTimingsProfileId: string | null;
+
   // Sound & Display settings
   playSoundAtPeriodEnd: boolean;
   customHornSoundDataUrl: string | null;
