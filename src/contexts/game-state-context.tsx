@@ -751,8 +751,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_GOAL': {
       const newGoal: GoalLog = { ...action.payload, id: crypto.randomUUID() };
-      const newHomeGoals = action.payload.team === 'home' ? [...state.score.homeGoals, newGoal] : state.score.homeGoals;
-      const newAwayGoals = action.payload.team === 'away' ? [...state.score.awayGoals, newGoal] : state.score.awayGoals;
+      const newHomeGoals = action.payload.team === 'home' ? [...(state.score.homeGoals || []), newGoal] : (state.score.homeGoals || []);
+      const newAwayGoals = action.payload.team === 'away' ? [...(state.score.awayGoals || []), newGoal] : (state.score.awayGoals || []);
       newStateWithoutMeta = {
         ...state,
         score: {
@@ -766,8 +766,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'EDIT_GOAL': {
       const { goalId, updates } = action.payload;
-      const newHomeGoals = state.score.homeGoals.map(g => g.id === goalId ? { ...g, ...updates } : g);
-      const newAwayGoals = state.score.awayGoals.map(g => g.id === goalId ? { ...g, ...updates } : g);
+      const newHomeGoals = (state.score.homeGoals || []).map(g => g.id === goalId ? { ...g, ...updates } : g);
+      const newAwayGoals = (state.score.awayGoals || []).map(g => g.id === goalId ? { ...g, ...updates } : g);
 
       newStateWithoutMeta = {
         ...state,
@@ -780,8 +780,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'DELETE_GOAL': {
-      const newHomeGoals = state.score.homeGoals.filter(g => g.id !== action.payload.goalId);
-      const newAwayGoals = state.score.awayGoals.filter(g => g.id !== action.payload.goalId);
+      const newHomeGoals = (state.score.homeGoals || []).filter(g => g.id !== action.payload.goalId);
+      const newAwayGoals = (state.score.awayGoals || []).filter(g => g.id !== action.payload.goalId);
       newStateWithoutMeta = {
         ...state,
         score: {
@@ -2383,4 +2383,5 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
 
 
     
+
 
