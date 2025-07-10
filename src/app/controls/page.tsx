@@ -205,7 +205,7 @@ export default function ControlsPage() {
 
   // Effect for listening to remote commands from the server
   useEffect(() => {
-    if (pageDisplayState !== 'Primary' || !state.live || !state.config) {
+    if (pageDisplayState !== 'Primary') {
       return;
     }
 
@@ -214,24 +214,31 @@ export default function ControlsPage() {
     eventSource.onmessage = (event) => {
       try {
         const command: RemoteCommand = JSON.parse(event.data);
+        const { live: currentLive, config: currentConfig } = state;
+        
+        if (!currentLive || !currentConfig) {
+            console.warn("Received remote command but state is not ready. Ignoring.");
+            return;
+        }
+
         console.log("Remote command received:", command);
         if (command.type === 'ADD_GOAL') {
           const { team, scorerNumber, assistNumber } = command.payload;
-          const teamData = state.config.teams.find(t => t.name === state.live[`${team}TeamName`] && (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
+          const teamData = currentConfig.teams.find(t => t.name === currentLive[`${team}TeamName`] && (t.subName || undefined) === (currentLive[`${team}TeamSubName`] || undefined) && t.category === currentConfig.selectedMatchCategory);
           const scorerPlayer = teamData?.players.find(p => p.number === scorerNumber);
           const assistPlayer = assistNumber ? teamData?.players.find(p => p.number === assistNumber) : undefined;
           
           const goalPayload: Omit<GoalLog, 'id'> = {
             team,
             timestamp: Date.now(),
-            gameTime: state.live.clock.currentTime,
-            periodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
+            gameTime: currentLive.clock.currentTime,
+            periodText: getActualPeriodText(currentLive.clock.currentPeriod, currentLive.clock.periodDisplayOverride, currentConfig.numberOfRegularPeriods),
             scorer: { playerNumber: scorerNumber, playerName: scorerPlayer?.name },
             assist: assistNumber ? { playerNumber: assistNumber, playerName: assistPlayer?.name } : undefined,
           };
 
           dispatch({ type: 'ADD_GOAL', payload: goalPayload });
-          toast({ title: "Gol Añadido (Remoto)", description: `Gol para ${team === 'home' ? state.live.homeTeamName : state.live.awayTeamName} #${scorerNumber} registrado.` });
+          toast({ title: "Gol Añadido (Remoto)", description: `Gol para ${team === 'home' ? currentLive.homeTeamName : currentLive.awayTeamName} #${scorerNumber} registrado.` });
         }
       } catch (e) {
         console.error("Failed to parse remote command from server event:", e);
@@ -245,7 +252,7 @@ export default function ControlsPage() {
     return () => {
       eventSource.close();
     };
-  }, [pageDisplayState, dispatch, toast, state.live, state.config]);
+  }, [pageDisplayState, dispatch, toast, state]);
 
 
   useEffect(() => {
@@ -328,7 +335,7 @@ export default function ControlsPage() {
   };
 
   const hasPendingPuckPenalties = useMemo(() => {
-    if (!state.live) return false;
+    if (!state.live || !state.live.penalties) return false;
     return state.live.penalties.home.some(p => p._status === 'pending_puck') ||
            state.live.penalties.away.some(p => p._status === 'pending_puck');
   }, [state.live]);
@@ -338,7 +345,7 @@ export default function ControlsPage() {
     setIsGoalManagementOpen(true);
   };
   
-  if (isLoading || !state.live || !state.config) {
+  if (isLoading || !state.live || !state.config || !state.live.penalties) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
         <LoadingSpinner className="h-12 w-12 text-primary mb-4" />
