@@ -245,6 +245,16 @@ export default function ControlsPage() {
 
           dispatch({ type: 'ADD_GOAL', payload: goalPayload });
           toast({ title: "Gol Añadido (Remoto)", description: `Gol para ${team === 'home' ? currentLive.homeTeamName : currentLive.awayTeamName} #${scorerNumber} registrado.` });
+        } else if (command.type === 'ADD_PENALTY') {
+          const { team, playerNumber, duration } = command.payload;
+           dispatch({
+              type: 'ADD_PENALTY',
+              payload: {
+                team,
+                penalty: { playerNumber, initialDuration: duration },
+              },
+            });
+            toast({ title: "Penalidad Añadida (Remoto)", description: `Jugador #${playerNumber} de ${team === 'home' ? currentLive.homeTeamName : currentLive.awayTeamName} recibió una penalidad de ${formatTime(duration * 100)}.` });
         }
       } catch (e) {
         console.error("Failed to parse remote command from server event:", e);

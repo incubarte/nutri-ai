@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Goal, Send, Users } from 'lucide-react';
+import { Goal, Send, Users, Siren } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '../actions';
 import {
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function AddGoalForm({ homeTeamName, awayTeamName, onGoalSent }: { homeTeamName: string; awayTeamName: string; onGoalSent: () => void }) {
     const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
@@ -69,7 +70,8 @@ function AddGoalForm({ homeTeamName, awayTeamName, onGoalSent }: { homeTeamName:
               type="button"
               variant={selectedTeam === 'home' ? 'default' : 'outline'}
               onClick={() => setSelectedTeam('home')}
-              className="h-12 text-base"
+              className="h-12 text-base truncate"
+              title={homeTeamName}
             >
               {homeTeamName}
             </Button>
@@ -77,7 +79,8 @@ function AddGoalForm({ homeTeamName, awayTeamName, onGoalSent }: { homeTeamName:
               type="button"
               variant={selectedTeam === 'away' ? 'default' : 'outline'}
               onClick={() => setSelectedTeam('away')}
-              className="h-12 text-base"
+              className="h-12 text-base truncate"
+              title={awayTeamName}
             >
               {awayTeamName}
             </Button>
@@ -123,12 +126,119 @@ function AddGoalForm({ homeTeamName, awayTeamName, onGoalSent }: { homeTeamName:
         </DialogFooter>
       </form>
     );
-  }
+}
+
+function AddPenaltyForm({ homeTeamName, awayTeamName, onPenaltySent }: { homeTeamName: string; awayTeamName: string; onPenaltySent: () => void }) {
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [playerNumber, setPlayerNumber] = useState('');
+  const [penaltyDuration, setPenaltyDuration] = useState('120');
+  const [isSending, setIsSending] = useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTeam) {
+      toast({ title: "Error", description: "Debes seleccionar un equipo.", variant: "destructive" });
+      return;
+    }
+    if (!playerNumber.trim()) {
+      toast({ title: "Error", description: "El número del jugador es obligatorio.", variant: "destructive" });
+      return;
+    }
+
+    setIsSending(true);
+    const result = await sendRemoteCommand({
+      type: 'ADD_PENALTY',
+      payload: {
+        team: selectedTeam,
+        playerNumber: playerNumber.trim(),
+        duration: parseInt(penaltyDuration, 10),
+      }
+    });
+    setIsSending(false);
+
+    if (result.success) {
+      toast({ title: "Comando Enviado", description: "La penalidad ha sido enviada al operador principal." });
+      onPenaltySent();
+    } else {
+      toast({ title: "Error al Enviar", description: result.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <Label className="text-base">Equipo Sancionado</Label>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <Button
+            type="button"
+            variant={selectedTeam === 'home' ? 'default' : 'outline'}
+            onClick={() => setSelectedTeam('home')}
+            className="h-12 text-base truncate"
+            title={homeTeamName}
+          >
+            {homeTeamName}
+          </Button>
+          <Button
+            type="button"
+            variant={selectedTeam === 'away' ? 'default' : 'outline'}
+            onClick={() => setSelectedTeam('away')}
+            className="h-12 text-base truncate"
+            title={awayTeamName}
+          >
+            {awayTeamName}
+          </Button>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="penalty-player-number"># Jugador</Label>
+          <Input
+            id="penalty-player-number"
+            type="number"
+            inputMode="numeric"
+            value={playerNumber}
+            onChange={(e) => setPlayerNumber(e.target.value)}
+            placeholder="Ej: 99"
+            className="h-12 text-lg"
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="penalty-duration">Duración</Label>
+          <Select value={penaltyDuration} onValueChange={setPenaltyDuration}>
+              <SelectTrigger id="penalty-duration" className="h-12 text-base">
+                  <SelectValue placeholder="Seleccionar..." />
+              </SelectTrigger>
+              <SelectContent>
+                  <SelectItem value="120">2:00 (Menor)</SelectItem>
+                  <SelectItem value="240">4:00 (Doble Menor)</SelectItem>
+                  <SelectItem value="300">5:00 (Mayor)</SelectItem>
+                  <SelectItem value="600">10:00 (Mala Conducta)</SelectItem>
+              </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button type="button" variant="outline">Cancelar</Button>
+        </DialogClose>
+        <Button type="submit" disabled={isSending}>
+          {isSending ? <LoadingSpinner className="mr-2" /> : <Send className="mr-2 h-4 w-4" />}
+          Enviar Penalidad
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
 
 
 export default function MobileControlsPage() {
   const { state, isLoading } = useGameState();
   const [isAddGoalDialogOpen, setIsAddGoalDialogOpen] = useState(false);
+  const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
 
   if (isLoading || !state.live || !state.config) {
     return (
@@ -149,13 +259,21 @@ export default function MobileControlsPage() {
         </p>
       </div>
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-6 flex flex-col gap-4">
           <Button
             className="w-full h-24 text-2xl font-bold"
             onClick={() => setIsAddGoalDialogOpen(true)}
           >
             <Goal className="mr-4 h-8 w-8" />
             Añadir Gol
+          </Button>
+           <Button
+            className="w-full h-24 text-2xl font-bold"
+            onClick={() => setIsAddPenaltyDialogOpen(true)}
+            variant="destructive"
+          >
+            <Siren className="mr-4 h-8 w-8" />
+            Añadir Penalidad
           </Button>
         </CardContent>
       </Card>
@@ -172,6 +290,22 @@ export default function MobileControlsPage() {
             homeTeamName={state.live.homeTeamName}
             awayTeamName={state.live.awayTeamName}
             onGoalSent={() => setIsAddGoalDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isAddPenaltyDialogOpen} onOpenChange={setIsAddPenaltyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar una Nueva Penalidad</DialogTitle>
+            <DialogDescription>
+              Selecciona el equipo, el número del jugador y la duración de la falta.
+            </DialogDescription>
+          </DialogHeader>
+          <AddPenaltyForm 
+            homeTeamName={state.live.homeTeamName}
+            awayTeamName={state.live.awayTeamName}
+            onPenaltySent={() => setIsAddPenaltyDialogOpen(false)}
           />
         </DialogContent>
       </Dialog>
