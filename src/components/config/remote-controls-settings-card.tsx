@@ -18,15 +18,32 @@ import { Separator } from "../ui/separator";
 
 const LocalNetworkManager = () => {
     const { toast } = useToast();
-    const [localIp, setLocalIp] = useState('');
+    const [localIp, setLocalIp] = useState<string | null>(null);
+    const [isLoadingIp, setIsLoadingIp] = useState(true);
     const [localPort, setLocalPort] = useState('');
 
     useEffect(() => {
-        setLocalIp(window.location.hostname);
         setLocalPort(window.location.port);
+        const fetchLocalIp = async () => {
+          setIsLoadingIp(true);
+          try {
+            const response = await fetch('/api/local-ip');
+            if (!response.ok) throw new Error('Failed to fetch local IP');
+            const data = await response.json();
+            setLocalIp(data.ip || 'No disponible');
+          } catch (error) {
+            console.error("Failed to fetch local IP:", error);
+            setLocalIp('Error al obtener');
+          } finally {
+            setIsLoadingIp(false);
+          }
+        };
+        fetchLocalIp();
     }, []);
 
-    const fullLocalUrl = `http://${localIp}:${localPort}/mobile-controls`;
+    const fullLocalUrl = (localIp && localPort && !localIp.includes('Error')) 
+      ? `http://${localIp}:${localPort}/mobile-controls`
+      : '';
 
     const handleCopyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text).then(() => {
@@ -41,12 +58,13 @@ const LocalNetworkManager = () => {
             <div className="space-y-6">
                  <div className="space-y-2">
                     <Label htmlFor="local-ip">IP del Servidor (en tu red)</Label>
-                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 py-2 text-sm">
-                        <span className="font-mono">{localIp || "cargando..."}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                        Para ver la IP de tu red aquí (ej. 192.168.1.X), accede a esta página desde otro dispositivo en la misma red.
-                    </p>
+                    {isLoadingIp ? (
+                      <Skeleton className="h-10 w-full" />
+                    ) : (
+                      <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 py-2 text-sm">
+                          <span className="font-mono">{localIp}</span>
+                      </div>
+                    )}
                  </div>
                  <div className="space-y-2">
                     <Label htmlFor="local-port">Puerto de la Aplicación</Label>
@@ -58,7 +76,7 @@ const LocalNetworkManager = () => {
             <div className="flex flex-col items-center justify-center space-y-4">
                  <Label className="text-base font-medium">QR para Acceso Móvil (Red Local)</Label>
                  <div className="relative flex items-center justify-center bg-card p-4 rounded-lg border w-48 h-48">
-                    {localIp && localPort ? (
+                    {fullLocalUrl ? (
                         <QRCodeSVG value={fullLocalUrl} size={160} bgColor="hsl(var(--card))" fgColor="hsl(var(--card-foreground))" />
                     ) : (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-muted-foreground p-4">
@@ -67,7 +85,7 @@ const LocalNetworkManager = () => {
                         </div>
                     )}
                  </div>
-                <Button variant="link" size="sm" onClick={() => handleCopyToClipboard(fullLocalUrl)} disabled={!localIp || !localPort}>
+                <Button variant="link" size="sm" onClick={() => handleCopyToClipboard(fullLocalUrl)} disabled={!fullLocalUrl}>
                     <Copy className="mr-2 h-3.5 w-3.5" />
                     Copiar URL completa
                 </Button>
