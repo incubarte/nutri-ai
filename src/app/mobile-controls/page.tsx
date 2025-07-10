@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Goal, Send, Users, Siren, WifiOff } from 'lucide-react';
+import { Goal, Send, Users, Siren, WifiOff, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '../actions';
 import {
@@ -242,29 +242,31 @@ export default function MobileControlsPage() {
   const [isAddGoalDialogOpen, setIsAddGoalDialogOpen] = useState(false);
   const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const response = await fetch('/api/game-state');
-        if (!response.ok) {
-          throw new Error(`Server responded with status: ${response.status}`);
-        }
-        const data: LiveGameState | null = await response.json();
-        setGameState(data);
-        setError(null);
-      } catch (e) {
-        console.error("Failed to fetch initial game state:", e);
-        setError("No se pudo obtener el estado del partido del servidor.");
-      } finally {
-        setIsLoading(false);
+  const fetchInitialData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/game-state');
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
       }
-    };
+      const data: LiveGameState | null = await response.json();
+      setGameState(data);
+    } catch (e) {
+      console.error("Failed to fetch initial game state:", e);
+      setError("No se pudo obtener el estado del partido del servidor.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchInitialData();
   }, []);
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-screen w-screen -m-4 items-center justify-center text-center">
+      <div className="flex flex-col h-full w-full items-center justify-center text-center">
         <LoadingSpinner className="h-12 w-12 text-primary" />
         <p className="text-muted-foreground mt-4">Cargando control remoto...</p>
       </div>
@@ -273,10 +275,14 @@ export default function MobileControlsPage() {
   
   if (error || !gameState) {
     return (
-      <div className="flex flex-col h-screen w-screen -m-4 items-center justify-center text-center text-destructive">
+      <div className="flex flex-col h-full w-full items-center justify-center text-center text-destructive">
          <WifiOff className="h-16 w-16" />
         <h1 className="text-2xl font-bold mt-4">Error de Conexión</h1>
         <p className="text-destructive-foreground/80">{error || "No se pudo cargar la información del partido."}</p>
+        <Button onClick={fetchInitialData} className="mt-6">
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Reintentar
+        </Button>
       </div>
     );
   }
