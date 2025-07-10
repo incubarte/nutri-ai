@@ -751,7 +751,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                     </p>
                 )}
             </div>
-            <p className="text-sm text-muted-foreground text-center my-1">({state.config.enableTeamSelectionInMiniScoreboard && state.config.teams.length > 0 && state.live.homeTeamName.trim() ? 'Local' : state.live.homeTeamName.trim() || 'Local'})</p>
+            <p className="text-sm text-muted-foreground text-center my-1">(Local)</p>
             <div className="flex items-center justify-center gap-1 mt-1">
               <Button variant="link" className="p-0 h-auto text-4xl font-bold text-accent w-24 text-center tabular-nums hover:no-underline hover:text-accent/80" onClick={() => onScoreClick('home')}>
                 {state.live.score.home}
@@ -1024,7 +1024,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                     </p>
                 )}
             </div>
-            <p className="text-sm text-muted-foreground text-center my-1">({state.config.enableTeamSelectionInMiniScoreboard && state.config.teams.length > 0 && state.live.awayTeamName.trim() ? 'Visitante' : state.live.awayTeamName.trim() || 'Visitante'})</p>
+            <p className="text-sm text-muted-foreground text-center my-1">(Visitante)</p>
             <div className="flex items-center justify-center gap-1 mt-1">
               <Button variant="link" className="p-0 h-auto text-4xl font-bold text-accent w-24 text-center tabular-nums hover:no-underline hover:text-accent/80" onClick={() => onScoreClick('away')}>
                 {state.live.score.away}
