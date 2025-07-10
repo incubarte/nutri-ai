@@ -28,9 +28,12 @@ const CagedUserIcon = ({ size, className }: { size: number; className?: string }
   </svg>
 );
 
+interface PenaltyWithVisualTimer extends Penalty {
+  _visualRemainingTimeCs?: number;
+}
 
 interface PenaltyCardProps {
-  penalty: Penalty;
+  penalty: PenaltyWithVisualTimer;
   teamName: string;
   mode?: 'desktop' | 'mobile';
   clock?: ClockState;
@@ -39,7 +42,6 @@ interface PenaltyCardProps {
 export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobileClock }: PenaltyCardProps) {
   const { state } = useGameState();
   
-  // Guard against rendering if the state is not ready
   if (!state.config || !state.live) {
     return null;
   }
@@ -102,7 +104,10 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
   const statusText = getStatusTextForScoreboard();
   
   let remainingTimeCs: number;
-  if (penalty._status === 'running' && penalty.expirationTime !== undefined) {
+
+  if (isMobile) {
+    remainingTimeCs = penalty._visualRemainingTimeCs ?? (penalty.initialDuration * 100);
+  } else if (penalty._status === 'running' && penalty.expirationTime !== undefined) {
     remainingTimeCs = Math.max(0, penalty.expirationTime - clock._liveAbsoluteElapsedTimeCs);
   } else {
     remainingTimeCs = penalty.initialDuration * 100;

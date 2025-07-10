@@ -9,8 +9,20 @@ import { PenaltiesDisplay } from '@/components/scoreboard/penalties-display';
 import { User, WifiOff } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
+// Extend the Penalty type locally for UI state
+interface PenaltyWithVisualTimer extends Penalty {
+  _visualRemainingTimeCs?: number;
+}
+
+interface LiveGameStateWithVisualPenalties extends Omit<LiveGameState, 'penalties'> {
+  penalties: {
+    home: PenaltyWithVisualTimer[];
+    away: PenaltyWithVisualTimer[];
+  };
+}
+
 export default function MobileScoreboard() {
-  const [gameState, setGameState] = useState<LiveGameState | null>(null);
+  const [gameState, setGameState] = useState<LiveGameStateWithVisualPenalties | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,7 +39,23 @@ export default function MobileScoreboard() {
           throw new Error(`Server responded with status: ${response.status}`);
         }
         const data: LiveGameState | null = await response.json();
-        setGameState(data);
+        if (data) {
+          // Initialize visual timers when data is first fetched
+          const initialGameState: LiveGameStateWithVisualPenalties = {
+              ...data,
+              penalties: {
+                  home: data.penalties.home.map(p => ({
+                      ...p,
+                      _visualRemainingTimeCs: p._status === 'running' && p.expirationTime ? Math.max(0, p.expirationTime - data.clock._liveAbsoluteElapsedTimeCs) : p.initialDuration * 100
+                  })),
+                  away: data.penalties.away.map(p => ({
+                      ...p,
+                      _visualRemainingTimeCs: p._status === 'running' && p.expirationTime ? Math.max(0, p.expirationTime - data.clock._liveAbsoluteElapsedTimeCs) : p.initialDuration * 100
+                  })),
+              }
+          };
+          setGameState(initialGameState);
+        }
       } catch (e) {
         console.error("Failed to fetch initial game state:", e);
         setError("No se pudo obtener el estado inicial del servidor.");
@@ -45,7 +73,21 @@ export default function MobileScoreboard() {
       eventSource.onmessage = (event) => {
         try {
           const data: LiveGameState = JSON.parse(event.data);
-          setGameState(data);
+          // Update state and re-calculate visual timers on each server update
+           const updatedGameState: LiveGameStateWithVisualPenalties = {
+              ...data,
+              penalties: {
+                  home: data.penalties.home.map(p => ({
+                      ...p,
+                      _visualRemainingTimeCs: p._status === 'running' && p.expirationTime ? Math.max(0, p.expirationTime - data.clock._liveAbsoluteElapsedTimeCs) : p.initialDuration * 100
+                  })),
+                  away: data.penalties.away.map(p => ({
+                      ...p,
+                      _visualRemainingTimeCs: p._status === 'running' && p.expirationTime ? Math.max(0, p.expirationTime - data.clock._liveAbsoluteElapsedTimeCs) : p.initialDuration * 100
+                  })),
+              }
+          };
+          setGameState(updatedGameState);
         } catch (e) {
           console.error("Failed to parse game state from server event:", e);
           setError("Datos del servidor corruptos.");
@@ -76,16 +118,16 @@ export default function MobileScoreboard() {
 
     const timerId = setInterval(() => {
       setGameState(prevState => {
-        if (!prevState || !prevState.clock.isClockRunning || prevState.clock.currentTime <= 0) {
+        if (!prevState || !prevState.clock.isClockRunning) {
           return prevState;
         }
 
         const newTime = prevState.clock.currentTime - 100;
         
-        const updatePenaltyTime = (penalty: Penalty): Penalty => {
-          if (penalty._status === 'running' && penalty.expirationTime !== undefined) {
-             const newExpirationTime = penalty.expirationTime - 100;
-             return { ...penalty, expirationTime: Math.max(prevState.clock._liveAbsoluteElapsedTimeCs, newExpirationTime) };
+        const updatePenaltyTime = (penalty: PenaltyWithVisualTimer): PenaltyWithVisualTimer => {
+          if (penalty._status === 'running' && penalty._visualRemainingTimeCs && penalty._visualRemainingTimeCs > 0) {
+             const newRemainingTime = penalty._visualRemainingTimeCs - 100;
+             return { ...penalty, _visualRemainingTimeCs: Math.max(0, newRemainingTime) };
           }
           return penalty;
         };
