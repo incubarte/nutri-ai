@@ -19,6 +19,19 @@ const DEFAULT_HORN_SOUND_FILE_PATH = '/audio/default-horn.wav';
 const DEFAULT_PENALTY_BEEP_FILE_PATH = '/audio/penalty_beep.wav';
 
 
+// Helper para generar UUIDs de forma segura
+const safeUUID = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    // Fallback para entornos no seguros (http) o navegadores antiguos
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+};
+
+
 let TAB_ID: string;
 if (typeof window !== 'undefined') {
   if (window.crypto && window.crypto.randomUUID) {
@@ -101,7 +114,7 @@ const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
 };
 
 const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): FormatAndTimingsProfile => ({
-  id: id || crypto.randomUUID(),
+  id: id || safeUUID(),
   name: name || IN_CODE_INITIAL_PROFILE_NAME,
   defaultWarmUpDuration: IN_CODE_INITIAL_WARM_UP_DURATION,
   defaultPeriodDuration: IN_CODE_INITIAL_PERIOD_DURATION,
@@ -120,7 +133,7 @@ const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): Forma
 });
 
 const createDefaultScoreboardLayoutProfile = (id?: string, name?: string): ScoreboardLayoutProfile => ({
-    id: id || crypto.randomUUID(),
+    id: id || safeUUID(),
     name: name || IN_CODE_INITIAL_LAYOUT_PROFILE_NAME,
     ...IN_CODE_INITIAL_LAYOUT_SETTINGS
 });
@@ -514,7 +527,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'ADD_GOAL': {
-      const newGoal: GoalLog = { ...action.payload, id: crypto.randomUUID() };
+      const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
       const homeGoals = (action.payload.team === 'home' ? [...(state.live.score.homeGoals || []), newGoal] : (state.live.score.homeGoals || []));
       const awayGoals = (action.payload.team === 'away' ? [...(state.live.score.awayGoals || []), newGoal] : (state.live.score.awayGoals || []));
       newState = { ...state, live: { ...state.live, score: {
@@ -546,7 +559,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'ADD_PENALTY': {
-      const newPenaltyId = crypto.randomUUID();
+      const newPenaltyId = safeUUID();
       const newPenalty: Penalty = { id: newPenaltyId, ...action.payload.penalty, _status: 'pending_puck' };
       const teamDetails = state.config.teams.find(t => t.name === state.live[`${action.payload.team}TeamName`] && (t.subName || undefined) === (state.live[`${action.payload.team}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
       const playerDetails = teamDetails?.players.find(p => p.number === newPenalty.playerNumber);
@@ -908,10 +921,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'SET_AVAILABLE_CATEGORIES': newState = { ...state, config: { ...state.config, availableCategories: action.payload, selectedMatchCategory: (action.payload.find(c => c.id === state.config.selectedMatchCategory) ? state.config.selectedMatchCategory : (action.payload[0]?.id || '')) } }; break;
     case 'SET_SELECTED_MATCH_CATEGORY': newState = { ...state, config: { ...state.config, selectedMatchCategory: action.payload } }; break;
     case 'UPDATE_TUNNEL_STATE': newState = { ...state, config: { ...state.config, tunnel: { ...state.config.tunnel, ...action.payload } }}; break;
-    case 'ADD_TEAM': newState = { ...state, config: { ...state.config, teams: [...state.config.teams, { ...action.payload, id: action.payload.id || crypto.randomUUID() }] } }; break;
+    case 'ADD_TEAM': newState = { ...state, config: { ...state.config, teams: [...state.config.teams, { ...action.payload, id: action.payload.id || safeUUID() }] } }; break;
     case 'UPDATE_TEAM_DETAILS': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, ...action.payload } : t) } }; break;
     case 'DELETE_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.filter(t => t.id !== action.payload.teamId) } }; break;
-    case 'ADD_PLAYER_TO_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, players: [...t.players, { ...action.payload.player, id: crypto.randomUUID() }] } : t) } }; break;
+    case 'ADD_PLAYER_TO_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, players: [...t.players, { ...action.payload.player, id: safeUUID() }] } : t) } }; break;
     case 'UPDATE_PLAYER_IN_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, players: t.players.map(p => p.id === action.payload.playerId ? { ...p, ...action.payload.updates } : p) } : t) } }; break;
     case 'REMOVE_PLAYER_FROM_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, players: t.players.filter(p => p.id !== action.payload.playerId) } : t) } }; break;
     case 'LOAD_TEAMS_FROM_FILE': newState = { ...state, config: { ...state.config, teams: action.payload } }; break;

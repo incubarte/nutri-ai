@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -209,16 +210,16 @@ export function CreateEditTeamDialog({
       });
       onTeamSaved(teamToEdit.id);
     } else {
-      const newTeamId = crypto.randomUUID();
       dispatch({
         type: "ADD_TEAM",
-        payload: { id: newTeamId, ...teamPayload, players: [] },
+        payload: { ...teamPayload, players: [] },
       });
       toast({
         title: "Equipo Creado",
         description: `El equipo "${teamPayload.name}" ha sido creado.`,
       });
-      onTeamSaved(newTeamId);
+      // Assuming onTeamSaved should be called for new teams too, but without an ID since it's generated in the reducer
+      // onTeamSaved(''); 
     }
     onOpenChange(false);
   };
