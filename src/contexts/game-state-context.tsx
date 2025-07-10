@@ -59,6 +59,7 @@ const IN_CODE_INITIAL_ENABLE_PENALTY_COUNTDOWN_SOUND = true;
 const IN_CODE_INITIAL_PENALTY_COUNTDOWN_START_TIME = 10;
 const IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL = null;
 const IN_CODE_INITIAL_ENABLE_DEBUG_MODE = false;
+const IN_CODE_INITIAL_REMOTE_CONTROLS_URL = '';
 
 
 export const IN_CODE_INITIAL_LAYOUT_SETTINGS: ScoreboardLayoutSettings = {
@@ -155,6 +156,7 @@ const initialGlobalState: GameState = {
     availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
     selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
     teams: [],
+    remoteControlsUrl: IN_CODE_INITIAL_REMOTE_CONTROLS_URL,
   },
   live: {
     score: {
@@ -931,6 +933,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
           availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
           selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
+          remoteControlsUrl: IN_CODE_INITIAL_REMOTE_CONTROLS_URL,
         }
       };
       break;
