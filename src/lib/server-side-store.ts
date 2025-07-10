@@ -1,19 +1,24 @@
 
-import type { LiveGameState, ConfigState } from '@/types';
+import type { LiveGameState, ConfigState, RemoteCommand } from '@/types';
 import { EventEmitter } from 'events';
 
 let storedConfig: ConfigState | null = null;
 let storedGameState: LiveGameState | null = null;
 
-const globalForEmitter = globalThis as unknown as {
+const globalForEmitters = globalThis as unknown as {
   gameStateEmitter: EventEmitter | undefined;
+  commandEmitter: EventEmitter | undefined;
 };
 
 export const gameStateEmitter =
-  globalForEmitter.gameStateEmitter ?? new EventEmitter();
+  globalForEmitters.gameStateEmitter ?? new EventEmitter();
+  
+export const commandEmitter =
+  globalForEmitters.commandEmitter ?? new EventEmitter();
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForEmitter.gameStateEmitter = gameStateEmitter;
+  globalForEmitters.gameStateEmitter = gameStateEmitter;
+  globalForEmitters.commandEmitter = commandEmitter;
 }
 
 
@@ -32,4 +37,8 @@ export function getGameState(): LiveGameState | null {
 export function setGameState(newGameState: LiveGameState): void {
   storedGameState = newGameState;
   gameStateEmitter.emit('update', newGameState);
+}
+
+export function sendCommand(command: RemoteCommand): void {
+  commandEmitter.emit('command', command);
 }

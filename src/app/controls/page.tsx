@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -5,8 +6,8 @@ import { MiniScoreboard } from '@/components/controls/mini-scoreboard';
 import { PenaltyControlCard } from '@/components/controls/penalty-control-card';
 import { GoalManagementDialog } from '@/components/controls/goal-management-dialog';
 import { GameSummaryDialog } from '@/components/controls/game-summary-dialog';
-import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, formatTime } from '@/contexts/game-state-context';
-import type { PlayerData } from '@/types';
+import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, formatTime, getActualPeriodText } from '@/contexts/game-state-context';
+import type { PlayerData, RemoteCommand } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +15,7 @@ import { RefreshCw, AlertTriangle, PlayCircle, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
 import { exportGameSummaryPDF } from '@/lib/pdf-generator';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const CONTROLS_LOCK_KEY = 'icevision-controls-lock-id';
 const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
@@ -201,6 +203,51 @@ export default function ControlsPage() {
   }, [instanceId, checkLockStatus, router]);
 
 
+  // Effect for listening to remote commands from the server
+  useEffect(() => {
+    if (pageDisplayState !== 'Primary' || !state.live || !state.config) {
+      return;
+    }
+
+    const eventSource = new EventSource('/api/remote-commands/events');
+
+    eventSource.onmessage = (event) => {
+      try {
+        const command: RemoteCommand = JSON.parse(event.data);
+        console.log("Remote command received:", command);
+        if (command.type === 'ADD_GOAL') {
+          const { team, scorerNumber, assistNumber } = command.payload;
+          const teamData = state.config.teams.find(t => t.name === state.live[`${team}TeamName`] && (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
+          const scorerPlayer = teamData?.players.find(p => p.number === scorerNumber);
+          const assistPlayer = assistNumber ? teamData?.players.find(p => p.number === assistNumber) : undefined;
+          
+          const goalPayload: Omit<GoalLog, 'id'> = {
+            team,
+            timestamp: Date.now(),
+            gameTime: state.live.clock.currentTime,
+            periodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
+            scorer: { playerNumber: scorerNumber, playerName: scorerPlayer?.name },
+            assist: assistNumber ? { playerNumber: assistNumber, playerName: assistPlayer?.name } : undefined,
+          };
+
+          dispatch({ type: 'ADD_GOAL', payload: goalPayload });
+          toast({ title: "Gol Añadido (Remoto)", description: `Gol para ${team === 'home' ? state.live.homeTeamName : state.live.awayTeamName} #${scorerNumber} registrado.` });
+        }
+      } catch (e) {
+        console.error("Failed to parse remote command from server event:", e);
+      }
+    };
+
+    eventSource.onerror = () => {
+      console.error("Remote command EventSource failed. Reconnecting...");
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [pageDisplayState, dispatch, toast, state.live, state.config]);
+
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (pageDisplayState !== 'Primary') {
@@ -291,10 +338,10 @@ export default function ControlsPage() {
     setIsGoalManagementOpen(true);
   };
   
-  if (isLoading) {
+  if (isLoading || !state.live || !state.config) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
-        <RefreshCw className="h-12 w-12 animate-spin text-primary mb-4" />
+        <LoadingSpinner className="h-12 w-12 text-primary mb-4" />
         <p className="text-xl text-foreground">Cargando...</p>
       </div>
     );
@@ -303,7 +350,7 @@ export default function ControlsPage() {
   if (pageDisplayState === 'Checking' || !instanceId) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
-        <RefreshCw className="h-12 w-12 animate-spin text-primary mb-4" />
+        <LoadingSpinner className="h-12 w-12 text-primary mb-4" />
         <p className="text-xl text-foreground">Verificando instancia de controles...</p>
         <p className="text-sm text-muted-foreground">Esto tomará un momento.</p>
         <p className="text-xs text-muted-foreground mt-2">ID de esta instancia: ...{instanceId ? instanceId.slice(-6) : 'generando...'}</p>
@@ -334,9 +381,6 @@ export default function ControlsPage() {
       </div>
     );
   }
-
-  // Guard against rendering if state is not fully hydrated
-  if (!state.live || !state.config) return null;
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-8">
