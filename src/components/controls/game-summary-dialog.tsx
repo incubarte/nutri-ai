@@ -104,20 +104,24 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
   const { toast } = useToast();
   
   const homeGoals = useMemo(() => {
-    return [...(state.score.homeGoals || [])].sort((a, b) => a.timestamp - b.timestamp);
-  }, [state.score.homeGoals]);
+    if (!state.live.score) return [];
+    return [...(state.live.score.homeGoals || [])].sort((a, b) => a.timestamp - b.timestamp);
+  }, [state.live.score]);
   
   const awayGoals = useMemo(() => {
-    return [...(state.score.awayGoals || [])].sort((a, b) => a.timestamp - b.timestamp);
-  }, [state.score.awayGoals]);
+    if (!state.live.score) return [];
+    return [...(state.live.score.awayGoals || [])].sort((a, b) => a.timestamp - b.timestamp);
+  }, [state.live.score]);
   
   const homePenalties = useMemo(() => {
-      return [...state.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
-  }, [state.gameSummary.home.penalties]);
+      if (!state.live.gameSummary.home) return [];
+      return [...state.live.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
+  }, [state.live.gameSummary.home]);
 
   const awayPenalties = useMemo(() => {
-      return [...state.gameSummary.away.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
-  }, [state.gameSummary.away.penalties]);
+      if (!state.live.gameSummary.away) return [];
+      return [...state.live.gameSummary.away.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
+  }, [state.live.gameSummary.away]);
 
 
   const escapeCsvCell = (cellData: any): string => {
@@ -132,10 +136,10 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     const headers = ['Equipo', 'Tipo', 'Tiempo Juego', 'Periodo', '# Jugador', 'Nombre', '# Jugador 2', 'Nombre 2', 'Duración Pen.', 'Estado Pen.'];
     const rows: string[][] = [];
 
-    homeGoals.forEach(g => rows.push([state.homeTeamName, 'Gol', formatTime(g.gameTime), g.periodText, g.scorer?.playerNumber || 'S/N', g.scorer?.playerName || '---', g.assist?.playerNumber || '', g.assist?.playerName || '', '', '']));
-    awayGoals.forEach(g => rows.push([state.awayTeamName, 'Gol', formatTime(g.gameTime), g.periodText, g.scorer?.playerNumber || 'S/N', g.scorer?.playerName || '---', g.assist?.playerNumber || '', g.assist?.playerName || '', '', '']));
-    homePenalties.forEach(p => rows.push([state.homeTeamName, 'Penalidad', formatTime(p.addGameTime), p.addPeriodText, p.playerNumber, p.playerName || '---', '', '', formatTime(p.initialDuration * 100), getEndReasonText(p.endReason) ]));
-    awayPenalties.forEach(p => rows.push([state.awayTeamName, 'Penalidad', formatTime(p.addGameTime), p.addPeriodText, p.playerNumber, p.playerName || '---', '', '', formatTime(p.initialDuration * 100), getEndReasonText(p.endReason) ]));
+    homeGoals.forEach(g => rows.push([state.live.homeTeamName, 'Gol', formatTime(g.gameTime), g.periodText, g.scorer?.playerNumber || 'S/N', g.scorer?.playerName || '---', g.assist?.playerNumber || '', g.assist?.playerName || '', '', '']));
+    awayGoals.forEach(g => rows.push([state.live.awayTeamName, 'Gol', formatTime(g.gameTime), g.periodText, g.scorer?.playerNumber || 'S/N', g.scorer?.playerName || '---', g.assist?.playerNumber || '', g.assist?.playerName || '', '', '']));
+    homePenalties.forEach(p => rows.push([state.live.homeTeamName, 'Penalidad', formatTime(p.addGameTime), p.addPeriodText, p.playerNumber, p.playerName || '---', '', '', formatTime(p.initialDuration * 100), getEndReasonText(p.endReason) ]));
+    awayPenalties.forEach(p => rows.push([state.live.awayTeamName, 'Penalidad', formatTime(p.addGameTime), p.addPeriodText, p.playerNumber, p.playerName || '---', '', '', formatTime(p.initialDuration * 100), getEndReasonText(p.endReason) ]));
 
     const csvContent = "data:text/csv;charset=utf-8," 
       + [headers.map(escapeCsvCell).join(','), ...rows.map(row => row.map(escapeCsvCell).join(','))].join('\n');
@@ -143,7 +147,7 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `resumen_partido_${state.homeTeamName}_vs_${state.awayTeamName}.csv`);
+    link.setAttribute("download", `resumen_partido_${state.live.homeTeamName}_vs_${state.live.awayTeamName}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -170,8 +174,8 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
           <div className="flex flex-col md:flex-row gap-6">
             <TeamSummaryColumn 
               team="home"
-              teamName={state.homeTeamName}
-              score={state.score.home}
+              teamName={state.live.homeTeamName}
+              score={state.live.score.home}
               goals={homeGoals}
               penalties={homePenalties}
             />
@@ -179,8 +183,8 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
             <Separator orientation="horizontal" className="block md:hidden" />
              <TeamSummaryColumn 
               team="away"
-              teamName={state.awayTeamName}
-              score={state.score.away}
+              teamName={state.live.awayTeamName}
+              score={state.live.score.away}
               goals={awayGoals}
               penalties={awayPenalties}
             />
