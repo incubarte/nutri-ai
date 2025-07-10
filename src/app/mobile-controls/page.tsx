@@ -1,14 +1,13 @@
 
 "use client";
 
-import { useState } from 'react';
-import type { Team } from '@/types';
-import { useGameState } from '@/contexts/game-state-context';
+import { useState, useEffect } from 'react';
+import type { Team, LiveGameState } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Goal, Send, Users, Siren } from 'lucide-react';
+import { Goal, Send, Users, Siren, WifiOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '../actions';
 import {
@@ -236,15 +235,48 @@ function AddPenaltyForm({ homeTeamName, awayTeamName, onPenaltySent }: { homeTea
 
 
 export default function MobileControlsPage() {
-  const { state, isLoading } = useGameState();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [gameState, setGameState] = useState<LiveGameState | null>(null);
+  
   const [isAddGoalDialogOpen, setIsAddGoalDialogOpen] = useState(false);
   const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
 
-  if (isLoading || !state.live || !state.config) {
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const response = await fetch('/api/game-state');
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        const data: LiveGameState | null = await response.json();
+        setGameState(data);
+        setError(null);
+      } catch (e) {
+        console.error("Failed to fetch initial game state:", e);
+        setError("No se pudo obtener el estado del partido del servidor.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchInitialData();
+  }, []);
+
+  if (isLoading) {
     return (
       <div className="flex flex-col h-screen w-screen -m-4 items-center justify-center text-center">
         <LoadingSpinner className="h-12 w-12 text-primary" />
         <p className="text-muted-foreground mt-4">Cargando control remoto...</p>
+      </div>
+    );
+  }
+  
+  if (error || !gameState) {
+    return (
+      <div className="flex flex-col h-screen w-screen -m-4 items-center justify-center text-center text-destructive">
+         <WifiOff className="h-16 w-16" />
+        <h1 className="text-2xl font-bold mt-4">Error de Conexión</h1>
+        <p className="text-destructive-foreground/80">{error || "No se pudo cargar la información del partido."}</p>
       </div>
     );
   }
@@ -287,8 +319,8 @@ export default function MobileControlsPage() {
             </DialogDescription>
           </DialogHeader>
           <AddGoalForm 
-            homeTeamName={state.live.homeTeamName}
-            awayTeamName={state.live.awayTeamName}
+            homeTeamName={gameState.homeTeamName || 'Local'}
+            awayTeamName={gameState.awayTeamName || 'Visitante'}
             onGoalSent={() => setIsAddGoalDialogOpen(false)}
           />
         </DialogContent>
@@ -303,8 +335,8 @@ export default function MobileControlsPage() {
             </DialogDescription>
           </DialogHeader>
           <AddPenaltyForm 
-            homeTeamName={state.live.homeTeamName}
-            awayTeamName={state.live.awayTeamName}
+            homeTeamName={gameState.homeTeamName || 'Local'}
+            awayTeamName={gameState.awayTeamName || 'Visitante'}
             onPenaltySent={() => setIsAddPenaltyDialogOpen(false)}
           />
         </DialogContent>
