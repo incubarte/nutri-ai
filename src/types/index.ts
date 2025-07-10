@@ -233,7 +233,8 @@ export interface LiveGameState {
 // --- Remote Commands ---
 export type RemoteCommand = 
   | { type: 'ADD_GOAL'; payload: { team: Team; scorerNumber: string; assistNumber?: string } }
-  | { type: 'ADD_PENALTY'; payload: { team: Team; playerNumber: string; duration: number } };
+  | { type: 'ADD_PENALTY'; payload: { team: Team; playerNumber: string; duration: number } }
+  | { type: 'ACTIVATE_PENDING_PUCK_PENALTIES' };
 
 
 export type GameAction =

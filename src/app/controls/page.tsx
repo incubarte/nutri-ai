@@ -105,7 +105,7 @@ export default function ControlsPage() {
 
 
   useEffect(() => {
-    setInstanceId(crypto.randomUUID());
+    setInstanceId(safeUUID());
   }, []);
 
   const checkLockStatus = useCallback(() => {
@@ -255,6 +255,9 @@ export default function ControlsPage() {
               },
             });
             toast({ title: "Penalidad Añadida (Remoto)", description: `Jugador #${playerNumber} de ${team === 'home' ? currentLive.homeTeamName : currentLive.awayTeamName} recibió una penalidad de ${formatTime(duration * 100)}.` });
+        } else if (command.type === 'ACTIVATE_PENDING_PUCK_PENALTIES') {
+            dispatch({ type: 'ACTIVATE_PENDING_PUCK_PENALTIES' });
+            toast({ title: "Puck en Juego (Remoto)", description: "Se activaron las penalidades pendientes." });
         }
       } catch (e) {
         console.error("Failed to parse remote command from server event:", e);

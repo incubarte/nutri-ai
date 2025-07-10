@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Goal, Send, Users, Siren, WifiOff, RefreshCw } from 'lucide-react';
+import { Goal, Send, Users, Siren, WifiOff, RefreshCw, PlayCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '../actions';
 import {
@@ -241,6 +241,9 @@ export default function MobileControlsPage() {
   
   const [isAddGoalDialogOpen, setIsAddGoalDialogOpen] = useState(false);
   const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
+  const [showPuckInPlayButton, setShowPuckInPlayButton] = useState(false);
+
+  const { toast } = useToast();
 
   const fetchInitialData = async () => {
     setIsLoading(true);
@@ -263,6 +266,16 @@ export default function MobileControlsPage() {
   useEffect(() => {
     fetchInitialData();
   }, []);
+  
+  const handlePuckInPlay = async () => {
+    const result = await sendRemoteCommand({ type: 'ACTIVATE_PENDING_PUCK_PENALTIES' });
+    if (result.success) {
+      toast({ title: "Comando Enviado", description: "'Puck en Juego' enviado al operador." });
+      setShowPuckInPlayButton(false);
+    } else {
+      toast({ title: "Error al Enviar", description: result.message, variant: "destructive" });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -313,6 +326,16 @@ export default function MobileControlsPage() {
             <Siren className="mr-4 h-8 w-8" />
             Añadir Penalidad
           </Button>
+          {showPuckInPlayButton && (
+             <Button
+                className="w-full h-20 text-xl font-bold"
+                onClick={handlePuckInPlay}
+                variant="outline"
+             >
+                <PlayCircle className="mr-4 h-7 w-7 text-green-500" />
+                Puck en Juego
+             </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -343,7 +366,10 @@ export default function MobileControlsPage() {
           <AddPenaltyForm 
             homeTeamName={gameState.homeTeamName || 'Local'}
             awayTeamName={gameState.awayTeamName || 'Visitante'}
-            onPenaltySent={() => setIsAddPenaltyDialogOpen(false)}
+            onPenaltySent={() => {
+              setIsAddPenaltyDialogOpen(false);
+              setShowPuckInPlayButton(true);
+            }}
           />
         </DialogContent>
       </Dialog>
