@@ -43,6 +43,11 @@ export default function ControlsPage() {
   const prevPeriodDisplayOverrideRef = useRef<string | null>();
   const isInitialMount = useRef(true);
 
+  // Ref to hold the latest state for use in the EventSource callback
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     if (isLoading || !state.live || !state.config) return;
@@ -214,7 +219,8 @@ export default function ControlsPage() {
     eventSource.onmessage = (event) => {
       try {
         const command: RemoteCommand = JSON.parse(event.data);
-        const { live: currentLive, config: currentConfig } = state;
+        // Use the ref to get the most up-to-date state
+        const { live: currentLive, config: currentConfig } = stateRef.current;
         
         if (!currentLive || !currentConfig) {
             console.warn("Received remote command but state is not ready. Ignoring.");
@@ -252,7 +258,7 @@ export default function ControlsPage() {
     return () => {
       eventSource.close();
     };
-  }, [pageDisplayState, dispatch, toast, state]);
+  }, [pageDisplayState, dispatch, toast]);
 
 
   useEffect(() => {
