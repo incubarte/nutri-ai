@@ -124,8 +124,12 @@ export default function MobileScoreboard() {
 
         const newTime = prevState.clock.currentTime - 100;
         
+        // Penalties should only count down during a regular period, not during breaks or timeouts.
+        const isGamePeriodActive = prevState.clock.periodDisplayOverride === null;
+        
         const updatePenaltyTime = (penalty: PenaltyWithVisualTimer): PenaltyWithVisualTimer => {
-          if (penalty._status === 'running' && penalty._visualRemainingTimeCs && penalty._visualRemainingTimeCs > 0) {
+          // Only discount if it's a running penalty in an active game period
+          if (isGamePeriodActive && penalty._status === 'running' && penalty._visualRemainingTimeCs && penalty._visualRemainingTimeCs > 0) {
              const newRemainingTime = penalty._visualRemainingTimeCs - 100;
              return { ...penalty, _visualRemainingTimeCs: Math.max(0, newRemainingTime) };
           }
