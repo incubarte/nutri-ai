@@ -30,12 +30,13 @@ export async function GET(request: Request) {
       // Keep the connection alive with a ping
       intervalId = setInterval(() => {
         try {
+            // SSE comments start with a colon. This is a standard keep-alive mechanism.
             controller.enqueue(encoder.encode(':ping\n\n'));
         } catch (e) {
-            console.log('Remote Command SSE: Ping failed, client disconnected.');
+            console.log('Remote Command SSE: Ping failed, client may have disconnected.');
             cleanup();
         }
-      }, 30000);
+      }, 10000); // Send a ping every 10 seconds
 
       request.signal.onabort = () => {
         console.log('Remote Command SSE: Client disconnected via abort signal.');
