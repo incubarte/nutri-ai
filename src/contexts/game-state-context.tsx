@@ -4,7 +4,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
@@ -59,7 +59,14 @@ const IN_CODE_INITIAL_ENABLE_PENALTY_COUNTDOWN_SOUND = true;
 const IN_CODE_INITIAL_PENALTY_COUNTDOWN_START_TIME = 10;
 const IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL = null;
 const IN_CODE_INITIAL_ENABLE_DEBUG_MODE = false;
-const IN_CODE_INITIAL_REMOTE_CONTROLS_URL = '';
+
+const IN_CODE_INITIAL_TUNNEL_STATE: TunnelState = {
+  subdomain: 'icevision-cl',
+  port: 3000,
+  status: 'disconnected',
+  url: null,
+  lastMessage: null,
+};
 
 
 export const IN_CODE_INITIAL_LAYOUT_SETTINGS: ScoreboardLayoutSettings = {
@@ -156,7 +163,7 @@ const initialGlobalState: GameState = {
     availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
     selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
     teams: [],
-    remoteControlsUrl: IN_CODE_INITIAL_REMOTE_CONTROLS_URL,
+    tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
   },
   live: {
     score: {
@@ -900,6 +907,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'SET_AVAILABLE_CATEGORIES': newState = { ...state, config: { ...state.config, availableCategories: action.payload, selectedMatchCategory: (action.payload.find(c => c.id === state.config.selectedMatchCategory) ? state.config.selectedMatchCategory : (action.payload[0]?.id || '')) } }; break;
     case 'SET_SELECTED_MATCH_CATEGORY': newState = { ...state, config: { ...state.config, selectedMatchCategory: action.payload } }; break;
+    case 'UPDATE_TUNNEL_STATE': newState = { ...state, config: { ...state.config, tunnel: { ...state.config.tunnel, ...action.payload } }}; break;
     case 'ADD_TEAM': newState = { ...state, config: { ...state.config, teams: [...state.config.teams, { ...action.payload, id: action.payload.id || crypto.randomUUID() }] } }; break;
     case 'UPDATE_TEAM_DETAILS': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, ...action.payload } : t) } }; break;
     case 'DELETE_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.filter(t => t.id !== action.payload.teamId) } }; break;
@@ -933,7 +941,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
           availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
           selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
-          remoteControlsUrl: IN_CODE_INITIAL_REMOTE_CONTROLS_URL,
+          tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
         }
       };
       break;

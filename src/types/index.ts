@@ -128,6 +128,14 @@ export interface GameSummary {
   };
 }
 
+export interface TunnelState {
+  subdomain: string;
+  port: number;
+  status: 'disconnected' | 'connecting' | 'connected' | 'error';
+  url: string | null;
+  lastMessage: string | null;
+}
+
 export interface ConfigState extends FormatAndTimingsProfileData {
   formatAndTimingsProfiles: FormatAndTimingsProfile[];
   selectedFormatAndTimingsProfileId: string | null;
@@ -148,7 +156,7 @@ export interface ConfigState extends FormatAndTimingsProfileData {
   selectedMatchCategory: string;
   teams: TeamData[];
   enableDebugMode: boolean;
-  remoteControlsUrl: string;
+  tunnel: TunnelState;
 }
 
 export type PeriodDisplayOverrideType = 'Warm-up' | 'Break' | 'Pre-OT Break' | 'Time Out' | 'End of Game' | null;
@@ -268,9 +276,10 @@ export type GameAction =
   | { type: 'DELETE_SCOREBOARD_LAYOUT_PROFILE'; payload: { profileId: string } }
   | { type: 'SELECT_SCOREBOARD_LAYOUT_PROFILE'; payload: { profileId: string } }
   | { type: 'SAVE_CURRENT_LAYOUT_TO_PROFILE' }
-  | { type: 'LOAD_SOUND_AND_DISPLAY_CONFIG'; payload: Partial<Pick<ConfigState, 'playSoundAtPeriodEnd' | 'customHornSoundDataUrl' | 'enableTeamSelectionInMiniScoreboard' | 'enablePlayerSelectionForPenalties' | 'showAliasInPenaltyPlayerSelector' | 'showAliasInControlsPenaltyList' | 'showAliasInScoreboardPenalties' | 'scoreboardLayoutProfiles' | 'enablePenaltyCountdownSound' | 'penaltyCountdownStartTime' | 'customPenaltyBeepSoundDataUrl' | 'enableDebugMode' | 'remoteControlsUrl'>> }
+  | { type: 'LOAD_SOUND_AND_DISPLAY_CONFIG'; payload: Partial<Pick<ConfigState, 'playSoundAtPeriodEnd' | 'customHornSoundDataUrl' | 'enableTeamSelectionInMiniScoreboard' | 'enablePlayerSelectionForPenalties' | 'showAliasInPenaltyPlayerSelector' | 'showAliasInControlsPenaltyList' | 'showAliasInScoreboardPenalties' | 'scoreboardLayoutProfiles' | 'enablePenaltyCountdownSound' | 'penaltyCountdownStartTime' | 'customPenaltyBeepSoundDataUrl' | 'enableDebugMode' | 'tunnel'>> }
   | { type: 'SET_AVAILABLE_CATEGORIES'; payload: CategoryData[] }
   | { type: 'SET_SELECTED_MATCH_CATEGORY'; payload: string }
+  | { type: 'UPDATE_TUNNEL_STATE', payload: Partial<TunnelState> }
   | { type: 'HYDRATE_FROM_STORAGE'; payload: Partial<GameState> }
   | { type: 'SET_STATE_FROM_LOCAL_BROADCAST'; payload: GameState }
   | { type: 'RESET_CONFIG_TO_DEFAULTS' }

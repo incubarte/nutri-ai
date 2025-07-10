@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
@@ -44,7 +45,7 @@ import type { TeamSettingsCardRef } from "@/components/config/team-settings-card
 import type { CategorySettingsCardRef } from "@/components/config/category-settings-card";
 import type { LayoutSettingsCardRef } from "@/components/config/layout-settings-card";
 import type { DebugSettingsCardRef } from "@/components/config/debug-settings-card";
-import type { RemoteControlsSettingsCardRef } from '@/components/config/remote-controls-settings-card';
+import { RemoteControlsSettingsCard } from '@/components/config/remote-controls-settings-card';
 
 
 // Lazy load heavy components
@@ -59,7 +60,6 @@ const CategorySettingsCard = dynamic(() => import('@/components/config/category-
 const LayoutSettingsCard = dynamic(() => import('@/components/config/layout-settings-card').then(mod => mod.LayoutSettingsCard), { loading: loadingComponent });
 const TeamsManagementTab = dynamic(() => import('@/components/config/teams-management-tab').then(mod => mod.TeamsManagementTab), { loading: loadingComponent });
 const DebugSettingsCard = dynamic(() => import('@/components/config/debug-settings-card').then(mod => mod.DebugSettingsCard), { loading: loadingComponent });
-const RemoteControlsSettingsCard = dynamic(() => import('@/components/config/remote-controls-settings-card').then(mod => mod.RemoteControlsSettingsCard), { loading: loadingComponent });
 
 
 const VALID_TAB_VALUES = ["formatAndTimings", "soundAndDisplay", "categoriesAndTeams", "remoteControls"];
@@ -69,7 +69,7 @@ type ExportableSoundAndDisplayConfig = Pick<ConfigFields,
   | 'enablePenaltyCountdownSound' | 'penaltyCountdownStartTime' | 'customPenaltyBeepSoundDataUrl'
   | 'enableTeamSelectionInMiniScoreboard' | 'enablePlayerSelectionForPenalties'
   | 'showAliasInPenaltyPlayerSelector' | 'showAliasInControlsPenaltyList' | 'showAliasInScoreboardPenalties'
-  | 'scoreboardLayoutProfiles' | 'enableDebugMode' | 'remoteControlsUrl'
+  | 'scoreboardLayoutProfiles' | 'enableDebugMode' | 'tunnel'
 >;
 
 
@@ -87,7 +87,6 @@ export default function ConfigPage() {
   const categorySettingsRef = useRef<CategorySettingsCardRef>(null);
   const layoutSettingsRef = useRef<LayoutSettingsCardRef>(null);
   const debugSettingsRef = useRef<DebugSettingsCardRef>(null);
-  const remoteControlsSettingsRef = useRef<RemoteControlsSettingsCardRef>(null);
   
   const fileInputFormatAndTimingsRef = useRef<HTMLInputElement>(null);
   const fileInputSoundAndDisplayRef = useRef<HTMLInputElement>(null);
@@ -99,7 +98,6 @@ export default function ConfigPage() {
   const [isTeamSettingsDirty, setIsTeamSettingsDirty] = useState(false);
   const [isCategorySettingsDirty, setIsCategorySettingsDirty] = useState(false);
   const [isDebugDirty, setIsDebugDirty] = useState(false);
-  const [isRemoteControlsDirty, setIsRemoteControlsDirty] = useState(false);
   
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [currentExportFilename, setCurrentExportFilename] = useState('');
@@ -166,7 +164,6 @@ export default function ConfigPage() {
 
   const isFormatAndTimingsSectionDirty = isDurationDirty || isPenaltyDirty;
   const isSoundAndDisplaySectionDirty = isSoundDirty || isPenaltyCountdownSoundDirty || isTeamSettingsDirty || isLayoutDirty || isDebugDirty;
-  const isRemoteControlsSectionDirty = isRemoteControlsDirty;
 
   const handleSaveChanges_FormatAndTimings = () => {
     let durationSaveSuccess = true;
@@ -244,22 +241,13 @@ export default function ConfigPage() {
   };
   
   const handleSaveChanges_RemoteControls = () => {
-    if (remoteControlsSettingsRef.current && isRemoteControlsDirty) {
-      if (remoteControlsSettingsRef.current.handleSave()) {
-        setIsRemoteControlsDirty(false);
-        toast({ title: "Controles Remotos Guardados", description: "Los cambios en Controles Remotos han sido guardados." });
-      } else {
-        toast({ title: "Error al Guardar", description: "No se pudieron guardar los cambios en Controles Remotos.", variant: "destructive" });
-      }
-    }
+    // This is now handled within the RemoteControlsSettingsCard component directly.
+    // This function can be kept for consistency or removed.
+    // Let's assume the button is now inside the card.
   };
   
   const handleDiscardChanges_RemoteControls = () => {
-    if (remoteControlsSettingsRef.current && isRemoteControlsDirty) {
-      remoteControlsSettingsRef.current.handleDiscard();
-      setIsRemoteControlsDirty(false);
-      toast({ title: "Cambios Descartados", description: "Los cambios no guardados en Controles Remotos han sido revertidos." });
-    }
+    // This is also handled within the component.
   };
 
 
@@ -325,7 +313,7 @@ export default function ConfigPage() {
       showAliasInScoreboardPenalties: state.showAliasInScoreboardPenalties,
       scoreboardLayoutProfiles: state.scoreboardLayoutProfiles,
       enableDebugMode: state.enableDebugMode,
-      remoteControlsUrl: state.remoteControlsUrl,
+      tunnel: state.tunnel,
     };
     exportSection("Configuración de Sonido y Display", configToExport, "icevision_sonido_display");
   };
@@ -383,7 +371,6 @@ export default function ConfigPage() {
             setIsTeamSettingsDirty(false);
             setIsPenaltyCountdownSoundDirty(false);
             setIsDebugDirty(false);
-            setIsRemoteControlsDirty(false);
         }
 
         toast({
@@ -435,7 +422,6 @@ export default function ConfigPage() {
     setIsTeamSettingsDirty(false);
     setIsCategorySettingsDirty(false);
     setIsDebugDirty(false);
-    setIsRemoteControlsDirty(false);
 
     toast({
       title: "Configuración Restablecida",
@@ -597,10 +583,6 @@ export default function ConfigPage() {
       sectionName = "Categorías";
       isDirty = true;
       discardAction = handleDiscardChanges_Categories;
-    } else if (activeTab === "remoteControls" && isRemoteControlsSectionDirty) {
-      sectionName = "Controles Remotos";
-      isDirty = true;
-      discardAction = handleDiscardChanges_RemoteControls;
     }
 
     if (isDirty) {
@@ -800,19 +782,7 @@ export default function ConfigPage() {
         </TabsContent>
 
         <TabsContent value="remoteControls" className={tabContentClassName}>
-          <div className="space-y-6">
-            <RemoteControlsSettingsCard ref={remoteControlsSettingsRef} onDirtyChange={setIsRemoteControlsDirty} />
-            {isRemoteControlsSectionDirty && (
-              <div className={sectionActionsContainerClass}>
-                <Button onClick={handleSaveChanges_RemoteControls} size="sm">
-                  <Save className="mr-2 h-4 w-4" /> Guardar
-                </Button>
-                <Button onClick={handleDiscardChanges_RemoteControls} variant="outline" size="sm">
-                  <Undo2 className="mr-2 h-4 w-4" /> Descartar
-                </Button>
-              </div>
-            )}
-          </div>
+          <RemoteControlsSettingsCard />
         </TabsContent>
       </Tabs>
 
