@@ -288,7 +288,7 @@ export default function MobileControlsPage() {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-8 pt-8">
+    <div className="w-full max-w-md mx-auto space-y-12 pt-8">
       <div className="text-center space-y-2">
         <Users className="mx-auto h-12 w-12 text-primary" />
         <h1 className="text-3xl font-bold text-primary-foreground">Control Remoto</h1>
@@ -297,7 +297,7 @@ export default function MobileControlsPage() {
         </p>
       </div>
       <Card>
-        <CardContent className="p-6 flex flex-col gap-4">
+        <CardContent className="p-6 flex flex-col gap-6">
           <Button
             className="w-full h-24 text-2xl font-bold"
             onClick={() => setIsAddGoalDialogOpen(true)}
