@@ -8,6 +8,7 @@ import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, Li
 import { toast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
+import { safeUUID } from '@/lib/utils';
 
 
 // --- Constantes para la sincronización local ---
@@ -19,17 +20,6 @@ const DEFAULT_HORN_SOUND_FILE_PATH = '/audio/default-horn.wav';
 const DEFAULT_PENALTY_BEEP_FILE_PATH = '/audio/penalty_beep.wav';
 
 
-// Helper para generar UUIDs de forma segura
-const safeUUID = () => {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID();
-    }
-    // Fallback para entornos no seguros (http) o navegadores antiguos
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-};
 
 
 let TAB_ID: string;

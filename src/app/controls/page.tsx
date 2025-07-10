@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
 import { exportGameSummaryPDF } from '@/lib/pdf-generator';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { safeUUID } from '@/lib/utils';
 
 const CONTROLS_LOCK_KEY = 'icevision-controls-lock-id';
 const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
