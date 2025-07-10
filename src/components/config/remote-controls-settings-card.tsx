@@ -44,22 +44,14 @@ const LocalNetworkManager = () => {
                     <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 py-2 text-sm">
                         <span className="font-mono">{localIp || "cargando..."}</span>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                        Para ver la IP de tu red aquí (ej. 192.168.1.X), accede a esta página desde otro dispositivo en la misma red.
+                    </p>
                  </div>
                  <div className="space-y-2">
                     <Label htmlFor="local-port">Puerto de la Aplicación</Label>
                     <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 py-2 text-sm">
                         <span className="font-mono">{localPort || "cargando..."}</span>
-                    </div>
-                </div>
-                <div className="space-y-2">
-                    <Label>URL Completa de Acceso</Label>
-                    <div className="flex items-center gap-2">
-                        <div className="flex h-10 w-full items-center truncate rounded-md border border-input bg-muted px-3 py-2 text-sm">
-                            <span className="font-mono truncate">{fullLocalUrl}</span>
-                        </div>
-                        <Button variant="outline" size="icon" onClick={() => handleCopyToClipboard(fullLocalUrl)}>
-                            <Copy className="h-4 w-4" />
-                        </Button>
                     </div>
                 </div>
             </div>
@@ -75,6 +67,10 @@ const LocalNetworkManager = () => {
                         </div>
                     )}
                  </div>
+                <Button variant="link" size="sm" onClick={() => handleCopyToClipboard(fullLocalUrl)} disabled={!localIp || !localPort}>
+                    <Copy className="mr-2 h-3.5 w-3.5" />
+                    Copiar URL completa
+                </Button>
             </div>
         </div>
     );
@@ -285,4 +281,3 @@ export const RemoteControlsSettingsCard = () => {
     </div>
   );
 };
-
