@@ -192,6 +192,9 @@ export default function MobileScoreboard() {
   const activeAwayPenaltiesCount = gameState.penalties.away.filter(p => p._status === 'running').length;
   const playersOnIceForAway = Math.max(0, playersPerTeam - activeAwayPenaltiesCount);
 
+  const visibleHomePenalties = gameState.penalties.home.filter(p => (p._visualRemainingTimeCs ?? 0) > 0);
+  const visibleAwayPenalties = gameState.penalties.away.filter(p => (p._visualRemainingTimeCs ?? 0) > 0);
+
   return (
     <div className="flex flex-col h-screen p-2 sm:p-4 gap-4 bg-background text-foreground">
       <Card className="bg-card shadow-lg">
@@ -230,9 +233,11 @@ export default function MobileScoreboard() {
       </Card>
 
       <div className="flex-grow grid grid-cols-1 gap-4 overflow-y-auto pb-4">
-         <PenaltiesDisplay teamDisplayType="Local" teamName={gameState.homeTeamName} penalties={gameState.penalties.home} mode="mobile" clock={gameState.clock} />
-         <PenaltiesDisplay teamDisplayType="Visitante" teamName={gameState.awayTeamName} penalties={gameState.penalties.away} mode="mobile" clock={gameState.clock} />
+         <PenaltiesDisplay teamDisplayType="Local" teamName={gameState.homeTeamName} penalties={visibleHomePenalties} mode="mobile" clock={gameState.clock} />
+         <PenaltiesDisplay teamDisplayType="Visitante" teamName={gameState.awayTeamName} penalties={visibleAwayPenalties} mode="mobile" clock={gameState.clock} />
       </div>
     </div>
   );
 }
+
+    
