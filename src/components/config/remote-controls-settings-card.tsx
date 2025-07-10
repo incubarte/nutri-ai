@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Copy, QrCode, Wifi } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { QRCode } from "qrcode.react";
+import { QRCodeSVG } from "qrcode.react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export interface RemoteControlsSettingsCardRef {
@@ -142,7 +142,7 @@ export const RemoteControlsSettingsCard = forwardRef<RemoteControlsSettingsCardR
             <Label className="text-base font-medium">QR para Acceso Móvil</Label>
             <div className="relative flex items-center justify-center bg-card p-4 rounded-lg border w-48 h-48">
               {fullMobileUrl ? (
-                <QRCode value={fullMobileUrl} size={160} bgColor="hsl(var(--card))" fgColor="hsl(var(--card-foreground))" />
+                <QRCodeSVG value={fullMobileUrl} size={160} bgColor="hsl(var(--card))" fgColor="hsl(var(--card-foreground))" />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-muted-foreground p-4">
                     <Wifi className="h-8 w-8 mb-2" />
