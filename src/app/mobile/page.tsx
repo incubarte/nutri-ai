@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { LiveGameState, ClockState } from '@/types';
+import type { LiveGameState, ClockState, Penalty } from '@/types';
 import { formatTime, getActualPeriodText } from '@/contexts/game-state-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { PenaltiesDisplay } from '@/components/scoreboard/penalties-display';
@@ -68,8 +68,9 @@ export default function MobileScoreboard() {
     };
   }, []);
 
+  // Effect for client-side visual timer tick for main clock and penalties
   useEffect(() => {
-    if (!gameState || !gameState.clock.isClockRunning || gameState.clock.currentTime <= 0) {
+    if (!gameState || !gameState.clock.isClockRunning) {
       return;
     }
 
@@ -79,17 +80,30 @@ export default function MobileScoreboard() {
           return prevState;
         }
 
-        const newTime = prevState.clock.currentTime - 10;
+        const newTime = prevState.clock.currentTime - 100;
+        
+        const updatePenaltyTime = (penalty: Penalty): Penalty => {
+          if (penalty._status === 'running' && penalty.expirationTime !== undefined) {
+             const newExpirationTime = penalty.expirationTime - 100;
+             return { ...penalty, expirationTime: Math.max(prevState.clock._liveAbsoluteElapsedTimeCs, newExpirationTime) };
+          }
+          return penalty;
+        };
 
         return {
           ...prevState,
           clock: {
             ...prevState.clock,
             currentTime: Math.max(0, newTime),
-          }
+            _liveAbsoluteElapsedTimeCs: prevState.clock._liveAbsoluteElapsedTimeCs + 100,
+          },
+          penalties: {
+            home: prevState.penalties.home.map(updatePenaltyTime),
+            away: prevState.penalties.away.map(updatePenaltyTime),
+          },
         };
       });
-    }, 100);
+    }, 1000); // Update every second
 
     return () => clearInterval(timerId);
   }, [gameState?.clock.isClockRunning, gameState?.clock.currentTime]);
