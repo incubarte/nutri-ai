@@ -118,7 +118,7 @@ function AddGoalForm({ homeTeamName, awayTeamName, onGoalSent }: { homeTeamName:
           <DialogClose asChild>
             <Button type="button" variant="outline">Cancelar</Button>
           </DialogClose>
-          <Button type="submit" disabled={isSending}>
+          <Button type="submit" disabled={isSending} className="h-14 text-lg">
             {isSending ? <LoadingSpinner className="mr-2" /> : <Send className="mr-2 h-4 w-4" />}
             Enviar Gol
           </Button>
@@ -224,7 +224,7 @@ function AddPenaltyForm({ homeTeamName, awayTeamName, onPenaltySent }: { homeTea
         <DialogClose asChild>
           <Button type="button" variant="outline">Cancelar</Button>
         </DialogClose>
-        <Button type="submit" disabled={isSending}>
+        <Button type="submit" disabled={isSending} className="h-14 text-lg">
           {isSending ? <LoadingSpinner className="mr-2" /> : <Send className="mr-2 h-4 w-4" />}
           Enviar Penalidad
         </Button>
