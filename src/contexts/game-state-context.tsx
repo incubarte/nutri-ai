@@ -390,33 +390,42 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         let loadedState: Partial<GameState> | null = null;
         try {
             const rawState = localStorage.getItem(LOCAL_STORAGE_KEY);
-            if (rawState) loadedState = JSON.parse(rawState);
+            if (rawState) {
+                loadedState = JSON.parse(rawState);
+            }
         } catch (error) {
             console.error("Error reading state from localStorage:", error);
+            loadedState = null;
         }
 
-        const hydratedState = {
-            ...initialGlobalState,
-            config: { ...initialGlobalState.config, ...(loadedState?.config || {}) },
-            live: { ...initialGlobalState.live, ...(loadedState?.live || {}) },
-            _lastUpdatedTimestamp: loadedState?._lastUpdatedTimestamp,
-            _initialConfigLoadComplete: true,
+        // If a valid state (with a live game) is found, use it. Otherwise, use initial state.
+        const hydratedState: GameState =
+            loadedState && loadedState.live && loadedState.config
+                ? { ...initialGlobalState, ...loadedState }
+                : initialGlobalState;
+
+        const finalState = {
+            ...hydratedState,
+            _initialConfigLoadComplete: true, // Mark as loaded
         };
-        
-        newState = applyFormatAndTimingsProfileToState(hydratedState, hydratedState.config.selectedFormatAndTimingsProfileId);
+
+        // Apply profiles to ensure derived config values are correct
+        newState = applyFormatAndTimingsProfileToState(finalState, finalState.config.selectedFormatAndTimingsProfileId);
         newState = applyScoreboardLayoutProfileToState(newState, newState.config.selectedScoreboardLayoutProfileId);
-        
         break;
     }
     case 'SET_STATE_FROM_LOCAL_BROADCAST': {
-      const incomingTimestamp = action.payload._lastUpdatedTimestamp;
-      const currentTimestamp = state._lastUpdatedTimestamp;
+        const incomingTimestamp = action.payload._lastUpdatedTimestamp;
+        const currentTimestamp = state._lastUpdatedTimestamp;
 
-      if (incomingTimestamp && currentTimestamp && incomingTimestamp < currentTimestamp) return state;
-      if (incomingTimestamp === undefined && currentTimestamp !== undefined) return state;
-
-      newState = { ...action.payload, _lastActionOriginator: undefined };
-      break;
+        // Ignore older or identical updates to prevent loops
+        if (incomingTimestamp && currentTimestamp && incomingTimestamp <= currentTimestamp) {
+            return state;
+        }
+        
+        // Adopt the broadcasted state completely, but mark it as not originated from this tab
+        newState = { ...action.payload, _lastActionOriginator: undefined };
+        break;
     }
     case 'TOGGLE_CLOCK': {
       if (state.live.clock.periodDisplayOverride === "End of Game") break;
@@ -982,75 +991,66 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
+  // Effect to load state from localStorage and initialize BroadcastChannel
   useEffect(() => {
-    if (typeof window === 'undefined' || state._initialConfigLoadComplete) {
-       if (state._initialConfigLoadComplete && isLoading) setIsLoading(false);
-       return;
+    // 1. Load initial state from storage
+    if (typeof window !== 'undefined' && !state._initialConfigLoadComplete) {
+      dispatch({ type: 'HYDRATE_FROM_STORAGE' });
     }
-    const loadInitialState = () => {
-        dispatch({ type: 'HYDRATE_FROM_STORAGE' });
-        setIsLoading(false);
-    };
-    loadInitialState();
+    setIsLoading(false); // We can show the app now
 
-    if ('BroadcastChannel' in window) {
-      if (!channelRef.current) channelRef.current = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+    // 2. Setup BroadcastChannel
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      if (!channelRef.current) {
+        channelRef.current = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+      }
+      
       const handleMessage = (event: MessageEvent) => {
-          if (event.data && event.data._lastActionOriginator !== TAB_ID) {
-            dispatch({ type: 'SET_STATE_FROM_LOCAL_BROADCAST', payload: event.data as GameState });
+        if (event.data && event.data._lastActionOriginator !== TAB_ID) {
+          dispatch({ type: 'SET_STATE_FROM_LOCAL_BROADCAST', payload: event.data });
         }
       };
+
       channelRef.current.addEventListener('message', handleMessage);
-      return () => channelRef.current?.removeEventListener('message', handleMessage);
+
+      // Cleanup
+      return () => {
+        channelRef.current?.removeEventListener('message', handleMessage);
+      };
     }
-  }, [state._initialConfigLoadComplete, isLoading]);
+  }, [state._initialConfigLoadComplete]);
 
+
+  // Effect to sync state changes to localStorage and BroadcastChannel
   useEffect(() => {
-    return () => channelRef.current?.close();
-  }, []);
+    if (isLoading || typeof window === 'undefined') return;
 
-  useEffect(() => {
-    if (isLoading || typeof window === 'undefined' || !state._initialConfigLoadComplete) return;
-
-    const prevState = prevStateRef.current;
-    
+    // Only the tab that originated the action should save and broadcast.
     if (state._lastActionOriginator === TAB_ID) {
-        if (!isEqual(prevState.config, state.config)) {
-          updateConfigOnServer(state.config).catch(err => console.error("Failed to sync config to server:", err));
-        }
-        if (!isEqual(prevState.live, state.live)) {
-          updateGameStateOnServer(state.live).catch(err => console.error("Failed to sync game state to server:", err));
-        }
+      const stateToSave = { ...state, _lastActionOriginator: undefined }; // Don't save originator
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
+        channelRef.current?.postMessage(state);
         
-        try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
-        } catch (error) {
-            console.error("Error saving state to localStorage:", error);
-        }
-        
-        if (channelRef.current) channelRef.current.postMessage(state);
+        // Server sync
+        updateConfigOnServer(state.config).catch(err => console.error("Failed to sync config to server:", err));
+        updateGameStateOnServer(state.live).catch(err => console.error("Failed to sync game state to server:", err));
+
+      } catch (error) {
+        console.error("Error saving/broadcasting state:", error);
+      }
     }
-
-    prevStateRef.current = state;
   }, [state, isLoading]);
-
+  
+  // Effect for TICK interval
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
-    if (state.live.clock.isClockRunning && isPageVisible && !isLoading && state._initialConfigLoadComplete) {
+    if (state.live.clock.isClockRunning && isPageVisible && !isLoading) {
       timerId = setInterval(() => dispatch({ type: 'TICK' }), TICK_INTERVAL_MS);
     }
     return () => clearInterval(timerId);
-  }, [state.live.clock.isClockRunning, isPageVisible, isLoading, state._initialConfigLoadComplete]);
+  }, [state.live.clock.isClockRunning, isPageVisible, isLoading]);
   
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (state._initialConfigLoadComplete) {
-        try { localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state)); } catch (e) { console.error(e); }
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [state]);
 
   return (
     <GameStateContext.Provider value={{ state, dispatch, isLoading }}>
@@ -1169,3 +1169,4 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
