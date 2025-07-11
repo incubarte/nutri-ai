@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { Penalty, ClockState } from '@/types';
@@ -172,3 +171,4 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
     </Card>
   );
 }
+

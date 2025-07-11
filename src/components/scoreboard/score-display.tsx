@@ -14,18 +14,23 @@ import { TeamScoreDisplay } from './team-score-display'; // For reference or pot
 export function ScoreDisplay() {
   const { state } = useGameState();
 
+  if (!state.live || !state.config) {
+    return null;
+  }
+
   // If you still need a ScoreDisplay wrapper for some reason,
   // it would likely just use TeamScoreDisplay components.
   // For example, if you wanted to restore the old layout elsewhere:
   return (
     <Card className="bg-card shadow-xl">
       <CardContent className="p-3 md:p-4 flex justify-around items-start">
-        <TeamScoreDisplay teamActualName={state.homeTeamName} teamDisplayName="Local" score={state.score.home} />
+        <TeamScoreDisplay teamActualName={state.live.homeTeamName} teamDisplayName="Local" score={state.live.score.home} />
         <div className="text-2xl md:text-4xl font-bold text-primary-foreground mx-1 md:mx-4 self-center pt-6 md:pt-10">
           VS
         </div>
-        <TeamScoreDisplay teamActualName={state.awayTeamName} teamDisplayName="Visitante" score={state.score.away} />
+        <TeamScoreDisplay teamActualName={state.live.awayTeamName} teamDisplayName="Visitante" score={state.live.score.away} />
       </CardContent>
     </Card>
   );
 }
+

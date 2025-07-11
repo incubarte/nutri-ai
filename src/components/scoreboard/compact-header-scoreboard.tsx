@@ -59,3 +59,4 @@ export function CompactHeaderScoreboard() {
     </Card>
   );
 }
+

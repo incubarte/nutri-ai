@@ -15,6 +15,8 @@ import { RefreshCw, AlertTriangle, PlayCircle, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
 import { exportGameSummaryPDF } from '@/lib/pdf-generator';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { safeUUID } from '@/lib/utils';
 
 const CONTROLS_LOCK_KEY = 'icevision-controls-lock-id';
 const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
@@ -22,7 +24,7 @@ const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
 type PageDisplayState = 'Checking' | 'Primary' | 'Secondary';
 
 export default function ControlsPage() {
-  const { state, dispatch } = useGameState();
+  const { state, dispatch, isLoading } = useGameState();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -44,32 +46,31 @@ export default function ControlsPage() {
 
 
   useEffect(() => {
-    // Skip the effect on the initial render/hydration cycle
+    if (isLoading || !state.live || !state.config) return;
+
     if (isInitialMount.current) {
         isInitialMount.current = false;
-        prevPeriodDisplayOverrideRef.current = state.clock.periodDisplayOverride;
+        prevPeriodDisplayOverrideRef.current = state.live.clock.periodDisplayOverride;
         return;
     }
 
-    // Only the primary controls tab should handle saving
     if (pageDisplayState !== 'Primary') {
-        prevPeriodDisplayOverrideRef.current = state.clock.periodDisplayOverride;
+        prevPeriodDisplayOverrideRef.current = state.live.clock.periodDisplayOverride;
         return;
     }
 
-    // Check for the specific transition from not-ended to ended
-    if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && state.clock.periodDisplayOverride === 'End of Game') {
-        const categoryName = getCategoryNameById(state.selectedMatchCategory, state.availableCategories) || 'N/A';
+    if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && state.live.clock.periodDisplayOverride === 'End of Game') {
+        const categoryName = getCategoryNameById(state.config.selectedMatchCategory, state.config.availableCategories) || 'N/A';
         
         (async () => {
             try {
                 const result = await saveGameSummary({
-                    homeTeamName: state.homeTeamName,
-                    awayTeamName: state.awayTeamName,
-                    homeScore: state.score.home,
-                    awayScore: state.score.away,
+                    homeTeamName: state.live.homeTeamName,
+                    awayTeamName: state.live.awayTeamName,
+                    homeScore: state.live.score.home,
+                    awayScore: state.live.score.away,
                     categoryName: categoryName,
-                    gameSummary: state.gameSummary
+                    gameSummary: state.live.gameSummary
                 });
                 if (result.success) {
                     toast({
@@ -94,25 +95,13 @@ export default function ControlsPage() {
         })();
     }
 
-    // Always update the ref for the next render
-    prevPeriodDisplayOverrideRef.current = state.clock.periodDisplayOverride;
+    prevPeriodDisplayOverrideRef.current = state.live.clock.periodDisplayOverride;
 
-  }, [
-      state.clock.periodDisplayOverride, 
-      pageDisplayState, 
-      state.selectedMatchCategory, 
-      state.availableCategories, 
-      state.homeTeamName, 
-      state.awayTeamName, 
-      state.score.home, 
-      state.score.away, 
-      state.gameSummary,
-      toast
-  ]);
+  }, [state.live, state.config, isLoading, pageDisplayState, toast]);
 
 
   useEffect(() => {
-    setInstanceId(crypto.randomUUID());
+    setInstanceId(safeUUID());
   }, []);
 
   const checkLockStatus = useCallback(() => {
@@ -295,19 +284,29 @@ export default function ControlsPage() {
   };
 
   const hasPendingPuckPenalties = useMemo(() => {
-    return state.penalties.home.some(p => p._status === 'pending_puck') ||
-           state.penalties.away.some(p => p._status === 'pending_puck');
-  }, [state.penalties.home, state.penalties.away]);
+    if (!state.live || !state.live.penalties) return false;
+    return state.live.penalties.home.some(p => p._status === 'pending_puck') ||
+           state.live.penalties.away.some(p => p._status === 'pending_puck');
+  }, [state.live]);
 
   const handleScoreClick = (team: Team) => {
     setEditingTeamForGoals(team);
     setIsGoalManagementOpen(true);
   };
+  
+  if (isLoading || !state.live || !state.config || !state.live.penalties) {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
+        <LoadingSpinner className="h-12 w-12 text-primary mb-4" />
+        <p className="text-xl text-foreground">Cargando...</p>
+      </div>
+    );
+  }
 
   if (pageDisplayState === 'Checking' || !instanceId) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
-        <RefreshCw className="h-12 w-12 animate-spin text-primary mb-4" />
+        <LoadingSpinner className="h-12 w-12 text-primary mb-4" />
         <p className="text-xl text-foreground">Verificando instancia de controles...</p>
         <p className="text-sm text-muted-foreground">Esto tomará un momento.</p>
         <p className="text-xs text-muted-foreground mt-2">ID de esta instancia: ...{instanceId ? instanceId.slice(-6) : 'generando...'}</p>
@@ -358,8 +357,8 @@ export default function ControlsPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PenaltyControlCard team="home" teamName={state.homeTeamName} />
-        <PenaltyControlCard team="away" teamName={state.awayTeamName} />
+        <PenaltyControlCard team="home" teamName={state.live.homeTeamName} />
+        <PenaltyControlCard team="away" teamName={state.live.awayTeamName} />
       </div>
       <div className="mt-12 pt-8 border-t border-border">
          <div className="flex flex-col sm:flex-row gap-4 items-start">
@@ -441,3 +440,4 @@ export default function ControlsPage() {
     </div>
   );
 }
+
