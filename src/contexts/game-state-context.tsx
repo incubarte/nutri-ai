@@ -1078,6 +1078,8 @@ export const formatTime = (
   if (isNaN(totalCentiseconds) || totalCentiseconds < 0) totalCentiseconds = 0;
 
   const isUnderMinute = totalCentiseconds < 6000;
+  
+  // New rounding logic as per user request
   const effectiveRounding = options.rounding || (isUnderMinute ? 'down' : 'up');
 
   if (isUnderMinute && options.showTenths) {

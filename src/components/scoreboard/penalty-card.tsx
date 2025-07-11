@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { Penalty, ClockState } from '@/types';
@@ -146,7 +147,7 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
                 width: styles.clockIconSize,
               }}
             />
-            {formatTime(remainingTimeCs, { showTenths: false })}
+            {formatTime(remainingTimeCs, { showTenths: false, rounding: 'up' })}
           </div>
         </div>
         <div className="flex justify-between items-center">

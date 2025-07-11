@@ -108,8 +108,10 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     
     let totalSecondsOnly;
     if (isUnderMinute) {
+      // Don't round when under a minute
       totalSecondsOnly = Math.floor(safeTimeCs / 100);
     } else {
+      // Round up otherwise
       totalSecondsOnly = Math.ceil(safeTimeCs / 100);
     }
 

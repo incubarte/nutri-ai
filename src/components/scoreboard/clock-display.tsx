@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useGameState, formatTime, getActualPeriodText, getPeriodText } from '@/contexts/game-state-context';
@@ -55,7 +56,7 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
           )}
           style={{ fontSize: `${scoreboardLayout.clockSize}rem`, lineHeight: 1 }}
           >
-          {formatTime(clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false, rounding: 'down' })}
+          {formatTime(clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false })}
         </div>
       )}
       {clock.periodDisplayOverride !== "End of Game" && (
@@ -85,11 +86,10 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
           )}
           style={{ fontSize: `${scoreboardLayout.periodSize * 0.45}rem` }}
           >
-          {getPeriodText(clock.preTimeoutState.period, state.config.numberOfRegularPeriods)} - {formatTime(clock.preTimeoutState.time, { showTenths: isPreTimeoutLastMinute, includeMinutesForTenths: false, rounding: 'down' })}
+          {getPeriodText(clock.preTimeoutState.period, state.config.numberOfRegularPeriods)} - {formatTime(clock.preTimeoutState.time, { showTenths: isPreTimeoutLastMinute, includeMinutesForTenths: false })}
           {clock.preTimeoutState.override ? ` (${clock.preTimeoutState.override})` : ''}
         </div>
       )}
     </div>
   );
 }
-
