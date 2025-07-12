@@ -206,7 +206,6 @@ export interface LiveState {
   gameSummary: GameSummary;
   playHornTrigger: number;
   playPenaltyBeepTrigger: number;
-  scoreboardWindow: Window | null;
 }
 
 export interface GameState {

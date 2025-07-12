@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -196,18 +197,20 @@ const initialGlobalState: GameState = {
     gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
     playHornTrigger: 0,
     playPenaltyBeepTrigger: 0,
-    scoreboardWindow: null,
   },
   _lastActionOriginator: undefined,
   _lastUpdatedTimestamp: undefined,
   _initialConfigLoadComplete: false,
 };
 
-const GameStateContext = createContext<{
+type GameStateContextType = {
   state: GameState;
   dispatch: React.Dispatch<GameAction>;
   isLoading: boolean;
-} | undefined>(undefined);
+  scoreboardWindow: React.MutableRefObject<Window | null>;
+};
+
+const GameStateContext = createContext<GameStateContextType | undefined>(undefined);
 
 
 // --- Helper Function for Absolute Time Calculation ---
@@ -398,21 +401,16 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             loadedState = null;
         }
 
-        // If a valid state (with a live game) is found, use it. Otherwise, use initial state.
         const hydratedState: GameState =
             loadedState && loadedState.live && loadedState.config
                 ? { ...initialGlobalState, ...loadedState }
                 : initialGlobalState;
         
-        // Don't hydrate the window object from storage
-        hydratedState.live.scoreboardWindow = null;
-
         const finalState = {
             ...hydratedState,
-            _initialConfigLoadComplete: true, // Mark as loaded
+            _initialConfigLoadComplete: true,
         };
 
-        // Apply profiles to ensure derived config values are correct
         newState = applyFormatAndTimingsProfileToState(finalState, finalState.config.selectedFormatAndTimingsProfileId);
         newState = applyScoreboardLayoutProfileToState(newState, newState.config.selectedScoreboardLayoutProfileId);
         break;
@@ -421,15 +419,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const incomingTimestamp = action.payload._lastUpdatedTimestamp;
         const currentTimestamp = state._lastUpdatedTimestamp;
 
-        // Ignore older or identical updates to prevent loops
         if (incomingTimestamp && currentTimestamp && incomingTimestamp <= currentTimestamp) {
             return state;
         }
         
-        // Adopt the broadcasted state completely, but mark it as not originated from this tab
         const broadcastedState = {...action.payload};
-        // Keep the local window object reference
-        broadcastedState.live.scoreboardWindow = state.live.scoreboardWindow;
 
         newState = { ...broadcastedState, _lastActionOriginator: undefined };
         break;
@@ -844,7 +838,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         homeTeamName: 'Local', homeTeamSubName: undefined, awayTeamName: 'Visitante', awayTeamSubName: undefined,
         gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
         playHornTrigger: state.live.playHornTrigger, playPenaltyBeepTrigger: state.live.playPenaltyBeepTrigger,
-        scoreboardWindow: state.live.scoreboardWindow, // Preserve window reference
       }};
       break;
     }
@@ -966,12 +959,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
       break;
     }
-    case 'SET_SCOREBOARD_WINDOW':
-      newState = { ...state, live: { ...state.live, scoreboardWindow: action.payload }};
-      break;
-    case 'CLEAR_SCOREBOARD_WINDOW':
-      newState = { ...state, live: { ...state.live, scoreboardWindow: null }};
-      break;
   }
 
   const nonOriginatingActionTypes: GameAction['type'][] = ['HYDRATE_FROM_STORAGE', 'SET_STATE_FROM_LOCAL_BROADCAST', 'SET_SCOREBOARD_WINDOW', 'CLEAR_SCOREBOARD_WINDOW'];
@@ -987,7 +974,21 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPageVisible, setIsPageVisible] = useState(true);
   const channelRef = useRef<BroadcastChannel | null>(null);
-  const prevStateRef = useRef<GameState>(state);
+  const scoreboardWindowRef = useRef<Window | null>(null);
+
+  // Special dispatch for window management that doesn't go through the reducer
+  const dispatchWithWindowHandling = (action: GameAction) => {
+    if (action.type === 'SET_SCOREBOARD_WINDOW') {
+      scoreboardWindowRef.current = action.payload;
+      // Force a re-render for components that depend on the window object's presence
+      dispatch({ type: 'UPDATE_CONFIG_FIELDS', payload: {} });
+    } else if (action.type === 'CLEAR_SCOREBOARD_WINDOW') {
+      scoreboardWindowRef.current = null;
+      dispatch({ type: 'UPDATE_CONFIG_FIELDS', payload: {} });
+    } else {
+      dispatch(action);
+    }
+  };
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1005,22 +1006,18 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  // Effect to load state from localStorage and initialize BroadcastChannel
   useEffect(() => {
-    // 1. Load initial state from storage
     if (typeof window !== 'undefined' && !state._initialConfigLoadComplete) {
-      dispatch({ type: 'HYDRATE_FROM_STORAGE' });
+      dispatch({ type: 'HYDRATE_FROM_STORAGE', payload: {} });
     }
-    setIsLoading(false); // We can show the app now
+    setIsLoading(false);
 
-    // 2. Setup BroadcastChannel
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       if (!channelRef.current) {
         channelRef.current = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
       }
       
       const handleMessage = (event: MessageEvent) => {
-        // We only care about GameState updates here, ignore other message types
         if (event.data?.type || !event.data?._lastUpdatedTimestamp) {
             return;
         }
@@ -1032,7 +1029,6 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
 
       channelRef.current.addEventListener('message', handleMessage);
 
-      // Cleanup
       return () => {
         channelRef.current?.removeEventListener('message', handleMessage);
       };
@@ -1040,18 +1036,15 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   }, [state._initialConfigLoadComplete]);
 
 
-  // Effect to sync state changes to localStorage and BroadcastChannel
   useEffect(() => {
     if (isLoading || typeof window === 'undefined') return;
 
-    // Only the tab that originated the action should save and broadcast.
     if (state._lastActionOriginator === TAB_ID) {
-      const stateToSave = { ...state, live: {...state.live, scoreboardWindow: null}, _lastActionOriginator: undefined }; // Don't save originator or window object
+      const stateToBroadcast = { ...state, _lastActionOriginator: undefined };
       try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToBroadcast));
         channelRef.current?.postMessage(state);
         
-        // Server sync
         updateConfigOnServer(state.config).catch(err => console.error("Failed to sync config to server:", err));
         updateGameStateOnServer(state.live).catch(err => console.error("Failed to sync game state to server:", err));
 
@@ -1061,7 +1054,6 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [state, isLoading]);
   
-  // Effect for TICK interval
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
     if (state.live.clock.isClockRunning && isPageVisible && !isLoading) {
@@ -1072,7 +1064,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   
 
   return (
-    <GameStateContext.Provider value={{ state, dispatch, isLoading }}>
+    <GameStateContext.Provider value={{ state, dispatch: dispatchWithWindowHandling, isLoading, scoreboardWindow: scoreboardWindowRef }}>
       {children}
     </GameStateContext.Provider>
   );
@@ -1108,10 +1100,10 @@ export const formatTime = (
   }
   
   let totalSecondsOnly;
-  if (totalCentiseconds >= 6000) {
-    totalSecondsOnly = Math.ceil(totalCentiseconds / 100);
+  if (options.rounding === 'down') {
+     totalSecondsOnly = Math.floor(totalCentiseconds / 100);
   } else {
-    totalSecondsOnly = Math.floor(totalCentiseconds / 100);
+    totalSecondsOnly = Math.ceil(totalCentiseconds / 100);
   }
   
   const minutes = Math.floor(totalSecondsOnly / 60);

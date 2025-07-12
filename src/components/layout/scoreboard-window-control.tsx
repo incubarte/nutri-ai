@@ -13,13 +13,13 @@ import {
 } from "@/components/ui/popover";
 
 export function ScoreboardWindowControl() {
-  const { state, dispatch } = useGameState();
+  const { scoreboardWindow, dispatch } = useGameState();
   const { toast } = useToast();
-  const scoreboardWindow = state.live.scoreboardWindow;
 
   const handleOpenWindow = () => {
-    if (scoreboardWindow && !scoreboardWindow.closed) {
-      scoreboardWindow.focus();
+    const sbWindow = scoreboardWindow.current;
+    if (sbWindow && !sbWindow.closed) {
+      sbWindow.focus();
       toast({ title: "Ventana ya abierta", description: "La ventana del scoreboard ya está abierta." });
       return;
     }
@@ -29,7 +29,6 @@ export function ScoreboardWindowControl() {
       dispatch({ type: 'SET_SCOREBOARD_WINDOW', payload: newWindow });
       toast({ title: "Ventana Abierta", description: "El scoreboard se ha abierto en una nueva ventana." });
 
-      // Check if the window is closed
       const checkInterval = setInterval(() => {
         if (newWindow.closed) {
           clearInterval(checkInterval);
@@ -46,14 +45,15 @@ export function ScoreboardWindowControl() {
   };
 
   const handleCloseWindow = () => {
-    if (scoreboardWindow && !scoreboardWindow.closed) {
-      scoreboardWindow.close();
+    const sbWindow = scoreboardWindow.current;
+    if (sbWindow && !sbWindow.closed) {
+      sbWindow.close();
       dispatch({ type: 'CLEAR_SCOREBOARD_WINDOW' });
       toast({ title: "Ventana Cerrada", description: "La ventana del scoreboard ha sido cerrada." });
     }
   };
 
-  const isWindowOpen = scoreboardWindow && !scoreboardWindow.closed;
+  const isWindowOpen = scoreboardWindow.current && !scoreboardWindow.current.closed;
 
   return (
     <Popover>
@@ -69,7 +69,7 @@ export function ScoreboardWindowControl() {
       </PopoverTrigger>
       <PopoverContent className="w-auto p-2">
         <div className="flex flex-col gap-2">
-           <Button onClick={handleOpenWindow} disabled={isWindowOpen} variant="outline" className="justify-start">
+           <Button onClick={handleOpenWindow} disabled={!!isWindowOpen} variant="outline" className="justify-start">
              <Monitor className="mr-2 h-4 w-4"/>
              Abrir Scoreboard
            </Button>
