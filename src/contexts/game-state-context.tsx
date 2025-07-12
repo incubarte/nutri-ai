@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -12,7 +11,7 @@ import { safeUUID } from '@/lib/utils';
 
 
 // --- Constantes para la sincronización local ---
-const BROADCAST_CHANNEL_NAME = 'icevision-game-state-channel';
+export const BROADCAST_CHANNEL_NAME = 'icevision-game-state-channel';
 const LOCAL_STORAGE_KEY = 'icevision-game-state';
 const CENTISECONDS_PER_SECOND = 100;
 const TICK_INTERVAL_MS = 200;
@@ -1006,7 +1005,12 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
       }
       
       const handleMessage = (event: MessageEvent) => {
-        if (event.data && event.data._lastActionOriginator !== TAB_ID) {
+        // We only care about GameState updates here, ignore other message types
+        if (event.data?.type || !event.data?._lastUpdatedTimestamp) {
+            return;
+        }
+
+        if (event.data._lastActionOriginator !== TAB_ID) {
           dispatch({ type: 'SET_STATE_FROM_LOCAL_BROADCAST', payload: event.data });
         }
       };
@@ -1091,9 +1095,12 @@ export const formatTime = (
     return `${totalSeconds.toString().padStart(2, '0')}.${tenths.toString()}`;
   }
   
-  const totalSecondsOnly = effectiveRounding === 'up'
-    ? Math.ceil(totalCentiseconds / 100)
-    : Math.floor(totalCentiseconds / 100);
+  let totalSecondsOnly;
+  if(totalCentiseconds < 6000) {
+    totalSecondsOnly = Math.floor(totalCentiseconds / 100);
+  } else {
+    totalSecondsOnly = Math.ceil(totalCentiseconds / 100);
+  }
   
   const minutes = Math.floor(totalSecondsOnly / 60);
   const seconds = totalSecondsOnly % 60;
@@ -1171,4 +1178,3 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
-

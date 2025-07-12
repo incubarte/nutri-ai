@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -6,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Home, Settings, Wrench } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { FullscreenToggle } from './fullscreen-toggle';
 
 export function Header() {
   const pathname = usePathname();
@@ -141,6 +143,9 @@ export function Header() {
               <Wrench className="h-5 w-5" />
             </Link>
           </Button>
+          <div className="pl-2">
+            <FullscreenToggle />
+          </div>
         </div>
       </div>
     </header>
