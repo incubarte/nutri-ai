@@ -1,10 +1,8 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Maximize, Minimize } from 'lucide-react';
-import { BROADCAST_CHANNEL_NAME } from '@/contexts/game-state-context';
 
 export function FullscreenToggle() {
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -16,23 +14,26 @@ export function FullscreenToggle() {
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
 
+    // Initial check in case the page loads in fullscreen mode
+    handleFullscreenChange();
+
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
 
   const handleToggleFullscreen = () => {
-    // We don't control the fullscreen from here directly.
-    // Instead, we broadcast a command to all tabs.
-    // The scoreboard page will listen for this command and act.
-    try {
-      const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
-      channel.postMessage({ type: 'TOGGLE_FULLSCREEN' });
-      channel.close();
-    } catch (error) {
-      console.error("Could not use BroadcastChannel to toggle fullscreen:", error);
-      // Fallback for very old browsers or specific environments, though unlikely
-      alert("No se pudo comunicar con la pestaña del scoreboard.");
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        // This error might still happen if the user's browser settings are very strict,
+        // but it won't be because of the cross-tab communication issue.
+        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        alert("No se pudo activar la pantalla completa. Asegúrate de que los permisos del navegador lo permitan.");
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
     }
   };
 
