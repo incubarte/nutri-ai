@@ -5,9 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Home, Settings, Wrench, Maximize } from 'lucide-react';
+import { Home, Settings, Wrench } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { FullscreenToggle } from './fullscreen-toggle';
 
 export function Header() {
   const pathname = usePathname();
@@ -143,17 +142,6 @@ export function Header() {
               <Wrench className="h-5 w-5" />
             </Link>
           </Button>
-          <div className="pl-2">
-            {isScoreboardPage ? (
-              <FullscreenToggle />
-            ) : (
-              <Button variant="ghost" size="icon" asChild>
-                <Link href="/" aria-label="Ir al Scoreboard para pantalla completa">
-                   <Maximize className="h-5 w-5" />
-                </Link>
-              </Button>
-            )}
-          </div>
         </div>
       </div>
     </header>
