@@ -4,7 +4,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PuppeteerWindowState } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
@@ -103,6 +103,10 @@ const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
   attendance: { home: [], away: [] },
 };
 
+const IN_CODE_INITIAL_PUPPETEER_WINDOW_STATE: PuppeteerWindowState = {
+  status: 'closed',
+};
+
 const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): FormatAndTimingsProfile => ({
   id: id || safeUUID(),
   name: name || IN_CODE_INITIAL_PROFILE_NAME,
@@ -167,6 +171,7 @@ const initialGlobalState: GameState = {
     selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
     teams: [],
     tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
+    puppeteerWindow: IN_CODE_INITIAL_PUPPETEER_WINDOW_STATE,
   },
   live: {
     score: {
@@ -207,7 +212,6 @@ type GameStateContextType = {
   state: GameState;
   dispatch: React.Dispatch<GameAction>;
   isLoading: boolean;
-  scoreboardWindow: React.MutableRefObject<Window | null>;
 };
 
 const GameStateContext = createContext<GameStateContextType | undefined>(undefined);
@@ -921,6 +925,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'SET_AVAILABLE_CATEGORIES': newState = { ...state, config: { ...state.config, availableCategories: action.payload, selectedMatchCategory: (action.payload.find(c => c.id === state.config.selectedMatchCategory) ? state.config.selectedMatchCategory : (action.payload[0]?.id || '')) } }; break;
     case 'SET_SELECTED_MATCH_CATEGORY': newState = { ...state, config: { ...state.config, selectedMatchCategory: action.payload } }; break;
     case 'UPDATE_TUNNEL_STATE': newState = { ...state, config: { ...state.config, tunnel: { ...state.config.tunnel, ...action.payload } }}; break;
+    case 'SET_PUPPETEER_WINDOW_STATE': newState = { ...state, config: { ...state.config, puppeteerWindow: { ...state.config.puppeteerWindow, ...action.payload } }}; break;
     case 'ADD_TEAM': newState = { ...state, config: { ...state.config, teams: [...state.config.teams, { ...action.payload, id: action.payload.id || safeUUID() }] } }; break;
     case 'UPDATE_TEAM_DETAILS': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, ...action.payload } : t) } }; break;
     case 'DELETE_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.filter(t => t.id !== action.payload.teamId) } }; break;
@@ -961,7 +966,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
   }
 
-  const nonOriginatingActionTypes: GameAction['type'][] = ['HYDRATE_FROM_STORAGE', 'SET_STATE_FROM_LOCAL_BROADCAST', 'SET_SCOREBOARD_WINDOW', 'CLEAR_SCOREBOARD_WINDOW'];
+  const nonOriginatingActionTypes: GameAction['type'][] = ['HYDRATE_FROM_STORAGE', 'SET_STATE_FROM_LOCAL_BROADCAST'];
   if (action.type === 'TICK') return newState;
   if (nonOriginatingActionTypes.includes(action.type)) return { ...newState, _lastActionOriginator: undefined };
   
@@ -974,21 +979,6 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPageVisible, setIsPageVisible] = useState(true);
   const channelRef = useRef<BroadcastChannel | null>(null);
-  const scoreboardWindowRef = useRef<Window | null>(null);
-
-  // Special dispatch for window management that doesn't go through the reducer
-  const dispatchWithWindowHandling = (action: GameAction) => {
-    if (action.type === 'SET_SCOREBOARD_WINDOW') {
-      scoreboardWindowRef.current = action.payload;
-      // Force a re-render for components that depend on the window object's presence
-      dispatch({ type: 'UPDATE_CONFIG_FIELDS', payload: {} });
-    } else if (action.type === 'CLEAR_SCOREBOARD_WINDOW') {
-      scoreboardWindowRef.current = null;
-      dispatch({ type: 'UPDATE_CONFIG_FIELDS', payload: {} });
-    } else {
-      dispatch(action);
-    }
-  };
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1064,7 +1054,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   
 
   return (
-    <GameStateContext.Provider value={{ state, dispatch: dispatchWithWindowHandling, isLoading, scoreboardWindow: scoreboardWindowRef }}>
+    <GameStateContext.Provider value={{ state, dispatch, isLoading }}>
       {children}
     </GameStateContext.Provider>
   );

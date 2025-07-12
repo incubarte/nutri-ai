@@ -136,6 +136,10 @@ export interface TunnelState {
   lastMessage: string | null;
 }
 
+export interface PuppeteerWindowState {
+  status: 'open' | 'closed';
+}
+
 export interface ConfigState extends FormatAndTimingsProfileData {
   formatAndTimingsProfiles: FormatAndTimingsProfile[];
   selectedFormatAndTimingsProfileId: string | null;
@@ -157,6 +161,7 @@ export interface ConfigState extends FormatAndTimingsProfileData {
   teams: TeamData[];
   enableDebugMode: boolean;
   tunnel: TunnelState;
+  puppeteerWindow: PuppeteerWindowState;
 }
 
 export type PeriodDisplayOverrideType = 'Warm-up' | 'Break' | 'Pre-OT Break' | 'Time Out' | 'End of Game' | null;
@@ -281,6 +286,7 @@ export type GameAction =
   | { type: 'SET_AVAILABLE_CATEGORIES'; payload: CategoryData[] }
   | { type: 'SET_SELECTED_MATCH_CATEGORY'; payload: string }
   | { type: 'UPDATE_TUNNEL_STATE', payload: Partial<TunnelState> }
+  | { type: 'SET_PUPPETEER_WINDOW_STATE', payload: Partial<PuppeteerWindowState> }
   | { type: 'HYDRATE_FROM_STORAGE'; payload: Partial<GameState> }
   | { type: 'SET_STATE_FROM_LOCAL_BROADCAST'; payload: GameState }
   | { type: 'RESET_CONFIG_TO_DEFAULTS' }
@@ -292,6 +298,4 @@ export type GameAction =
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
-  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } }
-  | { type: 'SET_SCOREBOARD_WINDOW'; payload: Window | null }
-  | { type: 'CLEAR_SCOREBOARD_WINDOW' };
+  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
