@@ -8,11 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Home, Settings, Wrench } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { FullscreenToggle } from './fullscreen-toggle';
+import { ScoreboardWindowControl } from './scoreboard-window-control';
 
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const isScoreboardPage = pathname === '/';
+  const isControlsPage = pathname === '/controls';
 
   const [isVisible, setIsVisible] = useState(!isScoreboardPage);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -143,7 +145,10 @@ export function Header() {
               <Wrench className="h-5 w-5" />
             </Link>
           </Button>
+
           {isScoreboardPage && <FullscreenToggle />}
+          {isControlsPage && <ScoreboardWindowControl />}
+
         </div>
       </div>
     </header>

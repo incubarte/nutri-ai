@@ -206,6 +206,7 @@ export interface LiveState {
   gameSummary: GameSummary;
   playHornTrigger: number;
   playPenaltyBeepTrigger: number;
+  scoreboardWindow: Window | null;
 }
 
 export interface GameState {
@@ -292,4 +293,6 @@ export type GameAction =
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
-  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
+  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } }
+  | { type: 'SET_SCOREBOARD_WINDOW'; payload: Window | null }
+  | { type: 'CLEAR_SCOREBOARD_WINDOW' };

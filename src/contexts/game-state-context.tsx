@@ -196,6 +196,7 @@ const initialGlobalState: GameState = {
     gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
     playHornTrigger: 0,
     playPenaltyBeepTrigger: 0,
+    scoreboardWindow: null,
   },
   _lastActionOriginator: undefined,
   _lastUpdatedTimestamp: undefined,
@@ -402,6 +403,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             loadedState && loadedState.live && loadedState.config
                 ? { ...initialGlobalState, ...loadedState }
                 : initialGlobalState;
+        
+        // Don't hydrate the window object from storage
+        hydratedState.live.scoreboardWindow = null;
 
         const finalState = {
             ...hydratedState,
@@ -423,7 +427,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         }
         
         // Adopt the broadcasted state completely, but mark it as not originated from this tab
-        newState = { ...action.payload, _lastActionOriginator: undefined };
+        const broadcastedState = {...action.payload};
+        // Keep the local window object reference
+        broadcastedState.live.scoreboardWindow = state.live.scoreboardWindow;
+
+        newState = { ...broadcastedState, _lastActionOriginator: undefined };
         break;
     }
     case 'TOGGLE_CLOCK': {
@@ -836,6 +844,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         homeTeamName: 'Local', homeTeamSubName: undefined, awayTeamName: 'Visitante', awayTeamSubName: undefined,
         gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
         playHornTrigger: state.live.playHornTrigger, playPenaltyBeepTrigger: state.live.playPenaltyBeepTrigger,
+        scoreboardWindow: state.live.scoreboardWindow, // Preserve window reference
       }};
       break;
     }
@@ -957,9 +966,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
       break;
     }
+    case 'SET_SCOREBOARD_WINDOW':
+      newState = { ...state, live: { ...state.live, scoreboardWindow: action.payload }};
+      break;
+    case 'CLEAR_SCOREBOARD_WINDOW':
+      newState = { ...state, live: { ...state.live, scoreboardWindow: null }};
+      break;
   }
 
-  const nonOriginatingActionTypes: GameAction['type'][] = ['HYDRATE_FROM_STORAGE', 'SET_STATE_FROM_LOCAL_BROADCAST'];
+  const nonOriginatingActionTypes: GameAction['type'][] = ['HYDRATE_FROM_STORAGE', 'SET_STATE_FROM_LOCAL_BROADCAST', 'SET_SCOREBOARD_WINDOW', 'CLEAR_SCOREBOARD_WINDOW'];
   if (action.type === 'TICK') return newState;
   if (nonOriginatingActionTypes.includes(action.type)) return { ...newState, _lastActionOriginator: undefined };
   
@@ -1031,7 +1046,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
 
     // Only the tab that originated the action should save and broadcast.
     if (state._lastActionOriginator === TAB_ID) {
-      const stateToSave = { ...state, _lastActionOriginator: undefined }; // Don't save originator
+      const stateToSave = { ...state, live: {...state.live, scoreboardWindow: null}, _lastActionOriginator: undefined }; // Don't save originator or window object
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
         channelRef.current?.postMessage(state);
@@ -1083,9 +1098,6 @@ export const formatTime = (
 
   const isUnderMinute = totalCentiseconds < 6000;
   
-  // New rounding logic as per user request
-  const effectiveRounding = options.rounding || (isUnderMinute ? 'down' : 'up');
-
   if (isUnderMinute && options.showTenths) {
     const totalSeconds = Math.floor(totalCentiseconds / 100);
     const tenths = Math.floor((totalCentiseconds % 100) / 10);
@@ -1096,10 +1108,10 @@ export const formatTime = (
   }
   
   let totalSecondsOnly;
-  if(totalCentiseconds < 6000) {
-    totalSecondsOnly = Math.floor(totalCentiseconds / 100);
-  } else {
+  if (totalCentiseconds >= 6000) {
     totalSecondsOnly = Math.ceil(totalCentiseconds / 100);
+  } else {
+    totalSecondsOnly = Math.floor(totalCentiseconds / 100);
   }
   
   const minutes = Math.floor(totalSecondsOnly / 60);
