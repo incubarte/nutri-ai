@@ -4,7 +4,7 @@
 import React from 'react';
 import { useGameState } from '@/contexts/game-state-context';
 import { Button } from '@/components/ui/button';
-import { Monitor, MonitorPlay, XCircle } from 'lucide-react';
+import { Monitor, MonitorPlay, XCircle, MonitorUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Popover,
@@ -53,6 +53,17 @@ export function ScoreboardWindowControl() {
     }
   };
 
+  const handleMaximizeWindow = () => {
+    const sbWindow = scoreboardWindow.current;
+    if (sbWindow && !sbWindow.closed) {
+        sbWindow.postMessage('REQUEST_FULLSCREEN', '*');
+        sbWindow.focus();
+        toast({ title: "Comando Enviado", description: "Se envió la orden de maximizar a la ventana del scoreboard." });
+    } else {
+        toast({ title: "Ventana no Encontrada", description: "No se puede maximizar porque la ventana no está abierta.", variant: "destructive" });
+    }
+  };
+
   const isWindowOpen = scoreboardWindow.current && !scoreboardWindow.current.closed;
 
   return (
@@ -72,6 +83,10 @@ export function ScoreboardWindowControl() {
            <Button onClick={handleOpenWindow} disabled={!!isWindowOpen} variant="outline" className="justify-start">
              <Monitor className="mr-2 h-4 w-4"/>
              Abrir Scoreboard
+           </Button>
+           <Button onClick={handleMaximizeWindow} disabled={!isWindowOpen} variant="outline" className="justify-start">
+             <MonitorUp className="mr-2 h-4 w-4"/>
+             Maximizar Scoreboard
            </Button>
            <Button onClick={handleCloseWindow} disabled={!isWindowOpen} variant="destructive" className="justify-start">
              <XCircle className="mr-2 h-4 w-4"/>

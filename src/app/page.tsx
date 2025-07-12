@@ -1,8 +1,31 @@
+
 "use client";
 
+import { useEffect } from 'react';
 import { FullScoreboard } from '@/components/scoreboard/full-scoreboard';
 
 export default function ScoreboardPage() {
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Basic security check: ensure the message is what we expect
+      if (event.data === 'REQUEST_FULLSCREEN') {
+        const element = document.documentElement;
+        if (element.requestFullscreen) {
+          element.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+          });
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
+
   return (
     <div className="w-full h-full flex flex-col relative">
       <FullScoreboard />
