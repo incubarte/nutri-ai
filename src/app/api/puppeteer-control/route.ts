@@ -41,12 +41,27 @@ export async function POST(request: Request) {
           '--kiosk', // Modo kiosco, oculta la UI de Chrome
           `--window-position=${secondMonitorX || 0},${secondMonitorY || 0}`, // Intenta posicionar en el segundo monitor
         ],
+        defaultViewport: null, // Importante para que la ventana se ajuste al tamaño de la pantalla
       });
 
       globalForBrowser.browser = browser;
 
       const page = await browser.newPage();
-      await page.goto(url);
+      
+      // Obtener las dimensiones de la pantalla para ajustar el viewport
+      const screenResolution = await page.evaluate(() => {
+        return {
+          width: window.screen.width,
+          height: window.screen.height,
+          deviceScaleFactor: window.devicePixelRatio
+        }
+      });
+      await page.setViewport({ 
+        width: screenResolution.width, 
+        height: screenResolution.height 
+      });
+
+      await page.goto(url, { waitUntil: 'networkidle0' });
 
       browser.on('disconnected', () => {
         console.log('Navegador de Puppeteer cerrado.');
