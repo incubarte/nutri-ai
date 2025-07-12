@@ -370,6 +370,9 @@ export default function ControlsPage() {
   const isOvertime = state.live.clock.currentPeriod > state.config.numberOfRegularPeriods && state.live.clock.periodDisplayOverride === null;
   const handleFinishByGoldenGoal = () => {
     if (state.live.score.home === state.live.score.away) {
+        if (state.live.clock.isClockRunning) {
+            dispatch({ type: 'TOGGLE_CLOCK' });
+        }
         setIsGoldenGoalDialogOpen(true);
     } else {
         dispatch({ type: 'MANUAL_END_GAME' });
