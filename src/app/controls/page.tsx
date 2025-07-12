@@ -6,12 +6,13 @@ import { MiniScoreboard } from '@/components/controls/mini-scoreboard';
 import { PenaltyControlCard } from '@/components/controls/penalty-control-card';
 import { GoalManagementDialog } from '@/components/controls/goal-management-dialog';
 import { GameSummaryDialog } from '@/components/controls/game-summary-dialog';
-import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, formatTime, getActualPeriodText } from '@/contexts/game-state-context';
+import { GoldenGoalDialog } from '@/components/controls/golden-goal-dialog';
+import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, formatTime } from '@/contexts/game-state-context';
 import type { PlayerData, RemoteCommand } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, FileText } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
 import { exportGameSummaryPDF } from '@/lib/pdf-generator';
@@ -40,6 +41,7 @@ export default function ControlsPage() {
   const [isGoalManagementOpen, setIsGoalManagementOpen] = useState(false);
   const [editingTeamForGoals, setEditingTeamForGoals] = useState<Team | null>(null);
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
+  const [isGoldenGoalDialogOpen, setIsGoldenGoalDialogOpen] = useState(false);
 
   const prevPeriodDisplayOverrideRef = useRef<string | null>();
   const isInitialMount = useRef(true);
@@ -365,6 +367,16 @@ export default function ControlsPage() {
     setIsGoalManagementOpen(true);
   };
   
+  const isOvertime = state.live.clock.currentPeriod > state.config.numberOfRegularPeriods && state.live.clock.periodDisplayOverride === null;
+  const handleFinishByGoldenGoal = () => {
+    if (state.live.score.home === state.live.score.away) {
+        setIsGoldenGoalDialogOpen(true);
+    } else {
+        dispatch({ type: 'MANUAL_END_GAME' });
+        toast({ title: "Partido Finalizado", description: "El juego ha sido finalizado manualmente." });
+    }
+  };
+
   if (isLoading || !state.live || !state.config || !state.live.penalties) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
@@ -427,6 +439,19 @@ export default function ControlsPage() {
         </div>
       )}
 
+      {isOvertime && (
+        <div className="my-6 flex justify-center">
+          <Button
+            size="lg"
+            className="px-8 py-4 text-base font-semibold h-auto bg-amber-500 hover:bg-amber-600 text-black"
+            onClick={handleFinishByGoldenGoal}
+          >
+            <Trophy className="mr-2 h-5 w-5" /> 
+            Finalizar por Gol de Oro
+          </Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <PenaltyControlCard team="home" teamName={state.live.homeTeamName} />
         <PenaltyControlCard team="away" teamName={state.live.awayTeamName} />
@@ -478,6 +503,13 @@ export default function ControlsPage() {
             }}
             team={editingTeamForGoals}
         />
+      )}
+
+      {isGoldenGoalDialogOpen && (
+          <GoldenGoalDialog
+              isOpen={isGoldenGoalDialogOpen}
+              onOpenChange={setIsGoldenGoalDialogOpen}
+          />
       )}
 
       {isSummaryDialogOpen && (

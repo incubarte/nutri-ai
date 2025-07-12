@@ -251,6 +251,7 @@ const handleAutoTransition = (currentState: GameState): GameState => {
     defaultOTPeriodDuration,
   } = currentState.config;
   const { currentPeriod, periodDisplayOverride, preTimeoutState } = currentState.live.clock;
+  const { score } = currentState.live;
   const totalGamePeriods = numberOfRegularPeriods + numberOfOvertimePeriods;
   let shouldTriggerHorn = true;
 
@@ -294,18 +295,32 @@ const handleAutoTransition = (currentState: GameState): GameState => {
       newGameStateAfterTransition.live.clock.absoluteElapsedTimeCs = newAbsoluteTime;
       newGameStateAfterTransition.live.clock._liveAbsoluteElapsedTimeCs = newAbsoluteTime;
 
-      if (currentPeriod < numberOfRegularPeriods) {
-        // Start a regular break, respecting autoStartBreaks
+      // Check for end of regulation
+      if (currentPeriod === numberOfRegularPeriods) {
+        if (score.home !== score.away) {
+          // Game ends, no tie
+          newGameStateAfterTransition.live.clock.periodDisplayOverride = "End of Game";
+        } else if (numberOfOvertimePeriods > 0) {
+          // Tie game, start pre-OT break
+          newGameStateAfterTransition.live.clock.currentTime = defaultPreOTBreakDuration;
+          newGameStateAfterTransition.live.clock.isClockRunning = autoStartPreOTBreaks && defaultPreOTBreakDuration > 0;
+          newGameStateAfterTransition.live.clock.periodDisplayOverride = 'Pre-OT Break';
+        } else {
+          // Tie game, no OT configured, end game
+          newGameStateAfterTransition.live.clock.periodDisplayOverride = "End of Game";
+        }
+      } else if (currentPeriod < numberOfRegularPeriods) {
+        // Start a regular break
         newGameStateAfterTransition.live.clock.currentTime = defaultBreakDuration;
         newGameStateAfterTransition.live.clock.isClockRunning = autoStartBreaks && defaultBreakDuration > 0;
         newGameStateAfterTransition.live.clock.periodDisplayOverride = 'Break';
       } else if (currentPeriod < totalGamePeriods) {
-        // Start a pre-OT break, respecting autoStartPreOTBreaks
+        // Start another pre-OT break if there are multiple OTs
         newGameStateAfterTransition.live.clock.currentTime = defaultPreOTBreakDuration;
         newGameStateAfterTransition.live.clock.isClockRunning = autoStartPreOTBreaks && defaultPreOTBreakDuration > 0;
         newGameStateAfterTransition.live.clock.periodDisplayOverride = 'Pre-OT Break';
       } else {
-        // End of the game
+        // End of the game (after last OT)
         newGameStateAfterTransition.live.clock.periodDisplayOverride = "End of Game";
       }
       break;
@@ -560,6 +575,34 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           homeGoals: homeGoals,
           awayGoals: awayGoals,
       }}};
+      break;
+    }
+    case 'FINISH_GAME_WITH_OT_GOAL': {
+      const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
+      const homeGoals = (action.payload.team === 'home' ? [...(state.live.score.homeGoals || []), newGoal] : (state.live.score.homeGoals || []));
+      const awayGoals = (action.payload.team === 'away' ? [...(state.live.score.awayGoals || []), newGoal] : (state.live.score.awayGoals || []));
+      const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
+      
+      newState = { ...state, live: { ...state.live, 
+        score: {
+          home: homeGoals.length,
+          away: awayGoals.length,
+          homeGoals,
+          awayGoals,
+        },
+        clock: {
+          ...state.live.clock,
+          currentTime: 0,
+          isClockRunning: false,
+          periodDisplayOverride: 'End of Game',
+          absoluteElapsedTimeCs: newAbsoluteTime,
+          _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
+          clockStartTimeMs: null,
+          remainingTimeAtStartCs: null,
+          preTimeoutState: null,
+        },
+        playHornTrigger: state.live.playHornTrigger + 1,
+      }};
       break;
     }
     case 'ADD_PENALTY': {
