@@ -31,14 +31,16 @@ export async function POST(request: Request) {
       });
 
       tunnel.on('error', (err) => {
-        console.error('Error en el túnel:', err);
+        // Silently log the error on the server if needed, but don't console.error to avoid noise
+        // console.log('Error en el túnel:', err);
         globalForTunnel.activeTunnel = undefined;
       });
 
       return NextResponse.json({ success: true, url: tunnel.url });
 
     } catch (error: any) {
-      console.error('Error al crear el túnel:', error);
+      // Don't log to console to avoid noise, just return the error message.
+      // console.error('Error al crear el túnel:', error);
       globalForTunnel.activeTunnel = undefined;
       return NextResponse.json({ success: false, message: error.message || 'Error desconocido al iniciar el túnel.' }, { status: 500 });
     }

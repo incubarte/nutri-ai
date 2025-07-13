@@ -167,21 +167,13 @@ export const RemoteControlsSettingsCard = () => {
           description: newUrl ? `Accesible en: ${newUrl}` : 'El túnel ha sido cerrado.',
         });
       } else {
+        // Just update the state to 'error' with the message, without showing a toast.
         dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'error', lastMessage: data.message } });
-        toast({
-          title: "Error en el Túnel",
-          description: data.message || 'Ocurrió un error desconocido.',
-          variant: "destructive",
-        });
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error de red.';
+      // Just update the state to 'error' with the message, without showing a toast.
       dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'error', lastMessage: errorMessage } });
-      toast({
-        title: "Error de Conexión",
-        description: `No se pudo comunicar con el servidor para gestionar el túnel.`,
-        variant: "destructive",
-      });
     }
   };
 

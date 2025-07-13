@@ -1,0 +1,21 @@
+{
+  "date": "2025-07-12T23:59:33.007Z",
+  "category": "A",
+  "homeTeam": "Local",
+  "awayTeam": "Visitante",
+  "finalScore": "0 - 1",
+  "summary": {
+    "home": {
+      "goals": [],
+      "penalties": []
+    },
+    "away": {
+      "goals": [],
+      "penalties": []
+    },
+    "attendance": {
+      "home": [],
+      "away": []
+    }
+  }
+}
