@@ -4,7 +4,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PuppeteerWindowState, PenaltyTypeDefinition } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
@@ -111,10 +111,6 @@ const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
   attendance: { home: [], away: [] },
 };
 
-const IN_CODE_INITIAL_PUPPETEER_WINDOW_STATE: PuppeteerWindowState = {
-  status: 'closed',
-};
-
 const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): FormatAndTimingsProfile => ({
   id: id || safeUUID(),
   name: name || IN_CODE_INITIAL_PROFILE_NAME,
@@ -183,7 +179,6 @@ const initialGlobalState: GameState = {
     selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
     teams: [],
     tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
-    puppeteerWindow: IN_CODE_INITIAL_PUPPETEER_WINDOW_STATE,
   },
   live: {
     score: {
@@ -321,7 +316,7 @@ const handleAutoTransition = (currentState: GameState): GameState => {
           // Tie game, no OT configured, end game
           newGameStateAfterTransition.live.clock.periodDisplayOverride = "End of Game";
         }
-      } else if (currentPeriod < numberOfRegularPeriods) {
+      } else if (currentPeriod < totalGamePeriods) {
         // Start a regular break
         newGameStateAfterTransition.live.clock.currentTime = defaultBreakDuration;
         newGameStateAfterTransition.live.clock.isClockRunning = autoStartBreaks && defaultBreakDuration > 0;
@@ -918,24 +913,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         }};
         break;
     }
-    case 'RESET_GAME_STATE': {
-      const { defaultWarmUpDuration, autoStartWarmUp } = state.config;
-      newState = { ...state, live: {
-        score: { home: 0, away: 0, homeGoals: [], awayGoals: [], },
-        penalties: { home: [], away: [], },
-        clock: {
-          currentTime: defaultWarmUpDuration, currentPeriod: 0, isClockRunning: autoStartWarmUp && defaultWarmUpDuration > 0,
-          periodDisplayOverride: 'Warm-up', preTimeoutState: null,
-          clockStartTimeMs: (autoStartWarmUp && defaultWarmUpDuration > 0) ? Date.now() : null,
-          remainingTimeAtStartCs: (autoStartWarmUp && defaultWarmUpDuration > 0) ? defaultWarmUpDuration : null,
-          absoluteElapsedTimeCs: 0, _liveAbsoluteElapsedTimeCs: 0,
-        },
-        homeTeamName: 'Local', homeTeamSubName: undefined, awayTeamName: 'Visitante', awayTeamSubName: undefined,
-        gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
-        playHornTrigger: state.live.playHornTrigger, playPenaltyBeepTrigger: state.live.playPenaltyBeepTrigger,
-      }};
-      break;
-    }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
         const { selectedFormatAndTimingsProfileId, formatAndTimingsProfiles } = state.config;
         if (!selectedFormatAndTimingsProfileId) break;
@@ -1016,7 +993,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'SET_AVAILABLE_CATEGORIES': newState = { ...state, config: { ...state.config, availableCategories: action.payload, selectedMatchCategory: (action.payload.find(c => c.id === state.config.selectedMatchCategory) ? state.config.selectedMatchCategory : (action.payload[0]?.id || '')) } }; break;
     case 'SET_SELECTED_MATCH_CATEGORY': newState = { ...state, config: { ...state.config, selectedMatchCategory: action.payload } }; break;
     case 'UPDATE_TUNNEL_STATE': newState = { ...state, config: { ...state.config, tunnel: { ...state.config.tunnel, ...action.payload } }}; break;
-    case 'SET_PUPPETEER_WINDOW_STATE': newState = { ...state, config: { ...state.config, puppeteerWindow: { ...state.config.puppeteerWindow, ...action.payload } }}; break;
     case 'ADD_TEAM': newState = { ...state, config: { ...state.config, teams: [...state.config.teams, { ...action.payload, id: action.payload.id || safeUUID() }] } }; break;
     case 'UPDATE_TEAM_DETAILS': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, ...action.payload } : t) } }; break;
     case 'DELETE_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.filter(t => t.id !== action.payload.teamId) } }; break;
@@ -1053,6 +1029,24 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
         }
       };
+      break;
+    }
+    case 'RESET_GAME_STATE': {
+      const { defaultWarmUpDuration, autoStartWarmUp } = state.config;
+      newState = { ...state, live: {
+        score: { home: 0, away: 0, homeGoals: [], awayGoals: [], },
+        penalties: { home: [], away: [], },
+        clock: {
+          currentTime: defaultWarmUpDuration, currentPeriod: 0, isClockRunning: autoStartWarmUp && defaultWarmUpDuration > 0,
+          periodDisplayOverride: 'Warm-up', preTimeoutState: null,
+          clockStartTimeMs: (autoStartWarmUp && defaultWarmUpDuration > 0) ? Date.now() : null,
+          remainingTimeAtStartCs: (autoStartWarmUp && defaultWarmUpDuration > 0) ? defaultWarmUpDuration : null,
+          absoluteElapsedTimeCs: 0, _liveAbsoluteElapsedTimeCs: 0,
+        },
+        homeTeamName: 'Local', homeTeamSubName: undefined, awayTeamName: 'Visitante', awayTeamSubName: undefined,
+        gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
+        playHornTrigger: state.live.playHornTrigger, playPenaltyBeepTrigger: state.live.playPenaltyBeepTrigger,
+      }};
       break;
     }
   }

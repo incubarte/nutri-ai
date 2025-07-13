@@ -466,7 +466,7 @@ export default function ControlsPage() {
          <div className="flex flex-wrap gap-4 items-start">
             <AlertDialog open={showResetConfirmation} onOpenChange={setShowResetConfirmation}>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="flex-shrink-0">
+                <Button variant="outline" className="flex-shrink-0">
                   <RefreshCw className="mr-2 h-4 w-4" /> Iniciar Nuevo Partido
                 </Button>
               </AlertDialogTrigger>

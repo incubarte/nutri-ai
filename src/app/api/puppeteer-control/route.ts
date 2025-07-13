@@ -1,98 +1,95 @@
 
 import { NextResponse } from 'next/server';
-import puppeteer, { type Browser } from 'puppeteer';
+import puppeteer, { type Browser } from 'puppeteer-core';
 
-// Mantener una referencia global al navegador para no abrir múltiples instancias.
-// Esto es importante porque los módulos de Next.js pueden ser recargados en desarrollo.
-const globalForBrowser = globalThis as unknown as {
+const LAUNCH_OPTIONS = {
+    executablePath: '/usr/bin/google-chrome', 
+    headless: false,
+    args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-infobars',
+        '--window-position=0,0',
+        '--ignore-certifcate-errors',
+        '--ignore-certifcate-errors-spki-list',
+        '--kiosk'
+    ],
+};
+
+const globalForPuppeteer = globalThis as unknown as {
   browser: Browser | undefined;
 };
 
-// --- ADVERTENCIA DE ENTORNO ---
-// Puppeteer requiere un entorno de servidor Node.js completo.
-// NO funcionará en entornos de vista previa o serverless estándar de Firebase App Hosting.
-// Está diseñado para ser ejecutado en un servidor local o en un contenedor personalizado.
-const isPuppeteerSupported = !process.env.FIREBASE_APP_HOSTING_PREVIEW_URL;
-
-
-export async function POST(request: Request) {
-  if (!isPuppeteerSupported) {
-    return NextResponse.json({ 
-        success: false, 
-        message: 'Puppeteer no es compatible con este entorno de servidor.' 
-    }, { status: 501 });
-  }
-
-  const { action, url, secondMonitorX, secondMonitorY } = await request.json();
-
-  if (action === 'open') {
-    if (globalForBrowser.browser) {
-      return NextResponse.json({ success: false, message: 'La ventana del scoreboard ya está abierta.' }, { status: 400 });
+async function launchBrowser(x: number = 0, y: number = 0) {
+    if (globalForPuppeteer.browser) {
+        return globalForPuppeteer.browser;
     }
-    if (!url) {
-      return NextResponse.json({ success: false, message: 'La URL es requerida para abrir la ventana.' }, { status: 400 });
+    
+    const options = { ...LAUNCH_OPTIONS };
+    const windowPositionArgIndex = options.args.findIndex(arg => arg.startsWith('--window-position'));
+    if (windowPositionArgIndex !== -1) {
+        options.args[windowPositionArgIndex] = `--window-position=${x},${y}`;
+    } else {
+        options.args.push(`--window-position=${x},${y}`);
     }
 
     try {
-      const browser = await puppeteer.launch({
-        headless: false,
-        args: [
-          '--start-fullscreen',
-          '--kiosk', // Modo kiosco, oculta la UI de Chrome
-          `--window-position=${secondMonitorX || 0},${secondMonitorY || 0}`, // Intenta posicionar en el segundo monitor
-        ],
-        defaultViewport: null, // Importante para que la ventana se ajuste al tamaño de la pantalla
-      });
+        const browser = await puppeteer.launch(options);
+        globalForPuppeteer.browser = browser;
 
-      globalForBrowser.browser = browser;
+        browser.on('disconnected', () => {
+            console.log('Browser disconnected.');
+            globalForPuppeteer.browser = undefined;
+        });
 
-      const page = await browser.newPage();
-      
-      // Obtener las dimensiones de la pantalla para ajustar el viewport
-      const screenResolution = await page.evaluate(() => {
-        return {
-          width: window.screen.width,
-          height: window.screen.height,
-          deviceScaleFactor: window.devicePixelRatio
-        }
-      });
-      await page.setViewport({ 
-        width: screenResolution.width, 
-        height: screenResolution.height 
-      });
-
-      await page.goto(url, { waitUntil: 'networkidle0' });
-
-      browser.on('disconnected', () => {
-        console.log('Navegador de Puppeteer cerrado.');
-        globalForBrowser.browser = undefined;
-      });
-
-      return NextResponse.json({ success: true, message: 'Scoreboard abierto en modo kiosco.' });
-    } catch (error: any) {
-      console.error('Error al lanzar Puppeteer:', error);
-      globalForBrowser.browser = undefined;
-      return NextResponse.json({ success: false, message: error.message || 'Error desconocido al iniciar Puppeteer.' }, { status: 500 });
+        return browser;
+    } catch (error) {
+        console.error("Failed to launch Puppeteer:", error);
+        throw new Error("Could not launch browser instance.");
     }
+}
 
+async function closeBrowser() {
+    if (globalForPuppeteer.browser) {
+        await globalForPuppeteer.browser.close();
+        globalForPuppeteer.browser = undefined;
+        console.log("Browser instance closed.");
+        return true;
+    }
+    return false;
+}
+
+export async function POST(request: Request) {
+  const { action, x, y } = await request.json();
+
+  if (action === 'open') {
+    try {
+        const browser = await launchBrowser(x, y);
+        const pages = await browser.pages();
+        const page = pages[0] || await browser.newPage();
+        
+        await page.setViewport({ width: 1920, height: 1080 });
+        const url = new URL('/', request.url).toString();
+        await page.goto(url, { waitUntil: 'networkidle0' });
+
+        return NextResponse.json({ success: true, message: 'Scoreboard window opened in kiosk mode.' });
+    } catch (error) {
+        console.error("Puppeteer Open Error:", error);
+        return NextResponse.json({ success: false, message: (error as Error).message }, { status: 500 });
+    }
   } else if (action === 'close') {
-    if (globalForBrowser.browser) {
-      await globalForBrowser.browser.close();
-      globalForBrowser.browser = undefined;
-      return NextResponse.json({ success: true, message: 'Scoreboard cerrado.' });
-    } else {
-      return NextResponse.json({ success: false, message: 'No hay ninguna ventana de scoreboard activa para cerrar.' }, { status: 400 });
+    try {
+        const closed = await closeBrowser();
+        if (closed) {
+            return NextResponse.json({ success: true, message: 'Browser instance closed.' });
+        } else {
+            return NextResponse.json({ success: false, message: 'No active browser instance to close.' });
+        }
+    } catch (error) {
+        console.error("Puppeteer Close Error:", error);
+        return NextResponse.json({ success: false, message: (error as Error).message }, { status: 500 });
     }
-  } else if (action === 'status') {
-     if (globalForBrowser.browser && globalForBrowser.browser.isConnected()) {
-        return NextResponse.json({ success: true, status: 'open' });
-     } else {
-        // Limpieza por si el navegador se cerró externamente
-        globalForBrowser.browser = undefined;
-        return NextResponse.json({ success: true, status: 'closed' });
-     }
   }
 
-
-  return NextResponse.json({ success: false, message: 'Acción no válida.' }, { status: 400 });
+  return NextResponse.json({ success: false, message: 'Invalid action.' }, { status: 400 });
 }

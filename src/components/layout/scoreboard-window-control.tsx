@@ -1,74 +1,75 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { useGameState } from '@/contexts/game-state-context';
+import React, { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Monitor, MonitorPlay, XCircle, MonitorUp, Loader2 } from 'lucide-react';
+import { MonitorPlay, XCircle, MonitorUp, ExternalLink, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 
 export function ScoreboardWindowControl() {
-  const { state, dispatch } = useGameState();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [secondMonitorX, setSecondMonitorX] = useState('1920'); // Valor por defecto común
-  const [secondMonitorY, setSecondMonitorY] = useState('0'); // Valor por defecto
+  const [posX, setPosX] = useState('1920');
+  const [posY, setPosY] = useState('0');
 
-  const isWindowOpen = state.config.puppeteerWindow.status === 'open';
-
-  // Sincronizar estado al cargar
-  useEffect(() => {
-    const checkStatus = async () => {
-      try {
-        const res = await fetch('/api/puppeteer-control', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'status' }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          dispatch({ type: 'SET_PUPPETEER_WINDOW_STATE', payload: { status: data.status } });
-        }
-      } catch (e) {
-        console.error("Error fetching puppeteer status", e);
-      }
-    };
-    checkStatus();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handlePuppeteerControl = async (action: 'open' | 'close') => {
+  const handleKioskOpen = async () => {
     setIsProcessing(true);
     try {
-      const scoreboardUrl = `${window.location.protocol}//${window.location.hostname}:${window.location.port}/`;
-      
       const response = await fetch('/api/puppeteer-control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, url: scoreboardUrl, secondMonitorX, secondMonitorY }),
+        body: JSON.stringify({ action: 'open', x: parseInt(posX) || 0, y: parseInt(posY) || 0 }),
       });
       const data = await response.json();
-
       if (data.success) {
-        dispatch({ type: 'SET_PUPPETEER_WINDOW_STATE', payload: { status: action === 'open' ? 'open' : 'closed' } });
-        toast({ title: "Acción Completada", description: data.message });
+        toast({ title: "Acción Enviada", description: "Se ha abierto el scoreboard en modo kiosco." });
       } else {
-        toast({ title: "Error", description: data.message, variant: "destructive" });
+        throw new Error(data.message || 'Error desconocido del servidor.');
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Error de red";
-      toast({ title: "Error de Conexión", description: errorMessage, variant: "destructive" });
+      toast({
+        title: "Error al Abrir Kiosco",
+        description: (error as Error).message,
+        variant: "destructive"
+      });
     } finally {
       setIsProcessing(false);
     }
   };
+
+  const handleKioskClose = async () => {
+    setIsProcessing(true);
+    try {
+      const response = await fetch('/api/puppeteer-control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'close' }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast({ title: "Acción Enviada", description: "Se cerró la instancia del navegador del kiosco." });
+      } else {
+        toast({ title: "Aviso", description: data.message || "No había instancia que cerrar.", variant: "default" });
+      }
+    } catch (error) {
+       toast({
+        title: "Error al Cerrar Kiosco",
+        description: (error as Error).message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
 
   return (
     <Popover>
@@ -77,36 +78,35 @@ export function ScoreboardWindowControl() {
           variant="ghost"
           size="icon"
           aria-label="Controlar ventana de scoreboard externa"
-          className={isWindowOpen ? "text-primary-foreground bg-primary/80" : "text-foreground/60"}
+          className={cn(isProcessing ? "text-primary-foreground bg-primary/80 animate-pulse" : "text-foreground/60")}
         >
-          <MonitorPlay className="h-5 w-5" />
+          {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <MonitorPlay className="h-5 w-5" />}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-4 space-y-4">
-        <div className="grid gap-2">
-          <Button onClick={() => handlePuppeteerControl('open')} disabled={isWindowOpen || isProcessing} variant="outline" className="justify-start">
-            {isProcessing && !isWindowOpen ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Monitor className="mr-2 h-4 w-4"/>}
-             Abrir Scoreboard Kiosco
-           </Button>
-           <Button onClick={() => handlePuppeteerControl('close')} disabled={!isWindowOpen || isProcessing} variant="destructive" className="justify-start">
-             {isProcessing && isWindowOpen ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4"/>}
-             Cerrar Scoreboard Kiosco
-           </Button>
-        </div>
-        <div className="border-t pt-4 space-y-2">
-          <Label className="text-xs font-semibold">Posición del 2do Monitor</Label>
-          <div className="flex items-center gap-2">
+        <div className="grid gap-4">
+          <p className="text-sm font-medium">Control de Kiosco (Puppeteer)</p>
+          <div className="flex gap-2 items-end">
             <div>
-              <Label htmlFor="monitor-x" className="text-xs text-muted-foreground">X:</Label>
-              <Input id="monitor-x" value={secondMonitorX} onChange={(e) => setSecondMonitorX(e.target.value)} className="w-20 h-8" placeholder="1920" />
+              <Label htmlFor="pos-x" className="text-xs">Posición X</Label>
+              <Input id="pos-x" value={posX} onChange={e => setPosX(e.target.value)} className="h-8 w-20" placeholder="0" />
             </div>
-            <div>
-               <Label htmlFor="monitor-y" className="text-xs text-muted-foreground">Y:</Label>
-              <Input id="monitor-y" value={secondMonitorY} onChange={(e) => setSecondMonitorY(e.target.value)} className="w-20 h-8" placeholder="0" />
+             <div>
+              <Label htmlFor="pos-y" className="text-xs">Posición Y</Label>
+              <Input id="pos-y" value={posY} onChange={e => setPosY(e.target.value)} className="h-8 w-20" placeholder="0" />
             </div>
           </div>
+          <Button onClick={handleKioskOpen} variant="outline" className="justify-start w-full" disabled={isProcessing}>
+            <ExternalLink className="mr-2 h-4 w-4"/>
+             Abrir Scoreboard Kiosco
+           </Button>
+           <Button onClick={handleKioskClose} variant="destructive" className="justify-start w-full" disabled={isProcessing}>
+             <XCircle className="mr-2 h-4 w-4"/>
+             Forzar Cierre de Kioscos
+           </Button>
         </div>
       </PopoverContent>
     </Popover>
   );
 }
+
