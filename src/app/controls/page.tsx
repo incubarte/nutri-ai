@@ -12,7 +12,7 @@ import type { PlayerData, RemoteCommand } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
 import { exportGameSummaryPDF } from '@/lib/pdf-generator';
@@ -36,6 +36,7 @@ export default function ControlsPage() {
   
   const channelRef = useRef<BroadcastChannel | null>(null);
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
+  const [showClearStorageConfirmation, setShowClearStorageConfirmation] = useState(false);
   const [isDownloadPromptOpen, setIsDownloadPromptOpen] = useState(false);
   
   const [isGoalManagementOpen, setIsGoalManagementOpen] = useState(false);
@@ -249,15 +250,18 @@ export default function ControlsPage() {
           dispatch({ type: 'ADD_GOAL', payload: goalPayload });
           toast({ title: "Gol Añadido (Remoto)", description: `Gol para ${team === 'home' ? currentLive.homeTeamName : currentLive.awayTeamName} #${scorerNumber} registrado.` });
         } else if (command.type === 'ADD_PENALTY') {
-          const { team, playerNumber, duration } = command.payload;
-           dispatch({
-              type: 'ADD_PENALTY',
-              payload: {
-                team,
-                penalty: { playerNumber, initialDuration: duration },
-              },
+          const { team, playerNumber, penaltyTypeId } = command.payload;
+          const penaltyDef = currentConfig.penaltyTypes.find(p => p.id === penaltyTypeId);
+          if (penaltyDef) {
+            dispatch({
+                type: 'ADD_PENALTY',
+                payload: {
+                  team,
+                  penalty: { playerNumber, penaltyTypeId },
+                },
             });
-            toast({ title: "Penalidad Añadida (Remoto)", description: `Jugador #${playerNumber} de ${team === 'home' ? currentLive.homeTeamName : currentLive.awayTeamName} recibió una penalidad de ${formatTime(duration * 100)}.` });
+            toast({ title: "Penalidad Añadida (Remoto)", description: `Jugador #${playerNumber} de ${team === 'home' ? currentLive.homeTeamName : currentLive.awayTeamName} recibió una penalidad de ${penaltyDef.name}.` });
+          }
         } else if (command.type === 'ACTIVATE_PENDING_PUCK_PENALTIES') {
             dispatch({ type: 'ACTIVATE_PENDING_PUCK_PENALTIES' });
             toast({ title: "Puck en Juego (Remoto)", description: "Se activaron las penalidades pendientes." });
@@ -338,6 +342,17 @@ export default function ControlsPage() {
     setShowResetConfirmation(false);
     setIsDownloadPromptOpen(true);
   };
+  
+  const handleClearLocalStorage = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+      toast({
+        title: "Datos Locales Eliminados",
+        description: "Se ha limpiado el almacenamiento local. La página se recargará.",
+      });
+      setTimeout(() => window.location.reload(), 1500);
+    }
+  };
 
   const handleDownloadAndReset = () => {
     const filename = exportGameSummaryPDF(state);
@@ -369,10 +384,10 @@ export default function ControlsPage() {
   
   const isOvertime = state.live.clock.currentPeriod > state.config.numberOfRegularPeriods && state.live.clock.periodDisplayOverride === null;
   const handleFinishByGoldenGoal = () => {
+    if (state.live.clock.isClockRunning) {
+        dispatch({ type: 'TOGGLE_CLOCK' });
+    }
     if (state.live.score.home === state.live.score.away) {
-        if (state.live.clock.isClockRunning) {
-            dispatch({ type: 'TOGGLE_CLOCK' });
-        }
         setIsGoldenGoalDialogOpen(true);
     } else {
         dispatch({ type: 'MANUAL_END_GAME' });
@@ -460,10 +475,10 @@ export default function ControlsPage() {
         <PenaltyControlCard team="away" teamName={state.live.awayTeamName} />
       </div>
       <div className="mt-12 pt-8 border-t border-border">
-         <div className="flex flex-col sm:flex-row gap-4 items-start">
+         <div className="flex flex-wrap gap-4 items-start">
             <AlertDialog open={showResetConfirmation} onOpenChange={setShowResetConfirmation}>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="w-full sm:w-auto">
+                <Button variant="destructive" className="flex-shrink-0">
                   <RefreshCw className="mr-2 h-4 w-4" /> Iniciar Nuevo Partido
                 </Button>
               </AlertDialogTrigger>
@@ -482,9 +497,30 @@ export default function ControlsPage() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsSummaryDialogOpen(true)}>
+            <Button variant="outline" className="flex-shrink-0" onClick={() => setIsSummaryDialogOpen(true)}>
               <FileText className="mr-2 h-4 w-4" /> Ver Resumen del Partido
             </Button>
+            <AlertDialog open={showClearStorageConfirmation} onOpenChange={setShowClearStorageConfirmation}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground flex-shrink-0">
+                  <Trash2 className="mr-2 h-4 w-4" /> Limpiar Datos Locales
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar Limpieza Total</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción eliminará permanentemente TODA la configuración (perfiles, equipos, etc.) y el estado del juego actual del almacenamiento local de este navegador. Esta acción es irreversible. ¿Estás seguro de que quieres continuar?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearLocalStorage} className="bg-destructive hover:bg-destructive/90">
+                    Sí, Borrar Todo
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
         </div>
          <p className="text-xs text-muted-foreground mt-2">
           La acción "Iniciar Nuevo Partido" restablecerá los marcadores, el reloj, el período actual, las penalidades y el registro de eventos del partido.
