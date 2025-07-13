@@ -14,6 +14,12 @@ import { Save, Undo2, Upload, Download, RotateCcw, Plus, Edit3, Trash2, XCircle 
 import { useGameState, type ConfigFields, type FormatAndTimingsProfile, type FormatAndTimingsProfileData, createDefaultFormatAndTimingsProfile, type CategoryData, type ScoreboardLayoutProfile, createDefaultScoreboardLayoutProfile } from '@/contexts/game-state-context';
 import { Separator } from "@/components/ui/separator";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -675,9 +681,16 @@ export default function ConfigPage() {
             </div>
             <PenaltySettingsCard ref={penaltySettingsRef} onDirtyChange={setIsPenaltyDirty} initialValues={selectedFTProfile} />
             <Separator />
-            <PenaltyTypesCard ref={penaltyTypesRef} onDirtyChange={setIsPenaltyTypesDirty} initialValues={selectedFTProfile} />
-            <Separator />
             <DurationSettingsCard ref={durationSettingsRef} onDirtyChange={setIsDurationDirty} initialValues={selectedFTProfile} />
+            <Separator />
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="item-1">
+                <AccordionTrigger className="text-lg text-primary-foreground hover:no-underline">Configuración Avanzada de Tipos de Penalidades</AccordionTrigger>
+                <AccordionContent>
+                  <PenaltyTypesCard ref={penaltyTypesRef} onDirtyChange={setIsPenaltyTypesDirty} initialValues={selectedFTProfile} />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
             
             {isFormatAndTimingsSectionDirty && (
               <div className={sectionActionsContainerClass}>
