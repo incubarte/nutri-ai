@@ -1,5 +1,4 @@
 
-
 export interface Penalty {
   id: string;
   playerNumber: string;
@@ -7,6 +6,7 @@ export interface Penalty {
   expirationTime?: number;
   initialDuration: number; 
   _status?: 'running' | 'pending_concurrent' | 'pending_puck'; 
+  penaltyType?: 'minor' | 'misconduct';
 }
 
 export type Team = 'home' | 'away';
@@ -103,6 +103,7 @@ export interface PenaltyLog {
   playerNumber: string;
   playerName?: string;
   initialDuration: number;
+  penaltyType?: 'minor' | 'misconduct';
   addTimestamp: number;
   addGameTime: number;
   addPeriodText: string;
@@ -252,7 +253,7 @@ export type GameAction =
   | { type: 'EDIT_GOAL'; payload: { goalId: string; updates: Partial<GoalLog> } }
   | { type: 'DELETE_GOAL'; payload: { goalId: string } }
   | { type: 'FINISH_GAME_WITH_OT_GOAL'; payload: Omit<GoalLog, 'id'> }
-  | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; initialDuration: number; } } }
+  | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; initialDuration: number; penaltyType?: 'minor' | 'misconduct' } } }
   | { type: 'REMOVE_PENALTY'; payload: { team: Team; penaltyId: string } }
   | { type: 'END_PENALTY_FOR_GOAL'; payload: { team: Team; penaltyId: string } }
   | { type: 'ADJUST_PENALTY_TIME'; payload: { team: Team; penaltyId: string; delta: number } }

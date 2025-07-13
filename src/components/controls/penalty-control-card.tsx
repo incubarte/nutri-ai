@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo, useRef } from 'react';
@@ -105,6 +106,8 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
         : null;
         
     const displayStatus = penalty._status ? statusTextMap[penalty._status] : 'Estado Desconocido';
+    
+    const isMisconduct = penalty.penaltyType === 'misconduct';
 
     return (
         <Card
@@ -122,7 +125,8 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                 isSelectedForDeletion && "ring-2 ring-destructive border-destructive bg-destructive/10",
                 isWaitingSlot && "opacity-60 bg-muted/10",
                 isPendingPuck && "opacity-40 bg-yellow-500/5 border-yellow-500/30",
-                isEndingSoon && "animate-flashing-border border-2"
+                isEndingSoon && "animate-flashing-border border-2",
+                isMisconduct && "border-blue-500/30"
             )}
         >
             <div className="flex justify-between items-center w-full gap-2">
@@ -146,6 +150,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                                                 - {matchedPlayerForPenaltyDisplay.name}
                                             </span>
                                         )}
+                                        {isMisconduct && <span className="text-xs text-blue-400 font-normal ml-1">(MALA CONDUCTA)</span>}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
                                         Total: {formatTime(penalty.initialDuration * 100)}
@@ -329,11 +334,17 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     }
 
     const durationSec = parseInt(penaltyDurationSeconds, 10);
+    const penaltyType = durationSec === 600 ? 'misconduct' : 'minor';
+    
     dispatch({
       type: 'ADD_PENALTY',
       payload: {
         team,
-        penalty: { playerNumber: trimmedPlayerNumberForPenalty.toUpperCase(), initialDuration: durationSec },
+        penalty: { 
+          playerNumber: trimmedPlayerNumberForPenalty.toUpperCase(), 
+          initialDuration: durationSec,
+          penaltyType: penaltyType,
+        },
       },
     });
     toast({ title: "Penalidad Agregada", description: `Jugador ${trimmedPlayerNumberForPenalty.toUpperCase()}${selectedPlayerName ? ` (${selectedPlayerName})` : ''} de ${teamName} recibió una penalidad de ${formatTime(durationSec * 100)}.` });

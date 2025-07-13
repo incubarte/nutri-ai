@@ -606,20 +606,42 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'ADD_PENALTY': {
+      const { team, penalty } = action.payload;
+      const { _liveAbsoluteElapsedTimeCs } = state.live.clock;
       const newPenaltyId = safeUUID();
-      const newPenalty: Penalty = { id: newPenaltyId, ...action.payload.penalty, _status: 'pending_puck' };
-      const teamDetails = state.config.teams.find(t => t.name === state.live[`${action.payload.team}TeamName`] && (t.subName || undefined) === (state.live[`${action.payload.team}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
+      const penaltyType = penalty.penaltyType || 'minor';
+
+      let newStatus: Penalty['_status'] = 'pending_puck';
+      let startTime, expirationTime;
+
+      if (penaltyType === 'misconduct') {
+        newStatus = 'running';
+        startTime = _liveAbsoluteElapsedTimeCs;
+        expirationTime = _liveAbsoluteElapsedTimeCs + penalty.initialDuration * CENTISECONDS_PER_SECOND;
+      }
+      
+      const newPenalty: Penalty = { 
+        id: newPenaltyId, 
+        ...penalty, 
+        penaltyType,
+        _status: newStatus,
+        startTime,
+        expirationTime
+      };
+
+      const teamDetails = state.config.teams.find(t => t.name === state.live[`${team}TeamName`] && (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
       const playerDetails = teamDetails?.players.find(p => p.number === newPenalty.playerNumber);
 
       const newPenaltyLog: PenaltyLog = {
-        id: newPenaltyId, team: action.payload.team, playerNumber: newPenalty.playerNumber, playerName: playerDetails?.name,
+        id: newPenaltyId, team, playerNumber: newPenalty.playerNumber, playerName: playerDetails?.name,
         initialDuration: newPenalty.initialDuration, addTimestamp: Date.now(), addGameTime: state.live.clock.currentTime,
         addPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
+        penaltyType: newPenalty.penaltyType,
       };
 
       newState = { ...state, live: { ...state.live,
-          penalties: { ...state.live.penalties, [action.payload.team]: sortPenaltiesByStatus([...state.live.penalties[action.payload.team], newPenalty]) },
-          gameSummary: { ...state.live.gameSummary, [action.payload.team]: { ...state.live.gameSummary[action.payload.team], penalties: [...state.live.gameSummary[action.payload.team].penalties, newPenaltyLog]}}
+          penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus([...state.live.penalties[team], newPenalty]) },
+          gameSummary: { ...state.live.gameSummary, [team]: { ...state.live.gameSummary[team], penalties: [...state.live.gameSummary[team].penalties, newPenaltyLog]}}
       }};
       break;
     }
@@ -726,8 +748,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           });
 
           let stillRunning = runningPenalties.filter(p => !expiredPenalties.find(exp => exp.id === p.id));
-          let availableSlots = config.maxConcurrentPenalties - stillRunning.length;
-          const playersServing = new Set(stillRunning.map(p => p.playerNumber));
+          // Only 'minor' penalties count towards the concurrent limit
+          let availableSlots = config.maxConcurrentPenalties - stillRunning.filter(p => p.penaltyType !== 'misconduct').length;
+          const playersServing = new Set(stillRunning.filter(p => p.penaltyType !== 'misconduct').map(p => p.playerNumber));
           
           let pendingConcurrent = teamPenalties.filter(p => p._status === 'pending_concurrent');
           for (const p of pendingConcurrent) {

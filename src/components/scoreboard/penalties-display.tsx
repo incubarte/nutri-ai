@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { Penalty, ClockState } from '@/types';
@@ -26,7 +27,9 @@ export function PenaltiesDisplay({ teamDisplayType, teamName, penalties, mode = 
   const noPenaltiesStyle = isMobile ? { fontSize: '0.875rem' } : { fontSize: `${state.config.scoreboardLayout.penaltyPlayerNumberSize * 0.5}rem` };
   const morePenaltiesStyle = isMobile ? {} : { fontSize: `${state.config.scoreboardLayout.penaltyPlayerNumberSize * 0.4}rem` };
   
-  const penaltiesToShow = isMobile ? penalties : penalties.slice(0, 3);
+  // Filter out misconduct penalties for display on the scoreboard
+  const penaltiesToDisplay = penalties.filter(p => p.penaltyType !== 'misconduct');
+  const penaltiesToShow = isMobile ? penaltiesToDisplay : penaltiesToDisplay.slice(0, 3);
 
   return (
       <Card className="bg-card shadow-lg flex-1">
@@ -39,7 +42,7 @@ export function PenaltiesDisplay({ teamDisplayType, teamName, penalties, mode = 
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 p-3 pt-0 md:p-6 md:pt-0 md:space-y-3 lg:space-y-4">
-          {penalties.length === 0 ? (
+          {penaltiesToDisplay.length === 0 ? (
             <p 
               className="text-muted-foreground"
               style={noPenaltiesStyle}
@@ -51,16 +54,15 @@ export function PenaltiesDisplay({ teamDisplayType, teamName, penalties, mode = 
               <PenaltyCard key={penalty.id} penalty={penalty} teamName={teamName} mode={mode} clock={clock} />
             ))
           )}
-          {!isMobile && penalties.length > 3 && (
+          {!isMobile && penaltiesToDisplay.length > 3 && (
             <p 
               className="text-muted-foreground text-center pt-2"
               style={morePenaltiesStyle}
             >
-              +{penalties.length - 3} más...
+              +{penaltiesToDisplay.length - 3} más...
             </p>
           )}
         </CardContent>
       </Card>
   );
 }
-
