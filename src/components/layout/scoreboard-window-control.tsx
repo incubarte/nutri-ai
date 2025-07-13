@@ -1,15 +1,11 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { MonitorPlay, ExternalLink } from 'lucide-react';
+import { MonitorPlay, ExternalLink, X, MonitorUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 
@@ -17,27 +13,63 @@ export function ScoreboardWindowControl() {
   const { toast } = useToast();
   const [posX, setPosX] = useState('1920');
   const [posY, setPosY] = useState('0');
+  const [port, setPort] = useState('');
+  const [isWindowOpen, setIsWindowOpen] = useState(false);
 
-  const handleOpenWindow = () => {
-    const width = screen.availWidth;
-    const height = screen.availHeight;
-    const x = parseInt(posX, 10) || 0;
-    const y = parseInt(posY, 10) || 0;
+  useEffect(() => {
+    // Set port on component mount client-side
+    if (typeof window !== 'undefined') {
+      setPort(window.location.port || '9002');
+    }
 
-    // Open a blank window first
-    const newWindow = window.open('about:blank', 'scoreboardWindow', 'popup=yes');
+    // Check status on mount and periodically
+    const checkStatus = async () => {
+      try {
+        const res = await fetch('/api/puppeteer-control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'status' }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setIsWindowOpen(data.isOpen);
+        }
+      } catch (error) {
+        console.error("Error checking window status:", error);
+      }
+    };
+    
+    checkStatus();
+    const interval = setInterval(checkStatus, 5000); // Check every 5 seconds
+    return () => clearInterval(interval);
+  }, []);
 
-    if (newWindow) {
-      // Then move, resize, and navigate it. This is more reliable.
-      newWindow.moveTo(x, y);
-      newWindow.resizeTo(width, height);
-      newWindow.location.href = '/';
-      
-      toast({ title: "Ventana Abierta", description: "Scoreboard abierto en una nueva ventana." });
-    } else {
+  const handleWindowAction = async (action: 'open' | 'close') => {
+    try {
+      const response = await fetch('/api/puppeteer-control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, posX, posY, port }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({ title: "Acción Completada", description: data.message });
+        setIsWindowOpen(action === 'open');
+      } else {
+        toast({
+          title: "Error en la Acción",
+          description: data.message || "Ocurrió un error en el servidor.",
+          variant: "destructive"
+        });
+        if (action === 'open') setIsWindowOpen(false);
+      }
+    } catch (error) {
+      console.error("Error sending window action:", error);
       toast({
-        title: "Error al Abrir Ventana",
-        description: "No se pudo abrir la ventana emergente. Revisa los permisos de tu navegador.",
+        title: "Error de Red",
+        description: "No se pudo comunicar con el servidor para controlar la ventana.",
         variant: "destructive"
       });
     }
@@ -46,31 +78,33 @@ export function ScoreboardWindowControl() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Controlar ventana de scoreboard externa"
-        >
+        <Button variant="ghost" size="icon" aria-label="Controlar ventana de scoreboard externa">
           <MonitorPlay className="h-5 w-5" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-4 space-y-4">
         <div className="grid gap-4">
-          <p className="text-sm font-medium">Control de Ventana del Scoreboard</p>
+          <p className="text-sm font-medium">Control de Ventana (Kiosk)</p>
           <div className="flex gap-2 items-end">
             <div>
               <Label htmlFor="pos-x" className="text-xs">Posición X</Label>
               <Input id="pos-x" value={posX} onChange={e => setPosX(e.target.value)} className="h-8 w-20" placeholder="1920" />
             </div>
-             <div>
+            <div>
               <Label htmlFor="pos-y" className="text-xs">Posición Y</Label>
               <Input id="pos-y" value={posY} onChange={e => setPosY(e.target.value)} className="h-8 w-20" placeholder="0" />
             </div>
           </div>
-           <Button onClick={handleOpenWindow} variant="outline" className="justify-start w-full">
-            <ExternalLink className="mr-2 h-4 w-4"/>
-             Abrir en Ventana Nueva
-           </Button>
+          <div className="flex flex-col gap-2">
+            <Button onClick={() => handleWindowAction('open')} variant="outline" className="justify-start w-full" disabled={isWindowOpen}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Abrir Scoreboard
+            </Button>
+            <Button onClick={() => handleWindowAction('close')} variant="destructive" className="justify-start w-full" disabled={!isWindowOpen}>
+              <X className="mr-2 h-4 w-4" />
+              Cerrar Scoreboard
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
