@@ -9,14 +9,13 @@ const globalForBrowser = globalThis as unknown as {
 };
 
 export async function POST(request: Request) {
-  const { action, posX = '0', posY = '0', port = '9002' } = await request.json();
+  const { action, posX = '0', posY = '0', port = '9002', chromePath = '/usr/bin/google-chrome' } = await request.json();
 
   if (action === 'open') {
     if (globalForBrowser.browserProcess && !globalForBrowser.browserProcess.killed) {
       return NextResponse.json({ success: false, message: 'Una ventana de scoreboard ya está abierta.' }, { status: 400 });
     }
 
-    const chromePath = '/usr/bin/google-chrome'; 
     const url = `http://localhost:${port}/`;
     const args = [
       `--kiosk`,
@@ -38,7 +37,7 @@ export async function POST(request: Request) {
       globalForBrowser.browserProcess.unref(); 
 
       globalForBrowser.browserProcess.on('error', (err) => {
-        console.error('Error al iniciar Chrome:', err);
+        console.error(`Error al iniciar Chrome desde la ruta '${chromePath}':`, err);
         globalForBrowser.browserProcess = null;
       });
 

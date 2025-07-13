@@ -8,8 +8,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { useGameState } from '@/contexts/game-state-context';
 
 export function ScoreboardWindowControl() {
+  const { state } = useGameState();
   const { toast } = useToast();
   const [posX, setPosX] = useState('1920');
   const [posY, setPosY] = useState('0');
@@ -26,7 +28,7 @@ export function ScoreboardWindowControl() {
       const response = await fetch('/api/window-control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'open', posX, posY, port }),
+        body: JSON.stringify({ action: 'open', posX, posY, port, chromePath: state.config.chromeBinaryPath }),
       });
 
       const data = await response.json();

@@ -70,6 +70,7 @@ const IN_CODE_INITIAL_ENABLE_PENALTY_COUNTDOWN_SOUND = true;
 const IN_CODE_INITIAL_PENALTY_COUNTDOWN_START_TIME = 10;
 const IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL = null;
 const IN_CODE_INITIAL_ENABLE_DEBUG_MODE = false;
+const IN_CODE_INITIAL_CHROME_BINARY_PATH = "/opt/google/chrome/google-chrome";
 
 const IN_CODE_INITIAL_TUNNEL_STATE: TunnelState = {
   subdomain: 'icevision-cl',
@@ -172,6 +173,7 @@ const initialGlobalState: GameState = {
     penaltyCountdownStartTime: IN_CODE_INITIAL_PENALTY_COUNTDOWN_START_TIME,
     customPenaltyBeepSoundDataUrl: IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL,
     enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
+    chromeBinaryPath: IN_CODE_INITIAL_CHROME_BINARY_PATH,
     scoreboardLayout: IN_CODE_INITIAL_LAYOUT_SETTINGS,
     scoreboardLayoutProfiles: [defaultInitialLayoutProfile],
     selectedScoreboardLayoutProfileId: defaultInitialLayoutProfile.id,
@@ -1024,6 +1026,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           showAliasInControlsPenaltyList: IN_CODE_INITIAL_SHOW_ALIAS_IN_CONTROLS_PENALTY_LIST,
           showAliasInScoreboardPenalties: IN_CODE_INITIAL_SHOW_ALIAS_IN_SCOREBOARD_PENALTIES,
           enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
+          chromeBinaryPath: IN_CODE_INITIAL_CHROME_BINARY_PATH,
           availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
           selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
           tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
