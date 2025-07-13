@@ -4,7 +4,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PuppeteerWindowState } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PuppeteerWindowState, PenaltyTypeDefinition } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
@@ -50,6 +50,14 @@ const IN_CODE_INITIAL_AUTO_START_TIMEOUTS = true;
 const IN_CODE_INITIAL_NUMBER_OF_REGULAR_PERIODS = 2;
 const IN_CODE_INITIAL_NUMBER_OF_OVERTIME_PERIODS = 0;
 const IN_CODE_INITIAL_PLAYERS_PER_TEAM_ON_ICE = 5;
+
+const IN_CODE_INITIAL_PENALTY_TYPES: PenaltyTypeDefinition[] = [
+  { id: 'menor-2', name: 'Menor (2:00)', duration: 120, type: 'minor' },
+  { id: 'doble-menor-4', name: 'Doble Menor (4:00)', duration: 240, type: 'minor' },
+  { id: 'mayor-5', name: 'Mayor (5:00)', duration: 300, type: 'minor' },
+  { id: 'mala-conducta-10', name: 'Mala Conducta (10:00)', duration: 600, type: 'misconduct' },
+];
+const IN_CODE_INITIAL_DEFAULT_PENALTY_TYPE_ID = IN_CODE_INITIAL_PENALTY_TYPES[0]?.id || null;
 
 const IN_CODE_INITIAL_PLAY_SOUND_AT_PERIOD_END = true;
 const IN_CODE_INITIAL_CUSTOM_HORN_SOUND_DATA_URL = null;
@@ -124,6 +132,8 @@ const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): Forma
   numberOfRegularPeriods: IN_CODE_INITIAL_NUMBER_OF_REGULAR_PERIODS,
   numberOfOvertimePeriods: IN_CODE_INITIAL_NUMBER_OF_OVERTIME_PERIODS,
   playersPerTeamOnIce: IN_CODE_INITIAL_PLAYERS_PER_TEAM_ON_ICE,
+  penaltyTypes: IN_CODE_INITIAL_PENALTY_TYPES,
+  defaultPenaltyTypeId: IN_CODE_INITIAL_DEFAULT_PENALTY_TYPE_ID,
 });
 
 const createDefaultScoreboardLayoutProfile = (id?: string, name?: string): ScoreboardLayoutProfile => ({
@@ -151,6 +161,8 @@ const initialGlobalState: GameState = {
     numberOfRegularPeriods: IN_CODE_INITIAL_NUMBER_OF_REGULAR_PERIODS,
     numberOfOvertimePeriods: IN_CODE_INITIAL_NUMBER_OF_OVERTIME_PERIODS,
     playersPerTeamOnIce: IN_CODE_INITIAL_PLAYERS_PER_TEAM_ON_ICE,
+    penaltyTypes: IN_CODE_INITIAL_PENALTY_TYPES,
+    defaultPenaltyTypeId: IN_CODE_INITIAL_DEFAULT_PENALTY_TYPE_ID,
     formatAndTimingsProfiles: [defaultInitialProfile],
     selectedFormatAndTimingsProfileId: defaultInitialProfile.id,
     playSoundAtPeriodEnd: IN_CODE_INITIAL_PLAY_SOUND_AT_PERIOD_END,
@@ -364,6 +376,11 @@ const statusOrderValues: Record<NonNullable<Penalty['_status']>, number> = {
 const sortPenaltiesByStatus = (penalties: Penalty[]): Penalty[] => {
   const penaltiesToSort = [...penalties];
   return penaltiesToSort.sort((a, b) => {
+    const aIsMisconduct = a.penaltyType === 'misconduct';
+    const bIsMisconduct = b.penaltyType === 'misconduct';
+    if (aIsMisconduct && !bIsMisconduct) return 1;
+    if (!aIsMisconduct && bIsMisconduct) return -1;
+    
     const aStatusVal = a._status ? (statusOrderValues[a._status] ?? 5) : 0;
     const bStatusVal = b._status ? (statusOrderValues[b._status] ?? 5) : 0;
     if (aStatusVal !== bStatusVal) return aStatusVal - bStatusVal;
@@ -607,23 +624,31 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PENALTY': {
       const { team, penalty } = action.payload;
+      const { penaltyTypeId, playerNumber } = penalty;
+      const penaltyDef = state.config.penaltyTypes.find(p => p.id === penaltyTypeId);
+
+      if (!penaltyDef) {
+        console.error(`Penalty definition with id ${penaltyTypeId} not found.`);
+        break;
+      }
+      
       const { _liveAbsoluteElapsedTimeCs } = state.live.clock;
       const newPenaltyId = safeUUID();
-      const penaltyType = penalty.penaltyType || 'minor';
-
+      
       let newStatus: Penalty['_status'] = 'pending_puck';
       let startTime, expirationTime;
 
-      if (penaltyType === 'misconduct') {
+      if (penaltyDef.type === 'misconduct') {
         newStatus = 'running';
         startTime = _liveAbsoluteElapsedTimeCs;
-        expirationTime = _liveAbsoluteElapsedTimeCs + penalty.initialDuration * CENTISECONDS_PER_SECOND;
+        expirationTime = _liveAbsoluteElapsedTimeCs + penaltyDef.duration * CENTISECONDS_PER_SECOND;
       }
       
       const newPenalty: Penalty = { 
         id: newPenaltyId, 
-        ...penalty, 
-        penaltyType,
+        playerNumber: playerNumber,
+        initialDuration: penaltyDef.duration,
+        penaltyType: penaltyDef.type,
         _status: newStatus,
         startTime,
         expirationTime
@@ -664,7 +689,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
      case 'END_PENALTY_FOR_GOAL': {
       const { team, penaltyId } = action.payload;
       const penaltyToEnd = state.live.penalties[team].find(p => p.id === penaltyId);
-      if (!penaltyToEnd) break;
+      if (!penaltyToEnd || penaltyToEnd.penaltyType === 'misconduct') break;
 
       const remainingTimeCs = penaltyToEnd.expirationTime !== undefined ? Math.max(0, penaltyToEnd.expirationTime - state.live.clock._liveAbsoluteElapsedTimeCs) : penaltyToEnd.initialDuration * 100;
       const timeServed = penaltyToEnd.initialDuration - Math.round(remainingTimeCs / 100);

@@ -2,9 +2,9 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useGameState, formatTime, getPeriodText, getPeriodContextFromAbsoluteTime } from '@/contexts/game-state-context';
-import type { Penalty, Team, PlayerData } from '@/types';
+import type { Penalty, Team, PlayerData, PenaltyTypeDefinition } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -228,16 +228,18 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                     >
                         <Plus className="h-4 w-4" />
                     </Button>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => { e.stopPropagation(); onEndForGoal(penalty); }}
-                        aria-label="Finalizar por gol"
-                        disabled={isDeleteSelectionMode}
-                    >
-                        <Goal className="h-4 w-4 text-green-500" />
-                    </Button>
+                    {!isMisconduct && (
+                      <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => { e.stopPropagation(); onEndForGoal(penalty); }}
+                          aria-label="Finalizar por gol"
+                          disabled={isDeleteSelectionMode}
+                      >
+                          <Goal className="h-4 w-4 text-green-500" />
+                      </Button>
+                    )}
                 </div>
             </div>
             {statusText && (
@@ -255,7 +257,7 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
   const { state, dispatch, isLoading } = useGameState();
   const [playerNumberForPenalty, setPlayerNumberForPenalty] = useState('');
   const [selectedPlayerName, setSelectedPlayerName] = useState<string | null>(null);
-  const [penaltyDurationSeconds, setPenaltyDurationSeconds] = useState('120');
+  const [penaltyTypeId, setPenaltyTypeId] = useState<string | null>(state.config.defaultPenaltyTypeId);
   const { toast } = useToast();
 
   const [draggedPenaltyId, setDraggedPenaltyId] = useState<string | null>(null);
@@ -273,6 +275,12 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
   const [isDeleteSelectionMode, setIsDeleteSelectionMode] = useState(false);
   const [selectedPenaltyIds, setSelectedPenaltyIds] = useState<string[]>([]);
   const [isMassDeleteConfirmOpen, setIsMassDeleteConfirmOpen] = useState(false);
+
+  // Set default penalty type when component loads or penalty types change
+  useEffect(() => {
+    setPenaltyTypeId(state.config.defaultPenaltyTypeId);
+  }, [state.config.defaultPenaltyTypeId, state.config.penaltyTypes]);
+
 
   if (isLoading || !state.live || !state.config) {
     return (
@@ -324,8 +332,8 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     e.preventDefault();
     const trimmedPlayerNumberForPenalty = playerNumberForPenalty.trim();
 
-    if (!trimmedPlayerNumberForPenalty || !penaltyDurationSeconds) {
-      toast({ title: "Error", description: "Número de jugador para la penalidad y duración son requeridos.", variant: "destructive" });
+    if (!trimmedPlayerNumberForPenalty || !penaltyTypeId) {
+      toast({ title: "Error", description: "Número de jugador y tipo de falta son requeridos.", variant: "destructive" });
       return;
     }
     if (!/^\d+$/.test(trimmedPlayerNumberForPenalty) && !/^\d+[A-Za-z]*$/.test(trimmedPlayerNumberForPenalty)) {
@@ -333,25 +341,28 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
        return;
     }
 
-    const durationSec = parseInt(penaltyDurationSeconds, 10);
-    const penaltyType = durationSec === 600 ? 'misconduct' : 'minor';
+    const penaltyDef = state.config.penaltyTypes.find(p => p.id === penaltyTypeId);
+    if (!penaltyDef) {
+        toast({ title: "Error", description: "Tipo de falta no encontrada.", variant: "destructive" });
+        return;
+    }
     
     dispatch({
       type: 'ADD_PENALTY',
       payload: {
         team,
         penalty: { 
-          playerNumber: trimmedPlayerNumberForPenalty.toUpperCase(), 
-          initialDuration: durationSec,
-          penaltyType: penaltyType,
+          playerNumber: trimmedPlayerNumberForPenalty.toUpperCase(),
+          penaltyTypeId,
         },
       },
     });
-    toast({ title: "Penalidad Agregada", description: `Jugador ${trimmedPlayerNumberForPenalty.toUpperCase()}${selectedPlayerName ? ` (${selectedPlayerName})` : ''} de ${teamName} recibió una penalidad de ${formatTime(durationSec * 100)}.` });
+    toast({ title: "Penalidad Agregada", description: `Jugador ${trimmedPlayerNumberForPenalty.toUpperCase()}${selectedPlayerName ? ` (${selectedPlayerName})` : ''} de ${teamName} recibió una penalidad de ${penaltyDef.name}.` });
     
     setPlayerNumberForPenalty('');
     setSelectedPlayerName(null);
     setPlayerSearchTerm('');
+    setPenaltyTypeId(state.config.defaultPenaltyTypeId);
   };
   
   const handleSetPenaltyTime = (penaltyId: string, newTimeValue: string) => {
@@ -627,17 +638,18 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
               {renderPlayerNumberInput()}
             </div>
             <div className="sm:col-span-1">
-              <Label htmlFor={`${team}-penaltyDuration`}>Duración (segundos)</Label>
-              <Select value={penaltyDurationSeconds} onValueChange={setPenaltyDurationSeconds}>
-                <SelectTrigger id={`${team}-penaltyDuration`}>
-                  <SelectValue placeholder="Seleccionar duración" />
+              <Label htmlFor={`${team}-penaltyType`}>Tipo de Falta</Label>
+              <Select value={penaltyTypeId || ""} onValueChange={setPenaltyTypeId}>
+                <SelectTrigger id={`${team}-penaltyType`}>
+                  <SelectValue placeholder="Seleccionar tipo..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="4">0:04 (Prueba)</SelectItem>
-                  <SelectItem value="120">2:00 (Menor)</SelectItem>
-                  <SelectItem value="240">4:00 (Doble Menor)</SelectItem>
-                  <SelectItem value="300">5:00 (Mayor)</SelectItem>
-                  <SelectItem value="600">10:00 (Mala Conducta)</SelectItem>
+                  {(state.config.penaltyTypes || []).map((type: PenaltyTypeDefinition) => (
+                    <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                  ))}
+                  {(state.config.penaltyTypes || []).length === 0 && (
+                    <SelectItem value="no-types" disabled>No hay tipos definidos</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>

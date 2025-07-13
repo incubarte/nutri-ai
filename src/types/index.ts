@@ -1,4 +1,12 @@
 
+
+export interface PenaltyTypeDefinition {
+  id: string;
+  name: string;
+  duration: number;
+  type: 'minor' | 'misconduct';
+}
+
 export interface Penalty {
   id: string;
   playerNumber: string;
@@ -48,6 +56,8 @@ export interface FormatAndTimingsProfileData {
   numberOfRegularPeriods: number;
   numberOfOvertimePeriods: number;
   playersPerTeamOnIce: number;
+  penaltyTypes: PenaltyTypeDefinition[];
+  defaultPenaltyTypeId: string | null;
 }
 
 export interface FormatAndTimingsProfile extends FormatAndTimingsProfileData {
@@ -239,7 +249,7 @@ export interface LiveGameState {
 // --- Remote Commands ---
 export type RemoteCommand = 
   | { type: 'ADD_GOAL'; payload: { team: Team; scorerNumber: string; assistNumber?: string } }
-  | { type: 'ADD_PENALTY'; payload: { team: Team; playerNumber: string; duration: number } }
+  | { type: 'ADD_PENALTY'; payload: { team: Team; playerNumber: string; penaltyTypeId: string; } }
   | { type: 'ACTIVATE_PENDING_PUCK_PENALTIES' };
 
 
@@ -253,7 +263,7 @@ export type GameAction =
   | { type: 'EDIT_GOAL'; payload: { goalId: string; updates: Partial<GoalLog> } }
   | { type: 'DELETE_GOAL'; payload: { goalId: string } }
   | { type: 'FINISH_GAME_WITH_OT_GOAL'; payload: Omit<GoalLog, 'id'> }
-  | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; initialDuration: number; penaltyType?: 'minor' | 'misconduct' } } }
+  | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; penaltyTypeId: string; } } }
   | { type: 'REMOVE_PENALTY'; payload: { team: Team; penaltyId: string } }
   | { type: 'END_PENALTY_FOR_GOAL'; payload: { team: Team; penaltyId: string } }
   | { type: 'ADJUST_PENALTY_TIME'; payload: { team: Team; penaltyId: string; delta: number } }
@@ -301,3 +311,4 @@ export type GameAction =
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
+
