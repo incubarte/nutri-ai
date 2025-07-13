@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -24,10 +23,24 @@ export function ScoreboardWindowControl() {
     const x = parseInt(posX, 10) || 0;
     const y = parseInt(posY, 10) || 0;
 
+    const windowFeatures = [
+      `popup=yes`,
+      `width=${width}`,
+      `height=${height}`,
+      `left=${x}`,
+      `top=${y}`,
+      `menubar=no`,
+      `toolbar=no`,
+      `location=no`,
+      `status=yes`,
+      `resizable=yes`,
+      `scrollbars=yes`,
+    ].join(',');
+
     window.open(
       '/',
       'scoreboardWindow',
-      `width=${width},height=${height},left=${x},top=${y},menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes,status=yes`
+      windowFeatures
     );
     
     toast({ title: "Ventana Abierta", description: "Scoreboard abierto en una nueva ventana." });
