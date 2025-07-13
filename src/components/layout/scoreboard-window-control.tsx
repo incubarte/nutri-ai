@@ -18,16 +18,8 @@ export function ScoreboardWindowControl() {
   const { toast } = useToast();
   const [posX, setPosX] = useState('1920');
   const [posY, setPosY] = useState('0');
+  // La referencia a la ventana ya no es necesaria para la lógica principal
   const windowRef = useRef<Window | null>(null);
-  const [isWindowOpen, setIsWindowOpen] = useState(false);
-
-  useEffect(() => {
-    const checkWindow = setInterval(() => {
-      setIsWindowOpen(windowRef.current && !windowRef.current.closed);
-    }, 1000);
-
-    return () => clearInterval(checkWindow);
-  }, []);
 
   const handleOpenWindow = () => {
     const width = screen.width;
@@ -35,40 +27,25 @@ export function ScoreboardWindowControl() {
     const x = parseInt(posX, 10) || 0;
     const y = parseInt(posY, 10) || 0;
 
-    if (windowRef.current && !windowRef.current.closed) {
-      windowRef.current.focus();
-      toast({ title: "Ventana ya abierta", description: "El scoreboard ya está abierto en otra ventana." });
-      return;
-    }
-
     const newWindow = window.open(
       '/',
       'scoreboardWindow',
       `width=${width},height=${height},left=${x},top=${y},menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes,status=yes`
     );
-
+    
+    // Guardamos la referencia por si el usuario quiere maximizarla.
     windowRef.current = newWindow;
-    setIsWindowOpen(true);
+
     toast({ title: "Ventana Abierta", description: "Scoreboard abierto en una nueva ventana." });
   };
 
-  const handleCloseWindow = () => {
-    if (windowRef.current && !windowRef.current.closed) {
-      windowRef.current.close();
-      windowRef.current = null;
-      setIsWindowOpen(false);
-      toast({ title: "Ventana Cerrada", description: "Se cerró la ventana del scoreboard." });
-    } else {
-      toast({ title: "Sin ventana", description: "No hay una ventana de scoreboard abierta para cerrar." });
-    }
-  };
-
   const handleMaximizeWindow = () => {
+    // Intentamos usar la referencia si existe y la ventana aún está abierta
     if (windowRef.current && !windowRef.current.closed) {
         windowRef.current.postMessage('REQUEST_FULLSCREEN', '*');
         toast({ title: "Petición Enviada", description: "Se solicitó poner la ventana en pantalla completa." });
     } else {
-      toast({ title: "Sin ventana", description: "No hay una ventana de scoreboard abierta para maximizar." });
+      toast({ title: "Sin Referencia de Ventana", description: "No se puede maximizar. Intenta abrirla de nuevo.", variant: "destructive" });
     }
   };
 
@@ -80,7 +57,6 @@ export function ScoreboardWindowControl() {
           variant="ghost"
           size="icon"
           aria-label="Controlar ventana de scoreboard externa"
-          className={cn(isWindowOpen && "text-primary-foreground bg-primary/80")}
         >
           <MonitorPlay className="h-5 w-5" />
         </Button>
@@ -98,17 +74,13 @@ export function ScoreboardWindowControl() {
               <Input id="pos-y" value={posY} onChange={e => setPosY(e.target.value)} className="h-8 w-20" placeholder="0" />
             </div>
           </div>
-           <Button onClick={handleOpenWindow} variant="outline" className="justify-start w-full" disabled={isWindowOpen}>
+           <Button onClick={handleOpenWindow} variant="outline" className="justify-start w-full">
             <ExternalLink className="mr-2 h-4 w-4"/>
              Abrir en Ventana Nueva
            </Button>
-           <Button onClick={handleMaximizeWindow} variant="outline" className="justify-start w-full" disabled={!isWindowOpen}>
+           <Button onClick={handleMaximizeWindow} variant="outline" className="justify-start w-full">
             <MonitorUp className="mr-2 h-4 w-4"/>
              Maximizar Ventana
-           </Button>
-           <Button onClick={handleCloseWindow} variant="destructive" className="justify-start w-full" disabled={!isWindowOpen}>
-             <XCircle className="mr-2 h-4 w-4"/>
-             Cerrar Ventana Abierta
            </Button>
         </div>
       </PopoverContent>
