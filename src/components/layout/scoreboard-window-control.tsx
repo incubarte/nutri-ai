@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -18,32 +19,28 @@ export function ScoreboardWindowControl() {
   const [posY, setPosY] = useState('0');
 
   const handleOpenWindow = () => {
-    const width = screen.width;
-    const height = screen.height;
+    const width = screen.availWidth;
+    const height = screen.availHeight;
     const x = parseInt(posX, 10) || 0;
     const y = parseInt(posY, 10) || 0;
 
-    const windowFeatures = [
-      `popup=yes`,
-      `width=${width}`,
-      `height=${height}`,
-      `left=${x}`,
-      `top=${y}`,
-      `menubar=no`,
-      `toolbar=no`,
-      `location=no`,
-      `status=yes`,
-      `resizable=yes`,
-      `scrollbars=yes`,
-    ].join(',');
+    // Open a blank window first
+    const newWindow = window.open('about:blank', 'scoreboardWindow', 'popup=yes');
 
-    window.open(
-      '/',
-      'scoreboardWindow',
-      windowFeatures
-    );
-    
-    toast({ title: "Ventana Abierta", description: "Scoreboard abierto en una nueva ventana." });
+    if (newWindow) {
+      // Then move, resize, and navigate it. This is more reliable.
+      newWindow.moveTo(x, y);
+      newWindow.resizeTo(width, height);
+      newWindow.location.href = '/';
+      
+      toast({ title: "Ventana Abierta", description: "Scoreboard abierto en una nueva ventana." });
+    } else {
+      toast({
+        title: "Error al Abrir Ventana",
+        description: "No se pudo abrir la ventana emergente. Revisa los permisos de tu navegador.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
