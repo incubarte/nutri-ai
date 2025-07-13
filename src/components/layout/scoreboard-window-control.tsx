@@ -17,15 +17,13 @@ export function ScoreboardWindowControl() {
   const [isWindowOpen, setIsWindowOpen] = useState(false);
 
   useEffect(() => {
-    // Set port on component mount client-side
     if (typeof window !== 'undefined') {
       setPort(window.location.port || '9002');
     }
 
-    // Check status on mount and periodically
     const checkStatus = async () => {
       try {
-        const res = await fetch('/api/puppeteer-control', {
+        const res = await fetch('/api/window-control', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'status' }),
@@ -35,18 +33,18 @@ export function ScoreboardWindowControl() {
           setIsWindowOpen(data.isOpen);
         }
       } catch (error) {
-        console.error("Error checking window status:", error);
+        // It's okay to fail silently here, as it's just a status check
       }
     };
     
     checkStatus();
-    const interval = setInterval(checkStatus, 5000); // Check every 5 seconds
+    const interval = setInterval(checkStatus, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const handleWindowAction = async (action: 'open' | 'close') => {
     try {
-      const response = await fetch('/api/puppeteer-control', {
+      const response = await fetch('/api/window-control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, posX, posY, port }),
