@@ -645,7 +645,7 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
                 </SelectTrigger>
                 <SelectContent>
                   {(state.config.penaltyTypes || []).map((type: PenaltyTypeDefinition) => (
-                    <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                    <SelectItem key={type.id} value={type.id}>{type.name} ({formatTime(type.duration * 100)})</SelectItem>
                   ))}
                   {(state.config.penaltyTypes || []).length === 0 && (
                     <SelectItem value="no-types" disabled>No hay tipos definidos</SelectItem>

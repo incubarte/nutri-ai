@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
-import { useGameState, type FormatAndTimingsProfileData, type PenaltyTypeDefinition } from "@/contexts/game-state-context";
+import { useGameState, type FormatAndTimingsProfileData, type PenaltyTypeDefinition, formatTime } from "@/contexts/game-state-context";
 import { ControlCardWrapper } from "@/components/controls/control-card-wrapper";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -127,7 +127,7 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
             <SelectContent>
               {localPenaltyTypes.length > 0 ? (
                 localPenaltyTypes.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.name} ({p.duration}s)</SelectItem>
+                  <SelectItem key={p.id} value={p.id}>{p.name} ({formatTime(p.duration * 100)})</SelectItem>
                 ))
               ) : (
                 <div className="px-2 py-1.5 text-sm text-muted-foreground">No hay tipos definidos</div>
@@ -147,7 +147,7 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
                   <div key={p.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
                     <div>
                       <p className="font-medium">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">{p.duration} segundos - {p.type === 'minor' ? 'Regular' : 'Mala Conducta'}</p>
+                      <p className="text-xs text-muted-foreground">{formatTime(p.duration * 100)} - {p.type === 'minor' ? 'Regular' : 'Mala Conducta'}</p>
                     </div>
                     <div className="flex items-center">
                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditPenalty(p)}>
@@ -235,4 +235,3 @@ function EditPenaltyDialog({ penalty, isOpen, onOpenChange, onSave }: { penalty:
       </Dialog>
   );
 }
-
