@@ -36,7 +36,6 @@ export default function ControlsPage() {
   
   const channelRef = useRef<BroadcastChannel | null>(null);
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
-  const [showClearStorageConfirmation, setShowClearStorageConfirmation] = useState(false);
   const [isDownloadPromptOpen, setIsDownloadPromptOpen] = useState(false);
   
   const [isGoalManagementOpen, setIsGoalManagementOpen] = useState(false);
@@ -343,17 +342,6 @@ export default function ControlsPage() {
     setIsDownloadPromptOpen(true);
   };
   
-  const handleClearLocalStorage = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.clear();
-      toast({
-        title: "Datos Locales Eliminados",
-        description: "Se ha limpiado el almacenamiento local. La página se recargará.",
-      });
-      setTimeout(() => window.location.reload(), 1500);
-    }
-  };
-
   const handleDownloadAndReset = () => {
     const filename = exportGameSummaryPDF(state);
     
@@ -500,27 +488,6 @@ export default function ControlsPage() {
             <Button variant="outline" className="flex-shrink-0" onClick={() => setIsSummaryDialogOpen(true)}>
               <FileText className="mr-2 h-4 w-4" /> Ver Resumen del Partido
             </Button>
-            <AlertDialog open={showClearStorageConfirmation} onOpenChange={setShowClearStorageConfirmation}>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground flex-shrink-0">
-                  <Trash2 className="mr-2 h-4 w-4" /> Limpiar Datos Locales
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Confirmar Limpieza Total</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta acción eliminará permanentemente TODA la configuración (perfiles, equipos, etc.) y el estado del juego actual del almacenamiento local de este navegador. Esta acción es irreversible. ¿Estás seguro de que quieres continuar?
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleClearLocalStorage} className="bg-destructive hover:bg-destructive/90">
-                    Sí, Borrar Todo
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
         </div>
          <p className="text-xs text-muted-foreground mt-2">
           La acción "Iniciar Nuevo Partido" restablecerá los marcadores, el reloj, el período actual, las penalidades y el registro de eventos del partido.
