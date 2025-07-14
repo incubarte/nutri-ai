@@ -35,6 +35,8 @@ export async function GET(request: Request) {
         } catch (e) {
             console.log('Remote Command SSE: Ping failed, client may have disconnected.');
             cleanup();
+            // We don't close the controller here as it might be a temporary network issue.
+            // The client is responsible for reconnecting.
         }
       }, 30000); // Send a ping every 30 seconds
 

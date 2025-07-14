@@ -8,21 +8,25 @@ import { GoalManagementDialog } from '@/components/controls/goal-management-dial
 import { GameSummaryDialog } from '@/components/controls/game-summary-dialog';
 import { GoldenGoalDialog } from '@/components/controls/golden-goal-dialog';
 import { GameSetupDialog } from '@/components/controls/game-setup-dialog';
-import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, formatTime } from '@/contexts/game-state-context';
+import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getActualPeriodText, formatTime } from '@/contexts/game-state-context';
 import type { PlayerData, RemoteCommand } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, PlusCircle } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, WifiOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { safeUUID } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+
 
 const CONTROLS_LOCK_KEY = 'icevision-controls-lock-id';
 const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
 
 type PageDisplayState = 'Checking' | 'Primary' | 'Secondary';
+type RemoteCommandStatus = 'connecting' | 'connected' | 'disconnected';
 
 export default function ControlsPage() {
   const { state, dispatch, isLoading } = useGameState();
@@ -41,6 +45,9 @@ export default function ControlsPage() {
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
   const [isGoldenGoalDialogOpen, setIsGoldenGoalDialogOpen] = useState(false);
   const [isGameSetupDialogOpen, setIsGameSetupDialogOpen] = useState(false);
+  
+  const [remoteCommandStatus, setRemoteCommandStatus] = useState<RemoteCommandStatus>('connecting');
+  const [reconnectTrigger, setReconnectTrigger] = useState(0);
 
   const prevPeriodDisplayOverrideRef = useRef<string | null>();
   const isInitialMount = useRef(true);
@@ -216,12 +223,17 @@ export default function ControlsPage() {
       return;
     }
 
+    setRemoteCommandStatus('connecting');
     const eventSource = new EventSource('/api/remote-commands/events');
+
+    eventSource.onopen = () => {
+        setRemoteCommandStatus('connected');
+    };
 
     eventSource.onmessage = (event) => {
       try {
+        if (!event.data) return;
         const command: RemoteCommand = JSON.parse(event.data);
-        // Use the ref to get the most up-to-date state
         const { live: currentLive, config: currentConfig } = stateRef.current;
         
         if (!currentLive || !currentConfig) {
@@ -270,13 +282,13 @@ export default function ControlsPage() {
     };
 
     eventSource.onerror = () => {
-      console.error("Remote command EventSource failed. Reconnecting...");
+      setRemoteCommandStatus('disconnected');
     };
 
     return () => {
       eventSource.close();
     };
-  }, [pageDisplayState, dispatch, toast]);
+  }, [pageDisplayState, dispatch, toast, reconnectTrigger]);
 
 
   useEffect(() => {
@@ -455,6 +467,40 @@ export default function ControlsPage() {
        <p className="text-xs text-muted-foreground mt-6 text-center">
           ID de esta instancia de Controles (Primaria): ...{instanceId ? instanceId.slice(-6) : 'N/A'}
       </p>
+
+      {/* Remote Command Status Indicator */}
+      <div className="fixed bottom-4 right-4 flex flex-col items-end gap-2 z-50">
+          <Badge
+            variant={remoteCommandStatus === 'connected' ? 'default' : (remoteCommandStatus === 'disconnected' ? 'destructive' : 'secondary')}
+            className={cn(
+                "flex items-center gap-2 transition-all",
+                remoteCommandStatus === 'connected' && "bg-green-600 hover:bg-green-700 text-white"
+            )}
+            >
+             <span className={cn(
+                "h-2 w-2 rounded-full",
+                remoteCommandStatus === 'connected' && "bg-white animate-pulse",
+                remoteCommandStatus === 'connecting' && "bg-yellow-400",
+                remoteCommandStatus === 'disconnected' && "bg-white"
+            )}></span>
+            <span className="text-xs">
+                {remoteCommandStatus === 'connected' ? "Controles Remotos Conectados" :
+                 remoteCommandStatus === 'connecting' ? "Conectando Remotos..." :
+                 "Controles Remotos Desconectados"}
+            </span>
+          </Badge>
+          {remoteCommandStatus === 'disconnected' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setReconnectTrigger(prev => prev + 1)}
+                >
+                <WifiOff className="mr-2 h-4 w-4" />
+                Reconectar
+              </Button>
+          )}
+      </div>
+
 
       {isGoalManagementOpen && (
         <GoalManagementDialog 
