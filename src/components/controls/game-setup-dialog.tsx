@@ -22,10 +22,10 @@ import { useGameState } from "@/contexts/game-state-context";
 interface GameSetupDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onConfirm: () => void;
+  onGameReset: () => void;
 }
 
-export function GameSetupDialog({ isOpen, onOpenChange, onConfirm }: GameSetupDialogProps) {
+export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetupDialogProps) {
   const { state } = useGameState();
   const { toast } = useToast();
   
@@ -56,7 +56,8 @@ export function GameSetupDialog({ isOpen, onOpenChange, onConfirm }: GameSetupDi
         title: "Configuración Aplicada",
         description: "Se han guardado los ajustes para el nuevo partido."
       });
-      onConfirm(); // This will call the passed in function from parent
+      onGameReset();
+      onOpenChange(false);
     } else {
       toast({
         title: "Error al Guardar",

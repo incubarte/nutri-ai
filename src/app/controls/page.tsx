@@ -516,11 +516,7 @@ export default function ControlsPage() {
         <GameSetupDialog 
             isOpen={isGameSetupDialogOpen}
             onOpenChange={setIsGameSetupDialogOpen}
-            onConfirm={() => {
-                // The setup dialog handles saving, this just resets the game state
-                handleResetGame();
-                setIsGameSetupDialogOpen(false); // Close the dialog after confirmation
-            }}
+            onGameReset={handleResetGame}
         />
       )}
 
