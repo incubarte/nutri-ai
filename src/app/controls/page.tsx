@@ -335,20 +335,10 @@ export default function ControlsPage() {
     dispatch({ type: 'ACTIVATE_PENDING_PUCK_PENALTIES' });
   };
   
-  const handleAddExtraOvertime = () => {
-    dispatch({ type: 'ADD_EXTRA_OVERTIME' });
-    toast({ title: "Overtime Extra Añadido", description: "Se ha añadido un período de OT y se ha iniciado un descanso." });
-  };
-
   const hasPendingPuckPenalties = useMemo(() => {
     if (!state.live || !state.live.penalties) return false;
     return state.live.penalties.home.some(p => p._status === 'pending_puck') ||
            state.live.penalties.away.some(p => p._status === 'pending_puck');
-  }, [state.live]);
-  
-  const isTiedAndFinished = useMemo(() => {
-     if (!state.live) return false;
-     return state.live.clock.periodDisplayOverride === 'End of Game' && state.live.score.home === state.live.score.away;
   }, [state.live]);
 
   const handleScoreClick = (team: Team) => {
@@ -440,19 +430,6 @@ export default function ControlsPage() {
           >
             <Trophy className="mr-2 h-5 w-5" /> 
             Finalizar por Gol de Oro
-          </Button>
-        </div>
-      )}
-      
-      {isTiedAndFinished && (
-        <div className="my-6 flex justify-center">
-          <Button
-            size="lg"
-            className="px-8 py-4 text-base font-semibold h-auto bg-blue-600 hover:bg-blue-700"
-            onClick={handleAddExtraOvertime}
-          >
-            <PlusCircle className="mr-2 h-5 w-5" />
-            Añadir Overtime Extra
           </Button>
         </div>
       )}

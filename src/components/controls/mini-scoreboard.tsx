@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Minus, Play, Pause, ChevronLeft, ChevronRight, ChevronsRight, User, ListFilter, Search, ClipboardList, ChevronsUpDown, Check, TimerOff } from 'lucide-react';
+import { Plus, Minus, Play, Pause, ChevronLeft, ChevronRight, ChevronsRight, User, ListFilter, Search, ClipboardList, ChevronsUpDown, Check, TimerOff, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
@@ -607,6 +607,15 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const timeoutDurationInSeconds = state.config.defaultTimeoutDuration / 100;
   const autoStartBehavior = state.config.autoStartTimeouts ? "se iniciará automáticamente" : "deberá iniciarse manualmente";
 
+  const handleAddExtraOvertime = () => {
+    dispatch({ type: 'ADD_EXTRA_OVERTIME' });
+    toast({ title: "Overtime Extra Añadido", description: "Se ha añadido un período de OT y se ha iniciado un descanso." });
+  };
+  
+  const isTiedAndFinished = useMemo(() => {
+     if (!state.live) return false;
+     return state.live.clock.periodDisplayOverride === 'End of Game' && state.live.score.home === state.live.score.away;
+  }, [state.live]);
 
   return (
     <div className="relative">
@@ -772,7 +781,15 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
           {/* Clock & Period Section */}
           <div className="flex-1 space-y-2 text-center">
-            {showNextActionButton ? (
+            {isTiedAndFinished ? (
+              <Button
+                onClick={handleAddExtraOvertime}
+                className="w-full max-w-[200px] mx-auto mb-2 bg-blue-600 hover:bg-blue-700"
+                aria-label="Añadir Overtime Extra"
+              >
+                <PlusCircle className="mr-2 h-5 w-5" /> Añadir Overtime Extra
+              </Button>
+            ) : showNextActionButton ? (
               <Button
                 onClick={handleNextAction}
                 className="w-full max-w-[200px] mx-auto mb-2"
