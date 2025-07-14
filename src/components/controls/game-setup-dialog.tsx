@@ -37,7 +37,6 @@ const ConfirmationView = ({ profileData, onBack }: { profileData: FormatAndTimin
     { label: "Duración Timeouts", value: `${formatTime(profileData.defaultTimeoutDuration, { showTenths: false })}` },
     { label: "Jugadores en Cancha", value: profileData.playersPerTeamOnIce },
     { label: "Máx. Penalidades Concurrentes", value: profileData.maxConcurrentPenalties },
-    { label: "Tipos de Penalidades Definidos", value: profileData.penaltyTypes.length },
   ];
 
   return (
@@ -140,7 +139,7 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
           </DialogTitle>
           {view === 'editing' && (
             <DialogDescription>
-              Revisa o ajusta el formato y los tiempos antes de iniciar. Los cambios se guardarán en el perfil seleccionado.
+              Ajusta la configuración del partido. Los cambios se guardarán en el perfil de formato y tiempos seleccionado. Al continuar, se reiniciará el estado del partido actual.
             </DialogDescription>
           )}
         </DialogHeader>
@@ -178,7 +177,7 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
           ) : (
             <>
               <Button variant="outline" onClick={() => setView('editing')}>
-                Volver
+                Volver a Editar
               </Button>
               <Button onClick={handleStartGame}>
                 Iniciar Partido
