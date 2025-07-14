@@ -328,7 +328,6 @@ export function GoalManagementDialog({ isOpen, onOpenChange, team }: GoalManagem
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent 
         className="max-w-xl h-[90vh] flex flex-col"
-        onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle className="text-2xl">Gestión de Goles: {teamName}</DialogTitle>

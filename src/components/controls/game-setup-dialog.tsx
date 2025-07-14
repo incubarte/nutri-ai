@@ -83,7 +83,7 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
         <DialogHeader>
           <DialogTitle>Configuración del Nuevo Partido</DialogTitle>
           <DialogDescription>
-            Revisa o ajusta el formato y los tiempos antes de iniciar. Estos cambios se aplicarán al perfil seleccionado.
+            Revisa o ajusta el formato y los tiempos antes de iniciar. Los cambios se guardarán en el perfil seleccionado y se reiniciará el partido.
           </DialogDescription>
         </DialogHeader>
         

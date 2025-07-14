@@ -35,7 +35,6 @@ export default function ControlsPage() {
   const [instanceId, setInstanceId] = useState<string | null>(null);
   
   const channelRef = useRef<BroadcastChannel | null>(null);
-  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
   
   const [isGoalManagementOpen, setIsGoalManagementOpen] = useState(false);
   const [editingTeamForGoals, setEditingTeamForGoals] = useState<Team | null>(null);
@@ -334,13 +333,7 @@ export default function ControlsPage() {
       title: "Nuevo Partido Iniciado",
       description: "El estado del juego ha sido restablecido.",
     });
-    setShowResetConfirmation(false);
   }, [dispatch, toast]);
-  
-  const handleConfirmReset = () => {
-    setShowResetConfirmation(false);
-    setIsGameSetupDialogOpen(true);
-  };
   
   const handleActivatePendingPuckPenalties = () => {
     dispatch({ type: 'ACTIVATE_PENDING_PUCK_PENALTIES' });
@@ -451,27 +444,9 @@ export default function ControlsPage() {
       </div>
       <div className="mt-12 pt-8 border-t border-border">
          <div className="flex flex-wrap gap-4 items-start">
-            <AlertDialog open={showResetConfirmation} onOpenChange={setShowResetConfirmation}>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" className="flex-shrink-0">
-                  <RefreshCw className="mr-2 h-4 w-4" /> Iniciar Nuevo Partido
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Confirmar Nuevo Partido</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esto restablecerá todas las puntuaciones, el reloj, el período, las penalidades y el registro de eventos del partido a sus valores iniciales. Las configuraciones guardadas (duraciones, etc.) no se verán afectadas. ¿Estás seguro?
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleConfirmReset}>
-                    Continuar a la Configuración
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button variant="outline" className="flex-shrink-0" onClick={() => setIsGameSetupDialogOpen(true)}>
+              <RefreshCw className="mr-2 h-4 w-4" /> Iniciar Nuevo Partido
+            </Button>
             <Button variant="outline" className="flex-shrink-0" onClick={() => setIsSummaryDialogOpen(true)}>
               <FileText className="mr-2 h-4 w-4" /> Ver Resumen del Partido
             </Button>
@@ -489,9 +464,10 @@ export default function ControlsPage() {
         <GoalManagementDialog 
             isOpen={isGoalManagementOpen} 
             onOpenChange={(isOpen) => {
-              setIsGoalManagementOpen(isOpen);
-              if (!isOpen) {
-                setEditingTeamForGoals(null);
+              if (isOpen) {
+                setIsGoalManagementOpen(true);
+              } else {
+                setTimeout(() => setIsGoalManagementOpen(false), 150);
               }
             }}
             team={editingTeamForGoals}
@@ -501,21 +477,39 @@ export default function ControlsPage() {
       {isGoldenGoalDialogOpen && (
           <GoldenGoalDialog
               isOpen={isGoldenGoalDialogOpen}
-              onOpenChange={setIsGoldenGoalDialogOpen}
+              onOpenChange={(isOpen) => {
+                if (isOpen) {
+                  setIsGoldenGoalDialogOpen(true);
+                } else {
+                  setTimeout(() => setIsGoldenGoalDialogOpen(false), 150);
+                }
+              }}
           />
       )}
 
       {isSummaryDialogOpen && (
         <GameSummaryDialog 
           isOpen={isSummaryDialogOpen}
-          onOpenChange={setIsSummaryDialogOpen}
+          onOpenChange={(isOpen) => {
+            if (isOpen) {
+              setIsSummaryDialogOpen(true);
+            } else {
+              setTimeout(() => setIsSummaryDialogOpen(false), 150);
+            }
+          }}
         />
       )}
 
       {isGameSetupDialogOpen && (
         <GameSetupDialog 
             isOpen={isGameSetupDialogOpen}
-            onOpenChange={setIsGameSetupDialogOpen}
+            onOpenChange={(isOpen) => {
+              if (isOpen) {
+                setIsGameSetupDialogOpen(true);
+              } else {
+                setTimeout(() => setIsGameSetupDialogOpen(false), 150);
+              }
+            }}
             onGameReset={handleResetGame}
         />
       )}
