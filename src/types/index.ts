@@ -42,6 +42,8 @@ export interface CategoryData {
 }
 
 export interface FormatAndTimingsProfileData {
+  id: string; // Add ID here to ensure it's always part of the data
+  name: string; // Add name here for the same reason
   defaultWarmUpDuration: number;
   defaultPeriodDuration: number;
   defaultOTPeriodDuration: number;
@@ -60,10 +62,7 @@ export interface FormatAndTimingsProfileData {
   defaultPenaltyTypeId: string | null;
 }
 
-export interface FormatAndTimingsProfile extends FormatAndTimingsProfileData {
-  id: string;
-  name: string;
-}
+export type FormatAndTimingsProfile = FormatAndTimingsProfileData;
 
 export interface ScoreboardLayoutSettings {
   scoreboardVerticalPosition: number;
@@ -163,7 +162,7 @@ export interface ConfigFields { // Interface for easier picking of fields
   tunnel: TunnelState;
 }
 
-export interface ConfigState extends FormatAndTimingsProfileData, ConfigFields {
+export interface ConfigState extends Omit<FormatAndTimingsProfileData, 'id' | 'name'>, ConfigFields {
   formatAndTimingsProfiles: FormatAndTimingsProfile[];
   selectedFormatAndTimingsProfileId: string | null;
   scoreboardLayout: ScoreboardLayoutSettings;

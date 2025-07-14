@@ -33,20 +33,20 @@ export const DurationSettingsCard = forwardRef<DurationSettingsCardRef, Duration
   const { dispatch } = useGameState();
   const { onDirtyChange, initialValues } = props;
 
-  const [localWarmUpDurationInput, setLocalWarmUpDurationInput] = useState(centisecondsToDisplayMinutes(initialValues.defaultWarmUpDuration));
-  const [localPeriodDurationInput, setLocalPeriodDurationInput] = useState(centisecondsToDisplayMinutes(initialValues.defaultPeriodDuration));
-  const [localOTPeriodDurationInput, setLocalOTPeriodDurationInput] = useState(centisecondsToDisplayMinutes(initialValues.defaultOTPeriodDuration));
-  const [localBreakDurationInput, setLocalBreakDurationInput] = useState(centisecondsToDisplaySeconds(initialValues.defaultBreakDuration));
-  const [localPreOTBreakDurationInput, setLocalPreOTBreakDurationInput] = useState(centisecondsToDisplaySeconds(initialValues.defaultPreOTBreakDuration));
-  const [localTimeoutDurationInput, setLocalTimeoutDurationInput] = useState(centisecondsToDisplaySeconds(initialValues.defaultTimeoutDuration));
+  const [localWarmUpDurationInput, setLocalWarmUpDurationInput] = useState('');
+  const [localPeriodDurationInput, setLocalPeriodDurationInput] = useState('');
+  const [localOTPeriodDurationInput, setLocalOTPeriodDurationInput] = useState('');
+  const [localBreakDurationInput, setLocalBreakDurationInput] = useState('');
+  const [localPreOTBreakDurationInput, setLocalPreOTBreakDurationInput] = useState('');
+  const [localTimeoutDurationInput, setLocalTimeoutDurationInput] = useState('');
   
-  const [localAutoStartWarmUp, setLocalAutoStartWarmUp] = useState(initialValues.autoStartWarmUp);
-  const [localAutoStartBreaks, setLocalAutoStartBreaks] = useState(initialValues.autoStartBreaks);
-  const [localAutoStartPreOTBreaks, setLocalAutoStartPreOTBreaks] = useState(initialValues.autoStartPreOTBreaks);
-  const [localAutoStartTimeouts, setLocalAutoStartTimeouts] = useState(initialValues.autoStartTimeouts);
+  const [localAutoStartWarmUp, setLocalAutoStartWarmUp] = useState(false);
+  const [localAutoStartBreaks, setLocalAutoStartBreaks] = useState(false);
+  const [localAutoStartPreOTBreaks, setLocalAutoStartPreOTBreaks] = useState(false);
+  const [localAutoStartTimeouts, setLocalAutoStartTimeouts] = useState(false);
 
-  const [localNumRegularPeriodsInput, setLocalNumRegularPeriodsInput] = useState(String(initialValues.numberOfRegularPeriods));
-  const [localNumOTPeriodsInput, setLocalNumOTPeriodsInput] = useState(String(initialValues.numberOfOvertimePeriods));
+  const [localNumRegularPeriodsInput, setLocalNumRegularPeriodsInput] = useState('');
+  const [localNumOTPeriodsInput, setLocalNumOTPeriodsInput] = useState('');
 
   const [isDirtyLocal, setIsDirtyLocal] = useState(false);
 
@@ -68,8 +68,11 @@ export const DurationSettingsCard = forwardRef<DurationSettingsCardRef, Duration
   
   useEffect(() => {
     setValuesFromProfile(initialValues);
+  // This is the key change: depend on the ID of the profile.
+  // When the profile ID changes, it means a new profile is selected,
+  // and we must re-initialize the card's state from the new profile's data.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialValues]);
+  }, [initialValues.id]);
 
 
   useEffect(() => {

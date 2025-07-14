@@ -127,7 +127,6 @@ const initialGlobalState: GameState = {
     penaltyCountdownStartTime: IN_CODE_INITIAL_PENALTY_COUNTDOWN_START_TIME,
     customPenaltyBeepSoundDataUrl: IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL,
     enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
-    chromeBinaryPath: IN_CODE_INITIAL_CHROME_BINARY_PATH,
     scoreboardLayout: INITIAL_LAYOUT_SETTINGS,
     scoreboardLayoutProfiles: [defaultInitialLayoutProfile],
     selectedScoreboardLayoutProfileId: defaultInitialLayoutProfile.id,
@@ -349,6 +348,7 @@ const applyFormatAndTimingsProfileToState = (state: GameState, profileId: string
     config: {
         ...state.config,
         selectedFormatAndTimingsProfileId: profileToApply.id,
+        // Apply all settings from the profile to the main config object
         ...profileToApply
     }
   };
@@ -390,7 +390,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
         const hydratedState: GameState =
             loadedState && loadedState.live && loadedState.config
-                ? { ...initialGlobalState, ...loadedState }
+                ? { ...initialGlobalState, ...loadedState, config: { ...initialGlobalState.config, ...loadedState.config }, live: { ...initialGlobalState.live, ...loadedState.live } }
                 : initialGlobalState;
         
         const finalState = {
@@ -879,14 +879,16 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             }
             return p;
         });
-        
-        const newConfig = {
-            ...state.config,
-            ...action.payload,
-            formatAndTimingsProfiles: newProfiles,
-        };
 
-        newState = { ...state, config: newConfig };
+        const updatedState = {
+            ...state,
+            config: {
+                ...state.config,
+                formatAndTimingsProfiles: newProfiles,
+            },
+        };
+        
+        newState = applyFormatAndTimingsProfileToState(updatedState, selectedFormatAndTimingsProfileId);
         break;
     }
     case 'UPDATE_CONFIG_FIELDS': {
@@ -980,7 +982,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           showAliasInControlsPenaltyList: IN_CODE_INITIAL_SHOW_ALIAS_IN_CONTROLS_PENALTY_LIST,
           showAliasInScoreboardPenalties: IN_CODE_INITIAL_SHOW_ALIAS_IN_SCOREBOARD_PENALTIES,
           enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
-          chromeBinaryPath: IN_CODE_INITIAL_CHROME_BINARY_PATH,
           availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
           selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
           tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
