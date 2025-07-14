@@ -851,27 +851,59 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         }};
         break;
     }
+    case 'ADD_EXTRA_OVERTIME': {
+      if (state.live.clock.periodDisplayOverride !== 'End of Game' || state.live.score.home !== state.live.score.away) break;
+      const { config, live } = state;
+      const newNumberOfOTs = config.numberOfOvertimePeriods + 1;
+      const newTotalPeriods = config.numberOfRegularPeriods + newNumberOfOTs;
+      
+      const newAbsoluteTime = calculateAbsoluteTimeForPeriod(newTotalPeriods - 1, 0, state);
+      const autoStart = config.autoStartPreOTBreaks && config.defaultPreOTBreakDuration > 0;
+
+      newState = {
+        ...state,
+        config: {
+          ...config,
+          numberOfOvertimePeriods: newNumberOfOTs,
+        },
+        live: {
+          ...live,
+          clock: {
+            ...live.clock,
+            currentPeriod: newTotalPeriods - 1, // The period before the new OT
+            currentTime: config.defaultPreOTBreakDuration,
+            periodDisplayOverride: 'Pre-OT Break',
+            isClockRunning: autoStart,
+            clockStartTimeMs: autoStart ? Date.now() : null,
+            remainingTimeAtStartCs: autoStart ? config.defaultPreOTBreakDuration : null,
+            absoluteElapsedTimeCs: newAbsoluteTime,
+            _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
+          }
+        }
+      };
+      break;
+    }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
-        const { selectedFormatAndTimingsProfileId, formatAndTimingsProfiles } = state.config;
-        if (!selectedFormatAndTimingsProfileId) break;
+      const { selectedFormatAndTimingsProfileId, formatAndTimingsProfiles } = state.config;
+      if (!selectedFormatAndTimingsProfileId) break;
 
-        const newProfiles = formatAndTimingsProfiles.map(p => {
-            if (p.id === selectedFormatAndTimingsProfileId) {
-                return { ...p, ...action.payload };
-            }
-            return p;
-        });
+      const newProfiles = formatAndTimingsProfiles.map(p => {
+          if (p.id === selectedFormatAndTimingsProfileId) {
+              return { ...p, ...action.payload };
+          }
+          return p;
+      });
 
-        const updatedState = {
-            ...state,
-            config: {
-                ...state.config,
-                formatAndTimingsProfiles: newProfiles,
-            },
-        };
-        
-        newState = applyFormatAndTimingsProfileToState(updatedState, selectedFormatAndTimingsProfileId);
-        break;
+      const updatedState = {
+          ...state,
+          config: {
+              ...state.config,
+              formatAndTimingsProfiles: newProfiles,
+          },
+      };
+      
+      newState = applyFormatAndTimingsProfileToState(updatedState, selectedFormatAndTimingsProfileId);
+      break;
     }
     case 'UPDATE_CONFIG_FIELDS': {
         newState = {

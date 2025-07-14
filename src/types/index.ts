@@ -278,6 +278,7 @@ export type GameAction =
   | { type: 'START_TIMEOUT' }
   | { type: 'END_TIMEOUT' }
   | { type: 'MANUAL_END_GAME' }
+  | { type: 'ADD_EXTRA_OVERTIME' }
   | { type: 'ADD_FORMAT_AND_TIMINGS_PROFILE'; payload: { name: string; profileData?: Partial<FormatAndTimingsProfileData> } }
   | { type: 'UPDATE_SELECTED_FT_PROFILE_DATA', payload: Partial<FormatAndTimingsProfileData> }
   | { type: 'UPDATE_FORMAT_AND_TIMINGS_PROFILE_NAME'; payload: { profileId: string; newName: string } }
