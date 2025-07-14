@@ -18,7 +18,7 @@ import type { DurationSettingsCardRef } from "@/components/config/duration-setti
 import type { PenaltySettingsCardRef } from "@/components/config/penalty-settings-card";
 import { DurationSettingsCard } from "@/components/config/duration-settings-card";
 import { PenaltySettingsCard } from "@/components/config/penalty-settings-card";
-import { useGameState } from "@/contexts/game-state-context";
+import { useGameState, createDefaultFormatAndTimingsProfile } from "@/contexts/game-state-context";
 
 interface GameSetupDialogProps {
   isOpen: boolean;
@@ -36,7 +36,9 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
   const [isDurationDirty, setIsDurationDirty] = useState(false);
   const [isPenaltyDirty, setIsPenaltyDirty] = useState(false);
   
-  const selectedFTProfile = state.config.formatAndTimingsProfiles.find(p => p.id === state.config.selectedFormatAndTimingsProfileId) || state.config;
+  const selectedFTProfile = state.config.formatAndTimingsProfiles.find(p => p.id === state.config.selectedFormatAndTimingsProfileId) 
+    || state.config.formatAndTimingsProfiles[0] 
+    || createDefaultFormatAndTimingsProfile();
 
   const handleConfirmAndStart = () => {
     let allSavesSuccessful = true;
@@ -53,10 +55,12 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
     }
 
     if (allSavesSuccessful) {
-      toast({
-        title: "Configuración Aplicada",
-        description: "Se han guardado los ajustes para el nuevo partido."
-      });
+      if (isDurationDirty || isPenaltyDirty) {
+        toast({
+          title: "Configuración Aplicada",
+          description: "Se han guardado los ajustes para el nuevo partido."
+        });
+      }
       onGameReset();
       onOpenChange(false);
     } else {
@@ -67,16 +71,6 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
       });
     }
   };
-  
-  // This effect ensures the child cards get the latest profile data if the dialog is re-opened
-  // or if the profile is changed elsewhere.
-  useEffect(() => {
-    if (isOpen) {
-      durationSettingsRef.current?.setValues(selectedFTProfile);
-      penaltySettingsRef.current?.setValues(selectedFTProfile);
-    }
-  }, [isOpen, selectedFTProfile]);
-
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
