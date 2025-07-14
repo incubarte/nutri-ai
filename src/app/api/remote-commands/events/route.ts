@@ -36,7 +36,7 @@ export async function GET(request: Request) {
             console.log('Remote Command SSE: Ping failed, client may have disconnected.');
             cleanup();
         }
-      }, 10000); // Send a ping every 10 seconds
+      }, 30000); // Send a ping every 30 seconds
 
       request.signal.onabort = () => {
         console.log('Remote Command SSE: Client disconnected via abort signal.');
