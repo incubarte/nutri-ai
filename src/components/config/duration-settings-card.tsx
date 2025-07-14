@@ -41,7 +41,8 @@ export const DurationSettingsCard = forwardRef<DurationSettingsCardRef, Duration
   const [localTimeoutDurationInput, setLocalTimeoutDurationInput] = useState(centisecondsToDisplaySeconds(initialValues.defaultTimeoutDuration));
   
   const [localAutoStartWarmUp, setLocalAutoStartWarmUp] = useState(initialValues.autoStartWarmUp);
-  const [localAutoStartBreaks, setLocalAutoStartBreaks] = useState(initialValues.autoStartPreOTBreaks);
+  const [localAutoStartBreaks, setLocalAutoStartBreaks] = useState(initialValues.autoStartBreaks);
+  const [localAutoStartPreOTBreaks, setLocalAutoStartPreOTBreaks] = useState(initialValues.autoStartPreOTBreaks);
   const [localAutoStartTimeouts, setLocalAutoStartTimeouts] = useState(initialValues.autoStartTimeouts);
 
   const [localNumRegularPeriodsInput, setLocalNumRegularPeriodsInput] = useState(String(initialValues.numberOfRegularPeriods));
