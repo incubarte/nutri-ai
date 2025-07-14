@@ -147,9 +147,7 @@ export interface TunnelState {
   lastMessage: string | null;
 }
 
-export interface ConfigState extends FormatAndTimingsProfileData {
-  formatAndTimingsProfiles: FormatAndTimingsProfile[];
-  selectedFormatAndTimingsProfileId: string | null;
+export interface ConfigFields { // Interface for easier picking of fields
   playSoundAtPeriodEnd: boolean;
   customHornSoundDataUrl: string | null;
   enableTeamSelectionInMiniScoreboard: boolean;
@@ -160,15 +158,19 @@ export interface ConfigState extends FormatAndTimingsProfileData {
   enablePenaltyCountdownSound: boolean;
   penaltyCountdownStartTime: number;
   customPenaltyBeepSoundDataUrl: string | null;
-  scoreboardLayout: ScoreboardLayoutSettings;
   scoreboardLayoutProfiles: ScoreboardLayoutProfile[];
+  enableDebugMode: boolean;
+  tunnel: TunnelState;
+}
+
+export interface ConfigState extends FormatAndTimingsProfileData, ConfigFields {
+  formatAndTimingsProfiles: FormatAndTimingsProfile[];
+  selectedFormatAndTimingsProfileId: string | null;
+  scoreboardLayout: ScoreboardLayoutSettings;
   selectedScoreboardLayoutProfileId: string | null;
   availableCategories: CategoryData[];
   selectedMatchCategory: string;
   teams: TeamData[];
-  enableDebugMode: boolean;
-  chromeBinaryPath: string;
-  tunnel: TunnelState;
 }
 
 export type PeriodDisplayOverrideType = 'Warm-up' | 'Break' | 'Pre-OT Break' | 'Time Out' | 'End of Game' | null;
@@ -283,14 +285,14 @@ export type GameAction =
   | { type: 'DELETE_FORMAT_AND_TIMINGS_PROFILE'; payload: { profileId: string } }
   | { type: 'SELECT_FORMAT_AND_TIMINGS_PROFILE'; payload: { profileId: string | null } }
   | { type: 'LOAD_FORMAT_AND_TIMINGS_PROFILES'; payload: FormatAndTimingsProfile[] }
-  | { type: 'UPDATE_CONFIG_FIELDS'; payload: Partial<ConfigState> }
+  | { type: 'UPDATE_CONFIG_FIELDS'; payload: Partial<ConfigFields> }
   | { type: 'UPDATE_LAYOUT_SETTINGS'; payload: Partial<ScoreboardLayoutSettings> }
   | { type: 'ADD_SCOREBOARD_LAYOUT_PROFILE'; payload: { name: string } }
   | { type: 'UPDATE_SCOREBOARD_LAYOUT_PROFILE_NAME'; payload: { profileId: string; newName: string } }
   | { type: 'DELETE_SCOREBOARD_LAYOUT_PROFILE'; payload: { profileId: string } }
   | { type: 'SELECT_SCOREBOARD_LAYOUT_PROFILE'; payload: { profileId: string } }
   | { type: 'SAVE_CURRENT_LAYOUT_TO_PROFILE' }
-  | { type: 'LOAD_SOUND_AND_DISPLAY_CONFIG'; payload: Partial<Pick<ConfigState, 'playSoundAtPeriodEnd' | 'customHornSoundDataUrl' | 'enableTeamSelectionInMiniScoreboard' | 'enablePlayerSelectionForPenalties' | 'showAliasInPenaltyPlayerSelector' | 'showAliasInControlsPenaltyList' | 'showAliasInScoreboardPenalties' | 'scoreboardLayoutProfiles' | 'enablePenaltyCountdownSound' | 'penaltyCountdownStartTime' | 'customPenaltyBeepSoundDataUrl' | 'enableDebugMode' | 'tunnel' | 'chromeBinaryPath'>> }
+  | { type: 'LOAD_SOUND_AND_DISPLAY_CONFIG'; payload: Partial<Pick<ConfigState, 'playSoundAtPeriodEnd' | 'customHornSoundDataUrl' | 'enableTeamSelectionInMiniScoreboard' | 'enablePlayerSelectionForPenalties' | 'showAliasInPenaltyPlayerSelector' | 'showAliasInControlsPenaltyList' | 'showAliasInScoreboardPenalties' | 'scoreboardLayoutProfiles' | 'enablePenaltyCountdownSound' | 'penaltyCountdownStartTime' | 'customPenaltyBeepSoundDataUrl' | 'enableDebugMode' | 'tunnel'>> }
   | { type: 'SET_AVAILABLE_CATEGORIES'; payload: CategoryData[] }
   | { type: 'SET_SELECTED_MATCH_CATEGORY'; payload: string }
   | { type: 'UPDATE_TUNNEL_STATE', payload: Partial<TunnelState> }
@@ -306,3 +308,4 @@ export type GameAction =
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
+

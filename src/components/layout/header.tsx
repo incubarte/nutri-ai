@@ -1,14 +1,13 @@
 
+
 "use client";
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Home, Settings, Wrench, Trash2 } from 'lucide-react';
+import { Home, Settings, Wrench, Trash2, MonitorPlay } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { FullscreenToggle } from './fullscreen-toggle';
-import { ScoreboardWindowControl } from './scoreboard-window-control';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +20,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
+
+const EXTERNAL_WINDOW_CONFIG_KEY = 'externalWindowConfig';
 
 export function Header() {
   const pathname = usePathname();
@@ -45,6 +46,65 @@ export function Header() {
       setTimeout(() => window.location.reload(), 1500);
     }
   };
+
+  const handleOpenExternalWindow = async () => {
+    let config = null;
+    try {
+        const savedConfigRaw = localStorage.getItem(EXTERNAL_WINDOW_CONFIG_KEY);
+        if (savedConfigRaw) {
+            config = JSON.parse(savedConfigRaw);
+        }
+    } catch (e) { console.error("Error parsing window config from localStorage", e); }
+    
+    // Si no hay config, la obtenemos del servidor
+    if (!config || !config.binaryPath) {
+        try {
+            const res = await fetch('/api/system-info');
+            if (!res.ok) throw new Error('Failed to fetch system info');
+            const systemInfo = await res.json();
+            config = {
+                binaryPath: systemInfo.defaultBrowserPath,
+                posX: '1920',
+                posY: '0',
+                width: '1920',
+                height: '1080',
+            };
+            localStorage.setItem(EXTERNAL_WINDOW_CONFIG_KEY, JSON.stringify(config));
+        } catch (error) {
+            toast({
+                title: "Error de Configuración",
+                description: "No se pudo obtener la configuración por defecto para abrir la ventana. Por favor, configúrala manualmente.",
+                variant: "destructive",
+            });
+            return;
+        }
+    }
+
+    const payload = {
+        binaryPath: config.binaryPath,
+        url: `${window.location.protocol}//${window.location.host}/`, // URL dinámica del scoreboard
+        position: { x: config.posX, y: config.posY },
+        size: { width: config.width, height: config.height },
+    };
+
+    try {
+        const response = await fetch('/api/open-window', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            toast({ title: "Acción Enviada", description: data.message });
+        } else {
+            toast({ title: "Error al Abrir Ventana", description: data.message, variant: "destructive" });
+        }
+    } catch (error) {
+        toast({ title: "Error de Red", description: "No se pudo comunicar con el servidor.", variant: "destructive" });
+    }
+  };
+
 
   // Prefetch all main routes as soon as the header loads to make navigation instant
   useEffect(() => {
@@ -173,8 +233,12 @@ export function Header() {
             </Link>
           </Button>
 
-          {isScoreboardPage && <FullscreenToggle />}
-          {isControlsPage && <ScoreboardWindowControl />}
+          {isControlsPage && (
+            <Button variant="ghost" size="icon" onClick={handleOpenExternalWindow} aria-label="Abrir ventana de scoreboard externa">
+                <MonitorPlay className="h-5 w-5" />
+            </Button>
+          )}
+
           {isControlsPage && (
             <AlertDialog open={showClearStorageConfirmation} onOpenChange={setShowClearStorageConfirmation}>
               <AlertDialogTrigger asChild>
