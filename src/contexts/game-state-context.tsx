@@ -96,7 +96,7 @@ const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): Forma
   id: id || safeUUID(),
   name: name || IN_CODE_INITIAL_PROFILE_NAME,
   ...defaultSettings.formatAndTimings,
-  penaltyTypes: defaultSettings.penaltyTypes,
+  penaltyTypes: defaultSettings.penaltyTypes as PenaltyTypeDefinition[],
   defaultPenaltyTypeId: defaultSettings.defaultPenaltyTypeId,
 });
 
@@ -109,65 +109,46 @@ const createDefaultScoreboardLayoutProfile = (id?: string, name?: string): Score
 const defaultInitialProfile = createDefaultFormatAndTimingsProfile();
 const defaultInitialLayoutProfile = createDefaultScoreboardLayoutProfile();
 
-const initialGlobalState: GameState = {
-  config: {
-    ...defaultSettings.formatAndTimings,
-    penaltyTypes: defaultSettings.penaltyTypes,
-    defaultPenaltyTypeId: defaultSettings.defaultPenaltyTypeId,
-    formatAndTimingsProfiles: [defaultInitialProfile],
-    selectedFormatAndTimingsProfileId: defaultInitialProfile.id,
-    playSoundAtPeriodEnd: IN_CODE_INITIAL_PLAY_SOUND_AT_PERIOD_END,
-    customHornSoundDataUrl: IN_CODE_INITIAL_CUSTOM_HORN_SOUND_DATA_URL,
-    enableTeamSelectionInMiniScoreboard: IN_CODE_INITIAL_ENABLE_TEAM_SELECTION_IN_MINI_SCOREBOARD,
-    enablePlayerSelectionForPenalties: IN_CODE_INITIAL_ENABLE_PLAYER_SELECTION_FOR_PENALTIES,
-    showAliasInPenaltyPlayerSelector: IN_CODE_INITIAL_SHOW_ALIAS_IN_PENALTY_PLAYER_SELECTOR,
-    showAliasInControlsPenaltyList: IN_CODE_INITIAL_SHOW_ALIAS_IN_CONTROLS_PENALTY_LIST,
-    showAliasInScoreboardPenalties: IN_CODE_INITIAL_SHOW_ALIAS_IN_SCOREBOARD_PENALTIES,
-    enablePenaltyCountdownSound: IN_CODE_INITIAL_ENABLE_PENALTY_COUNTDOWN_SOUND,
-    penaltyCountdownStartTime: IN_CODE_INITIAL_PENALTY_COUNTDOWN_START_TIME,
-    customPenaltyBeepSoundDataUrl: IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL,
-    enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
-    scoreboardLayout: INITIAL_LAYOUT_SETTINGS,
-    scoreboardLayoutProfiles: [defaultInitialLayoutProfile],
-    selectedScoreboardLayoutProfileId: defaultInitialLayoutProfile.id,
-    availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
-    selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
-    teams: [],
-    tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
-  },
-  live: {
-    score: {
-      home: 0,
-      away: 0,
-      homeGoals: [],
-      awayGoals: [],
+const getInitialState = (): GameState => {
+  return {
+    config: {
+      ...defaultSettings.formatAndTimings,
+      penaltyTypes: defaultSettings.penaltyTypes as PenaltyTypeDefinition[],
+      defaultPenaltyTypeId: defaultSettings.defaultPenaltyTypeId,
+      formatAndTimingsProfiles: [defaultInitialProfile],
+      selectedFormatAndTimingsProfileId: defaultInitialProfile.id,
+      playSoundAtPeriodEnd: IN_CODE_INITIAL_PLAY_SOUND_AT_PERIOD_END,
+      customHornSoundDataUrl: IN_CODE_INITIAL_CUSTOM_HORN_SOUND_DATA_URL,
+      enableTeamSelectionInMiniScoreboard: IN_CODE_INITIAL_ENABLE_TEAM_SELECTION_IN_MINI_SCOREBOARD,
+      enablePlayerSelectionForPenalties: IN_CODE_INITIAL_ENABLE_PLAYER_SELECTION_FOR_PENALTIES,
+      showAliasInPenaltyPlayerSelector: IN_CODE_INITIAL_SHOW_ALIAS_IN_PENALTY_PLAYER_SELECTOR,
+      showAliasInControlsPenaltyList: IN_CODE_INITIAL_SHOW_ALIAS_IN_CONTROLS_PENALTY_LIST,
+      showAliasInScoreboardPenalties: IN_CODE_INITIAL_SHOW_ALIAS_IN_SCOREBOARD_PENALTIES,
+      enablePenaltyCountdownSound: IN_CODE_INITIAL_ENABLE_PENALTY_COUNTDOWN_SOUND,
+      penaltyCountdownStartTime: IN_CODE_INITIAL_PENALTY_COUNTDOWN_START_TIME,
+      customPenaltyBeepSoundDataUrl: IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL,
+      enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
+      scoreboardLayout: INITIAL_LAYOUT_SETTINGS,
+      scoreboardLayoutProfiles: [defaultInitialLayoutProfile],
+      selectedScoreboardLayoutProfileId: defaultInitialLayoutProfile.id,
+      availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
+      selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
+      teams: [],
+      tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
     },
-    penalties: {
-      home: [],
-      away: [],
+    live: {
+      score: { home: 0, away: 0, homeGoals: [], awayGoals: [] },
+      penalties: { home: [], away: [] },
+      clock: {
+        currentTime: defaultInitialProfile.defaultWarmUpDuration, currentPeriod: 0, isClockRunning: false,
+        periodDisplayOverride: 'Warm-up', preTimeoutState: null, clockStartTimeMs: null, remainingTimeAtStartCs: null,
+        absoluteElapsedTimeCs: 0, _liveAbsoluteElapsedTimeCs: 0,
+      },
+      homeTeamName: 'Local', homeTeamSubName: undefined, awayTeamName: 'Visitante', awayTeamSubName: undefined,
+      gameSummary: IN_CODE_INITIAL_GAME_SUMMARY, playHornTrigger: 0, playPenaltyBeepTrigger: 0,
     },
-    clock: {
-      currentTime: defaultInitialProfile.defaultWarmUpDuration,
-      currentPeriod: 0,
-      isClockRunning: false,
-      periodDisplayOverride: 'Warm-up',
-      preTimeoutState: null,
-      clockStartTimeMs: null,
-      remainingTimeAtStartCs: null,
-      absoluteElapsedTimeCs: 0,
-      _liveAbsoluteElapsedTimeCs: 0,
-    },
-    homeTeamName: 'Local',
-    homeTeamSubName: undefined,
-    awayTeamName: 'Visitante',
-    awayTeamSubName: undefined,
-    gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
-    playHornTrigger: 0,
-    playPenaltyBeepTrigger: 0,
-  },
-  _lastActionOriginator: undefined,
-  _lastUpdatedTimestamp: undefined,
-  _initialConfigLoadComplete: false,
+    _initialConfigLoadComplete: false,
+  };
 };
 
 type GameStateContextType = {
@@ -386,14 +367,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 if (loadedState.config && loadedState.live) {
                     finalState = loadedState;
                 } else {
-                    finalState = initialGlobalState;
+                    finalState = getInitialState();
                 }
             } else {
-                finalState = initialGlobalState;
+                finalState = getInitialState();
             }
         } catch (error) {
             console.error("Error reading or parsing state from localStorage:", error);
-            finalState = initialGlobalState;
+            finalState = getInitialState();
         }
 
         finalState._initialConfigLoadComplete = true;
@@ -1019,7 +1000,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
 
 export const GameStateProvider = ({ children }: { children: ReactNode }) => {
-  const [state, dispatch] = useReducer(gameReducer, initialGlobalState);
+  const [state, dispatch] = useReducer(gameReducer, getInitialState());
   const [isLoading, setIsLoading] = useState(true);
   const [isPageVisible, setIsPageVisible] = useState(true);
   const channelRef = useRef<BroadcastChannel | null>(null);
