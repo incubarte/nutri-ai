@@ -56,8 +56,7 @@ export function GameSetupDialog({ isOpen, onOpenChange, onConfirm }: GameSetupDi
         title: "Configuración Aplicada",
         description: "Se han guardado los ajustes para el nuevo partido."
       });
-      onConfirm(); // This will call handleResetGame from the parent
-      onOpenChange(false);
+      onConfirm(); // This will call the passed in function from parent
     } else {
       toast({
         title: "Error al Guardar",
