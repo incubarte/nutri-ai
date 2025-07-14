@@ -377,27 +377,28 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
   switch (action.type) {
     case 'HYDRATE_FROM_STORAGE': {
-        let loadedState: Partial<GameState> | null = null;
+        let finalState: GameState;
         try {
             const rawState = localStorage.getItem(LOCAL_STORAGE_KEY);
             if (rawState) {
-                loadedState = JSON.parse(rawState);
+                const loadedState: GameState = JSON.parse(rawState);
+                // Basic validation to ensure the loaded state is not completely broken
+                if (loadedState.config && loadedState.live) {
+                    finalState = loadedState;
+                } else {
+                    finalState = initialGlobalState;
+                }
+            } else {
+                finalState = initialGlobalState;
             }
         } catch (error) {
-            console.error("Error reading state from localStorage:", error);
-            loadedState = null;
+            console.error("Error reading or parsing state from localStorage:", error);
+            finalState = initialGlobalState;
         }
 
-        const hydratedState: GameState =
-            loadedState && loadedState.live && loadedState.config
-                ? { ...initialGlobalState, ...loadedState, config: { ...initialGlobalState.config, ...loadedState.config }, live: { ...initialGlobalState.live, ...loadedState.live } }
-                : initialGlobalState;
-        
-        const finalState = {
-            ...hydratedState,
-            _initialConfigLoadComplete: true,
-        };
+        finalState._initialConfigLoadComplete = true;
 
+        // Ensure the correct profiles are applied upon hydration
         newState = applyFormatAndTimingsProfileToState(finalState, finalState.config.selectedFormatAndTimingsProfileId);
         newState = applyScoreboardLayoutProfileToState(newState, newState.config.selectedScoreboardLayoutProfileId);
         break;
