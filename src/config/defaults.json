@@ -1,0 +1,45 @@
+{
+  "formatAndTimings": {
+    "defaultWarmUpDuration": 30000,
+    "defaultPeriodDuration": 120000,
+    "defaultOTPeriodDuration": 30000,
+    "defaultBreakDuration": 12000,
+    "defaultPreOTBreakDuration": 6000,
+    "defaultTimeoutDuration": 3000,
+    "autoStartWarmUp": true,
+    "autoStartBreaks": true,
+    "autoStartPreOTBreaks": false,
+    "autoStartTimeouts": true,
+    "numberOfRegularPeriods": 2,
+    "numberOfOvertimePeriods": 0,
+    "maxConcurrentPenalties": 2,
+    "playersPerTeamOnIce": 5
+  },
+  "penaltyTypes": [
+    {
+      "id": "menor-2",
+      "name": "Menor (2:00)",
+      "duration": 120,
+      "type": "minor"
+    },
+    {
+      "id": "doble-menor-4",
+      "name": "Doble Menor (4:00)",
+      "duration": 240,
+      "type": "minor"
+    },
+    {
+      "id": "mayor-5",
+      "name": "Mayor (5:00)",
+      "duration": 300,
+      "type": "minor"
+    },
+    {
+      "id": "mala-conducta-10",
+      "name": "Mala Conducta (10:00)",
+      "duration": 600,
+      "type": "misconduct"
+    }
+  ],
+  "defaultPenaltyTypeId": "menor-2"
+}

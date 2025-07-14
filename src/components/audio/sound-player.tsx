@@ -1,7 +1,8 @@
+
 "use client";
 
 import React, { useEffect, useRef } from 'react';
-import { useGameState, DEFAULT_SOUND_PATH, DEFAULT_PENALTY_BEEP_PATH } from '@/contexts/game-state-context';
+import { useGameState, DEFAULT_HORN_SOUND_PATH, DEFAULT_PENALTY_BEEP_PATH } from '@/contexts/game-state-context';
 import { useToast } from '@/hooks/use-toast';
 
 export function SoundPlayer() {
@@ -105,7 +106,7 @@ export function SoundPlayer() {
     return null;
   }
 
-  const hornSoundSrc = state.config.customHornSoundDataUrl || DEFAULT_SOUND_PATH;
+  const hornSoundSrc = state.config.customHornSoundDataUrl || DEFAULT_HORN_SOUND_PATH;
   const penaltyBeepSoundSrc = state.config.customPenaltyBeepSoundDataUrl || DEFAULT_PENALTY_BEEP_PATH;
 
   return (

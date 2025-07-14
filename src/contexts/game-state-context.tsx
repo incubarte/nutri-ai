@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
 import { safeUUID } from '@/lib/utils';
+import defaultSettings from '@/config/defaults.json';
 
 
 // --- Constantes para la sincronización local ---
@@ -16,8 +17,8 @@ export const BROADCAST_CHANNEL_NAME = 'icevision-game-state-channel';
 const LOCAL_STORAGE_KEY = 'icevision-game-state';
 const CENTISECONDS_PER_SECOND = 100;
 const TICK_INTERVAL_MS = 200;
-const DEFAULT_HORN_SOUND_FILE_PATH = '/audio/default-horn.wav';
-const DEFAULT_PENALTY_BEEP_FILE_PATH = '/audio/penalty_beep.wav';
+export const DEFAULT_HORN_SOUND_PATH = '/audio/default-horn.wav';
+export const DEFAULT_PENALTY_BEEP_PATH = '/audio/penalty_beep.wav';
 
 
 
@@ -36,29 +37,8 @@ if (typeof window !== 'undefined') {
 // Initial values (used as fallback if files are not found or are invalid)
 const IN_CODE_INITIAL_PROFILE_NAME = "Predeterminado (App)";
 const IN_CODE_INITIAL_LAYOUT_PROFILE_NAME = "Diseño Predeterminado (App)";
-const IN_CODE_INITIAL_WARM_UP_DURATION = 5 * 60 * CENTISECONDS_PER_SECOND;
-const IN_CODE_INITIAL_PERIOD_DURATION = 20 * 60 * CENTISECONDS_PER_SECOND;
-const IN_CODE_INITIAL_OT_PERIOD_DURATION = 5 * 60 * CENTISECONDS_PER_SECOND;
-const IN_CODE_INITIAL_BREAK_DURATION = 2 * 60 * CENTISECONDS_PER_SECOND;
-const IN_CODE_INITIAL_PRE_OT_BREAK_DURATION = 60 * CENTISECONDS_PER_SECOND;
-const IN_CODE_INITIAL_TIMEOUT_DURATION = 30 * CENTISECONDS_PER_SECOND;
-const IN_CODE_INITIAL_MAX_CONCURRENT_PENALTIES = 2;
-const IN_CODE_INITIAL_AUTO_START_WARM_UP = true;
-const IN_CODE_INITIAL_AUTO_START_BREAKS = true;
-const IN_CODE_INITIAL_AUTO_START_PRE_OT_BREAKS = false;
-const IN_CODE_INITIAL_AUTO_START_TIMEOUTS = true;
-const IN_CODE_INITIAL_NUMBER_OF_REGULAR_PERIODS = 2;
-const IN_CODE_INITIAL_NUMBER_OF_OVERTIME_PERIODS = 0;
-const IN_CODE_INITIAL_PLAYERS_PER_TEAM_ON_ICE = 5;
 
-const IN_CODE_INITIAL_PENALTY_TYPES: PenaltyTypeDefinition[] = [
-  { id: 'menor-2', name: 'Menor (2:00)', duration: 120, type: 'minor' },
-  { id: 'doble-menor-4', name: 'Doble Menor (4:00)', duration: 240, type: 'minor' },
-  { id: 'mayor-5', name: 'Mayor (5:00)', duration: 300, type: 'minor' },
-  { id: 'mala-conducta-10', name: 'Mala Conducta (10:00)', duration: 600, type: 'misconduct' },
-];
-const IN_CODE_INITIAL_DEFAULT_PENALTY_TYPE_ID = IN_CODE_INITIAL_PENALTY_TYPES[0]?.id || null;
-
+// Sound and Display Defaults
 const IN_CODE_INITIAL_PLAY_SOUND_AT_PERIOD_END = true;
 const IN_CODE_INITIAL_CUSTOM_HORN_SOUND_DATA_URL = null;
 const IN_CODE_INITIAL_ENABLE_TEAM_SELECTION_IN_MINI_SCOREBOARD = true;
@@ -81,7 +61,7 @@ const IN_CODE_INITIAL_TUNNEL_STATE: TunnelState = {
 };
 
 
-export const IN_CODE_INITIAL_LAYOUT_SETTINGS: ScoreboardLayoutSettings = {
+export const INITIAL_LAYOUT_SETTINGS: ScoreboardLayoutSettings = {
   scoreboardVerticalPosition: -4,
   scoreboardHorizontalPosition: 0,
   clockSize: 12,
@@ -115,28 +95,15 @@ const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
 const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): FormatAndTimingsProfile => ({
   id: id || safeUUID(),
   name: name || IN_CODE_INITIAL_PROFILE_NAME,
-  defaultWarmUpDuration: IN_CODE_INITIAL_WARM_UP_DURATION,
-  defaultPeriodDuration: IN_CODE_INITIAL_PERIOD_DURATION,
-  defaultOTPeriodDuration: IN_CODE_INITIAL_OT_PERIOD_DURATION,
-  defaultBreakDuration: IN_CODE_INITIAL_BREAK_DURATION,
-  defaultPreOTBreakDuration: IN_CODE_INITIAL_PRE_OT_BREAK_DURATION,
-  defaultTimeoutDuration: IN_CODE_INITIAL_TIMEOUT_DURATION,
-  maxConcurrentPenalties: IN_CODE_INITIAL_MAX_CONCURRENT_PENALTIES,
-  autoStartWarmUp: IN_CODE_INITIAL_AUTO_START_WARM_UP,
-  autoStartBreaks: IN_CODE_INITIAL_AUTO_START_BREAKS,
-  autoStartPreOTBreaks: IN_CODE_INITIAL_AUTO_START_PRE_OT_BREAKS,
-  autoStartTimeouts: IN_CODE_INITIAL_AUTO_START_TIMEOUTS,
-  numberOfRegularPeriods: IN_CODE_INITIAL_NUMBER_OF_REGULAR_PERIODS,
-  numberOfOvertimePeriods: IN_CODE_INITIAL_NUMBER_OF_OVERTIME_PERIODS,
-  playersPerTeamOnIce: IN_CODE_INITIAL_PLAYERS_PER_TEAM_ON_ICE,
-  penaltyTypes: IN_CODE_INITIAL_PENALTY_TYPES,
-  defaultPenaltyTypeId: IN_CODE_INITIAL_DEFAULT_PENALTY_TYPE_ID,
+  ...defaultSettings.formatAndTimings,
+  penaltyTypes: defaultSettings.penaltyTypes,
+  defaultPenaltyTypeId: defaultSettings.defaultPenaltyTypeId,
 });
 
 const createDefaultScoreboardLayoutProfile = (id?: string, name?: string): ScoreboardLayoutProfile => ({
     id: id || safeUUID(),
     name: name || IN_CODE_INITIAL_LAYOUT_PROFILE_NAME,
-    ...IN_CODE_INITIAL_LAYOUT_SETTINGS
+    ...INITIAL_LAYOUT_SETTINGS
 });
 
 const defaultInitialProfile = createDefaultFormatAndTimingsProfile();
@@ -144,22 +111,9 @@ const defaultInitialLayoutProfile = createDefaultScoreboardLayoutProfile();
 
 const initialGlobalState: GameState = {
   config: {
-    defaultWarmUpDuration: IN_CODE_INITIAL_WARM_UP_DURATION,
-    defaultPeriodDuration: IN_CODE_INITIAL_PERIOD_DURATION,
-    defaultOTPeriodDuration: IN_CODE_INITIAL_OT_PERIOD_DURATION,
-    defaultBreakDuration: IN_CODE_INITIAL_BREAK_DURATION,
-    defaultPreOTBreakDuration: IN_CODE_INITIAL_PRE_OT_BREAK_DURATION,
-    defaultTimeoutDuration: IN_CODE_INITIAL_TIMEOUT_DURATION,
-    maxConcurrentPenalties: IN_CODE_INITIAL_MAX_CONCURRENT_PENALTIES,
-    autoStartWarmUp: IN_CODE_INITIAL_AUTO_START_WARM_UP,
-    autoStartBreaks: IN_CODE_INITIAL_AUTO_START_BREAKS,
-    autoStartPreOTBreaks: IN_CODE_INITIAL_AUTO_START_PRE_OT_BREAKS,
-    autoStartTimeouts: IN_CODE_INITIAL_AUTO_START_TIMEOUTS,
-    numberOfRegularPeriods: IN_CODE_INITIAL_NUMBER_OF_REGULAR_PERIODS,
-    numberOfOvertimePeriods: IN_CODE_INITIAL_NUMBER_OF_OVERTIME_PERIODS,
-    playersPerTeamOnIce: IN_CODE_INITIAL_PLAYERS_PER_TEAM_ON_ICE,
-    penaltyTypes: IN_CODE_INITIAL_PENALTY_TYPES,
-    defaultPenaltyTypeId: IN_CODE_INITIAL_DEFAULT_PENALTY_TYPE_ID,
+    ...defaultSettings.formatAndTimings,
+    penaltyTypes: defaultSettings.penaltyTypes,
+    defaultPenaltyTypeId: defaultSettings.defaultPenaltyTypeId,
     formatAndTimingsProfiles: [defaultInitialProfile],
     selectedFormatAndTimingsProfileId: defaultInitialProfile.id,
     playSoundAtPeriodEnd: IN_CODE_INITIAL_PLAY_SOUND_AT_PERIOD_END,
@@ -174,7 +128,7 @@ const initialGlobalState: GameState = {
     customPenaltyBeepSoundDataUrl: IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL,
     enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
     chromeBinaryPath: IN_CODE_INITIAL_CHROME_BINARY_PATH,
-    scoreboardLayout: IN_CODE_INITIAL_LAYOUT_SETTINGS,
+    scoreboardLayout: INITIAL_LAYOUT_SETTINGS,
     scoreboardLayoutProfiles: [defaultInitialLayoutProfile],
     selectedScoreboardLayoutProfileId: defaultInitialLayoutProfile.id,
     availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
@@ -1013,7 +967,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           ...defaultFormatProfile,
           ...defaultLayoutParams,
           formatAndTimingsProfiles: state.config.formatAndTimingsProfiles.map(p => p.id === state.config.selectedFormatAndTimingsProfileId ? { ...defaultFormatProfile, id: p.id, name: p.name } : p),
-          scoreboardLayout: IN_CODE_INITIAL_LAYOUT_SETTINGS,
+          scoreboardLayout: INITIAL_LAYOUT_SETTINGS,
           scoreboardLayoutProfiles: state.config.scoreboardLayoutProfiles.map(p => p.id === state.config.selectedScoreboardLayoutProfileId ? { ...defaultLayoutParams, id: p.id, name: p.name } : p),
           playSoundAtPeriodEnd: IN_CODE_INITIAL_PLAY_SOUND_AT_PERIOD_END,
           customHornSoundDataUrl: IN_CODE_INITIAL_CUSTOM_HORN_SOUND_DATA_URL,
@@ -1240,9 +1194,6 @@ export const centisecondsToDisplayMinutes = (centiseconds: number): string => {
   if (isNaN(centiseconds) || centiseconds < 0) return "0";
   return Math.floor(centiseconds / (60 * CENTISECONDS_PER_SECOND)).toString();
 };
-
-export const DEFAULT_SOUND_PATH = DEFAULT_HORN_SOUND_FILE_PATH;
-export const DEFAULT_PENALTY_BEEP_PATH = DEFAULT_PENALTY_BEEP_FILE_PATH;
 
 export const getEndReasonText = (reason?: PenaltyLog['endReason']): string => {
     switch (reason) {

@@ -14,7 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { IN_CODE_INITIAL_LAYOUT_SETTINGS } from "@/contexts/game-state-context";
+import { INITIAL_LAYOUT_SETTINGS } from "@/contexts/game-state-context";
 
 // --- Color Conversion Helpers ---
 function hexToHsl(hex: string): string {
@@ -195,9 +195,9 @@ export const LayoutSettingsCard = forwardRef<LayoutSettingsCardRef, LayoutSettin
         <div className="border-t pt-6">
            <h4 className="text-base font-semibold mb-3">Colores Principales</h4>
            <div className="space-y-3">
-             <ColorControl label="Color de Fondo" value={scoreboardLayout.backgroundColor} onValueChange={(v) => handleValueChange('backgroundColor', v)} defaultValue={IN_CODE_INITIAL_LAYOUT_SETTINGS.backgroundColor} />
-             <ColorControl label="Color Primario" value={scoreboardLayout.primaryColor} onValueChange={(v) => handleValueChange('primaryColor', v)} defaultValue={IN_CODE_INITIAL_LAYOUT_SETTINGS.primaryColor} />
-             <ColorControl label="Color de Acento" value={scoreboardLayout.accentColor} onValueChange={(v) => handleValueChange('accentColor', v)} defaultValue={IN_CODE_INITIAL_LAYOUT_SETTINGS.accentColor} />
+             <ColorControl label="Color de Fondo" value={scoreboardLayout.backgroundColor} onValueChange={(v) => handleValueChange('backgroundColor', v)} defaultValue={INITIAL_LAYOUT_SETTINGS.backgroundColor} />
+             <ColorControl label="Color Primario" value={scoreboardLayout.primaryColor} onValueChange={(v) => handleValueChange('primaryColor', v)} defaultValue={INITIAL_LAYOUT_SETTINGS.primaryColor} />
+             <ColorControl label="Color de Acento" value={scoreboardLayout.accentColor} onValueChange={(v) => handleValueChange('accentColor', v)} defaultValue={INITIAL_LAYOUT_SETTINGS.accentColor} />
            </div>
         </div>
       </div>

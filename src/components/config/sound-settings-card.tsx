@@ -1,9 +1,8 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from "react";
-import { useGameState, DEFAULT_SOUND_PATH } from "@/contexts/game-state-context";
+import { useGameState, DEFAULT_HORN_SOUND_PATH } from "@/contexts/game-state-context";
 import { ControlCardWrapper } from "@/components/controls/control-card-wrapper";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -128,7 +127,7 @@ export const SoundSettingsCard = forwardRef<SoundSettingsCardRef, SoundSettingsC
   const currentSoundDisplayName = 
     localCustomSoundDataUrl 
       ? (customSoundFileName || "Sonido Personalizado Cargado")
-      : `Predeterminado (${DEFAULT_SOUND_PATH.split('/').pop() || 'default-horn.wav'})`;
+      : `Predeterminado (${DEFAULT_HORN_SOUND_PATH.split('/').pop() || 'default-horn.wav'})`;
 
   return (
     <ControlCardWrapper title="Configuración de Sonido de Bocina">
@@ -163,7 +162,7 @@ export const SoundSettingsCard = forwardRef<SoundSettingsCardRef, SoundSettingsC
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                           <p>
-                           El sonido predeterminado requiere que el archivo <code>{DEFAULT_SOUND_PATH}</code> exista en la carpeta <code>public</code> de tu aplicación.
+                           El sonido predeterminado requiere que el archivo <code>{DEFAULT_HORN_SOUND_PATH}</code> exista en la carpeta <code>public</code> de tu aplicación.
                            Si no está, o para usar tu propio sonido, cárgalo a continuación.
                           </p>
                       </TooltipContent>
