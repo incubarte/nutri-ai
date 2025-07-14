@@ -7,6 +7,7 @@ import { PenaltyControlCard } from '@/components/controls/penalty-control-card';
 import { GoalManagementDialog } from '@/components/controls/goal-management-dialog';
 import { GameSummaryDialog } from '@/components/controls/game-summary-dialog';
 import { GoldenGoalDialog } from '@/components/controls/golden-goal-dialog';
+import { GameSetupDialog } from '@/components/controls/game-setup-dialog';
 import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, formatTime } from '@/contexts/game-state-context';
 import type { PlayerData, RemoteCommand } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,6 @@ import { useToast } from '@/hooks/use-toast';
 import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
-import { exportGameSummaryPDF } from '@/lib/pdf-generator';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { safeUUID } from '@/lib/utils';
 
@@ -36,12 +36,12 @@ export default function ControlsPage() {
   
   const channelRef = useRef<BroadcastChannel | null>(null);
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
-  const [isDownloadPromptOpen, setIsDownloadPromptOpen] = useState(false);
   
   const [isGoalManagementOpen, setIsGoalManagementOpen] = useState(false);
   const [editingTeamForGoals, setEditingTeamForGoals] = useState<Team | null>(null);
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
   const [isGoldenGoalDialogOpen, setIsGoldenGoalDialogOpen] = useState(false);
+  const [isGameSetupDialogOpen, setIsGameSetupDialogOpen] = useState(false);
 
   const prevPeriodDisplayOverrideRef = useRef<string | null>();
   const isInitialMount = useRef(true);
@@ -328,33 +328,20 @@ export default function ControlsPage() {
   }, [instanceId, toast, setCurrentLockHolderId, setPageDisplayState]);
 
 
-  const handleResetGame = () => {
+  const handleResetGame = useCallback(() => {
     dispatch({ type: 'RESET_GAME_STATE' });
     toast({
       title: "Nuevo Partido Iniciado",
       description: "El estado del juego ha sido restablecido.",
     });
     setShowResetConfirmation(false);
-  };
+  }, [dispatch, toast]);
   
   const handleConfirmReset = () => {
     setShowResetConfirmation(false);
-    setIsDownloadPromptOpen(true);
+    setIsGameSetupDialogOpen(true);
   };
   
-  const handleDownloadAndReset = () => {
-    const filename = exportGameSummaryPDF(state);
-    
-    toast({
-        title: "Resumen Descargado",
-        description: `El archivo ${filename} se ha guardado.`,
-    });
-    
-    handleResetGame();
-    setIsDownloadPromptOpen(false);
-  };
-
-
   const handleActivatePendingPuckPenalties = () => {
     dispatch({ type: 'ACTIVATE_PENDING_PUCK_PENALTIES' });
   };
@@ -480,7 +467,7 @@ export default function ControlsPage() {
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
                   <AlertDialogAction onClick={handleConfirmReset}>
-                    Confirmar Nuevo Partido
+                    Continuar a la Configuración
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -525,27 +512,14 @@ export default function ControlsPage() {
         />
       )}
 
-      {isDownloadPromptOpen && (
-        <AlertDialog open={isDownloadPromptOpen} onOpenChange={setIsDownloadPromptOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Descargar Resumen del Partido</AlertDialogTitle>
-              <AlertDialogDescription>
-                ¿Deseas descargar un resumen en PDF del partido que acaba de finalizar antes de reiniciar?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={() => { handleResetGame(); setIsDownloadPromptOpen(false); }} variant="outline">
-                Reiniciar sin Descargar
-              </AlertDialogAction>
-              <AlertDialogAction onClick={handleDownloadAndReset}>
-                Descargar y Reiniciar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+      {isGameSetupDialogOpen && (
+        <GameSetupDialog 
+            isOpen={isGameSetupDialogOpen}
+            onOpenChange={setIsGameSetupDialogOpen}
+            onConfirm={handleResetGame}
+        />
       )}
+
     </div>
   );
 }
