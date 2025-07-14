@@ -83,7 +83,7 @@ type ExportableSoundAndDisplayConfig = Pick<ConfigFields,
 
 
 export default function ConfigPage() {
-  const { state, dispatch } = useGameState();
+  const { state, dispatch, isLoading } = useGameState();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -150,20 +150,20 @@ export default function ConfigPage() {
   }, [activeTab, router, searchParams]);
 
   const selectedFTProfile = useMemo(() => {
-    const profiles = state.formatAndTimingsProfiles || [];
-    return profiles.find(p => p.id === state.selectedFormatAndTimingsProfileId) || profiles[0] || createDefaultFormatAndTimingsProfile();
-  }, [state.formatAndTimingsProfiles, state.selectedFormatAndTimingsProfileId]);
+    const profiles = state.config.formatAndTimingsProfiles || [];
+    return profiles.find(p => p.id === state.config.selectedFormatAndTimingsProfileId) || profiles[0] || createDefaultFormatAndTimingsProfile();
+  }, [state.config.formatAndTimingsProfiles, state.config.selectedFormatAndTimingsProfileId]);
 
   const selectedLayoutProfile = useMemo(() => {
-    const profiles = state.scoreboardLayoutProfiles || [];
-    return profiles.find(p => p.id === state.selectedScoreboardLayoutProfileId) || profiles[0] || createDefaultScoreboardLayoutProfile();
-  }, [state.scoreboardLayoutProfiles, state.selectedScoreboardLayoutProfileId]);
+    const profiles = state.config.scoreboardLayoutProfiles || [];
+    return profiles.find(p => p.id === state.config.selectedScoreboardLayoutProfileId) || profiles[0] || createDefaultScoreboardLayoutProfile();
+  }, [state.config.scoreboardLayoutProfiles, state.config.selectedScoreboardLayoutProfileId]);
 
   const isLayoutDirty = useMemo(() => {
     if (!selectedLayoutProfile) return false;
     const { id, name, ...savedSettings } = selectedLayoutProfile;
-    return !isEqual(savedSettings, state.scoreboardLayout);
-  }, [state.scoreboardLayout, selectedLayoutProfile]);
+    return !isEqual(savedSettings, state.config.scoreboardLayout);
+  }, [state.config.scoreboardLayout, selectedLayoutProfile]);
 
   useEffect(() => {
     if (durationSettingsRef.current) durationSettingsRef.current.setValues(selectedFTProfile);
@@ -320,24 +320,24 @@ export default function ConfigPage() {
   };
 
   const handleExportFormatAndTimings = () => {
-    exportSection("Perfiles de Formato y Tiempos", state.formatAndTimingsProfiles, "icevision_formatos_tiempos_perfiles");
+    exportSection("Perfiles de Formato y Tiempos", state.config.formatAndTimingsProfiles, "icevision_formatos_tiempos_perfiles");
   };
 
   const handleExportSoundAndDisplay = () => {
     const configToExport: ExportableSoundAndDisplayConfig = {
-      playSoundAtPeriodEnd: state.playSoundAtPeriodEnd,
-      customHornSoundDataUrl: state.customHornSoundDataUrl,
-      enablePenaltyCountdownSound: state.enablePenaltyCountdownSound,
-      penaltyCountdownStartTime: state.penaltyCountdownStartTime,
-      customPenaltyBeepSoundDataUrl: state.customPenaltyBeepSoundDataUrl,
-      enableTeamSelectionInMiniScoreboard: state.enableTeamSelectionInMiniScoreboard,
-      enablePlayerSelectionForPenalties: state.enablePlayerSelectionForPenalties,
-      showAliasInPenaltyPlayerSelector: state.showAliasInPenaltyPlayerSelector,
-      showAliasInControlsPenaltyList: state.showAliasInControlsPenaltyList,
-      showAliasInScoreboardPenalties: state.showAliasInScoreboardPenalties,
-      scoreboardLayoutProfiles: state.scoreboardLayoutProfiles,
-      enableDebugMode: state.enableDebugMode,
-      tunnel: state.tunnel,
+      playSoundAtPeriodEnd: state.config.playSoundAtPeriodEnd,
+      customHornSoundDataUrl: state.config.customHornSoundDataUrl,
+      enablePenaltyCountdownSound: state.config.enablePenaltyCountdownSound,
+      penaltyCountdownStartTime: state.config.penaltyCountdownStartTime,
+      customPenaltyBeepSoundDataUrl: state.config.customPenaltyBeepSoundDataUrl,
+      enableTeamSelectionInMiniScoreboard: state.config.enableTeamSelectionInMiniScoreboard,
+      enablePlayerSelectionForPenalties: state.config.enablePlayerSelectionForPenalties,
+      showAliasInPenaltyPlayerSelector: state.config.showAliasInPenaltyPlayerSelector,
+      showAliasInControlsPenaltyList: state.config.showAliasInControlsPenaltyList,
+      showAliasInScoreboardPenalties: state.config.showAliasInScoreboardPenalties,
+      scoreboardLayoutProfiles: state.config.scoreboardLayoutProfiles,
+      enableDebugMode: state.config.enableDebugMode,
+      tunnel: state.config.tunnel,
     };
     exportSection("Configuración de Sonido y Display", configToExport, "icevision_sonido_display");
   };
@@ -510,7 +510,7 @@ export default function ConfigPage() {
   };
 
   const handlePrepareDeleteFTProfile = () => {
-    const profiles = state.formatAndTimingsProfiles || [];
+    const profiles = state.config.formatAndTimingsProfiles || [];
     if (selectedFTProfile && profiles.length > 1) {
       setFtProfileToDelete(selectedFTProfile);
     } else if (profiles.length <= 1) {
@@ -577,7 +577,7 @@ export default function ConfigPage() {
   };
 
   const handlePrepareDeleteLayoutProfile = () => {
-    const profiles = state.scoreboardLayoutProfiles || [];
+    const profiles = state.config.scoreboardLayoutProfiles || [];
     if (selectedLayoutProfile && profiles.length > 1) {
       setLayoutProfileToDelete(selectedLayoutProfile);
     } else if (profiles.length <= 1) {
@@ -636,6 +636,15 @@ export default function ConfigPage() {
   const sectionCardClassName = "mb-8 p-6 border rounded-md bg-card shadow-sm";
   const sectionActionsContainerClass = "mt-6 mb-4 flex justify-end gap-2 border-t pt-6";
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
+        <LoadingSpinner className="h-12 w-12 text-primary mb-4" />
+        <p className="text-xl text-foreground">Cargando configuración...</p>
+      </div>
+    );
+  }
+
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
@@ -661,7 +670,7 @@ export default function ConfigPage() {
                             <SelectValue placeholder="Seleccionar perfil..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {(state.formatAndTimingsProfiles || []).map(profile => (
+                            {(state.config.formatAndTimingsProfiles || []).map(profile => (
                                 <SelectItem key={profile.id} value={profile.id} className="text-sm">{profile.name}</SelectItem>
                             ))}
                         </SelectContent>
@@ -672,7 +681,7 @@ export default function ConfigPage() {
                     <Button variant="outline" size="icon" onClick={handlePrepareEditFTProfileName} disabled={!selectedFTProfile} aria-label="Editar nombre del perfil seleccionado">
                         <Edit3 className="h-4 w-4" />
                     </Button>
-                    <Button variant="destructive" size="icon" onClick={handlePrepareDeleteFTProfile} disabled={!selectedFTProfile || (state.formatAndTimingsProfiles || []).length <= 1} aria-label="Eliminar perfil seleccionado">
+                    <Button variant="destructive" size="icon" onClick={handlePrepareDeleteFTProfile} disabled={!selectedFTProfile || (state.config.formatAndTimingsProfiles || []).length <= 1} aria-label="Eliminar perfil seleccionado">
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </div>
@@ -748,7 +757,7 @@ export default function ConfigPage() {
                             <SelectValue placeholder="Seleccionar perfil de diseño..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {(state.scoreboardLayoutProfiles || []).map(profile => (
+                            {(state.config.scoreboardLayoutProfiles || []).map(profile => (
                                 <SelectItem key={profile.id} value={profile.id} className="text-sm">{profile.name}</SelectItem>
                             ))}
                         </SelectContent>
@@ -759,7 +768,7 @@ export default function ConfigPage() {
                     <Button variant="outline" size="icon" onClick={handlePrepareEditLayoutProfileName} disabled={!selectedLayoutProfile} aria-label="Editar nombre del perfil de diseño">
                         <Edit3 className="h-4 w-4" />
                     </Button>
-                    <Button variant="destructive" size="icon" onClick={handlePrepareDeleteLayoutProfile} disabled={!selectedLayoutProfile || (state.scoreboardLayoutProfiles || []).length <= 1} aria-label="Eliminar perfil de diseño">
+                    <Button variant="destructive" size="icon" onClick={handlePrepareDeleteLayoutProfile} disabled={!selectedLayoutProfile || (state.config.scoreboardLayoutProfiles || []).length <= 1} aria-label="Eliminar perfil de diseño">
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </div>

@@ -68,11 +68,7 @@ export const DurationSettingsCard = forwardRef<DurationSettingsCardRef, Duration
   
   useEffect(() => {
     setValuesFromProfile(initialValues);
-  // This is the key change: depend on the ID of the profile.
-  // When the profile ID changes, it means a new profile is selected,
-  // and we must re-initialize the card's state from the new profile's data.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialValues.id]);
+  }, [initialValues]);
 
 
   useEffect(() => {
