@@ -20,6 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
+import { FullscreenToggle } from './fullscreen-toggle';
 
 const EXTERNAL_WINDOW_CONFIG_KEY = 'externalWindowConfig';
 
@@ -237,6 +238,10 @@ export function Header() {
             <Button variant="ghost" size="icon" onClick={handleOpenExternalWindow} aria-label="Abrir ventana de scoreboard externa">
                 <MonitorPlay className="h-5 w-5" />
             </Button>
+          )}
+
+          {isScoreboardPage && (
+            <FullscreenToggle />
           )}
 
           {isControlsPage && (

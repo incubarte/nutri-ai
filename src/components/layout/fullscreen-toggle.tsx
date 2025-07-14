@@ -14,6 +14,7 @@ export function FullscreenToggle() {
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
 
+    // Initial check
     handleFullscreenChange();
 
     return () => {
