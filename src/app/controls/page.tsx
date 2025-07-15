@@ -13,20 +13,56 @@ import type { PlayerData, RemoteCommand } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, WifiOff } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, WifiOff, Copy, QrCode } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { safeUUID } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { QRCodeSVG } from 'qrcode.react';
 
 const CONTROLS_LOCK_KEY = 'icevision-controls-lock-id';
 const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
 
 type PageDisplayState = 'Checking' | 'Primary' | 'Secondary';
 type RemoteCommandStatus = 'connecting' | 'connected' | 'disconnected';
+
+const QRTooltipContent = ({ title, url, password, passwordLabel }: { title: string; url: string; password?: string; passwordLabel?: string }) => {
+    const { toast } = useToast();
+    const handleCopyToClipboard = (text: string, label: string) => {
+        navigator.clipboard.writeText(text).then(() => {
+        toast({ title: "Copiado", description: `${label} copiado al portapapeles.` });
+        }, () => {
+        toast({ title: "Error al Copiar", description: `No se pudo copiar: ${label}`, variant: "destructive" });
+        });
+    };
+    return (
+        <div className="flex flex-col items-center gap-4 p-4 bg-popover text-popover-foreground">
+            <p className="font-semibold text-lg">{title}</p>
+            <div className="bg-white p-2 rounded-md">
+                <QRCodeSVG value={url} size={140} />
+            </div>
+            {password && (
+                 <div className="w-full text-center">
+                    <p className="text-sm font-medium">{passwordLabel || "Clave de Acceso:"}</p>
+                    <div className="flex items-center justify-between mt-1 p-2 bg-muted rounded-md text-muted-foreground font-mono">
+                        <span className="truncate">{password}</span>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyToClipboard(password, passwordLabel || 'Clave')}>
+                            <Copy className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
+             <Button variant="link" size="sm" onClick={() => handleCopyToClipboard(url, 'URL')} className="-mb-2">
+                <Copy className="mr-2 h-3.5 w-3.5" />
+                Copiar URL de conexión
+            </Button>
+        </div>
+    );
+};
+
 
 export default function ControlsPage() {
   const { state, dispatch, isLoading } = useGameState();
@@ -48,6 +84,11 @@ export default function ControlsPage() {
   
   const [remoteCommandStatus, setRemoteCommandStatus] = useState<RemoteCommandStatus>('connecting');
   const [reconnectTrigger, setReconnectTrigger] = useState(0);
+
+  const [localIp, setLocalIp] = useState<string | null>(null);
+  const [publicIp, setPublicIp] = useState<string | null>(null);
+  const [localPort, setLocalPort] = useState<string>('');
+
 
   const prevPeriodDisplayOverrideRef = useRef<string | null>();
   const isInitialMount = useRef(true);
@@ -115,6 +156,30 @@ export default function ControlsPage() {
 
   useEffect(() => {
     setInstanceId(safeUUID());
+    if (typeof window !== 'undefined') {
+        setLocalPort(window.location.port);
+    }
+
+    const fetchIps = async () => {
+        try {
+            const [localRes, publicRes] = await Promise.all([
+                fetch('/api/local-ip'),
+                fetch('/api/public-ip')
+            ]);
+            if (localRes.ok) {
+                const data = await localRes.json();
+                setLocalIp(data.ip || null);
+            }
+            if (publicRes.ok) {
+                const data = await publicRes.json();
+                setPublicIp(data.ip || null);
+            }
+        } catch (error) {
+            console.warn("Could not fetch IP addresses for QR codes.", error);
+        }
+    };
+    fetchIps();
+
   }, []);
 
   const checkLockStatus = useCallback(() => {
@@ -371,6 +436,30 @@ export default function ControlsPage() {
     }
   };
 
+  const statusIndicators = useMemo(() => {
+    const serverConn = state.serverConnection;
+    const serverStatus = serverConn?.status || 'idle';
+    
+    return {
+        server: {
+            status: serverStatus,
+            text: serverStatus === 'ok' ? 'Conexión Servidor OK' : (serverStatus === 'error' ? 'Error Conexión Servidor' : 'Sincronizando...'),
+            className: serverStatus === 'ok' ? 'bg-green-600 hover:bg-green-700' : (serverStatus === 'error' ? 'bg-destructive hover:bg-destructive/90' : 'bg-yellow-500 hover:bg-yellow-600'),
+            dotClassName: serverStatus === 'ok' ? 'bg-white' : (serverStatus === 'error' ? 'bg-white' : 'bg-black/50 animate-pulse')
+        },
+        remote: {
+            status: remoteCommandStatus,
+            text: remoteCommandStatus === 'connected' ? 'Controles Remotos Conectados' : (remoteCommandStatus === 'disconnected' ? 'Remotos Desconectados' : 'Conectando Remotos...'),
+            className: remoteCommandStatus === 'connected' ? 'bg-blue-600 hover:bg-blue-700' : (remoteCommandStatus === 'disconnected' ? 'bg-destructive hover:bg-destructive/90' : 'bg-yellow-500 hover:bg-yellow-600'),
+            dotClassName: remoteCommandStatus === 'connected' ? 'bg-white' : (remoteCommandStatus === 'disconnected' ? 'bg-white' : 'bg-black/50 animate-pulse')
+        }
+    };
+  }, [state.serverConnection, remoteCommandStatus]);
+
+  const localUrl = (localIp && localPort) ? `http://${localIp}:${localPort}/mobile-controls` : '';
+  const tunnelUrl = state.config.tunnel.status === 'connected' && state.config.tunnel.url ? `${state.config.tunnel.url}/mobile-controls` : '';
+
+
   if (isLoading || !state.live || !state.config || !state.live.penalties) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
@@ -468,27 +557,44 @@ export default function ControlsPage() {
           ID de esta instancia de Controles (Primaria): ...{instanceId ? instanceId.slice(-6) : 'N/A'}
       </p>
 
-      {/* Remote Command Status Indicator */}
+      {/* Connection Status Indicators */}
       <div className="fixed bottom-4 right-4 flex flex-col items-end gap-2 z-50">
-          <Badge
-            variant={remoteCommandStatus === 'connected' ? 'default' : (remoteCommandStatus === 'disconnected' ? 'destructive' : 'secondary')}
-            className={cn(
-                "flex items-center gap-2 transition-all",
-                remoteCommandStatus === 'connected' && "bg-green-600 hover:bg-green-700 text-white"
-            )}
-            >
-             <span className={cn(
-                "h-2 w-2 rounded-full",
-                remoteCommandStatus === 'connected' && "bg-white animate-pulse",
-                remoteCommandStatus === 'connecting' && "bg-yellow-400",
-                remoteCommandStatus === 'disconnected' && "bg-white"
-            )}></span>
-            <span className="text-xs">
-                {remoteCommandStatus === 'connected' ? "Controles Remotos Conectados" :
-                 remoteCommandStatus === 'connecting' ? "Conectando Remotos..." :
-                 "Controles Remotos Desconectados"}
-            </span>
-          </Badge>
+          <TooltipProvider>
+              <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                      <Badge className={cn("flex items-center gap-2 transition-all text-white cursor-help", statusIndicators.server.className)}>
+                          <span className={cn("h-2 w-2 rounded-full", statusIndicators.server.dotClassName)}></span>
+                          <span className="text-xs">{statusIndicators.server.text}</span>
+                      </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="p-0 border-none bg-transparent shadow-none">
+                       {localUrl ? (
+                            <QRTooltipContent title="Conexión de Red Local" url={localUrl} />
+                        ) : (
+                            <div className="p-2 text-sm">Obteniendo IP local...</div>
+                        )}
+                  </TooltipContent>
+              </Tooltip>
+              <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                      <Badge className={cn("flex items-center gap-2 transition-all text-white cursor-help", statusIndicators.remote.className)}>
+                          <span className={cn("h-2 w-2 rounded-full", statusIndicators.remote.dotClassName)}></span>
+                          <span className="text-xs">{statusIndicators.remote.text}</span>
+                      </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="p-0 border-none bg-transparent shadow-none">
+                        {tunnelUrl ? (
+                            <QRTooltipContent title="Conexión por Internet" url={tunnelUrl} password={publicIp || 'cargando...'} passwordLabel="IP Pública (Clave)" />
+                        ) : (
+                            <div className="p-2 text-sm text-center">
+                                <p>Túnel de Internet no conectado.</p>
+                                <p className="text-xs text-muted-foreground">Ve a Configuración para activarlo.</p>
+                            </div>
+                        )}
+                  </TooltipContent>
+              </Tooltip>
+          </TooltipProvider>
+
           {remoteCommandStatus === 'disconnected' && (
               <Button
                 variant="outline"
@@ -496,7 +602,7 @@ export default function ControlsPage() {
                 onClick={() => setReconnectTrigger(prev => prev + 1)}
                 >
                 <WifiOff className="mr-2 h-4 w-4" />
-                Reconectar
+                Reconectar Remotos
               </Button>
           )}
       </div>
