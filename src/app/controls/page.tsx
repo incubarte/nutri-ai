@@ -29,8 +29,28 @@ const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
 
 type PageDisplayState = 'Checking' | 'Primary' | 'Secondary';
 
-const QRTooltipContent = ({ title, url, password, passwordLabel, ipAddress, ipLabel, status, isConnecting, onConnect }: { title: string; url: string; password?: string; passwordLabel?: string; ipAddress?: string; ipLabel?: string; status: 'connected' | 'disconnected' | 'error' | 'connecting'; isConnecting?: boolean; onConnect?: () => void; }) => {
+const QRTooltipContent = ({ title, url, ipAddress, ipLabel, status, isConnecting, onConnect }: { title: string; url: string; ipAddress?: string; ipLabel?: string; status: 'connected' | 'disconnected' | 'error' | 'connecting'; isConnecting?: boolean; onConnect?: () => void; }) => {
     const { toast } = useToast();
+    const [remotePassword, setRemotePassword] = useState<string | null>('cargando...');
+
+    useEffect(() => {
+        const fetchPassword = async () => {
+            try {
+                const res = await fetch('/api/public-ip');
+                if (res.ok) {
+                    const data = await res.json();
+                    setRemotePassword(data.password || 'Error');
+                } else {
+                    setRemotePassword('Error');
+                }
+            } catch {
+                setRemotePassword('Error');
+            }
+        };
+        fetchPassword();
+    }, []);
+
+
     const handleCopyToClipboard = (text: string, label: string) => {
         navigator.clipboard.writeText(text).then(() => {
         toast({ title: "Copiado", description: `${label} copiado al portapapeles.` });
@@ -64,23 +84,21 @@ const QRTooltipContent = ({ title, url, password, passwordLabel, ipAddress, ipLa
             </div>
              {ipAddress && (
                  <div className="w-full text-center">
-                    <p className="text-sm font-medium">{ipLabel || "IP Pública:"}</p>
+                    <p className="text-sm font-medium">{ipLabel || "Clave de Túnel (IP Pública):"}</p>
                     <div className="flex items-center justify-between mt-1 p-2 bg-muted rounded-md text-muted-foreground font-mono">
                         <span className="truncate">{ipAddress}</span>
                     </div>
                 </div>
             )}
-            {password && (
-                 <div className="w-full text-center">
-                    <p className="text-sm font-medium">{passwordLabel || "Clave de Acceso:"}</p>
-                    <div className="flex items-center justify-between mt-1 p-2 bg-muted rounded-md text-muted-foreground font-mono">
-                        <span className="truncate">{password}</span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyToClipboard(password, passwordLabel || 'Clave')}>
-                            <Copy className="h-4 w-4" />
-                        </Button>
-                    </div>
+            <div className="w-full text-center">
+                <p className="text-sm font-medium">Clave de Acceso Remoto</p>
+                <div className="flex items-center justify-between mt-1 p-2 bg-muted rounded-md text-muted-foreground font-mono">
+                    <span className="truncate">{remotePassword}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyToClipboard(remotePassword || '', 'Clave de Acceso')}>
+                        <Copy className="h-4 w-4" />
+                    </Button>
                 </div>
-            )}
+            </div>
              <Button variant="link" size="sm" onClick={() => handleCopyToClipboard(url, 'URL')} className="-mb-2">
                 <Copy className="mr-2 h-3.5 w-3.5" />
                 Copiar URL de conexión
@@ -113,7 +131,6 @@ export default function ControlsPage() {
 
   const [localIp, setLocalIp] = useState<string | null>(null);
   const [publicIp, setPublicIp] = useState<string | null>(null);
-  const [remotePassword, setRemotePassword] = useState<string | null>(null);
   const [localPort, setLocalPort] = useState<string>('');
   const [isConnectingTunnel, setIsConnectingTunnel] = useState(false);
 
@@ -192,7 +209,7 @@ export default function ControlsPage() {
         try {
             const [localRes, publicRes] = await Promise.all([
                 fetch('/api/local-ip'),
-                fetch('/api/public-ip') // This now fetches public IP and password
+                fetch('/api/public-ip')
             ]);
             if (localRes.ok) {
                 const data = await localRes.json();
@@ -201,7 +218,6 @@ export default function ControlsPage() {
             if (publicRes.ok) {
                 const data = await publicRes.json();
                 setPublicIp(data.ip || null);
-                setRemotePassword(data.password || null);
             }
         } catch (error) {
             console.warn("Could not fetch IP addresses for QR codes.", error);
@@ -646,8 +662,6 @@ export default function ControlsPage() {
                           title="Conexión de Red Local" 
                           url={localUrl} 
                           status={statusIndicators.local.status}
-                          password={remotePassword || 'cargando...'}
-                          passwordLabel="Clave de Acceso Remoto"
                        />
                   </TooltipContent>
               </Tooltip>
@@ -664,8 +678,6 @@ export default function ControlsPage() {
                             url={tunnelUrl} 
                             ipAddress={publicIp ?? 'cargando...'}
                             ipLabel="Clave de Túnel (IP Pública)"
-                            password={remotePassword || 'cargando...'}
-                            passwordLabel="Clave de Acceso Remoto" 
                             status={state.config.tunnel.status}
                             isConnecting={isConnectingTunnel}
                             onConnect={handleTunnelConnect}
