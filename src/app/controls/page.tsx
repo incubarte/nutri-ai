@@ -13,7 +13,7 @@ import type { PlayerData, RemoteCommand } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, Wifi, Power, PowerOff, Loader2, Copy } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { QRCodeSVG } from 'qrcode.react';
+import { useAuth } from '@/hooks/use-auth';
 
 const CONTROLS_LOCK_KEY = 'icevision-controls-lock-id';
 const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
@@ -82,7 +83,8 @@ const QRTooltipContent = ({ title, url, password, passwordLabel, status, isConne
 
 
 export default function ControlsPage() {
-  const { state, dispatch, isLoading } = useGameState();
+  const { state, dispatch, isLoading: isGameStateLoading } = useGameState();
+  const { authStatus } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -118,7 +120,7 @@ export default function ControlsPage() {
   }, [state]);
 
   useEffect(() => {
-    if (isLoading || !state.live || !state.config) return;
+    if (isGameStateLoading || !state.live || !state.config) return;
 
     if (isInitialMount.current) {
         isInitialMount.current = false;
@@ -169,7 +171,7 @@ export default function ControlsPage() {
 
     prevPeriodDisplayOverrideRef.current = state.live.clock.periodDisplayOverride;
 
-  }, [state.live, state.config, isLoading, pageDisplayState, toast]);
+  }, [state.live, state.config, isGameStateLoading, pageDisplayState, toast]);
 
 
   useEffect(() => {
@@ -509,7 +511,7 @@ export default function ControlsPage() {
   const tunnelUrl = state.config.tunnel.status === 'connected' && state.config.tunnel.url ? `${state.config.tunnel.url}/mobile-controls` : '';
 
 
-  if (isLoading || !state.live || !state.config || !state.live.penalties) {
+  if (authStatus === 'loading' || isGameStateLoading || !state.live || !state.config || !state.live.penalties) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
         <LoadingSpinner className="h-12 w-12 text-primary mb-4" />
@@ -517,6 +519,21 @@ export default function ControlsPage() {
       </div>
     );
   }
+  
+  if (authStatus === 'unauthenticated') {
+    router.replace('/mobile-controls/login');
+    return (
+       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
+        <ShieldAlert className="h-12 w-12 text-destructive mb-4" />
+        <h1 className="text-2xl font-bold text-destructive-foreground">Acceso Denegado</h1>
+        <p className="text-muted-foreground mt-2">No tienes permisos para ver esta página. Redirigiendo al login...</p>
+        <Button onClick={() => router.push('/mobile-controls/login')} className="mt-4">
+            <LogIn className="mr-2 h-4 w-4" /> Ir a Login
+        </Button>
+      </div>
+    );
+  }
+
 
   if (pageDisplayState === 'Checking' || !instanceId) {
     return (

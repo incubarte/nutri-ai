@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Undo2, Upload, Download, RotateCcw, Plus, Edit3, Trash2, XCircle } from 'lucide-react';
+import { Save, Undo2, Upload, Download, RotateCcw, Plus, Edit3, Trash2, XCircle, ShieldAlert, LogIn } from 'lucide-react';
 import { useGameState, type ConfigFields, type FormatAndTimingsProfile, type FormatAndTimingsProfileData, createDefaultFormatAndTimingsProfile, type CategoryData, type ScoreboardLayoutProfile, createDefaultScoreboardLayoutProfile } from '@/contexts/game-state-context';
 import { Separator } from "@/components/ui/separator";
 import {
@@ -54,6 +54,7 @@ import type { LayoutSettingsCardRef } from "@/components/config/layout-settings-
 import type { DebugSettingsCardRef } from "@/components/config/debug-settings-card";
 import { RemoteControlsSettingsCard } from '@/components/config/remote-controls-settings-card';
 import { ExternalWindowSettingsCard } from '@/components/config/external-window-settings-card';
+import { useAuth } from '@/hooks/use-auth';
 
 
 // Lazy load heavy components
@@ -83,7 +84,8 @@ type ExportableSoundAndDisplayConfig = Pick<ConfigFields,
 
 
 export default function ConfigPage() {
-  const { state, dispatch, isLoading } = useGameState();
+  const { state, dispatch, isLoading: isGameStateLoading } = useGameState();
+  const { authStatus } = useAuth();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -636,11 +638,25 @@ export default function ConfigPage() {
   const sectionCardClassName = "mb-8 p-6 border rounded-md bg-card shadow-sm";
   const sectionActionsContainerClass = "mt-6 mb-4 flex justify-end gap-2 border-t pt-6";
 
-  if (isLoading) {
+  if (authStatus === 'loading' || isGameStateLoading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
         <LoadingSpinner className="h-12 w-12 text-primary mb-4" />
         <p className="text-xl text-foreground">Cargando configuración...</p>
+      </div>
+    );
+  }
+
+  if (authStatus === 'unauthenticated') {
+    router.replace('/mobile-controls/login');
+    return (
+       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
+        <ShieldAlert className="h-12 w-12 text-destructive mb-4" />
+        <h1 className="text-2xl font-bold text-destructive-foreground">Acceso Denegado</h1>
+        <p className="text-muted-foreground mt-2">No tienes permisos para ver esta página. Redirigiendo al login...</p>
+        <Button onClick={() => router.push('/mobile-controls/login')} className="mt-4">
+            <LogIn className="mr-2 h-4 w-4" /> Ir a Login
+        </Button>
       </div>
     );
   }

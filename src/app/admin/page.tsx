@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -11,14 +10,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ShieldAlert } from 'lucide-react';
+import { Trash2, ShieldAlert, LogIn } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from "@/hooks/use-auth";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useRouter } from "next/navigation";
 
 export default function AdminPage() {
   const { toast } = useToast();
+  const { authStatus } = useAuth();
+  const router = useRouter();
 
   const handleClearLocalStorage = () => {
     if (typeof window !== 'undefined') {
@@ -30,6 +33,30 @@ export default function AdminPage() {
       setTimeout(() => window.location.reload(), 1500);
     }
   };
+
+  if (authStatus === 'loading') {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
+        <LoadingSpinner className="h-12 w-12 text-primary mb-4" />
+        <p className="text-xl text-foreground">Verificando acceso...</p>
+      </div>
+    );
+  }
+
+  if (authStatus === 'unauthenticated') {
+    router.replace('/mobile-controls/login');
+    return (
+       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
+        <ShieldAlert className="h-12 w-12 text-destructive mb-4" />
+        <h1 className="text-2xl font-bold text-destructive-foreground">Acceso Denegado</h1>
+        <p className="text-muted-foreground mt-2">No tienes permisos para ver esta página. Redirigiendo al login...</p>
+        <Button onClick={() => router.push('/mobile-controls/login')} className="mt-4">
+            <LogIn className="mr-2 h-4 w-4" /> Ir a Login
+        </Button>
+      </div>
+    );
+  }
+
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-8 py-10">
