@@ -1,5 +1,11 @@
+
 Bugs
 1. 
+
+Funcionalidades
+1.Penales
+
+2. configurar maxima cantidad de penalidades por jugador
 
 Mejoras
 

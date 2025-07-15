@@ -229,16 +229,25 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                         <Plus className="h-4 w-4" />
                     </Button>
                     {!isMisconduct && (
-                      <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => { e.stopPropagation(); onEndForGoal(penalty); }}
-                          aria-label="Finalizar por gol"
-                          disabled={isDeleteSelectionMode}
-                      >
-                          <Goal className="h-4 w-4 text-green-500" />
-                      </Button>
+                      <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                              <TooltipTrigger asChild>
+                                  <Button
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={(e) => { e.stopPropagation(); onEndForGoal(penalty); }}
+                                      aria-label="Finalizar por gol"
+                                      disabled={isDeleteSelectionMode}
+                                  >
+                                      <Goal className="h-4 w-4 text-green-500" />
+                                  </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                  <p>Finalizar por gol</p>
+                              </TooltipContent>
+                          </Tooltip>
+                      </TooltipProvider>
                     )}
                 </div>
             </div>
