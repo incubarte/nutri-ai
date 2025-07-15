@@ -131,7 +131,7 @@ export const RemoteControlsSettingsCard = () => {
               });
               const data = await res.json();
               if (data.success) {
-                  dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: data.status, url: data.url } });
+                  dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: data.status, url: data.url, subdomain: data.subdomain } });
               }
           } catch (e) {
               console.error("Error fetching tunnel status", e);
@@ -151,7 +151,6 @@ export const RemoteControlsSettingsCard = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action,
-          subdomain: tunnel.subdomain,
           port: tunnel.port,
         }),
       });
@@ -161,7 +160,7 @@ export const RemoteControlsSettingsCard = () => {
       if (data.success) {
         const newStatus = action === 'connect' ? 'connected' : 'disconnected';
         const newUrl = action === 'connect' ? data.url : null;
-        dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: newStatus, url: newUrl, lastMessage: data.message || null } });
+        dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: newStatus, url: newUrl, lastMessage: data.message || null, subdomain: data.subdomain || null } });
         toast({
           title: `Túnel ${newStatus === 'connected' ? 'Conectado' : 'Desconectado'}`,
           description: newUrl ? `Accesible en: ${newUrl}` : 'El túnel ha sido cerrado.',
@@ -208,16 +207,17 @@ export const RemoteControlsSettingsCard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="tunnel-subdomain">Subdominio</Label>
+                <Label htmlFor="tunnel-subdomain">Subdominio (Generado Automáticamente)</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="tunnel-subdomain"
-                    placeholder="ej. icevision-fantasy"
-                    value={tunnel.subdomain}
-                    onChange={(e) => dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { subdomain: e.target.value } })}
-                    disabled={isTunnelConnecting || isTunnelConnected}
+                    placeholder="Se generará al conectar..."
+                    value={tunnel.subdomain || ''}
+                    readOnly
+                    disabled
+                    className="bg-muted/50 cursor-not-allowed"
                   />
-                  <span className="text-sm text-muted-foreground">.local.lt</span>
+                  <span className="text-sm text-muted-foreground">.loca.lt</span>
                 </div>
               </div>
               <div className="space-y-2">
@@ -234,7 +234,7 @@ export const RemoteControlsSettingsCard = () => {
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">Estado de la Conexión {statusBadge}</Label>
-                <Button onClick={handleTunnelToggle} disabled={isTunnelConnecting || !tunnel.subdomain || !tunnel.port} className="w-full sm:w-auto">
+                <Button onClick={handleTunnelToggle} disabled={isTunnelConnecting || !tunnel.port} className="w-full sm:w-auto">
                   {isTunnelConnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isTunnelConnected ? <PowerOff className="mr-2 h-4 w-4" /> : <Power className="mr-2 h-4 w-4" />)}
                   {isTunnelConnecting ? 'Procesando...' : (isTunnelConnected ? 'Desconectar Túnel' : 'Conectar Túnel')}
                 </Button>

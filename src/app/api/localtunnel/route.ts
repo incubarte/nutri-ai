@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import localtunnel, { type Tunnel } from 'localtunnel';
 
@@ -7,19 +8,30 @@ const globalForTunnel = globalThis as unknown as {
   activeTunnel: Tunnel | undefined;
 };
 
+// --- Helper para generar el subdominio ---
+import defaults from '@/config/defaults.json';
+const getDynamicSubdomain = () => {
+  const prefix = defaults.tunnel.subdomainPrefix || 'icevision-fs';
+  const randomNumber = Math.floor(10000 + Math.random() * 90000); // 5-digit random number
+  return `${prefix}-${randomNumber}`;
+};
+
+
 export async function POST(request: Request) {
-  const { action, subdomain, port } = await request.json();
+  const { action, port } = await request.json();
 
   if (action === 'connect') {
     if (globalForTunnel.activeTunnel) {
       return NextResponse.json({ success: false, message: 'Ya existe un túnel activo.' }, { status: 400 });
     }
-    if (!subdomain || !port) {
-      return NextResponse.json({ success: false, message: 'Subdominio y puerto son requeridos.' }, { status: 400 });
+    if (!port) {
+      return NextResponse.json({ success: false, message: 'El puerto es requerido.' }, { status: 400 });
     }
 
+    const dynamicSubdomain = getDynamicSubdomain();
+
     try {
-      const tunnel = await localtunnel({ port: Number(port), subdomain });
+      const tunnel = await localtunnel({ port: Number(port), subdomain: dynamicSubdomain });
       globalForTunnel.activeTunnel = tunnel;
 
       console.log(`Localtunnel abierto en: ${tunnel.url}`);
@@ -36,7 +48,7 @@ export async function POST(request: Request) {
         globalForTunnel.activeTunnel = undefined;
       });
 
-      return NextResponse.json({ success: true, url: tunnel.url });
+      return NextResponse.json({ success: true, url: tunnel.url, subdomain: dynamicSubdomain });
 
     } catch (error: any) {
       // Don't log to console to avoid noise, just return the error message.
@@ -55,9 +67,12 @@ export async function POST(request: Request) {
     }
   } else if (action === 'status') {
      if (globalForTunnel.activeTunnel) {
-        return NextResponse.json({ success: true, status: 'connected', url: globalForTunnel.activeTunnel.url });
+        // Extraer el subdominio de la URL para devolverlo
+        const urlParts = new URL(globalForTunnel.activeTunnel.url);
+        const subdomain = urlParts.hostname.split('.')[0];
+        return NextResponse.json({ success: true, status: 'connected', url: globalForTunnel.activeTunnel.url, subdomain });
      } else {
-        return NextResponse.json({ success: true, status: 'disconnected', url: null });
+        return NextResponse.json({ success: true, status: 'disconnected', url: null, subdomain: null });
      }
   }
 

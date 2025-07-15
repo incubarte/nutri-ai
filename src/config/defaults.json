@@ -1,3 +1,4 @@
+
 {
   "formatAndTimings": {
     "defaultWarmUpDuration": 30000,
@@ -41,5 +42,9 @@
       "type": "misconduct"
     }
   ],
-  "defaultPenaltyTypeId": "menor-2"
+  "defaultPenaltyTypeId": "menor-2",
+  "tunnel": {
+    "subdomainPrefix": "icevision-fs",
+    "port": 3000
+  }
 }

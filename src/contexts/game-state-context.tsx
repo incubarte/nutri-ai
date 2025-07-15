@@ -5,7 +5,7 @@
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
 import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition } from '@/types';
-import { toast as showToast } from '@/hooks/use-toast';
+import { useToast, toast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
 import { safeUUID } from '@/lib/utils';
@@ -53,8 +53,8 @@ const IN_CODE_INITIAL_ENABLE_DEBUG_MODE = false;
 const IN_CODE_INITIAL_CHROME_BINARY_PATH = "/opt/google/chrome/google-chrome";
 
 const IN_CODE_INITIAL_TUNNEL_STATE: TunnelState = {
-  subdomain: 'icevision-cl',
-  port: 3000,
+  subdomain: defaultSettings.tunnel.subdomainPrefix,
+  port: defaultSettings.tunnel.port,
   status: 'disconnected',
   url: null,
   lastMessage: null,
@@ -1036,12 +1036,16 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPageVisible, setIsPageVisible] = useState(true);
   const channelRef = useRef<BroadcastChannel | null>(null);
+  const { toast } = useToast();
 
   const syncToServer = useCallback(async (stateToSync: GameState) => {
     try {
-      await updateConfigOnServer(stateToSync.config);
-      await updateGameStateOnServer(stateToSync.live);
+      await Promise.all([
+        updateConfigOnServer(stateToSync.config),
+        updateGameStateOnServer(stateToSync.live)
+      ]);
     } catch (error) {
+      // Use the imported toast function directly.
       showToast({
         title: "Error de Sincronización",
         description: "No se pudo sincronizar con el servidor.",

@@ -139,7 +139,7 @@ export interface GameSummary {
 }
 
 export interface TunnelState {
-  subdomain: string;
+  subdomain: string | null;
   port: number;
   status: 'disconnected' | 'connecting' | 'connected' | 'error';
   url: string | null;
