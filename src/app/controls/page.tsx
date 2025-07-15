@@ -38,7 +38,7 @@ const QRTooltipContent = ({ title, url, password, passwordLabel, status, isConne
         });
     };
 
-    if (!url && status !== 'connected') {
+    if (!url) {
         return (
             <div className="flex flex-col items-center gap-4 p-4 bg-popover text-popover-foreground text-center">
                  <p className="font-semibold text-lg">{title}</p>
@@ -615,7 +615,11 @@ export default function ControlsPage() {
                       </Badge>
                   </TooltipTrigger>
                   <TooltipContent side="left" className="p-0 border-none bg-transparent shadow-none">
-                       <QRTooltipContent title="Conexión de Red Local" url={localUrl} status="connected" />
+                       <QRTooltipContent 
+                          title="Conexión de Red Local" 
+                          url={localUrl} 
+                          status={statusIndicators.local.status}
+                       />
                   </TooltipContent>
               </Tooltip>
               <Tooltip delayDuration={100}>
@@ -698,3 +702,6 @@ export default function ControlsPage() {
     </div>
   );
   
+
+
+    
