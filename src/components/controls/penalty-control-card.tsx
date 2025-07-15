@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
@@ -180,7 +179,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                                                     - {matchedPlayerForPenaltyDisplay.name}
                                                 </span>
                                             )}
-                                             {ejectionMessage && <span className="font-bold text-lg text-destructive">{ejectionMessage}</span>}
+                                             {ejectionMessage && <span className="font-bold text-lg text-destructive"> {ejectionMessage}</span>}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
                                             Total: {formatTime(penalty.initialDuration * 100)}
@@ -802,3 +801,5 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     </>
   );
 }
+
+    
