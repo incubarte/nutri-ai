@@ -13,7 +13,7 @@ import type { PlayerData, RemoteCommand } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, WifiOff, Copy, QrCode } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, Wifi, Power, PowerOff, Loader2, Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -27,9 +27,8 @@ const CONTROLS_LOCK_KEY = 'icevision-controls-lock-id';
 const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
 
 type PageDisplayState = 'Checking' | 'Primary' | 'Secondary';
-type RemoteCommandStatus = 'connecting' | 'connected' | 'disconnected';
 
-const QRTooltipContent = ({ title, url, password, passwordLabel }: { title: string; url: string; password?: string; passwordLabel?: string }) => {
+const QRTooltipContent = ({ title, url, password, passwordLabel, status, isConnecting, onConnect }: { title: string; url: string; password?: string; passwordLabel?: string; status: 'connected' | 'disconnected' | 'error' | 'connecting'; isConnecting?: boolean; onConnect?: () => void; }) => {
     const { toast } = useToast();
     const handleCopyToClipboard = (text: string, label: string) => {
         navigator.clipboard.writeText(text).then(() => {
@@ -39,13 +38,18 @@ const QRTooltipContent = ({ title, url, password, passwordLabel }: { title: stri
         });
     };
 
-    if (!url) {
+    if (!url && status !== 'connected') {
         return (
             <div className="flex flex-col items-center gap-4 p-4 bg-popover text-popover-foreground text-center">
                  <p className="font-semibold text-lg">{title}</p>
                  <div className="p-2 text-sm">
-                    <p>{password === 'not_connected' ? 'Túnel no conectado.' : 'Generando URL...'}</p>
-                    {password === 'not_connected' && <p className="text-xs text-muted-foreground">Ve a Configuración para activarlo.</p>}
+                    <p>{status === 'disconnected' ? 'Túnel no conectado.' : (status === 'connecting' ? 'Conectando...' : 'Generando URL...')}</p>
+                    {status === 'disconnected' && onConnect && (
+                      <Button onClick={onConnect} disabled={isConnecting} size="sm" className="mt-2">
+                        {isConnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Power className="mr-2 h-4 w-4" />}
+                        Conectar
+                      </Button>
+                    )}
                  </div>
             </div>
         );
@@ -71,7 +75,7 @@ const QRTooltipContent = ({ title, url, password, passwordLabel }: { title: stri
              <Button variant="link" size="sm" onClick={() => handleCopyToClipboard(url, 'URL')} className="-mb-2">
                 <Copy className="mr-2 h-3.5 w-3.5" />
                 Copiar URL de conexión
-            </Button>
+             </Button>
         </div>
     );
 };
@@ -100,6 +104,7 @@ export default function ControlsPage() {
   const [localIp, setLocalIp] = useState<string | null>(null);
   const [publicIp, setPublicIp] = useState<string | null>(null);
   const [localPort, setLocalPort] = useState<string>('');
+  const [isConnectingTunnel, setIsConnectingTunnel] = useState(false);
 
 
   const prevPeriodDisplayOverrideRef = useRef<string | null>();
@@ -447,6 +452,37 @@ export default function ControlsPage() {
     }
   };
 
+  const handleTunnelConnect = async () => {
+    setIsConnectingTunnel(true);
+    dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'connecting', lastMessage: null } });
+
+    try {
+      const response = await fetch('/api/localtunnel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'connect', port: state.config.tunnel.port }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'connected', url: data.url, lastMessage: data.message || null, subdomain: data.subdomain || null } });
+        toast({
+          title: "Túnel Conectado",
+          description: data.url ? `Accesible en: ${data.url}` : 'El túnel se ha conectado.',
+        });
+      } else {
+        dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'error', lastMessage: data.message } });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error de red.';
+      dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'error', lastMessage: errorMessage } });
+    } finally {
+        setIsConnectingTunnel(false);
+    }
+  };
+
+
   const statusIndicators = useMemo(() => {
     const tunnelStatus = state.config.tunnel.status || 'disconnected';
     const isLocalIpReady = !!(localIp && !localIp.includes('Error'));
@@ -579,7 +615,7 @@ export default function ControlsPage() {
                       </Badge>
                   </TooltipTrigger>
                   <TooltipContent side="left" className="p-0 border-none bg-transparent shadow-none">
-                       <QRTooltipContent title="Conexión de Red Local" url={localUrl} />
+                       <QRTooltipContent title="Conexión de Red Local" url={localUrl} status="connected" />
                   </TooltipContent>
               </Tooltip>
               <Tooltip delayDuration={100}>
@@ -593,23 +629,15 @@ export default function ControlsPage() {
                         <QRTooltipContent 
                             title="Conexión por Internet" 
                             url={tunnelUrl} 
-                            password={tunnelUrl ? (publicIp || 'cargando...') : 'not_connected'}
+                            password={tunnelUrl ? (publicIp || 'cargando...') : undefined}
                             passwordLabel="IP Pública (Clave)" 
+                            status={state.config.tunnel.status}
+                            isConnecting={isConnectingTunnel}
+                            onConnect={handleTunnelConnect}
                         />
                   </TooltipContent>
               </Tooltip>
           </TooltipProvider>
-
-          {state.config.tunnel.status === 'error' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setReconnectTrigger(prev => prev + 1)}
-                >
-                <WifiOff className="mr-2 h-4 w-4" />
-                Reintentar Conexión
-              </Button>
-          )}
       </div>
 
 

@@ -140,40 +140,45 @@ export const RemoteControlsSettingsCard = () => {
       fetchTunnelStatus();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleTunnelToggle = async () => {
-    const action = tunnel.status === 'connected' ? 'disconnect' : 'connect';
+  
+  const handleTunnelConnect = async () => {
     dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'connecting', lastMessage: null } });
-
     try {
       const response = await fetch('/api/localtunnel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action,
-          port: tunnel.port,
-        }),
+        body: JSON.stringify({ action: 'connect', port: tunnel.port }),
       });
-
       const data = await response.json();
-
       if (data.success) {
-        const newStatus = action === 'connect' ? 'connected' : 'disconnected';
-        const newUrl = action === 'connect' ? data.url : null;
-        dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: newStatus, url: newUrl, lastMessage: data.message || null, subdomain: data.subdomain || null } });
-        toast({
-          title: `Túnel ${newStatus === 'connected' ? 'Conectado' : 'Desconectado'}`,
-          description: newUrl ? `Accesible en: ${newUrl}` : 'El túnel ha sido cerrado.',
-        });
+        dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'connected', url: data.url, lastMessage: data.message || null, subdomain: data.subdomain || null } });
+        toast({ title: "Túnel Conectado", description: data.url ? `Accesible en: ${data.url}` : 'El túnel se ha conectado.' });
       } else {
-        // Just update the state to 'error' with the message, without showing a toast.
         dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'error', lastMessage: data.message } });
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error de red.';
-      // Just update the state to 'error' with the message, without showing a toast.
       dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'error', lastMessage: errorMessage } });
     }
+  };
+
+  const handleTunnelDisconnect = async () => {
+      dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'connecting', lastMessage: null } });
+      try {
+        const response = await fetch('/api/localtunnel', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'disconnect' }),
+        });
+        const data = await response.json();
+        if (data.success) {
+            dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'disconnected', url: null, subdomain: null, lastMessage: data.message || 'Desconectado.' } });
+            toast({ title: "Túnel Desconectado" });
+        } else {
+            dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'error', lastMessage: data.message || "Error al desconectar." } });
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error de red.';
+        dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'error', lastMessage: errorMessage } });
+      }
   };
 
   const handleCopyToClipboard = (text: string) => {
@@ -234,10 +239,17 @@ export const RemoteControlsSettingsCard = () => {
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">Estado de la Conexión {statusBadge}</Label>
-                <Button onClick={handleTunnelToggle} disabled={isTunnelConnecting || !tunnel.port} className="w-full sm:w-auto">
-                  {isTunnelConnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isTunnelConnected ? <PowerOff className="mr-2 h-4 w-4" /> : <Power className="mr-2 h-4 w-4" />)}
-                  {isTunnelConnecting ? 'Procesando...' : (isTunnelConnected ? 'Desconectar Túnel' : 'Conectar Túnel')}
-                </Button>
+                <div className="flex gap-2 items-center">
+                    <Button onClick={isTunnelConnected ? handleTunnelDisconnect : handleTunnelConnect} disabled={isTunnelConnecting || !tunnel.port} className="w-full sm:w-auto">
+                        {isTunnelConnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isTunnelConnected ? <PowerOff className="mr-2 h-4 w-4" /> : <Power className="mr-2 h-4 w-4" />)}
+                        {isTunnelConnecting ? 'Procesando...' : (isTunnelConnected ? 'Desconectar' : 'Conectar')}
+                    </Button>
+                    {tunnel.status === 'error' && (
+                        <Button onClick={handleTunnelConnect} variant="outline" size="sm">
+                            Reintentar Conexión
+                        </Button>
+                    )}
+                </div>
                 {tunnel.status === 'error' && <p className="text-sm text-destructive">{tunnel.lastMessage}</p>}
                 {isTunnelConnected && tunnel.url && <p className="text-sm text-green-600 dark:text-green-400">URL pública: {tunnel.url}</p>}
               </div>
