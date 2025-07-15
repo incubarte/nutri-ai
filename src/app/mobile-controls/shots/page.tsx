@@ -46,7 +46,7 @@ export default function MobileShotsPage() {
         if (!gameStateRes.ok) {
           throw new Error(`Failed to fetch game state: ${gameStateRes.status}`);
         }
-        const liveState: LiveGameState & { teams?: TeamData[], selectedMatchCategory?: string } = await gameStateRes.json();
+        const liveState: LiveGameState = await gameStateRes.json();
 
         // Check if essential data is present. It's okay if selectedMatchCategory is an empty string initially.
         if (liveState && liveState.teams !== undefined) {
@@ -95,6 +95,10 @@ export default function MobileShotsPage() {
   }, [router]);
 
   const handleShot = async (team: 'home' | 'away', playerNumber: string) => {
+    if (!playerNumber) {
+        toast({ title: "Error", description: "El jugador no tiene un número asignado.", variant: 'destructive' });
+        return;
+    }
     const result = await sendRemoteCommand({ type: 'ADD_SHOT', payload: { team, playerNumber } });
     if (result.success) {
       toast({

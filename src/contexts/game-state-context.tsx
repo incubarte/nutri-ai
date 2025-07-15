@@ -554,7 +554,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             playerStats: {
               ...playerStats,
               [playerNumber]: {
-                ...playerStats[playerNumber],
+                ...(playerStats[playerNumber] || {}),
                 shots: currentPlayerShots + 1,
               }
             }

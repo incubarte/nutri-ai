@@ -381,6 +381,14 @@ export default function ControlsPage() {
             });
             toast({ title: "Penalidad Añadida (Remoto)", description: `Jugador #${playerNumber} de ${team === 'home' ? currentLive.homeTeamName : currentLive.awayTeamName} recibió una penalidad de ${penaltyDef.name}.` });
           }
+        } else if (command.type === 'ADD_SHOT') {
+            const { team, playerNumber } = command.payload;
+            dispatch({ type: 'ADD_PLAYER_SHOT', payload: { team, playerNumber } });
+            toast({
+              title: "Tiro Registrado (Remoto)",
+              description: `Tiro para el jugador #${playerNumber} del equipo ${team === 'home' ? currentLive.homeTeamName : currentLive.awayTeamName}.`,
+              duration: 1500,
+            });
         } else if (command.type === 'ACTIVATE_PENDING_PUCK_PENALTIES') {
             dispatch({ type: 'ACTIVATE_PENDING_PUCK_PENALTIES' });
             toast({ title: "Puck en Juego (Remoto)", description: "Se activaron las penalidades pendientes." });
