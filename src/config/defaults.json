@@ -43,8 +43,8 @@
     }
   ],
   "defaultPenaltyTypeId": "menor-2",
-  "tunnel": {
+  "tunnel":g {
     "subdomainPrefix": "icevision-fs",
-    "port": 3000
+    "port": 9002
   }
 }
