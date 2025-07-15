@@ -10,10 +10,13 @@ export async function GET(request: Request) {
   
   // Return both live game state and the necessary parts of the config
   // that the remote controls need.
-  const responsePayload = {
+  const responsePayload: LiveGameState = {
     ...gameState,
+    // Config fields for remote controls
     penaltyTypes: config?.penaltyTypes || [],
     defaultPenaltyTypeId: config?.defaultPenaltyTypeId || null,
+    teams: config?.teams || [],
+    selectedMatchCategory: config?.selectedMatchCategory || '',
   };
 
   return NextResponse.json(responsePayload);

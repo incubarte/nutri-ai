@@ -131,13 +131,11 @@ export interface PenaltyLog {
 
 export interface GameSummary {
   home: {
-    shots: number;
     goals: GoalLog[];
     penalties: PenaltyLog[];
     playerStats: Record<string, { shots: number }>; // Key is player number
   };
   away: {
-    shots: number;
     goals: GoalLog[];
     penalties: PenaltyLog[];
     playerStats: Record<string, { shots: number }>; // Key is player number
@@ -250,9 +248,15 @@ export interface LiveGameState {
     homeTeamSubName?: string;
     awayTeamName: string;
     awayTeamSubName?: string;
+    gameSummary?: GameSummary;
     // These are from config but useful for display
     playersPerTeamOnIce?: number; 
-    numberOfRegularPeriods?: number; 
+    numberOfRegularPeriods?: number;
+    // For remote controls
+    penaltyTypes?: PenaltyTypeDefinition[];
+    defaultPenaltyTypeId?: string | null;
+    teams?: TeamData[];
+    selectedMatchCategory?: string;
 }
 
 // --- Remote Commands ---
@@ -323,4 +327,3 @@ export type GameAction =
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
-

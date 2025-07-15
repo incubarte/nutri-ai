@@ -9,8 +9,7 @@ import { Goal, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '@/app/actions';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import type { TeamData } from '@/types';
-import { useGameState } from '@/contexts/game-state-context';
+import type { TeamData, LiveGameState } from '@/types';
 import { Separator } from '@/components/ui/separator';
 
 const AUTH_KEY = 'icevision-remote-auth-key';
@@ -21,60 +20,77 @@ export default function MobileShotsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [homeTeam, setHomeTeam] = useState<TeamData | null>(null);
   const [awayTeam, setAwayTeam] = useState<TeamData | null>(null);
-  const { state: liveState } = useGameState(); // Use live state to find teams
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const authenticateAndLoad = async () => {
       setIsLoading(true);
-      const password = localStorage.getItem(AUTH_KEY);
-      const res = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-      const data = await res.json();
-      
-      if (!data.authenticated) {
-        router.replace('/mobile-controls/login');
-        return;
-      }
-
-      if (liveState && liveState.config && liveState.live) {
-        const { config, live } = liveState;
+      setError(null);
+      try {
+        // Step 1: Authenticate
+        const password = localStorage.getItem(AUTH_KEY);
+        const authRes = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+        const authData = await authRes.json();
         
-        const findTeam = (name: string, subName?: string) => {
-          return config.teams.find(t => 
-            t.name === name && 
-            (t.subName || undefined) === (subName || undefined) &&
-            t.category === config.selectedMatchCategory
-          );
-        };
+        if (!authData.authenticated) {
+          router.replace('/mobile-controls/login');
+          return;
+        }
 
-        const homeTeamData = findTeam(live.homeTeamName, live.homeTeamSubName);
-        const awayTeamData = findTeam(live.awayTeamName, live.awayTeamSubName);
+        // Step 2: Fetch game state and config in one go
+        const gameStateRes = await fetch('/api/game-state');
+        if (!gameStateRes.ok) {
+          throw new Error(`Failed to fetch game state: ${gameStateRes.status}`);
+        }
+        const liveState: LiveGameState & { teams?: TeamData[], selectedMatchCategory?: string } = await gameStateRes.json();
 
-        const homeAttendance = new Set(live.gameSummary?.attendance?.home || []);
-        const awayAttendance = new Set(live.gameSummary?.attendance?.away || []);
+        if (liveState && liveState.teams && liveState.selectedMatchCategory) {
+            const findTeam = (name: string, subName?: string) => {
+              return liveState.teams!.find(t => 
+                t.name === name && 
+                (t.subName || undefined) === (subName || undefined) &&
+                t.category === liveState.selectedMatchCategory
+              );
+            };
 
-        setHomeTeam(homeTeamData ? {
-          ...homeTeamData,
-          players: homeTeamData.players
-            .filter(p => homeAttendance.has(p.id))
-            .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999))
-        } : null);
+            const homeTeamData = findTeam(liveState.homeTeamName, liveState.homeTeamSubName);
+            const awayTeamData = findTeam(liveState.awayTeamName, liveState.awayTeamSubName);
 
-        setAwayTeam(awayTeamData ? {
-          ...awayTeamData,
-          players: awayTeamData.players
-            .filter(p => awayAttendance.has(p.id))
-            .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999))
-        } : null);
+            const homeAttendance = new Set(liveState.gameSummary?.attendance?.home || []);
+            const awayAttendance = new Set(liveState.gameSummary?.attendance?.away || []);
+
+            setHomeTeam(homeTeamData ? {
+              ...homeTeamData,
+              players: homeTeamData.players
+                .filter(p => homeAttendance.has(p.id))
+                .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999))
+            } : null);
+
+            setAwayTeam(awayTeamData ? {
+              ...awayTeamData,
+              players: awayTeamData.players
+                .filter(p => awayAttendance.has(p.id))
+                .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999))
+            } : null);
+        } else {
+            throw new Error("Incomplete game data received from server.");
+        }
+
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : "Error desconocido";
+        setError(errorMessage);
+        console.error("Error loading shots page:", e);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     authenticateAndLoad();
-  }, [router, liveState]);
+  }, [router]);
 
   const handleShot = async (team: 'home' | 'away', playerNumber: string) => {
     const result = await sendRemoteCommand({ type: 'ADD_SHOT', payload: { team, playerNumber } });
@@ -93,6 +109,14 @@ export default function MobileShotsPage() {
     return (
       <div className="flex justify-center items-center h-screen">
         <LoadingSpinner className="h-8 w-8" />
+      </div>
+    );
+  }
+
+  if (error) {
+     return (
+      <div className="flex justify-center items-center h-screen text-center text-destructive">
+       <p>{error}</p>
       </div>
     );
   }
