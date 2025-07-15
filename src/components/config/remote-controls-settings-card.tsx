@@ -286,29 +286,39 @@ export const RemoteControlsSettingsCard = () => {
               )}
             </div>
           </div>
-          <div className="mt-8 border-t pt-4 space-y-2">
-            <Label className="text-base font-medium">Contraseña de Acceso Remoto</Label>
-            <div className="flex items-center gap-2">
-                {isLoadingIp ? (
-                    <Skeleton className="h-10 w-full" />
-                ) : (
-                    <div className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-muted px-3 py-2 text-sm">
-                        <span className="font-mono text-lg tracking-widest">{remotePassword || '-----'}</span>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => remotePassword && handleCopyToClipboard(remotePassword)}
-                            disabled={!remotePassword}
-                        >
-                            <Copy className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
+          <div className="mt-8 border-t pt-4 space-y-4">
+            <div>
+              <Label htmlFor="public-ip">IP Pública del Servidor</Label>
+              {isLoadingIp ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <Input id="public-ip" readOnly value={publicIp || ''} className="font-mono bg-muted/50 cursor-not-allowed" />
+              )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Esta es la contraseña que los dispositivos remotos deben usar para conectarse. Es válida para ambas conexiones (local e internet).
-            </p>
+            <div>
+              <Label>Contraseña de Acceso Remoto</Label>
+              <div className="flex items-center gap-2">
+                  {isLoadingIp ? (
+                      <Skeleton className="h-10 w-full" />
+                  ) : (
+                      <div className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-muted px-3 py-2 text-sm">
+                          <span className="font-mono text-lg tracking-widest">{remotePassword || '-----'}</span>
+                          <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => remotePassword && handleCopyToClipboard(remotePassword)}
+                              disabled={!remotePassword}
+                          >
+                              <Copy className="h-4 w-4" />
+                          </Button>
+                      </div>
+                  )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Esta es la contraseña que los dispositivos remotos deben usar para conectarse. Es válida para ambas conexiones (local e internet).
+              </p>
+            </div>
           </div>
         </ControlCardWrapper>
     </div>
