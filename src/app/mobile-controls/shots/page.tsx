@@ -9,7 +9,7 @@ import { Goal, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '@/app/actions';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import type { TeamData, LiveGameState } from '@/types';
+import type { LiveGameState, AttendedPlayerInfo } from '@/types';
 import { Separator } from '@/components/ui/separator';
 
 const AUTH_KEY = 'icevision-remote-auth-key';
@@ -18,8 +18,10 @@ export default function MobileShotsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const [homeTeam, setHomeTeam] = useState<TeamData | null>(null);
-  const [awayTeam, setAwayTeam] = useState<TeamData | null>(null);
+  const [homeTeamName, setHomeTeamName] = useState<string>('Local');
+  const [awayTeamName, setAwayTeamName] = useState<string>('Visitante');
+  const [homeAttendedPlayers, setHomeAttendedPlayers] = useState<AttendedPlayerInfo[]>([]);
+  const [awayAttendedPlayers, setAwayAttendedPlayers] = useState<AttendedPlayerInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,43 +43,22 @@ export default function MobileShotsPage() {
           return;
         }
 
-        // Step 2: Fetch game state and config in one go
+        // Step 2: Fetch game state which now includes the populated attendance list
         const gameStateRes = await fetch('/api/game-state');
         if (!gameStateRes.ok) {
           throw new Error(`Failed to fetch game state: ${gameStateRes.status}`);
         }
         const liveState: LiveGameState = await gameStateRes.json();
 
-        // Check if essential data is present. It's okay if selectedMatchCategory is an empty string initially.
-        if (liveState && liveState.teams !== undefined) {
-            const findTeam = (name: string, subName?: string) => {
-              // Ensure liveState.teams is not undefined before calling find
-              return (liveState.teams || []).find(t => 
-                t.name === name && 
-                (t.subName || undefined) === (subName || undefined) &&
-                t.category === liveState.selectedMatchCategory
-              );
-            };
+        if (liveState && liveState.gameSummary && liveState.gameSummary.attendance) {
+            setHomeTeamName(liveState.homeTeamName || 'Local');
+            setAwayTeamName(liveState.awayTeamName || 'Visitante');
 
-            const homeTeamData = findTeam(liveState.homeTeamName, liveState.homeTeamSubName);
-            const awayTeamData = findTeam(liveState.awayTeamName, liveState.awayTeamSubName);
+            const sortedHomePlayers = [...(liveState.gameSummary.attendance.home || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
+            const sortedAwayPlayers = [...(liveState.gameSummary.attendance.away || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
 
-            const homeAttendance = new Set(liveState.gameSummary?.attendance?.home || []);
-            const awayAttendance = new Set(liveState.gameSummary?.attendance?.away || []);
-
-            setHomeTeam(homeTeamData ? {
-              ...homeTeamData,
-              players: homeTeamData.players
-                .filter(p => homeAttendance.has(p.id))
-                .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999))
-            } : null);
-
-            setAwayTeam(awayTeamData ? {
-              ...awayTeamData,
-              players: awayTeamData.players
-                .filter(p => awayAttendance.has(p.id))
-                .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999))
-            } : null);
+            setHomeAttendedPlayers(sortedHomePlayers);
+            setAwayAttendedPlayers(sortedAwayPlayers);
         } else {
             throw new Error("Incomplete game data received from server.");
         }
@@ -103,7 +84,7 @@ export default function MobileShotsPage() {
     if (result.success) {
       toast({
         title: "Tiro Registrado",
-        description: `Tiro para el jugador #${playerNumber} del equipo ${team === 'home' ? homeTeam?.name : awayTeam?.name}.`,
+        description: `Tiro para el jugador #${playerNumber} del equipo ${team === 'home' ? homeTeamName : awayTeamName}.`,
         duration: 1500,
       });
     } else {
@@ -139,28 +120,28 @@ export default function MobileShotsPage() {
       <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-3">
-            <h2 className="text-center font-bold text-lg mb-2 truncate">{homeTeam?.name || 'Local'}</h2>
+            <h2 className="text-center font-bold text-lg mb-2 truncate">{homeTeamName}</h2>
             <div className="grid grid-cols-3 gap-2">
-              {homeTeam?.players.map(player => (
+              {homeAttendedPlayers.map(player => (
                 <Button key={player.id} onClick={() => handleShot('home', player.number)} className="h-16 text-xl">
                   {player.number}
                 </Button>
               ))}
             </div>
-            {(!homeTeam || homeTeam.players.length === 0) && <p className="text-center text-sm text-muted-foreground p-4">Sin jugadores</p>}
+            {homeAttendedPlayers.length === 0 && <p className="text-center text-sm text-muted-foreground p-4">Sin jugadores</p>}
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <h2 className="text-center font-bold text-lg mb-2 truncate">{awayTeam?.name || 'Visitante'}</h2>
+            <h2 className="text-center font-bold text-lg mb-2 truncate">{awayTeamName}</h2>
             <div className="grid grid-cols-3 gap-2">
-               {awayTeam?.players.map(player => (
+               {awayAttendedPlayers.map(player => (
                 <Button key={player.id} onClick={() => handleShot('away', player.number)} className="h-16 text-xl">
                   {player.number}
                 </Button>
               ))}
             </div>
-            {(!awayTeam || awayTeam.players.length === 0) && <p className="text-center text-sm text-muted-foreground p-4">Sin jugadores</p>}
+            {awayAttendedPlayers.length === 0 && <p className="text-center text-sm text-muted-foreground p-4">Sin jugadores</p>}
           </CardContent>
         </Card>
       </div>

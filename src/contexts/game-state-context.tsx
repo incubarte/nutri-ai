@@ -4,7 +4,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
@@ -1028,7 +1028,36 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'UPDATE_PLAYER_IN_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, players: t.players.map(p => p.id === action.payload.playerId ? { ...p, ...action.payload.updates } : p) } : t) } }; break;
     case 'REMOVE_PLAYER_FROM_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, players: t.players.filter(p => p.id !== action.payload.playerId) } : t) } }; break;
     case 'LOAD_TEAMS_FROM_FILE': newState = { ...state, config: { ...state.config, teams: action.payload } }; break;
-    case 'SET_TEAM_ATTENDANCE': newState = { ...state, live: { ...state.live, gameSummary: { ...state.live.gameSummary, attendance: { ...state.live.gameSummary.attendance, [action.payload.team]: action.payload.playerIds } } } }; break;
+    case 'SET_TEAM_ATTENDANCE': {
+      const { team, playerIds } = action.payload;
+      const teamData = state.config.teams.find(t => 
+        t.name === state.live[`${team}TeamName`] &&
+        (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) &&
+        t.category === state.config.selectedMatchCategory
+      );
+
+      let attendedPlayerInfo: AttendedPlayerInfo[] = [];
+      if (teamData) {
+        attendedPlayerInfo = teamData.players
+          .filter(p => playerIds.includes(p.id))
+          .map(p => ({ id: p.id, number: p.number, name: p.name }));
+      }
+      
+      newState = {
+        ...state,
+        live: {
+          ...state.live,
+          gameSummary: {
+            ...state.live.gameSummary,
+            attendance: {
+              ...state.live.gameSummary.attendance,
+              [team]: attendedPlayerInfo,
+            },
+          },
+        },
+      };
+      break;
+    }
     case 'RESET_CONFIG_TO_DEFAULTS': {
       const defaultFormatProfile = createDefaultFormatAndTimingsProfile();
       const defaultLayoutParams = createDefaultScoreboardLayoutProfile();

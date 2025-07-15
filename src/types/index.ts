@@ -1,8 +1,5 @@
 
 
-
-
-
 export interface PenaltyTypeDefinition {
   id: string;
   name: string;
@@ -131,6 +128,12 @@ export interface PenaltyLog {
   timeServed?: number;
 }
 
+export interface AttendedPlayerInfo {
+  id: string;
+  number: string;
+  name: string;
+}
+
 export interface GameSummary {
   home: {
     goals: GoalLog[];
@@ -143,8 +146,8 @@ export interface GameSummary {
     playerStats: Record<string, { shots: number }>; // Key is player number
   };
   attendance: {
-    home: string[]; 
-    away: string[]; 
+    home: AttendedPlayerInfo[]; 
+    away: AttendedPlayerInfo[]; 
   };
 }
 
