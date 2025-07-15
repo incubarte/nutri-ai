@@ -5,9 +5,12 @@ import autoTable from 'jspdf-autotable';
 import { formatTime, getCategoryNameById, getEndReasonText, type GameState } from '@/contexts/game-state-context';
 import type { GoalLog, PenaltyLog, PlayerData } from '@/types';
 
-const addTeamSection = (doc: jsPDF, teamName: string, goals: GoalLog[], penalties: PenaltyLog[], attendedPlayers: PlayerData[], startY: number): number => {
+const addTeamSection = (doc: jsPDF, teamName: string, shots: number, goals: GoalLog[], penalties: PenaltyLog[], attendedPlayers: PlayerData[], startY: number): number => {
     let currentY = startY;
 
+    doc.setFontSize(12);
+    doc.text(`Tiros a Puerta: ${shots}`, 150, currentY);
+    
     // --- Goles Section ---
     doc.setFontSize(14);
     doc.text(`${teamName} - Goles`, 14, currentY);
@@ -119,8 +122,8 @@ export const exportGameSummaryPDF = (state: GameState) => {
         .filter(p => awayAttendanceIds.has(p.id))
         .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999)) || [];
     
-    const homeFinalY = addTeamSection(doc, live.homeTeamName, homeGoals, homePenalties, homeAttendedPlayers, 40);
-    addTeamSection(doc, live.awayTeamName, awayGoals, awayPenalties, awayAttendedPlayers, homeFinalY + 15);
+    const homeFinalY = addTeamSection(doc, live.homeTeamName, live.score.homeShots, homeGoals, homePenalties, homeAttendedPlayers, 40);
+    addTeamSection(doc, live.awayTeamName, live.score.awayShots, awayGoals, awayPenalties, awayAttendedPlayers, homeFinalY + 15);
 
     doc.save(filename);
     

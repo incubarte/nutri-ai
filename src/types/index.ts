@@ -130,10 +130,12 @@ export interface PenaltyLog {
 
 export interface GameSummary {
   home: {
+    shots: number;
     goals: GoalLog[];
     penalties: PenaltyLog[];
   };
   away: {
+    shots: number;
     goals: GoalLog[];
     penalties: PenaltyLog[];
   };
@@ -204,6 +206,8 @@ export interface ClockState {
 export interface ScoreState {
   home: number;
   away: number;
+  homeShots: number;
+  awayShots: number;
   homeGoals: GoalLog[];
   awayGoals: GoalLog[];
 }
@@ -264,6 +268,7 @@ export type GameAction =
   | { type: 'ADD_GOAL'; payload: Omit<GoalLog, 'id'> }
   | { type: 'EDIT_GOAL'; payload: { goalId: string; updates: Partial<GoalLog> } }
   | { type: 'DELETE_GOAL'; payload: { goalId: string } }
+  | { type: 'ADJUST_SHOTS'; payload: { team: Team; delta: number } }
   | { type: 'FINISH_GAME_WITH_OT_GOAL'; payload: Omit<GoalLog, 'id'> }
   | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; penaltyTypeId: string; } } }
   | { type: 'REMOVE_PENALTY'; payload: { team: Team; penaltyId: string } }

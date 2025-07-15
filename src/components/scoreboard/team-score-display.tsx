@@ -1,9 +1,10 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { User } from 'lucide-react';
+import { User, Crosshair } from 'lucide-react';
 import type { ScoreboardLayoutSettings } from '@/types';
 import { Button } from '../ui/button';
 
@@ -11,6 +12,7 @@ interface TeamScoreDisplayProps {
   teamActualName: string;
   teamDisplayName: "Local" | "Visitante";
   score: number;
+  shots: number;
   playersOnIce?: number;
   configuredPlayersPerTeam?: number;
   layout?: ScoreboardLayoutSettings;
@@ -27,6 +29,7 @@ export function TeamScoreDisplay({
   teamActualName,
   teamDisplayName,
   score,
+  shots,
   playersOnIce = 0,
   configuredPlayersPerTeam = 0,
   layout,
@@ -115,21 +118,31 @@ export function TeamScoreDisplay({
         "min-w-[120px] sm:min-w-[140px] md:min-w-[160px] lg:min-w-[180px] xl:min-w-[200px]",
         className
       )}>
-      <div className="flex justify-center items-center gap-1 mb-1 h-5 md:h-6 lg:h-7">
-        {playersOnIce > 0 && Array(playersOnIce).fill(null).map((_, index) => (
-          <User 
-            key={index} 
-            className="text-primary-foreground/80" 
-            style={{ 
-              height: `${layout.playersOnIceIconSize}rem`,
-              width: `${layout.playersOnIceIconSize}rem`
-            }}
-          />
-        ))}
-        {configuredPlayersPerTeam > 0 && playersOnIce === 0 && (
-          <span className="text-sm md:text-base lg:text-lg text-destructive animate-pulse">0 JUGADORES</span>
-        )}
-      </div>
+        <div className="flex items-center gap-4">
+            <div className="flex justify-center items-center gap-1 mb-1 h-5 md:h-6 lg:h-7">
+                {playersOnIce > 0 && Array(playersOnIce).fill(null).map((_, index) => (
+                <User 
+                    key={index} 
+                    className="text-primary-foreground/80" 
+                    style={{ 
+                    height: `${layout.playersOnIceIconSize}rem`,
+                    width: `${layout.playersOnIceIconSize}rem`
+                    }}
+                />
+                ))}
+                {configuredPlayersPerTeam > 0 && playersOnIce === 0 && (
+                <span className="text-sm md:text-base lg:text-lg text-destructive animate-pulse">0 JUGADORES</span>
+                )}
+            </div>
+            <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                <Crosshair style={{
+                    height: `${layout.playersOnIceIconSize * 0.75}rem`,
+                    width: `${layout.playersOnIceIconSize * 0.75}rem`
+                    }}
+                />
+                <span className="font-mono" style={{ fontSize: `${layout.teamLabelSize}rem`}}>{shots}</span>
+            </div>
+        </div>
 
       <div
         className={cn(
@@ -183,4 +196,3 @@ export function TeamScoreDisplay({
     </div>
   );
 }
-

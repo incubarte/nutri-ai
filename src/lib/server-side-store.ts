@@ -1,4 +1,3 @@
-
 import type { LiveGameState, ConfigState, RemoteCommand } from '@/types';
 import { EventEmitter } from 'events';
 import { headers } from 'next/headers';

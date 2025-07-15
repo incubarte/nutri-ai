@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useMemo } from "react";
@@ -9,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Goal, Siren, X, FileText, FileDown } from "lucide-react";
+import { Goal, Siren, X, FileText, FileDown, Crosshair } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { exportGameSummaryPDF } from "@/lib/pdf-generator";
 
@@ -18,9 +19,15 @@ interface GameSummaryDialogProps {
   onOpenChange: (isOpen: boolean) => void;
 }
 
-const TeamSummaryColumn = ({ team, teamName, score, goals, penalties }: { team: Team; teamName: string; score: number; goals: GoalLog[]; penalties: PenaltyLog[] }) => (
+const TeamSummaryColumn = ({ team, teamName, score, shots, goals, penalties }: { team: Team; teamName: string; score: number; shots: number; goals: GoalLog[]; penalties: PenaltyLog[] }) => (
   <div className="flex-1 space-y-4">
-    <h3 className="text-2xl font-bold text-primary text-center">{teamName} - <span className="text-accent">{score}</span></h3>
+    <div className="text-center">
+        <h3 className="text-2xl font-bold text-primary">{teamName} - <span className="text-accent">{score}</span></h3>
+        <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+            <Crosshair className="h-4 w-4" />
+            <span>{shots} Tiros a Puerta</span>
+        </p>
+    </div>
     
     <Card>
       <CardHeader>
@@ -176,6 +183,7 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
               team="home"
               teamName={state.live.homeTeamName}
               score={state.live.score.home}
+              shots={state.live.score.homeShots}
               goals={homeGoals}
               penalties={homePenalties}
             />
@@ -185,6 +193,7 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
               team="away"
               teamName={state.live.awayTeamName}
               score={state.live.score.away}
+              shots={state.live.score.awayShots}
               goals={awayGoals}
               penalties={awayPenalties}
             />
