@@ -48,9 +48,11 @@ export default function MobileShotsPage() {
         }
         const liveState: LiveGameState & { teams?: TeamData[], selectedMatchCategory?: string } = await gameStateRes.json();
 
-        if (liveState && liveState.teams && liveState.selectedMatchCategory) {
+        // Check if essential data is present. It's okay if selectedMatchCategory is an empty string initially.
+        if (liveState && liveState.teams !== undefined) {
             const findTeam = (name: string, subName?: string) => {
-              return liveState.teams!.find(t => 
+              // Ensure liveState.teams is not undefined before calling find
+              return (liveState.teams || []).find(t => 
                 t.name === name && 
                 (t.subName || undefined) === (subName || undefined) &&
                 t.category === liveState.selectedMatchCategory
@@ -115,7 +117,7 @@ export default function MobileShotsPage() {
 
   if (error) {
      return (
-      <div className="flex justify-center items-center h-screen text-center text-destructive">
+      <div className="flex justify-center items-center h-screen text-center text-destructive p-4">
        <p>{error}</p>
       </div>
     );
