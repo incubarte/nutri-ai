@@ -22,7 +22,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Trash2, UserPlus, Hourglass, ChevronsUpDown, Check, Info, Goal, X, Plus, Minus, Shield } from 'lucide-react';
+import { Trash2, UserPlus, Hourglass, ChevronsUpDown, Check, Info, Goal, X, Plus, Minus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,26 @@ interface PenaltyControlCardProps {
   team: Team;
   teamName: string;
 }
+
+const CagedUserIcon = ({ size, className }: { size: number; className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    style={{ width: `${size}rem`, height: `${size}rem` }}
+  >
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" strokeWidth="2" stroke="hsl(var(--destructive))" />
+    <circle cx="12" cy="7" r="4" strokeWidth="2" stroke="hsl(var(--destructive))" />
+    <line x1="6" y1="2" x2="6" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
+    <line x1="10" y1="2" x2="10" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
+    <line x1="14" y1="2" x2="14" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
+    <line x1="18" y1="2" x2="18" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
+  </svg>
+);
+
 
 const statusTextMap: Record<NonNullable<Penalty['_status']>, string> = {
     running: 'Corriendo',
@@ -150,20 +170,22 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                      <TooltipProvider delayDuration={200}>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <div className="flex-1 min-w-0 cursor-help">
-                                    <p className="font-semibold text-card-foreground truncate flex items-center">
-                                        <Shield className="h-5 w-5 mr-2 text-primary"/> #{displayPenaltyNumber}
-                                        {state.config.enablePlayerSelectionForPenalties && state.config.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && (
-                                            <span className="ml-1 text-xs text-muted-foreground font-normal">
-                                                - {matchedPlayerForPenaltyDisplay.name}
-                                            </span>
-                                        )}
-                                        {ejectionMessage && <span className="font-bold text-destructive text-sm ml-1">{ejectionMessage}</span>}
-                                        {isMisconduct && <span className="text-xs text-blue-400 font-normal ml-1">(MALA CONDUCTA)</span>}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Total: {formatTime(penalty.initialDuration * 100)}
-                                    </p>
+                                <div className="flex-1 min-w-0 cursor-help flex items-center gap-2">
+                                     <CagedUserIcon size={1.75} />
+                                    <div>
+                                        <p className="font-semibold text-card-foreground truncate flex items-center">
+                                            #{displayPenaltyNumber}
+                                            {state.config.enablePlayerSelectionForPenalties && state.config.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && (
+                                                <span className="ml-1 text-xs text-muted-foreground font-normal">
+                                                    - {matchedPlayerForPenaltyDisplay.name}
+                                                </span>
+                                            )}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Total: {formatTime(penalty.initialDuration * 100)}
+                                            {ejectionMessage && <span className="font-bold text-lg text-destructive">{ejectionMessage}</span>}
+                                        </p>
+                                    </div>
                                 </div>
                             </TooltipTrigger>
                             <TooltipContent>
