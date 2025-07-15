@@ -22,7 +22,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Trash2, UserPlus, Hourglass, ChevronsUpDown, Check, Info, Goal, X, Plus, Minus, User } from 'lucide-react';
+import { Trash2, UserPlus, Hourglass, ChevronsUpDown, Check, Info, Goal, X, Plus, Minus, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -109,9 +109,11 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     
     const isMisconduct = penalty.penaltyType === 'misconduct';
     
-    const ejectionMessage = penalty._limitReached
-      ? (penalty._limitReached === 'quantity' ? " - Expulsado por cantidad" : " - Expulsado por tiempo")
-      : null;
+    const ejectionMessage = useMemo(() => {
+        if (!penalty._limitReached || penalty._limitReached.length === 0) return null;
+        const reasons = penalty._limitReached.map(reason => reason === 'quantity' ? 'Cantidad' : 'Tiempo').join(' y ');
+        return ` - Expulsado por ${reasons}`;
+    }, [penalty._limitReached]);
 
 
     return (
@@ -150,13 +152,13 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                             <TooltipTrigger asChild>
                                 <div className="flex-1 min-w-0 cursor-help">
                                     <p className="font-semibold text-card-foreground truncate flex items-center">
-                                        <User className="h-4 w-4 mr-1.5 text-primary"/> #{displayPenaltyNumber}
+                                        <Shield className="h-5 w-5 mr-2 text-primary"/> #{displayPenaltyNumber}
                                         {state.config.enablePlayerSelectionForPenalties && state.config.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && (
                                             <span className="ml-1 text-xs text-muted-foreground font-normal">
                                                 - {matchedPlayerForPenaltyDisplay.name}
                                             </span>
                                         )}
-                                        {ejectionMessage && <span className="font-bold text-destructive text-xs ml-1">{ejectionMessage}</span>}
+                                        {ejectionMessage && <span className="font-bold text-destructive text-sm ml-1">{ejectionMessage}</span>}
                                         {isMisconduct && <span className="text-xs text-blue-400 font-normal ml-1">(MALA CONDUCTA)</span>}
                                     </p>
                                     <p className="text-xs text-muted-foreground">

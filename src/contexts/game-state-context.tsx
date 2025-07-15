@@ -565,24 +565,21 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
       }
       
-      let limitReachedReason: 'quantity' | 'time' | false = false;
-      if (state.config.enableMaxPenaltiesLimit || state.config.enableMaxPenaltyTimeLimit) {
-        const playerPenalties = state.live.gameSummary[team].penalties.filter(
-          p => p.playerNumber === playerNumber && p.endReason !== 'deleted'
-        );
-        
-        if (state.config.enableMaxPenaltiesLimit) {
-          const currentPenaltyCount = playerPenalties.length;
-          if (currentPenaltyCount + 1 >= state.config.maxPenaltiesPerPlayer) {
-            limitReachedReason = 'quantity';
-          }
+      const limitReachedReasons: ('quantity' | 'time')[] = [];
+      const playerPenalties = state.live.gameSummary[team].penalties.filter(
+        p => p.playerNumber === playerNumber && p.endReason !== 'deleted'
+      );
+      
+      if (state.config.enableMaxPenaltiesLimit) {
+        if (playerPenalties.length + 1 >= state.config.maxPenaltiesPerPlayer) {
+          limitReachedReasons.push('quantity');
         }
-        
-        if (!limitReachedReason && state.config.enableMaxPenaltyTimeLimit) {
-          const totalPenaltyTimeSec = playerPenalties.reduce((acc, p) => acc + p.initialDuration, 0);
-          if ((totalPenaltyTimeSec + penaltyDef.duration) / 60 >= state.config.maxPenaltyTimePerPlayerMinutes) {
-            limitReachedReason = 'time';
-          }
+      }
+      
+      if (state.config.enableMaxPenaltyTimeLimit) {
+        const totalPenaltyTimeSec = playerPenalties.reduce((acc, p) => acc + p.initialDuration, 0);
+        if ((totalPenaltyTimeSec + penaltyDef.duration) / 60 >= state.config.maxPenaltyTimePerPlayerMinutes) {
+          limitReachedReasons.push('time');
         }
       }
 
@@ -606,7 +603,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         _status: newStatus,
         startTime,
         expirationTime,
-        _limitReached: limitReachedReason || undefined,
+        _limitReached: limitReachedReasons.length > 0 ? limitReachedReasons : undefined,
       };
 
       const teamDetails = state.config.teams.find(t => t.name === state.live[`${team}TeamName`] && (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
