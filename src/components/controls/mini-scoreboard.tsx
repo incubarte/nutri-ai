@@ -446,7 +446,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
     const { minutes: currentMins, seconds: currentSecs, tenths: currentTenths } = timeParts;
     let newTimeCs = state.live.clock.currentTime;
-    const value = parseInt(editValue, 10);
+    const value = editValue.trim() === '' ? 0 : parseInt(editValue, 10);
 
     if (isNaN(value)) {
       setEditingSegment(null);

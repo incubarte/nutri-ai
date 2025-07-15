@@ -2,7 +2,6 @@ Bugs
 1. 
 
 Mejoras
-1. Al borrar los minutos o segundos del reloj o de las penalidades, asumir vacio como 0
 
 2. Meterle un tooltip al boton de finalizar penalidad por gol.
 (Al dejar el mouse encima del boton, aparezca el tooltip)
