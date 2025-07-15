@@ -248,7 +248,6 @@ function AddPenaltyForm({ homeTeamName, awayTeamName, penaltyTypes, defaultPenal
 export default function MobileControlsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gameState, setGameState] = useState<LiveGameState | null>(null);
   const [config, setConfig] = useState<any>(null); // Store config separately for penalty types
@@ -258,33 +257,6 @@ export default function MobileControlsPage() {
   const [showPuckInPlayButton, setShowPuckInPlayButton] = useState(false);
 
   const { toast } = useToast();
-
-  useEffect(() => {
-    const authenticateAndLoad = async () => {
-      try {
-        const password = localStorage.getItem(AUTH_KEY);
-        const res = await fetch('/api/auth', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password }),
-        });
-        const data = await res.json();
-        
-        if (data.authenticated) {
-            setIsAuthenticated(true);
-            await fetchInitialData();
-        } else {
-            router.replace('/mobile-controls/login');
-        }
-      } catch (e) {
-        console.error("Auth check failed", e);
-        setError("Error de autenticación. Intenta de nuevo.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    authenticateAndLoad();
-  }, [router]);
 
   const fetchInitialData = async () => {
     setError(null);
@@ -310,6 +282,33 @@ export default function MobileControlsPage() {
       setError(errorMessage);
     }
   };
+
+  useEffect(() => {
+    const authenticateAndLoad = async () => {
+      setIsLoading(true);
+      try {
+        const password = localStorage.getItem(AUTH_KEY);
+        const res = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password }),
+        });
+        const data = await res.json();
+        
+        if (data.authenticated) {
+            await fetchInitialData();
+        } else {
+            router.replace('/mobile-controls/login');
+        }
+      } catch (e) {
+        console.error("Auth check failed", e);
+        setError("Error de autenticación. Intenta de nuevo.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    authenticateAndLoad();
+  }, [router]);
   
   const handlePuckInPlay = async () => {
     const result = await sendRemoteCommand({ type: 'ACTIVATE_PENDING_PUCK_PENALTIES' });
@@ -321,7 +320,7 @@ export default function MobileControlsPage() {
     }
   };
 
-  if (isLoading || !isAuthenticated) {
+  if (isLoading) {
     return (
       <main className="w-full h-full p-4 bg-background">
         <div className="flex flex-col h-full w-full items-center justify-center text-center">

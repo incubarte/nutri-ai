@@ -51,41 +51,43 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto flex flex-col justify-center h-full">
-      <div className="text-center mb-8">
-        <KeyRound className="mx-auto h-12 w-12 text-primary" />
-        <h1 className="text-3xl font-bold text-primary-foreground mt-4">Acceso Remoto</h1>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Ingresar Contraseña</CardTitle>
-          <CardDescription>
-            Pide la contraseña de 5 dígitos al operador principal para acceder a los controles.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="password">Contraseña de 5 dígitos</Label>
-              <Input
-                id="password"
-                type="password"
-                inputMode="numeric"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="*****"
-                maxLength={5}
-                className="h-14 text-2xl text-center tracking-[0.5em]"
-                required
-              />
+    <div className="w-full h-full flex flex-col justify-center">
+        <div className="w-full max-w-md mx-auto">
+            <div className="text-center mb-8">
+                <KeyRound className="mx-auto h-12 w-12 text-primary" />
+                <h1 className="text-3xl font-bold text-primary-foreground mt-4">Acceso Remoto</h1>
             </div>
-            <Button type="submit" className="w-full h-14 text-lg" disabled={isLoading}>
-              {isLoading ? <LoadingSpinner className="mr-2" /> : <LogIn className="mr-2 h-5 w-5" />}
-              Ingresar
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            <Card>
+                <CardHeader>
+                <CardTitle>Ingresar Contraseña</CardTitle>
+                <CardDescription>
+                    Pide la contraseña de 5 dígitos al operador principal para acceder a los controles.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-2">
+                    <Label htmlFor="password">Contraseña de 5 dígitos</Label>
+                    <Input
+                        id="password"
+                        type="password"
+                        inputMode="numeric"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="*****"
+                        maxLength={5}
+                        className="h-14 text-2xl text-center tracking-[0.5em]"
+                        required
+                    />
+                    </div>
+                    <Button type="submit" className="w-full h-14 text-lg" disabled={isLoading}>
+                    {isLoading ? <LoadingSpinner className="mr-2" /> : <LogIn className="mr-2 h-5 w-5" />}
+                    Ingresar
+                    </Button>
+                </form>
+                </CardContent>
+            </Card>
+        </div>
     </div>
   );
 }

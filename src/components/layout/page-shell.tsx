@@ -10,12 +10,12 @@ import { SoundPlayer } from '@/components/audio/sound-player';
 export function PageShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   // Check if the current page is one of the isolated mobile views
-  const isIsolatedMobilePage = pathname === '/mobile' || pathname === '/mobile-controls';
+  const isIsolatedMobilePage = pathname === '/mobile' || pathname.startsWith('/mobile-controls');
 
   if (isIsolatedMobilePage) {
     // For mobile pages, provide a simple main wrapper without the header and sound
     return (
-      <main className="w-full h-full">
+      <main className="w-full h-full bg-background">
         {children}
       </main>
     );
