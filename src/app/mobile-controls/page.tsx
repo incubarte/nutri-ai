@@ -245,13 +245,20 @@ function AddPenaltyForm({ homeTeamName, awayTeamName, penaltyTypes, defaultPenal
   );
 }
 
+// Minimal type for the combined data fetch
+interface MobileData {
+  gameState: LiveGameState | null;
+  penaltyConfig: {
+    penaltyTypes: PenaltyTypeDefinition[];
+    defaultPenaltyTypeId: string | null;
+  }
+}
 
 export default function MobileControlsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [gameState, setGameState] = useState<LiveGameState | null>(null);
-  const [config, setConfig] = useState<any>(null); // Store config separately for penalty types
+  const [mobileData, setMobileData] = useState<MobileData | null>(null);
   
   const [isAddGoalDialogOpen, setIsAddGoalDialogOpen] = useState(false);
   const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
@@ -262,20 +269,18 @@ export default function MobileControlsPage() {
   const fetchInitialData = async () => {
     setError(null);
     try {
-      // We need config for penalty types, so we fetch both.
-      const [gameStateRes, configRes] = await Promise.all([
-        fetch('/api/game-state'),
-        fetch('/api/config') // Assuming a config endpoint exists
-      ]);
-
-      if (!gameStateRes.ok) throw new Error(`Game state fetch failed: ${gameStateRes.status}`);
-      if (!configRes.ok) throw new Error(`Config fetch failed: ${configRes.status}`);
-
-      const gameStateData: LiveGameState | null = await gameStateRes.json();
-      const configData: any = await configRes.json();
+      const res = await fetch('/api/game-state');
+      if (!res.ok) throw new Error(`Game state fetch failed: ${res.status}`);
       
-      setGameState(gameStateData);
-      setConfig(configData);
+      const data = await res.json();
+      
+      setMobileData({
+        gameState: data,
+        penaltyConfig: {
+          penaltyTypes: data.penaltyTypes || [],
+          defaultPenaltyTypeId: data.defaultPenaltyTypeId || null,
+        }
+      });
 
     } catch (e) {
       console.error("Failed to fetch initial data:", e);
@@ -332,7 +337,7 @@ export default function MobileControlsPage() {
     );
   }
   
-  if (error || !gameState || !config) {
+  if (error || !mobileData || !mobileData.gameState) {
     return (
       <main className="w-full h-full p-4 bg-background">
         <div className="flex flex-col h-full w-full items-center justify-center text-center text-destructive">
@@ -347,6 +352,8 @@ export default function MobileControlsPage() {
       </main>
     );
   }
+
+  const { gameState, penaltyConfig } = mobileData;
 
   return (
     <main className="w-full max-w-md mx-auto space-y-8 pt-8">
@@ -421,8 +428,8 @@ export default function MobileControlsPage() {
           <AddPenaltyForm 
             homeTeamName={gameState.homeTeamName || 'Local'}
             awayTeamName={gameState.awayTeamName || 'Visitante'}
-            penaltyTypes={config.penaltyTypes || []}
-            defaultPenaltyTypeId={config.defaultPenaltyTypeId || null}
+            penaltyTypes={penaltyConfig.penaltyTypes || []}
+            defaultPenaltyTypeId={penaltyConfig.defaultPenaltyTypeId || null}
             onPenaltySent={() => {
               setIsAddPenaltyDialogOpen(false);
               setShowPuckInPlayButton(true);

@@ -1,12 +1,22 @@
 
-import { getGameState } from '@/lib/server-side-store';
+import { getGameState, getConfig } from '@/lib/server-side-store';
 import { NextResponse } from 'next/server';
 import type { LiveGameState } from '@/types';
 import { setGameState as setServerGameState } from '@/lib/server-side-store';
 
 export async function GET(request: Request) {
   const gameState = getGameState();
-  return NextResponse.json(gameState);
+  const config = getConfig();
+  
+  // Return both live game state and the necessary parts of the config
+  // that the remote controls need.
+  const responsePayload = {
+    ...gameState,
+    penaltyTypes: config?.penaltyTypes || [],
+    defaultPenaltyTypeId: config?.defaultPenaltyTypeId || null,
+  };
+
+  return NextResponse.json(responsePayload);
 }
 
 export async function POST(request: Request) {
