@@ -5,7 +5,7 @@
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
 import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition } from '@/types';
-import { useToast, toast as showToast } from '@/hooks/use-toast';
+import { toast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
 import { safeUUID } from '@/lib/utils';
@@ -565,6 +565,27 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
       }
       
+      let limitReached = false;
+      if (state.config.enableMaxPenaltiesLimit || state.config.enableMaxPenaltyTimeLimit) {
+        const playerPenalties = state.live.gameSummary[team].penalties.filter(
+          p => p.playerNumber === playerNumber && p.endReason !== 'deleted'
+        );
+        
+        if (state.config.enableMaxPenaltiesLimit) {
+          const currentPenaltyCount = playerPenalties.length;
+          if (currentPenaltyCount + 1 >= state.config.maxPenaltiesPerPlayer) {
+            limitReached = true;
+          }
+        }
+        
+        if (!limitReached && state.config.enableMaxPenaltyTimeLimit) {
+          const totalPenaltyTimeSec = playerPenalties.reduce((acc, p) => acc + p.initialDuration, 0);
+          if ((totalPenaltyTimeSec + penaltyDef.duration) / 60 >= state.config.maxPenaltyTimePerPlayerMinutes) {
+            limitReached = true;
+          }
+        }
+      }
+
       const { _liveAbsoluteElapsedTimeCs } = state.live.clock;
       const newPenaltyId = safeUUID();
       
@@ -584,7 +605,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         penaltyType: penaltyDef.type,
         _status: newStatus,
         startTime,
-        expirationTime
+        expirationTime,
+        _limitReached: limitReached,
       };
 
       const teamDetails = state.config.teams.find(t => t.name === state.live[`${team}TeamName`] && (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
@@ -1036,7 +1058,6 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPageVisible, setIsPageVisible] = useState(true);
   const channelRef = useRef<BroadcastChannel | null>(null);
-  const { toast } = useToast();
 
   const syncToServer = useCallback(async (stateToSync: GameState) => {
     try {
