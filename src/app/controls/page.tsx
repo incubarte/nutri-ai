@@ -95,7 +95,6 @@ export default function ControlsPage() {
   const [isGoldenGoalDialogOpen, setIsGoldenGoalDialogOpen] = useState(false);
   const [isGameSetupDialogOpen, setIsGameSetupDialogOpen] = useState(false);
   
-  const [remoteCommandStatus, setRemoteCommandStatus] = useState<RemoteCommandStatus>('connecting');
   const [reconnectTrigger, setReconnectTrigger] = useState(0);
 
   const [localIp, setLocalIp] = useState<string | null>(null);
@@ -301,11 +300,10 @@ export default function ControlsPage() {
       return;
     }
 
-    setRemoteCommandStatus('connecting');
     const eventSource = new EventSource('/api/remote-commands/events');
 
     eventSource.onopen = () => {
-        setRemoteCommandStatus('connected');
+        // Handle connection opened if needed
     };
 
     eventSource.onmessage = (event) => {
@@ -360,7 +358,7 @@ export default function ControlsPage() {
     };
 
     eventSource.onerror = () => {
-      setRemoteCommandStatus('disconnected');
+      // Don't console.error to avoid noise
     };
 
     return () => {
@@ -450,24 +448,24 @@ export default function ControlsPage() {
   };
 
   const statusIndicators = useMemo(() => {
-    const serverConn = state.serverConnection;
-    const serverStatus = serverConn?.status || 'idle';
+    const tunnelStatus = state.config.tunnel.status || 'disconnected';
+    const isLocalIpReady = !!(localIp && !localIp.includes('Error'));
     
     return {
-        server: {
-            status: serverStatus,
-            text: serverStatus === 'ok' ? 'Conexión Servidor OK' : (serverStatus === 'error' ? 'Error Conexión Servidor' : 'Sincronizando...'),
-            className: serverStatus === 'ok' ? 'bg-green-600 hover:bg-green-700' : (serverStatus === 'error' ? 'bg-destructive hover:bg-destructive/90' : 'bg-yellow-500 hover:bg-yellow-600'),
-            dotClassName: serverStatus === 'ok' ? 'bg-white' : (serverStatus === 'error' ? 'bg-white' : 'bg-black/50 animate-pulse')
+        local: {
+            status: isLocalIpReady ? 'connected' : 'error',
+            text: 'Control Remoto - Local',
+            className: isLocalIpReady ? 'bg-blue-600 hover:bg-blue-700' : 'bg-destructive hover:bg-destructive/90',
+            dotClassName: isLocalIpReady ? 'bg-white' : 'bg-white/50 animate-pulse'
         },
-        remote: {
-            status: remoteCommandStatus,
-            text: remoteCommandStatus === 'connected' ? 'Controles Remotos Conectados' : (remoteCommandStatus === 'disconnected' ? 'Remotos Desconectados' : 'Conectando Remotos...'),
-            className: remoteCommandStatus === 'connected' ? 'bg-blue-600 hover:bg-blue-700' : (remoteCommandStatus === 'disconnected' ? 'bg-destructive hover:bg-destructive/90' : 'bg-yellow-500 hover:bg-yellow-600'),
-            dotClassName: remoteCommandStatus === 'connected' ? 'bg-white' : (remoteCommandStatus === 'disconnected' ? 'bg-white' : 'bg-black/50 animate-pulse')
+        internet: {
+            status: tunnelStatus,
+            text: 'Control Remoto - Internet',
+            className: tunnelStatus === 'connected' ? 'bg-green-600 hover:bg-green-700' : (tunnelStatus === 'error' ? 'bg-destructive hover:bg-destructive/90' : 'bg-yellow-500 hover:bg-yellow-600'),
+            dotClassName: tunnelStatus === 'connected' ? 'bg-white' : (tunnelStatus === 'error' ? 'bg-white' : 'bg-black/50 animate-pulse')
         }
     };
-  }, [state.serverConnection, remoteCommandStatus]);
+  }, [state.config.tunnel, localIp]);
 
   const localUrl = (localIp && localPort) ? `http://${localIp}:${localPort}/mobile-controls` : '';
   const tunnelUrl = state.config.tunnel.status === 'connected' && state.config.tunnel.url ? `${state.config.tunnel.url}/mobile-controls` : '';
@@ -575,9 +573,9 @@ export default function ControlsPage() {
           <TooltipProvider>
               <Tooltip delayDuration={100}>
                   <TooltipTrigger asChild>
-                      <Badge className={cn("flex items-center gap-2 transition-all text-white cursor-help", statusIndicators.server.className)}>
-                          <span className={cn("h-2 w-2 rounded-full", statusIndicators.server.dotClassName)}></span>
-                          <span className="text-xs">{statusIndicators.server.text}</span>
+                      <Badge className={cn("flex items-center gap-2 transition-all text-white cursor-help", statusIndicators.local.className)}>
+                          <span className={cn("h-2 w-2 rounded-full", statusIndicators.local.dotClassName)}></span>
+                          <span className="text-xs">{statusIndicators.local.text}</span>
                       </Badge>
                   </TooltipTrigger>
                   <TooltipContent side="left" className="p-0 border-none bg-transparent shadow-none">
@@ -586,9 +584,9 @@ export default function ControlsPage() {
               </Tooltip>
               <Tooltip delayDuration={100}>
                   <TooltipTrigger asChild>
-                      <Badge className={cn("flex items-center gap-2 transition-all text-white cursor-help", statusIndicators.remote.className)}>
-                          <span className={cn("h-2 w-2 rounded-full", statusIndicators.remote.dotClassName)}></span>
-                          <span className="text-xs">{statusIndicators.remote.text}</span>
+                      <Badge className={cn("flex items-center gap-2 transition-all text-white cursor-help", statusIndicators.internet.className)}>
+                          <span className={cn("h-2 w-2 rounded-full", statusIndicators.internet.dotClassName)}></span>
+                          <span className="text-xs">{statusIndicators.internet.text}</span>
                       </Badge>
                   </TooltipTrigger>
                   <TooltipContent side="left" className="p-0 border-none bg-transparent shadow-none">
@@ -602,14 +600,14 @@ export default function ControlsPage() {
               </Tooltip>
           </TooltipProvider>
 
-          {remoteCommandStatus === 'disconnected' && (
+          {state.config.tunnel.status === 'error' && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setReconnectTrigger(prev => prev + 1)}
                 >
                 <WifiOff className="mr-2 h-4 w-4" />
-                Reconectar Remotos
+                Reintentar Conexión
               </Button>
           )}
       </div>
@@ -671,5 +669,4 @@ export default function ControlsPage() {
 
     </div>
   );
-
-    
+  
