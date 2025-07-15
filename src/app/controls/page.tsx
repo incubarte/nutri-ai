@@ -38,6 +38,19 @@ const QRTooltipContent = ({ title, url, password, passwordLabel }: { title: stri
         toast({ title: "Error al Copiar", description: `No se pudo copiar: ${label}`, variant: "destructive" });
         });
     };
+
+    if (!url) {
+        return (
+            <div className="flex flex-col items-center gap-4 p-4 bg-popover text-popover-foreground text-center">
+                 <p className="font-semibold text-lg">{title}</p>
+                 <div className="p-2 text-sm">
+                    <p>{password === 'not_connected' ? 'Túnel no conectado.' : 'Generando URL...'}</p>
+                    {password === 'not_connected' && <p className="text-xs text-muted-foreground">Ve a Configuración para activarlo.</p>}
+                 </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col items-center gap-4 p-4 bg-popover text-popover-foreground">
             <p className="font-semibold text-lg">{title}</p>
@@ -568,11 +581,7 @@ export default function ControlsPage() {
                       </Badge>
                   </TooltipTrigger>
                   <TooltipContent side="left" className="p-0 border-none bg-transparent shadow-none">
-                       {localUrl ? (
-                            <QRTooltipContent title="Conexión de Red Local" url={localUrl} />
-                        ) : (
-                            <div className="p-2 text-sm">Obteniendo IP local...</div>
-                        )}
+                       <QRTooltipContent title="Conexión de Red Local" url={localUrl} />
                   </TooltipContent>
               </Tooltip>
               <Tooltip delayDuration={100}>
@@ -583,14 +592,12 @@ export default function ControlsPage() {
                       </Badge>
                   </TooltipTrigger>
                   <TooltipContent side="left" className="p-0 border-none bg-transparent shadow-none">
-                        {tunnelUrl ? (
-                            <QRTooltipContent title="Conexión por Internet" url={tunnelUrl} password={publicIp || 'cargando...'} passwordLabel="IP Pública (Clave)" />
-                        ) : (
-                            <div className="p-2 text-sm text-center">
-                                <p>Túnel de Internet no conectado.</p>
-                                <p className="text-xs text-muted-foreground">Ve a Configuración para activarlo.</p>
-                            </div>
-                        )}
+                        <QRTooltipContent 
+                            title="Conexión por Internet" 
+                            url={tunnelUrl} 
+                            password={tunnelUrl ? (publicIp || 'cargando...') : 'not_connected'}
+                            passwordLabel="IP Pública (Clave)" 
+                        />
                   </TooltipContent>
               </Tooltip>
           </TooltipProvider>
