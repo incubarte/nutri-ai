@@ -15,7 +15,7 @@ export interface Penalty {
   initialDuration: number; 
   _status?: 'running' | 'pending_concurrent' | 'pending_puck'; 
   penaltyType?: 'minor' | 'misconduct';
-  _limitReached?: boolean;
+  _limitReached?: 'quantity' | 'time';
 }
 
 export type Team = 'home' | 'away';
