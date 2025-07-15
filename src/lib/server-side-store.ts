@@ -63,29 +63,14 @@ export function isClientLocal(request: Request): boolean {
     const reqHeaders = headers();
     const clientIp = (reqHeaders.get('x-forwarded-for') ?? '127.0.0.1').split(',')[0].trim();
     
-    // Check if client is localhost
+    // Check if client is localhost. This is the most reliable check.
     if (clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1') {
         return true;
     }
 
-    // Check if client is on the same subnet as the server
-    const networkInterfaces = os.networkInterfaces();
-    for (const iface in networkInterfaces) {
-        const addresses = networkInterfaces[iface];
-        if (addresses) {
-            for (const addr of addresses) {
-                if (addr.family === 'IPv4' && !addr.internal) {
-                    // Very basic subnet check. Assumes a /24 subnet mask.
-                    const serverSubnet = addr.address.substring(0, addr.address.lastIndexOf('.'));
-                    const clientSubnet = clientIp.substring(0, clientIp.lastIndexOf('.'));
-                    if (serverSubnet === clientSubnet) {
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-
+    // A more advanced subnet check is prone to errors in different network environments.
+    // For simplicity and robustness in this application's context, we'll consider any
+    // non-loopback IP as "remote", requiring a password. This is a safer default.
     return false;
 }
 

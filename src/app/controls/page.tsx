@@ -29,7 +29,7 @@ const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
 
 type PageDisplayState = 'Checking' | 'Primary' | 'Secondary';
 
-const QRTooltipContent = ({ title, url, password, passwordLabel, status, isConnecting, onConnect }: { title: string; url: string; password?: string; passwordLabel?: string; status: 'connected' | 'disconnected' | 'error' | 'connecting'; isConnecting?: boolean; onConnect?: () => void; }) => {
+const QRTooltipContent = ({ title, url, password, passwordLabel, ipAddress, ipLabel, status, isConnecting, onConnect }: { title: string; url: string; password?: string; passwordLabel?: string; ipAddress?: string; ipLabel?: string; status: 'connected' | 'disconnected' | 'error' | 'connecting'; isConnecting?: boolean; onConnect?: () => void; }) => {
     const { toast } = useToast();
     const handleCopyToClipboard = (text: string, label: string) => {
         navigator.clipboard.writeText(text).then(() => {
@@ -57,11 +57,19 @@ const QRTooltipContent = ({ title, url, password, passwordLabel, status, isConne
     }
 
     return (
-        <div className="flex flex-col items-center gap-4 p-4 bg-popover text-popover-foreground">
+        <div className="flex flex-col items-center gap-4 p-4 bg-popover text-popover-foreground w-64">
             <p className="font-semibold text-lg">{title}</p>
             <div className="bg-white p-2 rounded-md">
                 <QRCodeSVG value={url} size={140} />
             </div>
+             {ipAddress && (
+                 <div className="w-full text-center">
+                    <p className="text-sm font-medium">{ipLabel || "IP Pública:"}</p>
+                    <div className="flex items-center justify-between mt-1 p-2 bg-muted rounded-md text-muted-foreground font-mono">
+                        <span className="truncate">{ipAddress}</span>
+                    </div>
+                </div>
+            )}
             {password && (
                  <div className="w-full text-center">
                     <p className="text-sm font-medium">{passwordLabel || "Clave de Acceso:"}</p>
@@ -639,7 +647,7 @@ export default function ControlsPage() {
                           url={localUrl} 
                           status={statusIndicators.local.status}
                           password={remotePassword || 'cargando...'}
-                          passwordLabel="Clave de Acceso"
+                          passwordLabel="Clave de Acceso Remoto"
                        />
                   </TooltipContent>
               </Tooltip>
@@ -654,8 +662,10 @@ export default function ControlsPage() {
                         <QRTooltipContent 
                             title="Conexión por Internet" 
                             url={tunnelUrl} 
+                            ipAddress={publicIp ?? 'cargando...'}
+                            ipLabel="Clave de Túnel (IP Pública)"
                             password={remotePassword || 'cargando...'}
-                            passwordLabel="Clave de Acceso" 
+                            passwordLabel="Clave de Acceso Remoto" 
                             status={state.config.tunnel.status}
                             isConnecting={isConnectingTunnel}
                             onConnect={handleTunnelConnect}
