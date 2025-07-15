@@ -14,7 +14,11 @@
     "numberOfRegularPeriods": 2,
     "numberOfOvertimePeriods": 1,
     "maxConcurrentPenalties": 2,
-    "playersPerTeamOnIce": 5
+    "playersPerTeamOnIce": 5,
+    "enableMaxPenaltiesLimit": true,
+    "maxPenaltiesPerPlayer": 3,
+    "enableMaxPenaltyTimeLimit": false,
+    "maxPenaltyTimePerPlayerMinutes": 15
   },
   "penaltyTypes": [
     {

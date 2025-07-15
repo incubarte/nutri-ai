@@ -695,7 +695,7 @@ export default function ConfigPage() {
             <Separator />
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="item-1">
-                <AccordionTrigger className="text-lg text-primary-foreground hover:no-underline">Configuración Avanzada de Tipos de Penalidades</AccordionTrigger>
+                <AccordionTrigger className="text-lg text-primary-foreground hover:no-underline">Configuración Avanzada de Penalidades</AccordionTrigger>
                 <AccordionContent>
                   <PenaltyTypesCard ref={penaltyTypesRef} onDirtyChange={setIsPenaltyTypesDirty} initialValues={selectedFTProfile} />
                 </AccordionContent>

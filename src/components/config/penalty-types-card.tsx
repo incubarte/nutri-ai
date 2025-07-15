@@ -20,17 +20,19 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import { Switch } from "../ui/switch";
+import { Separator } from "../ui/separator";
 
 export interface PenaltyTypesCardRef {
   handleSave: () => boolean;
   handleDiscard: () => void;
   getIsDirty: () => boolean;
-  setValues: (values: Pick<FormatAndTimingsProfileData, 'penaltyTypes' | 'defaultPenaltyTypeId'>) => void;
+  setValues: (values: Partial<FormatAndTimingsProfileData>) => void;
 }
 
 interface PenaltyTypesCardProps {
   onDirtyChange: (isDirty: boolean) => void;
-  initialValues: Pick<FormatAndTimingsProfileData, 'penaltyTypes' | 'defaultPenaltyTypeId'>;
+  initialValues: Partial<FormatAndTimingsProfileData>;
 }
 
 const NO_TYPES_DEFINED_PLACEHOLDER_ID = "__NO_TYPES__";
@@ -41,13 +43,24 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
   const { toast } = useToast();
   
   const [localPenaltyTypes, setLocalPenaltyTypes] = useState<PenaltyTypeDefinition[]>(initialValues.penaltyTypes || []);
-  const [localDefaultPenaltyId, setLocalDefaultPenaltyId] = useState<string | null>(initialValues.defaultPenaltyTypeId);
-  const [isDirtyLocal, setIsDirtyLocal] = useState(false);
+  const [localDefaultPenaltyId, setLocalDefaultPenaltyId] = useState<string | null>(initialValues.defaultPenaltyTypeId || null);
   const [editingPenalty, setEditingPenalty] = useState<PenaltyTypeDefinition | null>(null);
+  
+  // New state for player penalty limits
+  const [enableMaxPenalties, setEnableMaxPenalties] = useState(initialValues.enableMaxPenaltiesLimit || false);
+  const [maxPenalties, setMaxPenalties] = useState(String(initialValues.maxPenaltiesPerPlayer || ''));
+  const [enableMaxTime, setEnableMaxTime] = useState(initialValues.enableMaxPenaltyTimeLimit || false);
+  const [maxTime, setMaxTime] = useState(String(initialValues.maxPenaltyTimePerPlayerMinutes || ''));
+  
+  const [isDirtyLocal, setIsDirtyLocal] = useState(false);
 
-  const setValuesFromProfile = (values: Pick<FormatAndTimingsProfileData, 'penaltyTypes' | 'defaultPenaltyTypeId'>) => {
+  const setValuesFromProfile = (values: Partial<FormatAndTimingsProfileData>) => {
     setLocalPenaltyTypes(values.penaltyTypes || []);
     setLocalDefaultPenaltyId(values.defaultPenaltyTypeId || null);
+    setEnableMaxPenalties(values.enableMaxPenaltiesLimit || false);
+    setMaxPenalties(String(values.maxPenaltiesPerPlayer || ''));
+    setEnableMaxTime(values.enableMaxPenaltyTimeLimit || false);
+    setMaxTime(String(values.maxPenaltyTimePerPlayerMinutes || ''));
     setIsDirtyLocal(false);
   };
 
@@ -70,6 +83,10 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
         payload: {
           penaltyTypes: localPenaltyTypes,
           defaultPenaltyTypeId: localDefaultPenaltyId,
+          enableMaxPenaltiesLimit: enableMaxPenalties,
+          maxPenaltiesPerPlayer: parseInt(maxPenalties, 10) || 3,
+          enableMaxPenaltyTimeLimit: enableMaxTime,
+          maxPenaltyTimePerPlayerMinutes: parseInt(maxTime, 10) || 15,
         }
       });
       setIsDirtyLocal(false);
@@ -112,7 +129,7 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
   };
 
   return (
-    <ControlCardWrapper title="Tipos de Penalidades">
+    <ControlCardWrapper title="Configuración Avanzada de Penalidades">
       <div className="space-y-4">
         <div>
           <Label htmlFor="defaultPenaltyType">Falta por Defecto</Label>
@@ -166,6 +183,32 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
             <Button onClick={handleAddNewPenalty} variant="outline" className="mt-2 w-full">
                 <Plus className="mr-2 h-4 w-4" /> Añadir Nuevo Tipo de Penalidad
             </Button>
+        </div>
+
+        <Separator />
+
+        <div>
+          <Label>Límites de Penalidades por Jugador</Label>
+          <div className="space-y-4 mt-2">
+            <div className="flex items-center justify-between p-3 border rounded-md bg-muted/20">
+              <Label htmlFor="enableMaxPenalties" className="font-normal">Habilitar límite de cantidad de penalidades</Label>
+              <Switch id="enableMaxPenalties" checked={enableMaxPenalties} onCheckedChange={(c) => { setEnableMaxPenalties(c); markDirty(); }} />
+            </div>
+            <div className="flex items-center justify-between p-3 border rounded-md bg-muted/20">
+              <Label htmlFor="maxPenaltiesPerPlayer" className="font-normal">Cantidad máxima de penalidades</Label>
+              <Input id="maxPenaltiesPerPlayer" type="number" value={maxPenalties} onChange={(e) => { setMaxPenalties(e.target.value); markDirty(); }} className="w-20 h-8" disabled={!enableMaxPenalties} />
+            </div>
+          </div>
+          <div className="space-y-4 mt-4">
+            <div className="flex items-center justify-between p-3 border rounded-md bg-muted/20">
+              <Label htmlFor="enableMaxTime" className="font-normal">Habilitar límite de tiempo total de penalidad</Label>
+              <Switch id="enableMaxTime" checked={enableMaxTime} onCheckedChange={(c) => { setEnableMaxTime(c); markDirty(); }} />
+            </div>
+             <div className="flex items-center justify-between p-3 border rounded-md bg-muted/20">
+              <Label htmlFor="maxPenaltyTime" className="font-normal">Tiempo máximo de penalidad (minutos)</Label>
+              <Input id="maxPenaltyTime" type="number" value={maxTime} onChange={(e) => { setMaxTime(e.target.value); markDirty(); }} className="w-20 h-8" disabled={!enableMaxTime} />
+            </div>
+          </div>
         </div>
       </div>
       

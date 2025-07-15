@@ -5,7 +5,17 @@ Bugs
 Funcionalidades
 1.Penales
 
-2. configurar maxima cantidad de penalidades por jugador
+2. Configurar si hay maxima cantidad de penalidades por jugador y cuantas serian.
+En caso de que la penalidad nueva alcance el maximo, marcar la penalidad de otro color en el tablero de controles
+
+Configurar si hay maxima cantidad de Tiempo por penalidades por jugador y cuanto serían.
+En caso de que el tiempo alcance el maximo, marcar la penalidad de otro color en el tablero de controles.
+
+Ojo, en las cuentas de cantidad de penalidades y tiempo acumulado para el jugador, no tener en cuenta las penalidades Eliminadas.
+
+Por defecto (poner la config en el file de defaults), la cantidad maxima de penalidades es 3, y maxima cantidad de tiempo deshabilitado (pero el tiempo ponelo en 15).
+
+
 
 Mejoras
 

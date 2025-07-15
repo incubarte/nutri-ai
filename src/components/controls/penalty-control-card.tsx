@@ -125,6 +125,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                 isSelectedForDeletion && "ring-2 ring-destructive border-destructive bg-destructive/10",
                 isWaitingSlot && "opacity-60 bg-muted/10",
                 isPendingPuck && "opacity-40 bg-yellow-500/5 border-yellow-500/30",
+                penalty._limitReached && "bg-amber-500/10 border-amber-500/40",
                 isEndingSoon && "animate-flashing-border border-2",
                 isMisconduct && "border-blue-500/30"
             )}
