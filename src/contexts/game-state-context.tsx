@@ -3,9 +3,9 @@
 "use client";
 
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useReducer, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
 import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition } from '@/types';
-import { toast } from '@/hooks/use-toast';
+import { toast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
 import { safeUUID } from '@/lib/utils';
@@ -1037,6 +1037,20 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const [isPageVisible, setIsPageVisible] = useState(true);
   const channelRef = useRef<BroadcastChannel | null>(null);
 
+  const syncToServer = useCallback(async (stateToSync: GameState) => {
+    try {
+      await updateConfigOnServer(stateToSync.config);
+      await updateGameStateOnServer(stateToSync.live);
+    } catch (error) {
+      showToast({
+        title: "Error de Sincronización",
+        description: "No se pudo sincronizar con el servidor.",
+        variant: "destructive",
+        duration: 2000,
+      });
+    }
+  }, []);
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (typeof document !== 'undefined') {
@@ -1091,15 +1105,12 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToBroadcast));
         channelRef.current?.postMessage(state);
-        
-        updateConfigOnServer(state.config).catch(err => console.error("Failed to sync config to server:", err));
-        updateGameStateOnServer(state.live).catch(err => console.error("Failed to sync game state to server:", err));
-
+        syncToServer(state);
       } catch (error) {
         console.error("Error saving/broadcasting state:", error);
       }
     }
-  }, [state, isLoading]);
+  }, [state, isLoading, syncToServer]);
   
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;

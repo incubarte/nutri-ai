@@ -5,31 +5,25 @@
 import type { LiveGameState, ConfigState, RemoteCommand } from '@/types';
 
 export async function updateConfigOnServer(config: ConfigState) {
-  try {
-    await fetch('/api/config', {
+  // The try/catch is removed. Let the caller handle errors.
+  await fetch('/api/config', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(config),
+  });
+}
+
+export async function updateGameStateOnServer(gameState: LiveGameState) {
+    // The try/catch is removed. Let the caller handle errors.
+    await fetch('/api/game-state', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(config),
+      body: JSON.stringify(gameState),
     });
-  } catch (error) {
-    console.error('Failed to send config to server:', error);
-  }
-}
-
-export async function updateGameStateOnServer(gameState: LiveGameState) {
-    try {
-        await fetch('/api/game-state', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(gameState),
-        });
-      } catch (error) {
-        console.error('Failed to send game state to server:', error);
-      }
 }
 
 export async function sendRemoteCommand(command: RemoteCommand) {
@@ -54,4 +48,3 @@ export async function sendRemoteCommand(command: RemoteCommand) {
     return { success: false, message: 'An unknown error occurred.' };
   }
 }
-

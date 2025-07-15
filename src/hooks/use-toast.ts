@@ -185,7 +185,7 @@ function useToast() {
   }, [state])
 
   return {
-    ...state,
+    toasts: state?.toasts || [],
     toast,
     dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
   }
