@@ -180,10 +180,11 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                                                     - {matchedPlayerForPenaltyDisplay.name}
                                                 </span>
                                             )}
+                                             {ejectionMessage && <span className="font-bold text-lg text-destructive">{ejectionMessage}</span>}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
                                             Total: {formatTime(penalty.initialDuration * 100)}
-                                            {ejectionMessage && <span className="font-bold text-lg text-destructive">{ejectionMessage}</span>}
+                                            {isMisconduct && <span className="text-blue-400 font-semibold"> (Mala Conducta)</span>}
                                         </p>
                                     </div>
                                 </div>
