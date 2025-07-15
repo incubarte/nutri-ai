@@ -48,8 +48,9 @@ export function EditTeamPlayersDialog({
   const isInitialized = useRef(false);
 
   const teamDetails = useMemo(() => {
-    return state.teams.find(t => t.id === teamId);
-  }, [state.teams, teamId]);
+    if (!state.config) return null;
+    return state.config.teams.find(t => t.id === teamId);
+  }, [state.config, teamId]);
 
   useEffect(() => {
     if (isOpen && teamDetails && !isInitialized.current) {
@@ -76,7 +77,7 @@ export function EditTeamPlayersDialog({
       setEditablePlayers(
         sortedPlayers.map(p => ({ ...p, localNumber: p.number, isModified: false }))
       );
-      const attendedIds = state.gameSummary?.attendance?.[teamType] || [];
+      const attendedIds = state.live?.gameSummary?.attendance?.[teamType] || [];
       setAttendedPlayerIds(new Set(attendedIds));
       isInitialized.current = true;
     } else if (!isOpen) {
@@ -84,7 +85,7 @@ export function EditTeamPlayersDialog({
       setAttendedPlayerIds(new Set());
       isInitialized.current = false;
     }
-  }, [isOpen, teamDetails, state.gameSummary, teamType]);
+  }, [isOpen, teamDetails, state.live, teamType]);
 
   const handlePlayerNumberChange = (playerId: string, newNumber: string) => {
     if (/^\d*$/.test(newNumber)) {
@@ -171,7 +172,7 @@ export function EditTeamPlayersDialog({
       }
     });
 
-    const originalAttendance = new Set(state.gameSummary?.attendance?.[teamType] || []);
+    const originalAttendance = new Set(state.live?.gameSummary?.attendance?.[teamType] || []);
     const attendanceChanged = !(attendedPlayerIds.size === originalAttendance.size && [...attendedPlayerIds].every(id => originalAttendance.has(id)));
 
     if (attendanceChanged) {
