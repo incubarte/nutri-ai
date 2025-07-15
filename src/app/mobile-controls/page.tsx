@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Team, LiveGameState } from '@/types';
+import type { Team, LiveGameState, PenaltyTypeDefinition } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -130,12 +130,16 @@ function AddGoalForm({ homeTeamName, awayTeamName, onGoalSent }: { homeTeamName:
     );
 }
 
-function AddPenaltyForm({ homeTeamName, awayTeamName, onPenaltySent }: { homeTeamName: string; awayTeamName: string; onPenaltySent: () => void }) {
+function AddPenaltyForm({ homeTeamName, awayTeamName, penaltyTypes, defaultPenaltyTypeId, onPenaltySent }: { homeTeamName: string; awayTeamName: string; penaltyTypes: PenaltyTypeDefinition[]; defaultPenaltyTypeId: string | null; onPenaltySent: () => void }) {
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [playerNumber, setPlayerNumber] = useState('');
-  const [penaltyDuration, setPenaltyDuration] = useState('120');
+  const [penaltyTypeId, setPenaltyTypeId] = useState<string | null>(defaultPenaltyTypeId);
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setPenaltyTypeId(defaultPenaltyTypeId);
+  }, [defaultPenaltyTypeId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,6 +151,10 @@ function AddPenaltyForm({ homeTeamName, awayTeamName, onPenaltySent }: { homeTea
       toast({ title: "Error", description: "El número del jugador es obligatorio.", variant: "destructive" });
       return;
     }
+    if (!penaltyTypeId) {
+      toast({ title: "Error", description: "Debes seleccionar un tipo de falta.", variant: "destructive" });
+      return;
+    }
 
     setIsSending(true);
     const result = await sendRemoteCommand({
@@ -154,7 +162,7 @@ function AddPenaltyForm({ homeTeamName, awayTeamName, onPenaltySent }: { homeTea
       payload: {
         team: selectedTeam,
         playerNumber: playerNumber.trim(),
-        duration: parseInt(penaltyDuration, 10),
+        penaltyTypeId: penaltyTypeId,
       }
     });
     setIsSending(false);
@@ -208,16 +216,16 @@ function AddPenaltyForm({ homeTeamName, awayTeamName, onPenaltySent }: { homeTea
           />
         </div>
         <div>
-          <Label htmlFor="penalty-duration">Duración</Label>
-          <Select value={penaltyDuration} onValueChange={setPenaltyDuration}>
-              <SelectTrigger id="penalty-duration" className="h-12 text-base">
+          <Label htmlFor="penalty-type">Tipo de Falta</Label>
+          <Select value={penaltyTypeId || ""} onValueChange={setPenaltyTypeId}>
+              <SelectTrigger id="penalty-type" className="h-12 text-base">
                   <SelectValue placeholder="Seleccionar..." />
               </SelectTrigger>
               <SelectContent>
-                  <SelectItem value="120">2:00 (Menor)</SelectItem>
-                  <SelectItem value="240">4:00 (Doble Menor)</SelectItem>
-                  <SelectItem value="300">5:00 (Mayor)</SelectItem>
-                  <SelectItem value="600">10:00 (Mala Conducta)</SelectItem>
+                  {penaltyTypes.map(pt => (
+                      <SelectItem key={pt.id} value={pt.id}>{pt.name}</SelectItem>
+                  ))}
+                  {penaltyTypes.length === 0 && <SelectItem value="no-types" disabled>No hay tipos</SelectItem>}
               </SelectContent>
           </Select>
         </div>
@@ -243,6 +251,7 @@ export default function MobileControlsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gameState, setGameState] = useState<LiveGameState | null>(null);
+  const [config, setConfig] = useState<any>(null); // Store config separately for penalty types
   
   const [isAddGoalDialogOpen, setIsAddGoalDialogOpen] = useState(false);
   const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
@@ -280,15 +289,25 @@ export default function MobileControlsPage() {
   const fetchInitialData = async () => {
     setError(null);
     try {
-      const response = await fetch('/api/game-state');
-      if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
-      }
-      const data: LiveGameState | null = await response.json();
-      setGameState(data);
+      // We need config for penalty types, so we fetch both.
+      const [gameStateRes, configRes] = await Promise.all([
+        fetch('/api/game-state'),
+        fetch('/api/config') // Assuming a config endpoint exists
+      ]);
+
+      if (!gameStateRes.ok) throw new Error(`Game state fetch failed: ${gameStateRes.status}`);
+      if (!configRes.ok) throw new Error(`Config fetch failed: ${configRes.status}`);
+
+      const gameStateData: LiveGameState | null = await gameStateRes.json();
+      const configData: any = await configRes.json();
+      
+      setGameState(gameStateData);
+      setConfig(configData);
+
     } catch (e) {
-      console.error("Failed to fetch initial game state:", e);
-      setError("No se pudo obtener el estado del partido del servidor.");
+      console.error("Failed to fetch initial data:", e);
+      const errorMessage = e instanceof Error ? e.message : "No se pudo obtener el estado del partido del servidor.";
+      setError(errorMessage);
     }
   };
   
@@ -313,7 +332,7 @@ export default function MobileControlsPage() {
     );
   }
   
-  if (error || !gameState) {
+  if (error || !gameState || !config) {
     return (
       <main className="w-full h-full p-4 bg-background">
         <div className="flex flex-col h-full w-full items-center justify-center text-center text-destructive">
@@ -395,6 +414,8 @@ export default function MobileControlsPage() {
           <AddPenaltyForm 
             homeTeamName={gameState.homeTeamName || 'Local'}
             awayTeamName={gameState.awayTeamName || 'Visitante'}
+            penaltyTypes={config.penaltyTypes || []}
+            defaultPenaltyTypeId={config.defaultPenaltyTypeId || null}
             onPenaltySent={() => {
               setIsAddPenaltyDialogOpen(false);
               setShowPuckInPlayButton(true);

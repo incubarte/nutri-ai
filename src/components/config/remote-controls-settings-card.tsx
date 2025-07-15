@@ -111,19 +111,15 @@ export const RemoteControlsSettingsCard = () => {
     const fetchIps = async () => {
       setIsLoadingIp(true);
       try {
-        const [publicRes, authRes] = await Promise.all([
-          fetch('/api/public-ip'),
-          fetch('/api/auth')
-        ]);
+        const publicRes = await fetch('/api/public-ip');
         
         if (publicRes.ok) {
           const data = await publicRes.json();
           setPublicIp(data.ip || 'No disponible');
-        }
-        
-        if (authRes.ok) {
-            const data = await authRes.json();
-            setRemotePassword(data.password || null);
+          setRemotePassword(data.password || null);
+        } else {
+          setPublicIp('No disponible');
+          setRemotePassword('Error');
         }
 
       } catch (error) {

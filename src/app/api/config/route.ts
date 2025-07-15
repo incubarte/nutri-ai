@@ -1,7 +1,16 @@
 
-import { setConfig } from '@/lib/server-side-store';
+import { getConfig, setConfig } from '@/lib/server-side-store';
 import { NextResponse } from 'next/server';
 import type { ConfigState } from '@/types';
+
+export async function GET(request: Request) {
+  const config = getConfig();
+  if (!config) {
+    return NextResponse.json({ message: 'Config not set.' }, { status: 404 });
+  }
+  return NextResponse.json(config);
+}
+
 
 export async function POST(request: Request) {
   try {

@@ -180,10 +180,9 @@ export default function ControlsPage() {
 
     const fetchIps = async () => {
         try {
-            const [localRes, publicRes, authRes] = await Promise.all([
+            const [localRes, publicRes] = await Promise.all([
                 fetch('/api/local-ip'),
-                fetch('/api/public-ip'),
-                fetch('/api/auth') // Fetch the password
+                fetch('/api/public-ip') // This now fetches public IP and password
             ]);
             if (localRes.ok) {
                 const data = await localRes.json();
@@ -192,9 +191,6 @@ export default function ControlsPage() {
             if (publicRes.ok) {
                 const data = await publicRes.json();
                 setPublicIp(data.ip || null);
-            }
-            if (authRes.ok) {
-                const data = await authRes.json();
                 setRemotePassword(data.password || null);
             }
         } catch (error) {
