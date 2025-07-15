@@ -87,8 +87,8 @@ const IN_CODE_INITIAL_AVAILABLE_CATEGORIES: CategoryData[] = IN_CODE_INITIAL_CAT
 const IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY = IN_CODE_INITIAL_AVAILABLE_CATEGORIES[0]?.id || '';
 
 const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
-  home: { goals: [], penalties: [] },
-  away: { goals: [], penalties: [] },
+  home: { goals: [], penalties: [], playerStats: {} },
+  away: { goals: [], penalties: [], playerStats: {} },
   attendance: { home: [], away: [] },
 };
 
@@ -137,7 +137,7 @@ const getInitialState = (): GameState => {
       tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
     },
     live: {
-      score: { home: 0, away: 0, homeGoals: [], awayGoals: [] },
+      score: { home: 0, away: 0, homeShots: 0, awayShots: 0, homeGoals: [], awayGoals: [] },
       penalties: { home: [], away: [] },
       clock: {
         currentTime: defaultInitialProfile.defaultWarmUpDuration, currentPeriod: 0, isClockRunning: false,
@@ -500,6 +500,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const homeGoals = (action.payload.team === 'home' ? [...(state.live.score.homeGoals || []), newGoal] : (state.live.score.homeGoals || []));
       const awayGoals = (action.payload.team === 'away' ? [...(state.live.score.awayGoals || []), newGoal] : (state.live.score.awayGoals || []));
       newState = { ...state, live: { ...state.live, score: {
+          ...state.live.score,
           home: homeGoals.length,
           away: awayGoals.length,
           homeGoals: homeGoals,
@@ -520,11 +521,46 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const homeGoals = (state.live.score.homeGoals || []).filter(g => g.id !== action.payload.goalId);
       const awayGoals = (state.live.score.awayGoals || []).filter(g => g.id !== action.payload.goalId);
       newState = { ...state, live: { ...state.live, score: {
+          ...state.live.score,
           home: homeGoals.length,
           away: awayGoals.length,
           homeGoals: homeGoals,
           awayGoals: awayGoals,
       }}};
+      break;
+    }
+    case 'ADJUST_SHOTS': {
+      const { team, delta } = action.payload;
+      const currentShots = state.live.score[`${team}Shots`] || 0;
+      newState = { ...state, live: { ...state.live, score: {
+        ...state.live.score,
+        [`${team}Shots`]: Math.max(0, currentShots + delta),
+      }}};
+      break;
+    }
+     case 'ADD_PLAYER_SHOT': {
+      const { team, playerNumber } = action.payload;
+      const playerStats = state.live.gameSummary[team]?.playerStats || {};
+      const currentPlayerShots = playerStats[playerNumber]?.shots || 0;
+      newState = { ...state, live: { ...state.live,
+        score: {
+          ...state.live.score,
+          [`${team}Shots`]: (state.live.score[`${team}Shots`] || 0) + 1,
+        },
+        gameSummary: {
+          ...state.live.gameSummary,
+          [team]: {
+            ...state.live.gameSummary[team],
+            playerStats: {
+              ...playerStats,
+              [playerNumber]: {
+                ...playerStats[playerNumber],
+                shots: currentPlayerShots + 1,
+              }
+            }
+          }
+        }
+      }};
       break;
     }
     case 'FINISH_GAME_WITH_OT_GOAL': {
@@ -535,6 +571,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       newState = { ...state, live: { ...state.live, 
         score: {
+          ...state.live.score,
           home: homeGoals.length,
           away: awayGoals.length,
           homeGoals,
@@ -1025,7 +1062,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'RESET_GAME_STATE': {
       const { defaultWarmUpDuration, autoStartWarmUp } = state.config;
       newState = { ...state, live: {
-        score: { home: 0, away: 0, homeGoals: [], awayGoals: [], },
+        score: { home: 0, away: 0, homeShots: 0, awayShots: 0, homeGoals: [], awayGoals: [], },
         penalties: { home: [], away: [], },
         clock: {
           currentTime: defaultWarmUpDuration, currentPeriod: 0, isClockRunning: autoStartWarmUp && defaultWarmUpDuration > 0,

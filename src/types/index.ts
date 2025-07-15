@@ -1,6 +1,7 @@
 
 
 
+
 export interface PenaltyTypeDefinition {
   id: string;
   name: string;
