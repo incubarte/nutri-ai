@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     defaultPenaltyTypeId: config?.defaultPenaltyTypeId || null,
     teams: config?.teams || [],
     selectedMatchCategory: config?.selectedMatchCategory || '',
+    gameSummary: gameState?.gameSummary,
   };
 
   return NextResponse.json(responsePayload);
