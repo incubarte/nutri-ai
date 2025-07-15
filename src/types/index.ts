@@ -1,5 +1,6 @@
 
 
+
 export interface PenaltyTypeDefinition {
   id: string;
   name: string;
@@ -133,11 +134,13 @@ export interface GameSummary {
     shots: number;
     goals: GoalLog[];
     penalties: PenaltyLog[];
+    playerStats: Record<string, { shots: number }>; // Key is player number
   };
   away: {
     shots: number;
     goals: GoalLog[];
     penalties: PenaltyLog[];
+    playerStats: Record<string, { shots: number }>; // Key is player number
   };
   attendance: {
     home: string[]; 
@@ -255,6 +258,7 @@ export interface LiveGameState {
 // --- Remote Commands ---
 export type RemoteCommand = 
   | { type: 'ADD_GOAL'; payload: { team: Team; scorerNumber: string; assistNumber?: string } }
+  | { type: 'ADD_SHOT'; payload: { team: Team; playerNumber: string } }
   | { type: 'ADD_PENALTY'; payload: { team: Team; playerNumber: string; penaltyTypeId: string; } }
   | { type: 'ACTIVATE_PENDING_PUCK_PENALTIES' };
 
@@ -269,6 +273,7 @@ export type GameAction =
   | { type: 'EDIT_GOAL'; payload: { goalId: string; updates: Partial<GoalLog> } }
   | { type: 'DELETE_GOAL'; payload: { goalId: string } }
   | { type: 'ADJUST_SHOTS'; payload: { team: Team; delta: number } }
+  | { type: 'ADD_PLAYER_SHOT'; payload: { team: Team; playerNumber: string } }
   | { type: 'FINISH_GAME_WITH_OT_GOAL'; payload: Omit<GoalLog, 'id'> }
   | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; penaltyTypeId: string; } } }
   | { type: 'REMOVE_PENALTY'; payload: { team: Team; penaltyId: string } }
@@ -318,3 +323,4 @@ export type GameAction =
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
+

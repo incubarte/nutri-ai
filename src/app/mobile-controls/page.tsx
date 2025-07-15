@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Goal, Send, Users, Siren, WifiOff, RefreshCw, PlayCircle, ShieldCheck } from 'lucide-react';
+import { Goal, Send, Users, Siren, WifiOff, RefreshCw, PlayCircle, ShieldCheck, Crosshair } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '../actions';
 import {
@@ -365,6 +366,13 @@ export default function MobileControlsPage() {
             <Goal className="mr-4 h-8 w-8" />
             Añadir Gol
           </Button>
+          <Button
+            className="w-full h-24 text-2xl font-bold"
+            onClick={() => router.push('/mobile-controls/shots')}
+          >
+            <Crosshair className="mr-4 h-8 w-8" />
+            Registrar Tiro
+          </Button>
            <Button
             className="w-full h-24 text-2xl font-bold"
             onClick={() => setIsAddPenaltyDialogOpen(true)}
@@ -425,3 +433,4 @@ export default function MobileControlsPage() {
     </main>
   );
 }
+

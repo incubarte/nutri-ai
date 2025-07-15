@@ -4,15 +4,18 @@ Bugs
 
 Funcionalidades
 1.Penales
-
+2. Penalidad de Banco
+3. Sacar la config de maxima penaldidad por tiempo.
 
 Mejoras
+2. No grisar las penaldiades esperando puck, solo poner el cartel de esperando puck
 
 3. Poner una pass para controles remotos (generada por la app al iniciar) 
 En realidad poner una pass para toda pantalla accedible desde una ip diferente a dode corre el server.
 La pass se muestra en el tablero de controles.
 
-
 4. Mejorar el tema de las customizaciones de display
 Algunos colores no son configurables.
 Usar mejor los espacios.
+
+5. Avisar como warning en ultima penalidad posible a que sea expulsado.
