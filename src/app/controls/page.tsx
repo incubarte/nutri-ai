@@ -621,6 +621,8 @@ export default function ControlsPage() {
                           title="Conexión de Red Local" 
                           url={localUrl} 
                           status={statusIndicators.local.status}
+                          password={remotePassword || 'cargando...'}
+                          passwordLabel="Clave de Acceso"
                        />
                   </TooltipContent>
               </Tooltip>
