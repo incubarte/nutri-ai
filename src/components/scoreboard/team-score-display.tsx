@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { User, Crosshair } from 'lucide-react';
+import { User } from 'lucide-react';
 import type { ScoreboardLayoutSettings } from '@/types';
 import { Button } from '../ui/button';
 
@@ -12,7 +12,6 @@ interface TeamScoreDisplayProps {
   teamActualName: string;
   teamDisplayName: "Local" | "Visitante";
   score: number;
-  shots: number;
   playersOnIce?: number;
   configuredPlayersPerTeam?: number;
   layout?: ScoreboardLayoutSettings;
@@ -29,7 +28,6 @@ export function TeamScoreDisplay({
   teamActualName,
   teamDisplayName,
   score,
-  shots,
   playersOnIce = 0,
   configuredPlayersPerTeam = 0,
   layout,
@@ -133,14 +131,6 @@ export function TeamScoreDisplay({
                 {configuredPlayersPerTeam > 0 && playersOnIce === 0 && (
                 <span className="text-sm md:text-base lg:text-lg text-destructive animate-pulse">0 JUGADORES</span>
                 )}
-            </div>
-            <div className="flex items-center gap-1 text-muted-foreground mb-1">
-                <Crosshair style={{
-                    height: `${layout.playersOnIceIconSize * 0.75}rem`,
-                    width: `${layout.playersOnIceIconSize * 0.75}rem`
-                    }}
-                />
-                <span className="font-mono" style={{ fontSize: `${layout.teamLabelSize}rem`}}>{shots}</span>
             </div>
         </div>
 

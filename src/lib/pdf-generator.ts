@@ -3,15 +3,48 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatTime, getCategoryNameById, getEndReasonText, type GameState } from '@/contexts/game-state-context';
-import type { GoalLog, PenaltyLog, PlayerData } from '@/types';
+import type { GoalLog, PenaltyLog, PlayerData, PlayerStats } from '@/types';
 
-const addTeamSection = (doc: jsPDF, teamName: string, shots: number, goals: GoalLog[], penalties: PenaltyLog[], attendedPlayers: PlayerData[], startY: number): number => {
+const addTeamSection = (doc: jsPDF, teamName: string, goals: GoalLog[], penalties: PenaltyLog[], playerStats: PlayerStats | undefined, startY: number): number => {
     let currentY = startY;
 
-    doc.setFontSize(12);
-    doc.text(`Tiros a Puerta: ${shots}`, 150, currentY);
+    const attendedPlayers = playerStats ? Object.entries(playerStats)
+        .map(([playerNumber, stats]) => ({
+            number: playerNumber,
+            ...stats
+        }))
+        .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999))
+        : [];
     
+    // --- Estadisticas Section ---
+    doc.setFontSize(14);
+    doc.text(`${teamName} - Estadísticas de Jugador`, 14, currentY);
+    currentY += 2;
+
+    if (attendedPlayers.length > 0) {
+        autoTable(doc, {
+            startY: currentY,
+            head: [['#', 'Nombre', 'G', 'A', 'Tiros']],
+            body: attendedPlayers.map(p => [
+                p.number,
+                p.name,
+                p.goals,
+                p.assists,
+                p.shots
+            ]),
+            theme: 'striped',
+            headStyles: { fillColor: [22, 163, 74] },
+        });
+        currentY = (doc as any).lastAutoTable.finalY;
+    } else {
+        doc.setFontSize(10);
+        doc.text("Sin estadísticas registradas.", 14, currentY + 6);
+        currentY += 10;
+    }
+
+
     // --- Goles Section ---
+    currentY += 12;
     doc.setFontSize(14);
     doc.text(`${teamName} - Goles`, 14, currentY);
     currentY += 2;
@@ -56,28 +89,7 @@ const addTeamSection = (doc: jsPDF, teamName: string, shots: number, goals: Goal
         doc.text("Sin penalidades registradas.", 14, currentY + 6);
         currentY += 10;
     }
-
-    // --- Asistencia Section ---
-    currentY += 12;
-    doc.setFontSize(14);
-    doc.text(`${teamName} - Asistencia`, 14, currentY);
-    currentY += 2;
-
-    if (attendedPlayers.length > 0) {
-        autoTable(doc, {
-            startY: currentY,
-            head: [['#', 'Nombre']],
-            body: attendedPlayers.map(p => [p.number || 'S/N', p.name || '---']),
-            theme: 'grid',
-            headStyles: { fillColor: [22, 163, 74] },
-        });
-        currentY = (doc as any).lastAutoTable.finalY;
-    } else {
-        doc.setFontSize(10);
-        doc.text("Sin jugadores marcados como asistentes.", 14, currentY + 6);
-        currentY += 10;
-    }
-
+    
     return currentY;
 };
 
@@ -109,21 +121,9 @@ export const exportGameSummaryPDF = (state: GameState) => {
     const homePenalties = [...live.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
     const awayPenalties = [...live.gameSummary.away.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
 
-    const homeTeamData = config.teams.find(t => t.name === live.homeTeamName && (t.subName || undefined) === (live.homeTeamSubName || undefined) && t.category === config.selectedMatchCategory);
-    const awayTeamData = config.teams.find(t => t.name === live.awayTeamName && (t.subName || undefined) === (live.awayTeamSubName || undefined) && t.category === config.selectedMatchCategory);
-
-    const homeAttendanceIds = new Set(live.gameSummary.attendance?.home || []);
-    const homeAttendedPlayers = homeTeamData?.players
-        .filter(p => homeAttendanceIds.has(p.id))
-        .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999)) || [];
-
-    const awayAttendanceIds = new Set(live.gameSummary.attendance?.away || []);
-    const awayAttendedPlayers = awayTeamData?.players
-        .filter(p => awayAttendanceIds.has(p.id))
-        .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999)) || [];
-    
-    const homeFinalY = addTeamSection(doc, live.homeTeamName, live.score.homeShots, homeGoals, homePenalties, homeAttendedPlayers, 40);
-    addTeamSection(doc, live.awayTeamName, live.score.awayShots, awayGoals, awayPenalties, awayAttendedPlayers, homeFinalY + 15);
+    const homeFinalY = addTeamSection(doc, live.homeTeamName, homeGoals, homePenalties, live.gameSummary.home.playerStats, 40);
+    doc.addPage();
+    addTeamSection(doc, live.awayTeamName, awayGoals, awayPenalties, live.gameSummary.away.playerStats, 20);
 
     doc.save(filename);
     

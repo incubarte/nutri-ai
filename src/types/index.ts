@@ -1,5 +1,12 @@
 
 
+export interface PlayerStats {
+  name: string;
+  shots: number;
+  goals: number;
+  assists: number;
+}
+
 export interface PenaltyTypeDefinition {
   id: string;
   name: string;
@@ -138,12 +145,12 @@ export interface GameSummary {
   home: {
     goals: GoalLog[];
     penalties: PenaltyLog[];
-    playerStats: Record<string, { shots: number }>; // Key is player number
+    playerStats: Record<string, PlayerStats>; 
   };
   away: {
     goals: GoalLog[];
     penalties: PenaltyLog[];
-    playerStats: Record<string, { shots: number }>; // Key is player number
+    playerStats: Record<string, PlayerStats>;
   };
   attendance: {
     home: AttendedPlayerInfo[]; 
@@ -212,8 +219,6 @@ export interface ClockState {
 export interface ScoreState {
   home: number;
   away: number;
-  homeShots: number;
-  awayShots: number;
   homeGoals: GoalLog[];
   awayGoals: GoalLog[];
 }
@@ -281,7 +286,6 @@ export type GameAction =
   | { type: 'ADD_GOAL'; payload: Omit<GoalLog, 'id'> }
   | { type: 'EDIT_GOAL'; payload: { goalId: string; updates: Partial<GoalLog> } }
   | { type: 'DELETE_GOAL'; payload: { goalId: string } }
-  | { type: 'ADJUST_SHOTS'; payload: { team: Team; delta: number } }
   | { type: 'ADD_PLAYER_SHOT'; payload: { team: Team; playerNumber: string } }
   | { type: 'FINISH_GAME_WITH_OT_GOAL'; payload: Omit<GoalLog, 'id'> }
   | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; penaltyTypeId: string; } } }

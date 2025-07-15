@@ -43,7 +43,6 @@ export function CompactHeaderScoreboard() {
           teamActualName={homeTeamName} 
           teamDisplayName="Local" 
           score={score.home}
-          shots={score.homeShots}
           playersOnIce={playersOnIceForHome}
           configuredPlayersPerTeam={playersPerTeamOnIce}
           layout={scoreboardLayout}
@@ -53,7 +52,6 @@ export function CompactHeaderScoreboard() {
           teamActualName={awayTeamName} 
           teamDisplayName="Visitante" 
           score={score.away} 
-          shots={score.awayShots}
           playersOnIce={playersOnIceForAway}
           configuredPlayersPerTeam={playersPerTeamOnIce}
           layout={scoreboardLayout}

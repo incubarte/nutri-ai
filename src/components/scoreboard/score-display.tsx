@@ -1,4 +1,5 @@
 
+
 "use client";
 
 // This component's core functionality (TeamScore) has been extracted to TeamScoreDisplay.
@@ -33,4 +34,3 @@ export function ScoreDisplay() {
     </Card>
   );
 }
-
