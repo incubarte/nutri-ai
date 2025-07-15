@@ -2,12 +2,13 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Team, LiveGameState } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Goal, Send, Users, Siren, WifiOff, RefreshCw, PlayCircle } from 'lucide-react';
+import { Goal, Send, Users, Siren, WifiOff, RefreshCw, PlayCircle, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '../actions';
 import {
@@ -22,6 +23,8 @@ import {
 import { cn } from '@/lib/utils';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const AUTH_KEY = 'icevision-remote-auth-key';
 
 function AddGoalForm({ homeTeamName, awayTeamName, onGoalSent }: { homeTeamName: string; awayTeamName: string; onGoalSent: () => void }) {
     const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
@@ -235,7 +238,9 @@ function AddPenaltyForm({ homeTeamName, awayTeamName, onPenaltySent }: { homeTea
 
 
 export default function MobileControlsPage() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gameState, setGameState] = useState<LiveGameState | null>(null);
   
@@ -245,8 +250,34 @@ export default function MobileControlsPage() {
 
   const { toast } = useToast();
 
+  useEffect(() => {
+    const authenticateAndLoad = async () => {
+      try {
+        const password = localStorage.getItem(AUTH_KEY);
+        const res = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password }),
+        });
+        const data = await res.json();
+        
+        if (data.authenticated) {
+            setIsAuthenticated(true);
+            await fetchInitialData();
+        } else {
+            router.replace('/mobile-controls/login');
+        }
+      } catch (e) {
+        console.error("Auth check failed", e);
+        setError("Error de autenticación. Intenta de nuevo.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    authenticateAndLoad();
+  }, [router]);
+
   const fetchInitialData = async () => {
-    setIsLoading(true);
     setError(null);
     try {
       const response = await fetch('/api/game-state');
@@ -258,14 +289,8 @@ export default function MobileControlsPage() {
     } catch (e) {
       console.error("Failed to fetch initial game state:", e);
       setError("No se pudo obtener el estado del partido del servidor.");
-    } finally {
-      setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
   
   const handlePuckInPlay = async () => {
     const result = await sendRemoteCommand({ type: 'ACTIVATE_PENDING_PUCK_PENALTIES' });
@@ -277,31 +302,35 @@ export default function MobileControlsPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !isAuthenticated) {
     return (
-      <div className="flex flex-col h-full w-full items-center justify-center text-center">
-        <LoadingSpinner className="h-12 w-12 text-primary" />
-        <p className="text-muted-foreground mt-4">Cargando control remoto...</p>
-      </div>
+      <main className="w-full h-full p-4 bg-background">
+        <div className="flex flex-col h-full w-full items-center justify-center text-center">
+          <ShieldCheck className="h-12 w-12 text-primary animate-pulse" />
+          <p className="text-muted-foreground mt-4">Verificando acceso...</p>
+        </div>
+      </main>
     );
   }
   
   if (error || !gameState) {
     return (
-      <div className="flex flex-col h-full w-full items-center justify-center text-center text-destructive">
-         <WifiOff className="h-16 w-16" />
-        <h1 className="text-2xl font-bold mt-4">Error de Conexión</h1>
-        <p className="text-destructive-foreground/80">{error || "No se pudo cargar la información del partido."}</p>
-        <Button onClick={fetchInitialData} className="mt-6">
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Reintentar
-        </Button>
-      </div>
+      <main className="w-full h-full p-4 bg-background">
+        <div className="flex flex-col h-full w-full items-center justify-center text-center text-destructive">
+          <WifiOff className="h-16 w-16" />
+          <h1 className="text-2xl font-bold mt-4">Error de Conexión</h1>
+          <p className="text-destructive-foreground/80">{error || "No se pudo cargar la información del partido."}</p>
+          <Button onClick={fetchInitialData} className="mt-6">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Reintentar
+          </Button>
+        </div>
+      </main>
     );
   }
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-8 pt-8">
+    <main className="w-full max-w-md mx-auto space-y-8 pt-8">
       <div className="text-center space-y-2">
         <Users className="mx-auto h-12 w-12 text-primary" />
         <h1 className="text-3xl font-bold text-primary-foreground">Control Remoto</h1>
@@ -373,6 +402,6 @@ export default function MobileControlsPage() {
           />
         </DialogContent>
       </Dialog>
-    </div>
+    </main>
   );
 }

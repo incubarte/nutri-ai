@@ -72,6 +72,9 @@ const LocalNetworkManager = () => {
                         <span className="font-mono">{localPort || "cargando..."}</span>
                     </div>
                 </div>
+                 <p className="text-xs text-muted-foreground p-2 rounded-md bg-muted/50 border">
+                    <span className="font-bold text-card-foreground">Nota Importante:</span> La conexión por red local puede fallar si tu router Wi-Fi tiene activada la opción "Aislamiento de AP/Cliente", que impide la comunicación entre dispositivos conectados a la misma red.
+                </p>
             </div>
             <div className="flex flex-col items-center justify-center space-y-4">
                  <Label className="text-base font-medium">QR para Acceso Móvil (Red Local)</Label>
@@ -101,24 +104,36 @@ export const RemoteControlsSettingsCard = () => {
   const { tunnel } = state.config;
 
   const [publicIp, setPublicIp] = useState<string | null>(null);
+  const [remotePassword, setRemotePassword] = useState<string | null>(null);
   const [isLoadingIp, setIsLoadingIp] = useState(true);
 
   useEffect(() => {
-    const fetchIp = async () => {
+    const fetchIps = async () => {
       setIsLoadingIp(true);
       try {
-        const response = await fetch('/api/public-ip');
-        if (!response.ok) throw new Error('Failed to fetch');
-        const data = await response.json();
-        setPublicIp(data.ip || 'No disponible');
+        const [publicRes, authRes] = await Promise.all([
+          fetch('/api/public-ip'),
+          fetch('/api/auth')
+        ]);
+        
+        if (publicRes.ok) {
+          const data = await publicRes.json();
+          setPublicIp(data.ip || 'No disponible');
+        }
+        
+        if (authRes.ok) {
+            const data = await authRes.json();
+            setRemotePassword(data.password || null);
+        }
+
       } catch (error) {
-        console.error("Failed to fetch public IP:", error);
+        console.error("Failed to fetch public IP/Auth:", error);
         setPublicIp('Error al obtener');
       } finally {
         setIsLoadingIp(false);
       }
     };
-    fetchIp();
+    fetchIps();
   }, []);
 
   useEffect(() => {
@@ -276,19 +291,19 @@ export const RemoteControlsSettingsCard = () => {
             </div>
           </div>
           <div className="mt-8 border-t pt-4 space-y-2">
-            <Label className="text-base font-medium">Contraseña (IP Pública del Servidor)</Label>
+            <Label className="text-base font-medium">Contraseña de Acceso Remoto</Label>
             <div className="flex items-center gap-2">
                 {isLoadingIp ? (
                     <Skeleton className="h-10 w-full" />
                 ) : (
                     <div className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-muted px-3 py-2 text-sm">
-                        <span className="font-mono">{publicIp}</span>
+                        <span className="font-mono text-lg tracking-widest">{remotePassword || '-----'}</span>
                         <Button
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={() => publicIp && handleCopyToClipboard(publicIp)}
-                            disabled={!publicIp || publicIp.includes('Error')}
+                            onClick={() => remotePassword && handleCopyToClipboard(remotePassword)}
+                            disabled={!remotePassword}
                         >
                             <Copy className="h-4 w-4" />
                         </Button>
@@ -296,7 +311,7 @@ export const RemoteControlsSettingsCard = () => {
                 )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Esta es la IP que los dispositivos remotos pueden usar para conectarse, si es necesario.
+              Esta es la contraseña que los dispositivos remotos deben usar para conectarse. Es válida para ambas conexiones (local e internet).
             </p>
           </div>
         </ControlCardWrapper>

@@ -1,5 +1,6 @@
 
 import { NextResponse } from 'next/server';
+import { getRemoteAccessPassword } from '@/lib/server-side-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'No se pudo determinar la IP pública del servidor.' }, { status: 500 });
     }
 
-    return NextResponse.json({ ip: publicIp });
+    // Also return the password
+    const password = getRemoteAccessPassword();
+
+    return NextResponse.json({ ip: publicIp, password: password });
   } catch (error) {
     console.error("Error fetching server's public IP:", error);
     const errorMessage = error instanceof Error ? error.message : 'Error desconocido';

@@ -103,6 +103,7 @@ export default function ControlsPage() {
 
   const [localIp, setLocalIp] = useState<string | null>(null);
   const [publicIp, setPublicIp] = useState<string | null>(null);
+  const [remotePassword, setRemotePassword] = useState<string | null>(null);
   const [localPort, setLocalPort] = useState<string>('');
   const [isConnectingTunnel, setIsConnectingTunnel] = useState(false);
 
@@ -179,9 +180,10 @@ export default function ControlsPage() {
 
     const fetchIps = async () => {
         try {
-            const [localRes, publicRes] = await Promise.all([
+            const [localRes, publicRes, authRes] = await Promise.all([
                 fetch('/api/local-ip'),
-                fetch('/api/public-ip')
+                fetch('/api/public-ip'),
+                fetch('/api/auth') // Fetch the password
             ]);
             if (localRes.ok) {
                 const data = await localRes.json();
@@ -190,6 +192,10 @@ export default function ControlsPage() {
             if (publicRes.ok) {
                 const data = await publicRes.json();
                 setPublicIp(data.ip || null);
+            }
+            if (authRes.ok) {
+                const data = await authRes.json();
+                setRemotePassword(data.password || null);
             }
         } catch (error) {
             console.warn("Could not fetch IP addresses for QR codes.", error);
@@ -633,8 +639,8 @@ export default function ControlsPage() {
                         <QRTooltipContent 
                             title="Conexión por Internet" 
                             url={tunnelUrl} 
-                            password={tunnelUrl ? (publicIp || 'cargando...') : undefined}
-                            passwordLabel="IP Pública (Clave)" 
+                            password={remotePassword || 'cargando...'}
+                            passwordLabel="Clave de Acceso" 
                             status={state.config.tunnel.status}
                             isConnecting={isConnectingTunnel}
                             onConnect={handleTunnelConnect}
@@ -701,7 +707,3 @@ export default function ControlsPage() {
 
     </div>
   );
-  
-
-
-    

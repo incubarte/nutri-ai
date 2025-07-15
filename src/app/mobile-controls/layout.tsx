@@ -10,9 +10,10 @@ export default function MobileControlsLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // The main div is now here to wrap both login and controls pages.
   return (
-    <main className="w-full h-full p-4 bg-background">
+    <div className="w-full h-full p-4 bg-background">
       {children}
-    </main>
+    </div>
   );
 }
