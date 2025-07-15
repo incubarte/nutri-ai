@@ -7,84 +7,11 @@ Mejoras
 2. Meterle un tooltip al boton de finalizar penalidad por gol.
 (Al dejar el mouse encima del boton, aparezca el tooltip)
 
-3. Mejorar el tema de las customizaciones de display
+3. Poner una pass para controles remotos (generada por la app al iniciar) 
+En realidad poner una pass para toda pantalla accedible desde una ip diferente a dode corre el server.
+La pass se muestra en el tablero de controles.
+
+
+4. Mejorar el tema de las customizaciones de display
 Algunos colores no son configurables.
 Usar mejor los espacios.
-
-
-
-
-4. Agregar script para abrir segundo monitor maximizado.
-
-=== Previo ===
-
-pip install selenium
-sudo apt install chromium-chromedriver wmctrl xrandr
-
-(Selenium para abrir Chrome.
-wmctrl para mover la ventana al segundo monitor
-xrandr para obtener información sobre tus monitores)
-
-
-=== Script ===
-import subprocess
-import time
-from selenium import webdriver
-
-def get_second_monitor_offset_x():
-    # Ejecuta xrandr y busca la posición X del segundo monitor
-    result = subprocess.run(["xrandr"], capture_output=True, text=True)
-    lines = result.stdout.splitlines()
-    positions = []
-
-    for line in lines:
-        if " connected" in line:
-            parts = line.split()
-            for part in parts:
-                if "+" in part and "x" in part:
-                    try:
-                        # Ejemplo de part: "1920x1080+1920+0"
-                        offset_x = int(part.split("+")[1])
-                        positions.append(offset_x)
-                    except:
-                        pass
-
-    if len(positions) >= 2:
-        return positions[1]
-    elif len(positions) == 1:
-        return 0  # Solo un monitor
-    else:
-        return 0
-
-# Obtener posición del segundo monitor
-x_offset = get_second_monitor_offset_x()
-print(f"Posición horizontal del segundo monitor: {x_offset}")
-
-# Configurar Chrome en modo kiosco
-url = "http://localhost:9002"
-options = webdriver.ChromeOptions()
-options.add_argument("--kiosk")
-options.add_argument(f"--app={url}")
-
-# Lanzar Chrome
-driver = webdriver.Chrome(options=options)
-
-# Esperar a que la ventana se abra
-time.sleep(2)
-
-# Buscar ventana con wmctrl
-result = subprocess.run(["wmctrl", "-l"], capture_output=True, text=True)
-lines = result.stdout.splitlines()
-
-window_id = None
-for line in lines:
-    if "localhost" in line or url in line:
-        window_id = line.split()[0]
-        break
-
-if window_id:
-    # Mover ventana al segundo monitor
-    subprocess.run(["wmctrl", "-i", "-r", window_id, "-e", f"0,{x_offset},0,-1,-1"])
-    print("Chrome movido al segundo monitor en modo kiosco.")
-else:
-    print("No se encontró la ventana de Chrome.")
