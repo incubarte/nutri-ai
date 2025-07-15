@@ -6,19 +6,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Home, Settings, Wrench, Trash2, MonitorPlay } from 'lucide-react';
+import { Home, Settings, Wrench, MonitorPlay } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { FullscreenToggle } from './fullscreen-toggle';
 
@@ -34,19 +23,6 @@ export function Header() {
 
   const [isVisible, setIsVisible] = useState(!isScoreboardPage);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const [showClearStorageConfirmation, setShowClearStorageConfirmation] = useState(false);
-
-  const handleClearLocalStorage = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.clear();
-      toast({
-        title: "Datos Locales Eliminados",
-        description: "Se ha limpiado el almacenamiento local. La página se recargará.",
-      });
-      setTimeout(() => window.location.reload(), 1500);
-    }
-  };
 
   const handleOpenExternalWindow = async () => {
     let config = null;
@@ -242,30 +218,6 @@ export function Header() {
 
           {isScoreboardPage && (
             <FullscreenToggle />
-          )}
-
-          {isControlsPage && (
-            <AlertDialog open={showClearStorageConfirmation} onOpenChange={setShowClearStorageConfirmation}>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive hover:text-destructive-foreground">
-                  <Trash2 className="h-5 w-5" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Confirmar Limpieza Total</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta acción eliminará permanentemente TODA la configuración (perfiles, equipos, etc.) y el estado del juego actual del almacenamiento local de este navegador. Esta acción es irreversible. ¿Estás seguro de que quieres continuar?
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleClearLocalStorage} className="bg-destructive hover:bg-destructive/90">
-                    Sí, Borrar Todo
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           )}
 
         </div>
