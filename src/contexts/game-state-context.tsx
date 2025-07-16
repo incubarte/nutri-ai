@@ -669,11 +669,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
       
       const limitReachedReasons: ('quantity')[] = [];
+      // Do not count bench penalties towards a player's limit.
       const playerPenalties = state.live.gameSummary[team].penalties.filter(
-        p => p.playerNumber === playerNumber && p.endReason !== 'deleted'
+        p => p.playerNumber === playerNumber && p.endReason !== 'deleted' && !p.isBenchPenalty
       );
       
-      if (state.config.enableMaxPenaltiesLimit) {
+      // Only check quantity limit for non-bench penalties
+      if (state.config.enableMaxPenaltiesLimit && !penaltyDef.isBenchPenalty) {
         if (playerPenalties.length + 1 >= state.config.maxPenaltiesPerPlayer) {
           limitReachedReasons.push('quantity');
         }
@@ -696,6 +698,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         playerNumber: playerNumber,
         initialDuration: penaltyDef.duration,
         penaltyType: penaltyDef.type,
+        isBenchPenalty: penaltyDef.isBenchPenalty,
         _status: newStatus,
         startTime,
         expirationTime,
@@ -710,6 +713,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         initialDuration: newPenalty.initialDuration, addTimestamp: Date.now(), addGameTime: state.live.clock.currentTime,
         addPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
         penaltyType: newPenalty.penaltyType,
+        isBenchPenalty: newPenalty.isBenchPenalty,
       };
 
       newState = { ...state, live: { ...state.live,
@@ -1030,8 +1034,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         };
         break;
     }
-    case 'ADD_FORMAT_AND_TIMINGS_PROFILE': newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: [...state.config.formatAndTimingsProfiles, createDefaultFormatAndTimingsProfile(undefined, action.payload.name)] }}; break;
-    case 'UPDATE_FORMAT_AND_TIMINGS_PROFILE_NAME': newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: state.config.formatAndTimingsProfiles.map(p => p.id === action.payload.profileId ? {...p, name: action.payload.newName} : p) }}; break;
+    case 'ADD_FORMAT_AND_TIMINGS_PROFILE': newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: [...state.config.formatAndTimingsProfiles, createDefaultFormatAndTimingsProfile(undefined, action.payload.name)] } }; break;
+    case 'UPDATE_FORMAT_AND_TIMINGS_PROFILE_NAME': newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: state.config.formatAndTimingsProfiles.map(p => p.id === action.payload.profileId ? {...p, name: action.payload.newName} : p) } }; break;
     case 'DELETE_FORMAT_AND_TIMINGS_PROFILE': {
         let newProfiles = state.config.formatAndTimingsProfiles.filter(p => p.id !== action.payload.profileId);
         if (newProfiles.length === 0) newProfiles = [createDefaultFormatAndTimingsProfile()];
@@ -1049,6 +1053,24 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: newProfiles, selectedFormatAndTimingsProfileId: newProfiles[0].id } };
         newState = applyFormatAndTimingsProfileToState(newState, newProfiles[0].id);
         break;
+    }
+    case 'REORDER_PENALTY_TYPES': {
+      if (!state.config.selectedFormatAndTimingsProfileId) break;
+      const { startIndex, endIndex } = action.payload;
+
+      const newProfiles = state.config.formatAndTimingsProfiles.map(p => {
+        if (p.id === state.config.selectedFormatAndTimingsProfileId) {
+          const newPenaltyTypes = [...(p.penaltyTypes || [])];
+          const [removed] = newPenaltyTypes.splice(startIndex, 1);
+          if(removed) newPenaltyTypes.splice(endIndex, 0, removed);
+          return { ...p, penaltyTypes: newPenaltyTypes };
+        }
+        return p;
+      });
+
+      const updatedState = { ...state, config: { ...state.config, formatAndTimingsProfiles: newProfiles }};
+      newState = applyFormatAndTimingsProfileToState(updatedState, state.config.selectedFormatAndTimingsProfileId);
+      break;
     }
     case 'UPDATE_LAYOUT_SETTINGS': newState = { ...state, config: { ...state.config, scoreboardLayout: { ...state.config.scoreboardLayout, ...action.payload } }}; break;
     case 'SAVE_CURRENT_LAYOUT_TO_PROFILE': {
