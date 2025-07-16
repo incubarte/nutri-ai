@@ -78,8 +78,15 @@ const addTeamSection = (doc: jsPDF, teamName: string, goals: GoalLog[], penaltie
     if (penalties.length > 0) {
         autoTable(doc, {
             startY: currentY,
-            head: [['Tiempo', 'Periodo', 'Jugador #', 'Nombre', 'Duración', 'Estado']],
-            body: penalties.map(p => [formatTime(p.addGameTime), p.addPeriodText, p.playerNumber, p.playerName || '---', formatTime(p.initialDuration * 100), getEndReasonText(p.endReason)]),
+            head: [['Tiempo', 'Periodo', 'Jugador', 'Nombre', 'Duración', 'Estado']],
+            body: penalties.map(p => [
+                formatTime(p.addGameTime), 
+                p.addPeriodText, 
+                p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber}`, 
+                p.playerName || '---', 
+                formatTime(p.initialDuration * 100), 
+                getEndReasonText(p.endReason)
+            ]),
             theme: 'striped',
             headStyles: { fillColor: [231, 76, 60] },
         });
