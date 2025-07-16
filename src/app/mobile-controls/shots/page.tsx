@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Goal, ArrowLeft, Send, WifiOff } from 'lucide-react';
+import { Goal, ArrowLeft, Send, WifiOff, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '@/app/actions';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -140,6 +140,8 @@ export default function MobileShotsPage() {
     let eventSource: EventSource;
 
     const connect = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
         const password = localStorage.getItem(AUTH_KEY);
         if (!password) {
@@ -152,6 +154,7 @@ export default function MobileShotsPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password }),
         });
+        if (!authRes.ok) throw new Error("Authentication failed");
         const authData = await authRes.json();
         
         if (!authData.authenticated) {
@@ -159,6 +162,17 @@ export default function MobileShotsPage() {
             return;
         }
         
+        // **FIX: Fetch initial state first**
+        const initialStateRes = await fetch('/api/game-state');
+        if (!initialStateRes.ok) throw new Error("Could not fetch initial game state");
+        const initialData: MobileData = await initialStateRes.json();
+        if (initialData.gameState) {
+          setLiveState(initialData.gameState);
+        } else {
+          throw new Error("No active game state from server.");
+        }
+
+        // Now connect to SSE for live updates
         eventSource = new EventSource('/api/game-state/events');
         eventSource.onopen = () => {
           setIsConnected(true);
@@ -168,7 +182,6 @@ export default function MobileShotsPage() {
           try {
             const updatedLiveState: LiveGameState = JSON.parse(event.data);
             setLiveState(updatedLiveState);
-            if (isLoading) setIsLoading(false);
           } catch(e) {
              console.error("Error parsing SSE data", e);
              setError("Error al procesar datos del servidor.");
@@ -177,12 +190,13 @@ export default function MobileShotsPage() {
         eventSource.onerror = () => {
           setIsConnected(false);
           setError("Conexión perdida. Intentando reconectar...");
-          setIsLoading(false);
         }
 
       } catch (e) {
-        console.error("Auth or initial connection failed", e);
-        setError("Error de autenticación o conexión inicial.");
+        const errorMessage = e instanceof Error ? e.message : "Error de autenticación o conexión inicial.";
+        console.error("Connection failed", e);
+        setError(errorMessage);
+      } finally {
         setIsLoading(false);
       }
     };
@@ -194,7 +208,7 @@ export default function MobileShotsPage() {
             eventSource.close();
         }
     }
-  }, [router, isLoading]);
+  }, [router]);
 
   const handleShot = async (team: 'home' | 'away', playerNumber: string) => {
     if (!playerNumber) {
@@ -226,6 +240,10 @@ export default function MobileShotsPage() {
       <div className="flex flex-col justify-center items-center h-screen text-center text-destructive p-4">
        <WifiOff className="h-12 w-12 mb-4" />
        <p className="font-semibold">{error || 'No se pudo obtener el estado del partido.'}</p>
+        <Button onClick={() => window.location.reload()} className="mt-6">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Reintentar
+        </Button>
       </div>
     );
   }
