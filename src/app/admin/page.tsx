@@ -17,22 +17,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from "@/hooks/use-auth";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useRouter } from "next/navigation";
+import { GAME_STATE_STORAGE_KEY, TEAMS_STORAGE_KEY } from "@/contexts/game-state-context";
 
 export default function AdminPage() {
   const { toast } = useToast();
   const { authStatus } = useAuth();
   const router = useRouter();
 
-  const handleClearLocalStorage = () => {
+  const handleClearConfigOnly = () => {
     if (typeof window !== 'undefined') {
-      localStorage.clear();
+      localStorage.removeItem(GAME_STATE_STORAGE_KEY);
       toast({
-        title: "Datos Locales Eliminados",
-        description: "Se ha limpiado el almacenamiento local. La página se recargará.",
+        title: "Configuración Eliminada",
+        description: "Se ha limpiado la configuración del juego. Los equipos se han mantenido. La página se recargará.",
       });
       setTimeout(() => window.location.reload(), 1500);
     }
   };
+
+  const handleClearAllData = () => {
+     if (typeof window !== 'undefined') {
+      localStorage.removeItem(GAME_STATE_STORAGE_KEY);
+      localStorage.removeItem(TEAMS_STORAGE_KEY);
+      toast({
+        title: "Todos los Datos Eliminados",
+        description: "Se ha limpiado toda la configuración y los equipos. La página se recargará.",
+      });
+      setTimeout(() => window.location.reload(), 1500);
+    }
+  }
 
   if (authStatus === 'loading') {
     return (
@@ -69,34 +82,64 @@ export default function AdminPage() {
             <CardHeader>
                 <CardTitle className="text-destructive">Zona de Peligro</CardTitle>
                 <CardDescription className="text-destructive/80">
-                    Las acciones en esta sección son irreversibles y pueden causar la pérdida de datos de configuración. Úsalas con precaución.
+                    Las acciones en esta sección son irreversibles y pueden causar la pérdida de datos. Úsalas con precaución.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive">
-                            <Trash2 className="mr-2 h-4 w-4" /> Limpiar Todo el Almacenamiento Local
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar Limpieza Total</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Esta acción eliminará permanentemente TODA la configuración (perfiles, equipos, etc.) y el estado del juego actual del almacenamiento local de este navegador. Esta acción es irreversible. ¿Estás seguro de que quieres continuar?
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleClearLocalStorage} className="bg-destructive hover:bg-destructive/90">
-                            Sí, Borrar Todo
-                        </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-                 <p className="text-xs text-destructive/80 mt-2">
-                    Esto borrará todos los perfiles de configuración, equipos guardados y el estado del partido actual que estén guardados en este navegador.
-                </p>
+            <CardContent className="space-y-4">
+                <div>
+                  <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                          <Button variant="destructive" className="bg-amber-600 hover:bg-amber-700 border-amber-500 text-white">
+                              <Trash2 className="mr-2 h-4 w-4" /> Limpiar Configuración (Mantener Equipos)
+                          </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                          <AlertDialogHeader>
+                          <AlertDialogTitle>Confirmar Limpieza de Configuración</AlertDialogTitle>
+                          <AlertDialogDescription>
+                              Esta acción eliminará la configuración de perfiles, sonido, display, etc., y el estado del juego actual. <strong>Tus equipos y jugadores guardados NO serán eliminados.</strong> ¿Estás seguro de que quieres continuar?
+                          </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleClearConfigOnly} className="bg-amber-600 hover:bg-amber-700">
+                              Sí, Limpiar Configuración
+                          </AlertDialogAction>
+                          </AlertDialogFooter>
+                      </AlertDialogContent>
+                  </AlertDialog>
+                  <p className="text-xs text-amber-500/80 mt-2">
+                      Opción segura: Borra los perfiles de configuración, pero no tus equipos.
+                  </p>
+                </div>
+                
+                <div>
+                  <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                          <Button variant="destructive">
+                              <Trash2 className="mr-2 h-4 w-4" /> Limpiar TODO (Incluyendo Equipos)
+                          </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                          <AlertDialogHeader>
+                          <AlertDialogTitle>¡Confirmación Final!</AlertDialogTitle>
+                          <AlertDialogDescription>
+                              Esta acción eliminará permanentemente TODA la configuración y TODOS los equipos y jugadores guardados. Esta acción es irreversible. ¿Estás seguro de que quieres borrar absolutamente todo?
+                          </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleClearAllData} className="bg-destructive hover:bg-destructive/90">
+                              Sí, Borrar Todo
+                          </AlertDialogAction>
+                          </AlertDialogFooter>
+                      </AlertDialogContent>
+                  </AlertDialog>
+                  <p className="text-xs text-destructive/80 mt-2">
+                      Opción nuclear: Borra todo. No habrá vuelta atrás.
+                  </p>
+                </div>
+
             </CardContent>
         </Card>
     </div>

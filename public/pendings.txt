@@ -4,8 +4,6 @@ Bugs
 
 Funcionalidades
 1.Penales
-2. Penalidad de Banco
-3. Sacar la config de maxima penaldidad por tiempo.
 
 Mejoras
 2. No grisar las penaldiades esperando puck, solo poner el cartel de esperando puck

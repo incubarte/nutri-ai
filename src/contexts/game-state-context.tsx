@@ -14,7 +14,9 @@ import defaultSettings from '@/config/defaults.json';
 
 // --- Constantes para la sincronización local ---
 export const BROADCAST_CHANNEL_NAME = 'icevision-game-state-channel';
-const LOCAL_STORAGE_KEY = 'icevision-game-state';
+export const GAME_STATE_STORAGE_KEY = 'icevision-game-state';
+export const TEAMS_STORAGE_KEY = 'icevision-teams-data';
+
 const CENTISECONDS_PER_SECOND = 100;
 const TICK_INTERVAL_MS = 200;
 export const DEFAULT_HORN_SOUND_PATH = '/audio/default-horn.wav';
@@ -363,18 +365,25 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'HYDRATE_FROM_STORAGE': {
         let finalState: GameState;
         try {
-            const rawState = localStorage.getItem(LOCAL_STORAGE_KEY);
-            if (rawState) {
-                const loadedState: GameState = JSON.parse(rawState);
+            const rawGameState = localStorage.getItem(GAME_STATE_STORAGE_KEY);
+            const rawTeams = localStorage.getItem(TEAMS_STORAGE_KEY);
+            
+            if (rawGameState) {
+                const loadedGameState: GameState = JSON.parse(rawGameState);
                 // Basic validation to ensure the loaded state is not completely broken
-                if (loadedState.config && loadedState.live) {
-                    finalState = loadedState;
+                if (loadedGameState.config && loadedGameState.live) {
+                    finalState = loadedGameState;
                 } else {
                     finalState = getInitialState();
                 }
             } else {
                 finalState = getInitialState();
             }
+
+            if (rawTeams) {
+                finalState.config.teams = JSON.parse(rawTeams);
+            }
+
         } catch (error) {
             console.error("Error reading or parsing state from localStorage:", error);
             finalState = getInitialState();
@@ -1208,13 +1217,14 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const channelRef = useRef<BroadcastChannel | null>(null);
 
   const syncToServer = useCallback(async (stateToSync: GameState) => {
+    // Separate teams from the rest of the config for server sync
+    const { teams, ...configToSync } = stateToSync.config;
     try {
       await Promise.all([
-        updateConfigOnServer(stateToSync.config),
+        updateConfigOnServer(configToSync as ConfigState),
         updateGameStateOnServer(stateToSync.live)
       ]);
     } catch (error) {
-      // Use the imported toast function directly.
       showToast({
         title: "Error de Sincronización",
         description: "No se pudo sincronizar con el servidor.",
@@ -1274,10 +1284,18 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
     if (isLoading || typeof window === 'undefined') return;
 
     if (state._lastActionOriginator === TAB_ID) {
-      const stateToBroadcast = { ...state, _lastActionOriginator: undefined };
+      // Separate teams from the rest of the config
+      const { teams, ...restOfConfig } = state.config;
+      const stateToSave = {
+        ...state,
+        config: restOfConfig,
+      };
+
       try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToBroadcast));
-        channelRef.current?.postMessage(state);
+        localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(stateToSave));
+        localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(teams));
+        
+        channelRef.current?.postMessage(state); // Broadcast the full state
         syncToServer(state);
       } catch (error) {
         console.error("Error saving/broadcasting state:", error);
