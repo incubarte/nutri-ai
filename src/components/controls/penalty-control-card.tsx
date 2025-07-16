@@ -40,6 +40,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { getActualPeriodText } from '@/contexts/game-state-context';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { LoadingSpinner } from '../ui/loading-spinner';
+import { Separator } from '../ui/separator';
 
 
 interface PenaltyControlCardProps {
@@ -816,5 +817,3 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     </>
   );
 }
-
-    
