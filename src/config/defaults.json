@@ -27,13 +27,6 @@
       "isBenchPenalty": false
     },
     {
-      "id": "banco-2",
-      "name": "Penalidad de Banco",
-      "duration": 120,
-      "type": "minor",
-      "isBenchPenalty": true
-    },
-    {
       "id": "doble-menor-4",
       "name": "Doble Menor",
       "duration": 240,
@@ -53,6 +46,13 @@
       "duration": 600,
       "type": "misconduct",
       "isBenchPenalty": false
+    },
+    {
+      "id": "banco-2",
+      "name": "Penalidad de Banco",
+      "duration": 120,
+      "type": "minor",
+      "isBenchPenalty": true
     }
   ],
   "defaultPenaltyTypeId": "menor-2",

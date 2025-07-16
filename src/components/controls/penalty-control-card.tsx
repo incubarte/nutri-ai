@@ -138,8 +138,11 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     
     const ejectionMessage = useMemo(() => {
         if (!penalty._limitReached || penalty._limitReached.length === 0) return null;
-        return ` - Expulsado por Cantidad`;
+        return ` - Expulsado`;
     }, [penalty._limitReached]);
+
+    const penaltyLogDetails = state.live.gameSummary[team]?.penalties.find(p => p.id === penalty.id);
+    const penaltyNameForTooltip = penaltyLogDetails?.penaltyName || "Tipo desconocido";
 
 
     return (
@@ -197,6 +200,8 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                             </TooltipTrigger>
                             <TooltipContent>
                                 <div className="text-sm space-y-1">
+                                    <p><strong>Tipo de Falta:</strong> {penaltyNameForTooltip}</p>
+                                    <Separator className="my-1"/>
                                     {startTimeContext ? (
                                         <p>
                                             <strong>Inicio:</strong> {formatTime(startTimeContext.timeInPeriodCs)}
@@ -214,6 +219,9 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                                         <p><strong>Fin:</strong> Pendiente</p>
                                     )}
                                     <p><strong>Estado:</strong> {displayStatus}</p>
+                                    {ejectionMessage && (
+                                        <p className="font-semibold text-destructive">Expulsado por cantidad de faltas.</p>
+                                    )}
                                     <p className="text-xs text-muted-foreground pt-1 border-t mt-1">
                                       Absoluto: {penalty.startTime !== undefined ? formatTime(penalty.startTime) : 'N/A'} → {penalty.expirationTime !== undefined ? formatTime(penalty.expirationTime) : 'N/A'}
                                     </p>
