@@ -6,10 +6,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Home, Settings, Wrench, MonitorPlay } from 'lucide-react';
+import { Home, Settings, Wrench, MonitorPlay, Loader2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { FullscreenToggle } from './fullscreen-toggle';
+import { LoadingSpinner } from '../ui/loading-spinner';
 
 const EXTERNAL_WINDOW_CONFIG_KEY = 'externalWindowConfig';
 
@@ -23,6 +24,25 @@ export function Header() {
 
   const [isVisible, setIsVisible] = useState(!isScoreboardPage);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // Cuando el pathname cambia, la nueva página ha cargado, así que ocultamos el loader.
+    setIsLoading(false);
+  }, [pathname]);
+
+  const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    // Si ya estamos en la página de destino, no hacemos nada.
+    if (pathname === href) {
+        e.preventDefault();
+        return;
+    }
+    // Si no, activamos el loader.
+    setIsLoading(true);
+    // La navegación del Link continuará normalmente.
+  };
+
 
   const handleOpenExternalWindow = async () => {
     let config = null;
@@ -149,6 +169,12 @@ export function Header() {
   };
 
   return (
+    <>
+    {isLoading && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <LoadingSpinner className="h-10 w-10 text-primary" />
+        </div>
+    )}
     <header
       onMouseEnter={handleHeaderMouseEnter}
       onMouseLeave={handleHeaderMouseLeave}
@@ -161,12 +187,13 @@ export function Header() {
       )}
     >
       <div className="container flex h-14 max-w-screen-2xl items-center">
-        <Link href="/" className="mr-6 flex items-center space-x-2">
+        <Link href="/" className="mr-6 flex items-center space-x-2" onClick={(e) => handleNav(e, '/')}>
           <span className="font-headline text-xl font-bold text-primary-foreground">IceVision</span>
         </Link>
         <nav className="flex items-center gap-4 text-sm">
           <Link
             href="/"
+            onClick={(e) => handleNav(e, '/')}
             className={cn(
               "transition-colors hover:text-foreground/80",
               pathname === "/" ? "text-foreground" : "text-foreground/60"
@@ -176,6 +203,7 @@ export function Header() {
           </Link>
           <Link
             href="/controls"
+            onClick={(e) => handleNav(e, '/controls')}
             className={cn(
               "transition-colors hover:text-foreground/80",
               pathname === "/controls" ? "text-foreground" : "text-foreground/60"
@@ -185,6 +213,7 @@ export function Header() {
           </Link>
           <Link
             href="/config"
+            onClick={(e) => handleNav(e, '/config')}
             className={cn(
               "transition-colors hover:text-foreground/80",
               pathname === "/config" ? "text-foreground" : "text-foreground/60"
@@ -195,17 +224,17 @@ export function Header() {
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-2">
            <Button variant="ghost" size="icon" asChild className={pathname === "/" ? "text-primary-foreground bg-primary/80" : "text-foreground/60"}>
-            <Link href="/" aria-label="Scoreboard">
+            <Link href="/" aria-label="Scoreboard" onClick={(e) => handleNav(e, '/')}>
               <Home className="h-5 w-5" />
             </Link>
           </Button>
           <Button variant="ghost" size="icon" asChild className={pathname === "/controls" ? "text-primary-foreground bg-primary/80" : "text-foreground/60"}>
-            <Link href="/controls" aria-label="Controls">
+            <Link href="/controls" aria-label="Controls" onClick={(e) => handleNav(e, '/controls')}>
               <Settings className="h-5 w-5" />
             </Link>
           </Button>
           <Button variant="ghost" size="icon" asChild className={pathname === "/config" ? "text-primary-foreground bg-primary/80" : "text-foreground/60"}>
-            <Link href="/config" aria-label="Configuración & Equipos">
+            <Link href="/config" aria-label="Configuración & Equipos" onClick={(e) => handleNav(e, '/config')}>
               <Wrench className="h-5 w-5" />
             </Link>
           </Button>
@@ -223,5 +252,6 @@ export function Header() {
         </div>
       </div>
     </header>
+    </>
   );
 }
