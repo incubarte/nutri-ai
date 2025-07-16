@@ -20,24 +20,9 @@ interface GameSummaryDialogProps {
   onOpenChange: (isOpen: boolean) => void;
 }
 
-const TeamSummaryColumn = ({ team, teamName, score, goals, penalties, playerStats }: { team: Team; teamName: string; score: number; goals: GoalLog[]; penalties: PenaltyLog[], playerStats: PlayerStats | undefined }) => {
-    
-    const attendedPlayers = useMemo(() => {
-        if (!playerStats) return [];
-        return Object.entries(playerStats).map(([playerNumber, stats]) => ({
-            number: playerNumber,
-            ...stats
-        })).sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
-
-    }, [playerStats]);
-    
+const GoalsSection = ({ team, teamName, goals }: { team: Team; teamName: string; goals: GoalLog[] }) => {
     return (
-        <div className="flex-1 space-y-4">
-            <div className="text-center">
-                <h3 className="text-2xl font-bold text-primary">{teamName} - <span className="text-accent">{score}</span></h3>
-            </div>
-            
-             <Card>
+        <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xl"><Goal className="h-5 w-5" />Goles</CardTitle>
             </CardHeader>
@@ -76,9 +61,13 @@ const TeamSummaryColumn = ({ team, teamName, score, goals, penalties, playerStat
                 </Table>
                 ) : <p className="text-sm text-muted-foreground">Sin goles registrados.</p>}
             </CardContent>
-            </Card>
+        </Card>
+    );
+};
 
-            <Card>
+const PenaltiesSection = ({ team, teamName, penalties }: { team: Team; teamName: string; penalties: PenaltyLog[] }) => {
+    return (
+        <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xl"><Siren className="h-5 w-5" />Penalidades</CardTitle>
             </CardHeader>
@@ -112,44 +101,56 @@ const TeamSummaryColumn = ({ team, teamName, score, goals, penalties, playerStat
                 </Table>
                 ) : <p className="text-sm text-muted-foreground">Sin penalidades registradas.</p>}
             </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas por Jugador</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {attendedPlayers.length > 0 ? (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>#</TableHead>
-                                    <TableHead>Nombre</TableHead>
-                                    <TableHead className="text-center">G</TableHead>
-                                    <TableHead className="text-center">A</TableHead>
-                                    <TableHead className="text-center">T</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {attendedPlayers.map(player => (
-                                    <TableRow key={player.number}>
-                                        <TableCell className="font-semibold">{player.number}</TableCell>
-                                        <TableCell className="text-xs text-muted-foreground">{player.name}</TableCell>
-                                        <TableCell className="text-center font-mono">{player.goals}</TableCell>
-                                        <TableCell className="text-center font-mono">{player.assists}</TableCell>
-                                        <TableCell className="text-center font-mono">{player.shots}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    ) : (
-                        <p className="text-sm text-muted-foreground">Sin estadísticas de jugadores.</p>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
+        </Card>
     );
-}
+};
+
+const PlayerStatsSection = ({ team, teamName, playerStats }: { team: Team; teamName: string; playerStats: PlayerStats | undefined }) => {
+    const attendedPlayers = useMemo(() => {
+        if (!playerStats) return [];
+        return Object.entries(playerStats).map(([playerNumber, stats]) => ({
+            number: playerNumber,
+            ...stats
+        })).sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
+    }, [playerStats]);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas por Jugador</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {attendedPlayers.length > 0 ? (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>#</TableHead>
+                                <TableHead>Nombre</TableHead>
+                                <TableHead className="text-center">G</TableHead>
+                                <TableHead className="text-center">A</TableHead>
+                                <TableHead className="text-center">T</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {attendedPlayers.map(player => (
+                                <TableRow key={player.number}>
+                                    <TableCell className="font-semibold">{player.number}</TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">{player.name}</TableCell>
+                                    <TableCell className="text-center font-mono">{player.goals}</TableCell>
+                                    <TableCell className="text-center font-mono">{player.assists}</TableCell>
+                                    <TableCell className="text-center font-mono">{player.shots}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                ) : (
+                    <p className="text-sm text-muted-foreground">Sin estadísticas de jugadores.</p>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
 
 export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogProps) {
   const { state } = useGameState();
@@ -222,26 +223,35 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
             Un resumen completo de los goles y penalidades del partido actual.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="grid grid-cols-2 text-center my-2">
+            <h3 className="text-2xl font-bold text-primary">{state.live.homeTeamName} - <span className="text-accent">{state.live.score.home}</span></h3>
+            <h3 className="text-2xl font-bold text-primary">{state.live.awayTeamName} - <span className="text-accent">{state.live.score.away}</span></h3>
+        </div>
+
         <ScrollArea className="flex-grow my-4 border-y py-4 pr-6 -mr-6">
-          <div className="flex flex-col md:flex-row gap-6">
-            <TeamSummaryColumn 
-              team="home"
-              teamName={state.live.homeTeamName}
-              score={state.live.score.home}
-              goals={homeGoals}
-              penalties={homePenalties}
-              playerStats={state.live.gameSummary.home.playerStats}
-            />
-            <Separator orientation="vertical" className="hidden md:block h-auto" />
-            <Separator orientation="horizontal" className="block md:hidden" />
-             <TeamSummaryColumn 
-              team="away"
-              teamName={state.live.awayTeamName}
-              score={state.live.score.away}
-              goals={awayGoals}
-              penalties={awayPenalties}
-              playerStats={state.live.gameSummary.away.playerStats}
-            />
+          <div className="space-y-6">
+            {/* Goals Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <GoalsSection team="home" teamName={state.live.homeTeamName} goals={homeGoals} />
+              <GoalsSection team="away" teamName={state.live.awayTeamName} goals={awayGoals} />
+            </div>
+
+            <Separator />
+            
+            {/* Penalties Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={homePenalties} />
+              <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={awayPenalties} />
+            </div>
+
+            <Separator />
+
+            {/* Player Stats Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <PlayerStatsSection team="home" teamName={state.live.homeTeamName} playerStats={state.live.gameSummary.home.playerStats} />
+              <PlayerStatsSection team="away" teamName={state.live.awayTeamName} playerStats={state.live.gameSummary.away.playerStats} />
+            </div>
           </div>
         </ScrollArea>
         <DialogFooter className="flex-wrap">
