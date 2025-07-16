@@ -21,25 +21,25 @@
   "penaltyTypes": [
     {
       "id": "menor-2",
-      "name": "Menor (2:00)",
+      "name": "Menor",
       "duration": 120,
       "type": "minor"
     },
     {
       "id": "doble-menor-4",
-      "name": "Doble Menor (4:00)",
+      "name": "Doble Menor",
       "duration": 240,
       "type": "minor"
     },
     {
       "id": "mayor-5",
-      "name": "Mayor (5:00)",
+      "name": "Mayor",
       "duration": 300,
       "type": "minor"
     },
     {
       "id": "mala-conducta-10",
-      "name": "Mala Conducta (10:00)",
+      "name": "Mala Conducta",
       "duration": 600,
       "type": "misconduct"
     }
