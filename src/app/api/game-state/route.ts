@@ -7,7 +7,7 @@ import { setGameState as setServerGameState } from '@/lib/server-side-store';
 export async function GET(request: Request) {
   const gameState = getGameState();
   const config = getConfig();
-  
+
   // Safely construct the response payload to avoid errors when state is null.
   // This prevents server timeouts caused by spreading a null gameState.
   const responsePayload: LiveGameState = {
@@ -25,7 +25,11 @@ export async function GET(request: Request) {
     awayTeamName: gameState?.awayTeamName ?? 'Visitante',
     homeTeamSubName: gameState?.homeTeamSubName,
     awayTeamSubName: gameState?.awayTeamSubName,
-    gameSummary: gameState?.gameSummary,
+    gameSummary: gameState?.gameSummary ?? {
+        home: { goals: [], penalties: [], playerStats: {} },
+        away: { goals: [], penalties: [], playerStats: {} },
+        attendance: { home: [], away: [] }
+    },
     // Config fields needed for remote controls
     penaltyTypes: config?.penaltyTypes || [],
     defaultPenaltyTypeId: config?.defaultPenaltyTypeId || null,

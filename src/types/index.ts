@@ -260,7 +260,7 @@ export interface LiveGameState {
     homeTeamSubName?: string;
     awayTeamName: string;
     awayTeamSubName?: string;
-    gameSummary?: GameSummary;
+    gameSummary: GameSummary;
     // These are from config but useful for display
     playersPerTeamOnIce?: number; 
     numberOfRegularPeriods?: number;
