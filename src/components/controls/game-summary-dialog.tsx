@@ -37,7 +37,7 @@ const TeamSummaryColumn = ({ team, teamName, score, goals, penalties, playerStat
                 <h3 className="text-2xl font-bold text-primary">{teamName} - <span className="text-accent">{score}</span></h3>
             </div>
             
-            <Card>
+             <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xl"><Goal className="h-5 w-5" />Goles</CardTitle>
             </CardHeader>
@@ -88,6 +88,7 @@ const TeamSummaryColumn = ({ team, teamName, score, goals, penalties, playerStat
                     <TableHeader>
                     <TableRow>
                         <TableHead>Jugador</TableHead>
+                        <TableHead>Tipo</TableHead>
                         <TableHead>Duración</TableHead>
                         <TableHead>Estado</TableHead>
                     </TableRow>
@@ -99,6 +100,7 @@ const TeamSummaryColumn = ({ team, teamName, score, goals, penalties, playerStat
                             <div className="font-semibold">{p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber}`}</div>
                             <div className="text-xs text-muted-foreground">{p.isBenchPenalty ? '---' : p.playerName || '---'}</div>
                         </TableCell>
+                        <TableCell className="text-xs">{p.penaltyName || '---'}</TableCell>
                         <TableCell className="font-mono text-sm">{formatTime(p.initialDuration * 100)}</TableCell>
                         <TableCell>
                             <div className="text-sm">{getEndReasonText(p.endReason)}</div>

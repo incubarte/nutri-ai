@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useMemo } from "react";
@@ -54,6 +55,7 @@ export function PenaltyLogDialog({ isOpen, onOpenChange, team, teamName }: Penal
                             <TableHead className="w-[100px]">Hora (Real)</TableHead>
                             <TableHead className="w-[120px]">Periodo/Tiempo</TableHead>
                             <TableHead>Jugador</TableHead>
+                            <TableHead>Tipo</TableHead>
                             <TableHead className="text-center w-[100px]">Duración</TableHead>
                             <TableHead className="text-center w-[100px]">T. Cumplido</TableHead>
                             <TableHead className="text-right w-[120px]">Estado</TableHead>
@@ -69,8 +71,9 @@ export function PenaltyLogDialog({ isOpen, onOpenChange, team, teamName }: Penal
                                 </TableCell>
                                 <TableCell>
                                     <div className="font-semibold">{log.isBenchPenalty ? `Banco (#${log.playerNumber})` : `#${log.playerNumber}`}</div>
-                                    <div className="text-xs text-muted-foreground">{log.playerName || 'Jugador no listado'}</div>
+                                    <div className="text-xs text-muted-foreground">{log.isBenchPenalty ? '---' : log.playerName || 'Jugador no listado'}</div>
                                 </TableCell>
+                                <TableCell className="text-xs">{log.penaltyName || '---'}</TableCell>
                                 <TableCell className="text-center font-mono">{formatTime(log.initialDuration * 100, { showTenths: false })}</TableCell>
                                 <TableCell className="text-center font-mono">{log.timeServed !== undefined ? formatTime(log.timeServed * 100, { showTenths: false }) : '--'}</TableCell>
                                 <TableCell className="text-right">
@@ -81,7 +84,7 @@ export function PenaltyLogDialog({ isOpen, onOpenChange, team, teamName }: Penal
                             </TableRow>
                         )) : (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                                     No hay penalidades registradas para este equipo.
                                 </TableCell>
                             </TableRow>

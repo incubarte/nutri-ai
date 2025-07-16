@@ -16,35 +16,7 @@ const addTeamSection = (doc: jsPDF, teamName: string, goals: GoalLog[], penaltie
         .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999))
         : [];
     
-    // --- Estadisticas Section ---
-    doc.setFontSize(14);
-    doc.text(`${teamName} - Estadísticas de Jugador`, 14, currentY);
-    currentY += 2;
-
-    if (attendedPlayers.length > 0) {
-        autoTable(doc, {
-            startY: currentY,
-            head: [['#', 'Nombre', 'G', 'A', 'Tiros']],
-            body: attendedPlayers.map(p => [
-                p.number,
-                p.name,
-                p.goals,
-                p.assists,
-                p.shots
-            ]),
-            theme: 'striped',
-            headStyles: { fillColor: [22, 163, 74] },
-        });
-        currentY = (doc as any).lastAutoTable.finalY;
-    } else {
-        doc.setFontSize(10);
-        doc.text("Sin estadísticas registradas.", 14, currentY + 6);
-        currentY += 10;
-    }
-
-
     // --- Goles Section ---
-    currentY += 12;
     doc.setFontSize(14);
     doc.text(`${teamName} - Goles`, 14, currentY);
     currentY += 2;
@@ -78,12 +50,11 @@ const addTeamSection = (doc: jsPDF, teamName: string, goals: GoalLog[], penaltie
     if (penalties.length > 0) {
         autoTable(doc, {
             startY: currentY,
-            head: [['Tiempo', 'Periodo', 'Jugador', 'Nombre', 'Duración', 'Estado']],
+            head: [['Tiempo', 'Jugador', 'Tipo', 'Duración', 'Estado']],
             body: penalties.map(p => [
-                formatTime(p.addGameTime), 
-                p.addPeriodText, 
-                p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber}`, 
-                p.playerName || '---', 
+                `${p.addPeriodText} ${formatTime(p.addGameTime)}`,
+                p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber} ${p.playerName || ''}`.trim(),
+                p.penaltyName || '---',
                 formatTime(p.initialDuration * 100), 
                 getEndReasonText(p.endReason)
             ]),
@@ -97,6 +68,33 @@ const addTeamSection = (doc: jsPDF, teamName: string, goals: GoalLog[], penaltie
         currentY += 10;
     }
     
+    // --- Estadisticas Section ---
+    currentY += 12;
+    doc.setFontSize(14);
+    doc.text(`${teamName} - Estadísticas de Jugador`, 14, currentY);
+    currentY += 2;
+
+    if (attendedPlayers.length > 0) {
+        autoTable(doc, {
+            startY: currentY,
+            head: [['#', 'Nombre', 'G', 'A', 'Tiros']],
+            body: attendedPlayers.map(p => [
+                p.number,
+                p.name,
+                p.goals,
+                p.assists,
+                p.shots
+            ]),
+            theme: 'striped',
+            headStyles: { fillColor: [22, 163, 74] },
+        });
+        currentY = (doc as any).lastAutoTable.finalY;
+    } else {
+        doc.setFontSize(10);
+        doc.text("Sin estadísticas registradas.", 14, currentY + 6);
+        currentY += 10;
+    }
+
     return currentY;
 };
 

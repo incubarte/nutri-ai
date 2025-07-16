@@ -123,6 +123,7 @@ export interface PenaltyLog {
   team: Team;
   playerNumber: string;
   playerName?: string;
+  penaltyName?: string;
   initialDuration: number;
   penaltyType?: 'minor' | 'misconduct';
   isBenchPenalty?: boolean; // Nuevo campo

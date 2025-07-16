@@ -710,6 +710,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       const newPenaltyLog: PenaltyLog = {
         id: newPenaltyId, team, playerNumber: newPenalty.playerNumber, playerName: playerDetails?.name,
+        penaltyName: penaltyDef.name,
         initialDuration: newPenalty.initialDuration, addTimestamp: Date.now(), addGameTime: state.live.clock.currentTime,
         addPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
         penaltyType: newPenalty.penaltyType,
