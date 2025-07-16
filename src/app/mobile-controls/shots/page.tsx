@@ -148,7 +148,6 @@ export default function MobileShotsPage() {
       setIsLoading(true);
       setError(null);
       try {
-        // Step 1: Authenticate
         const password = localStorage.getItem(AUTH_KEY);
         const authRes = await fetch('/api/auth', {
           method: 'POST',
@@ -162,19 +161,19 @@ export default function MobileShotsPage() {
           return;
         }
 
-        // Step 2: Fetch game state which now includes the populated attendance list
         const gameStateRes = await fetch('/api/game-state');
         if (!gameStateRes.ok) {
           throw new Error(`Failed to fetch game state: ${gameStateRes.status}`);
         }
         const liveState: LiveGameState = await gameStateRes.json();
 
-        if (liveState && liveState.gameSummary && liveState.gameSummary.attendance) {
+        if (liveState && liveState.gameSummary) {
             setHomeTeamName(liveState.homeTeamName || 'Local');
             setAwayTeamName(liveState.awayTeamName || 'Visitante');
 
-            const sortedHomePlayers = [...(liveState.gameSummary.attendance.home || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
-            const sortedAwayPlayers = [...(liveState.gameSummary.attendance.away || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
+            // Handle cases where attendance might be undefined or null gracefully
+            const sortedHomePlayers = [...(liveState.gameSummary.attendance?.home || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
+            const sortedAwayPlayers = [...(liveState.gameSummary.attendance?.away || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
 
             setHomeAttendedPlayers(sortedHomePlayers);
             setAwayAttendedPlayers(sortedAwayPlayers);
@@ -187,7 +186,7 @@ export default function MobileShotsPage() {
 
       } catch (e) {
         const errorMessage = e instanceof Error ? e.message : "Error desconocido";
-        setError(errorMessage);
+        setError(`Error reaching server. ${errorMessage}`);
         console.error("Error loading shots page:", e);
       } finally {
         setIsLoading(false);
@@ -296,3 +295,4 @@ export default function MobileShotsPage() {
     </main>
   );
 }
+
