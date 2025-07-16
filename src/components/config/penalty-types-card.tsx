@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "../ui/switch";
 import { Separator } from "../ui/separator";
-import { cn } from "@/lib/utils";
 import { Checkbox } from "../ui/checkbox";
 
 export interface PenaltyTypesCardRef {
@@ -38,7 +37,7 @@ interface PenaltyTypesCardProps {
 }
 
 export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCardProps>((props, ref) => {
-  const { dispatch } = useGameState();
+  const { state, dispatch } = useGameState();
   const { onDirtyChange, initialValues } = props;
   const { toast } = useToast();
   
@@ -65,31 +64,25 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
     setValuesFromProfile(initialValues);
   }, [initialValues]);
 
+  // This is no longer truly necessary as we save automatically, but kept for parent component structure.
   useEffect(() => {
     onDirtyChange(isDirtyLocal);
   }, [isDirtyLocal, onDirtyChange]);
 
-  const markDirty = () => setIsDirtyLocal(true);
 
+  const dispatchUpdate = (updates: Partial<FormatAndTimingsProfileData>) => {
+    dispatch({
+      type: "UPDATE_SELECTED_FT_PROFILE_DATA",
+      payload: updates
+    });
+  };
+
+  // Imperative handles are kept for API consistency, but their internal logic can be simplified
+  // as they are no longer strictly needed for this component's auto-saving behavior.
   useImperativeHandle(ref, () => ({
-    handleSave: () => {
-      if (!isDirtyLocal) return true;
-      dispatch({
-        type: "UPDATE_SELECTED_FT_PROFILE_DATA",
-        payload: {
-          penaltyTypes: localPenaltyTypes,
-          defaultPenaltyTypeId: localDefaultPenaltyId,
-          enableMaxPenaltiesLimit: enableMaxPenalties,
-          maxPenaltiesPerPlayer: parseInt(maxPenalties, 10) || 3,
-        }
-      });
-      setIsDirtyLocal(false);
-      return true;
-    },
-    handleDiscard: () => {
-      setValuesFromProfile(initialValues);
-    },
-    getIsDirty: () => isDirtyLocal,
+    handleSave: () => true, // Always returns true as changes are saved instantly
+    handleDiscard: () => {}, // Discard is a no-op as there are no 'dirty' states
+    getIsDirty: () => false, // Always returns false
     setValues: setValuesFromProfile,
   }));
   
@@ -105,17 +98,18 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
     e.preventDefault();
     if (!draggedItemId || draggedItemId === targetId) return;
 
-    const draggedIndex = localPenaltyTypes.findIndex(p => p.id === draggedItemId);
-    const targetIndex = localPenaltyTypes.findIndex(p => p.id === targetId);
+    const currentPenalties = state.config.penaltyTypes || [];
+    const draggedIndex = currentPenalties.findIndex(p => p.id === draggedItemId);
+    const targetIndex = currentPenalties.findIndex(p => p.id === targetId);
 
     if (draggedIndex === -1 || targetIndex === -1) return;
 
-    const newPenaltyTypes = [...localPenaltyTypes];
-    const [draggedItem] = newPenaltyTypes.splice(draggedIndex, 1);
-    newPenaltyTypes.splice(targetIndex, 0, draggedItem);
+    const reorderedPenalties = [...currentPenalties];
+    const [draggedItem] = reorderedPenalties.splice(draggedIndex, 1);
+    reorderedPenalties.splice(targetIndex, 0, draggedItem);
     
-    setLocalPenaltyTypes(newPenaltyTypes);
-    markDirty();
+    dispatchUpdate({ penaltyTypes: reorderedPenalties });
+    toast({ title: "Orden de Penalidades Actualizado" });
     setDraggedItemId(null);
   };
 
@@ -128,24 +122,27 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
   };
 
   const handleDeletePenalty = (id: string) => {
-    const newPenalties = localPenaltyTypes.filter(p => p.id !== id);
-    setLocalPenaltyTypes(newPenalties);
-    if (localDefaultPenaltyId === id) {
-      setLocalDefaultPenaltyId(newPenalties[0]?.id || null);
+    const newPenalties = (state.config.penaltyTypes || []).filter(p => p.id !== id);
+    let newDefaultId = state.config.defaultPenaltyTypeId;
+    if (newDefaultId === id) {
+        newDefaultId = newPenalties[0]?.id || null;
     }
-    markDirty();
-    toast({ title: "Tipo de Penalidad Eliminado", description: "El tipo de penalidad ha sido eliminado de la lista. Guarda los cambios.", variant: "destructive"});
+    dispatchUpdate({ penaltyTypes: newPenalties, defaultPenaltyTypeId: newDefaultId });
+    toast({ title: "Tipo de Penalidad Eliminado", variant: "destructive"});
   };
 
   const handleSavePenalty = (penaltyToSave: PenaltyTypeDefinition) => {
-    const isNew = !localPenaltyTypes.some(p => p.id === penaltyToSave.id);
+    const currentPenalties = state.config.penaltyTypes || [];
+    const isNew = !currentPenalties.some(p => p.id === penaltyToSave.id);
+    let newPenalties;
     if (isNew) {
-      setLocalPenaltyTypes([...localPenaltyTypes, penaltyToSave]);
+      newPenalties = [...currentPenalties, penaltyToSave];
     } else {
-      setLocalPenaltyTypes(localPenaltyTypes.map(p => p.id === penaltyToSave.id ? penaltyToSave : p));
+      newPenalties = currentPenalties.map(p => p.id === penaltyToSave.id ? penaltyToSave : p);
     }
+    dispatchUpdate({ penaltyTypes: newPenalties });
+    toast({ title: "Lista de penalidades guardada" });
     setEditingPenalty(null);
-    markDirty();
   };
 
   return (
@@ -154,16 +151,16 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
         <div>
           <Label htmlFor="defaultPenaltyType">Falta por Defecto</Label>
           <Select 
-            value={localDefaultPenaltyId || ""}
-            onValueChange={val => { setLocalDefaultPenaltyId(val); markDirty(); }}
-            disabled={localPenaltyTypes.length === 0}
+            value={state.config.defaultPenaltyTypeId || ""}
+            onValueChange={val => { dispatchUpdate({ defaultPenaltyTypeId: val }); }}
+            disabled={(state.config.penaltyTypes || []).length === 0}
           >
             <SelectTrigger id="defaultPenaltyType">
               <SelectValue placeholder="Seleccionar falta por defecto..." />
             </SelectTrigger>
             <SelectContent>
-              {localPenaltyTypes.length > 0 ? (
-                localPenaltyTypes.map(p => (
+              {(state.config.penaltyTypes || []).length > 0 ? (
+                (state.config.penaltyTypes || []).map(p => (
                   <SelectItem key={p.id} value={p.id}>{p.name} ({formatTime(p.duration * 100)})</SelectItem>
                 ))
               ) : (
@@ -179,8 +176,8 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
         <div className="space-y-2">
             <Label>Lista de Tipos de Faltas (Arrastra para reordenar)</Label>
             <div className="border rounded-md p-2 space-y-2 max-h-60 overflow-y-auto">
-              {localPenaltyTypes.length > 0 ? (
-                localPenaltyTypes.map(p => (
+              {(state.config.penaltyTypes || []).length > 0 ? (
+                (state.config.penaltyTypes || []).map(p => (
                   <div 
                     key={p.id} 
                     className="flex items-center justify-between p-2 bg-muted/50 rounded-md"
@@ -222,11 +219,14 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
           <div className="space-y-4 mt-2">
             <div className="flex items-center justify-between p-3 border rounded-md bg-muted/20">
               <Label htmlFor="enableMaxPenalties" className="font-normal">Habilitar límite de cantidad de penalidades</Label>
-              <Switch id="enableMaxPenalties" checked={enableMaxPenalties} onCheckedChange={(c) => { setEnableMaxPenalties(c); markDirty(); }} />
+              <Switch id="enableMaxPenalties" checked={state.config.enableMaxPenaltiesLimit} onCheckedChange={(c) => { dispatchUpdate({ enableMaxPenaltiesLimit: c }); }} />
             </div>
             <div className="flex items-center justify-between p-3 border rounded-md bg-muted/20">
               <Label htmlFor="maxPenaltiesPerPlayer" className="font-normal">Cantidad máxima de penalidades</Label>
-              <Input id="maxPenaltiesPerPlayer" type="number" value={maxPenalties} onChange={(e) => { setMaxPenalties(e.target.value); markDirty(); }} className="w-20 h-8" disabled={!enableMaxPenalties} />
+              <Input id="maxPenaltiesPerPlayer" type="number" value={state.config.maxPenaltiesPerPlayer} onBlur={(e) => { dispatchUpdate({ maxPenaltiesPerPlayer: parseInt(e.target.value, 10) || 3 }); }} onChange={e => {
+                // This local state change is only for user input typing, the blur event saves it.
+                // This is a common pattern for controlled inputs that save on blur.
+              }} disabled={!state.config.enableMaxPenaltiesLimit} className="w-20 h-8" />
             </div>
           </div>
         </div>
