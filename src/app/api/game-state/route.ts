@@ -18,6 +18,15 @@ export async function GET(request: Request) {
     teams: config?.teams || [],
     selectedMatchCategory: config?.selectedMatchCategory || '',
     gameSummary: gameState?.gameSummary,
+    score: {
+      ...gameState?.score,
+      home: gameState?.score.home ?? 0,
+      away: gameState?.score.away ?? 0,
+      homeShots: gameState?.score.homeShots ?? 0,
+      awayShots: gameState?.score.awayShots ?? 0,
+      homeGoals: gameState?.score.homeGoals ?? [],
+      awayGoals: gameState?.score.awayGoals ?? [],
+    }
   };
 
   return NextResponse.json(responsePayload);

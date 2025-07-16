@@ -219,6 +219,8 @@ export interface ClockState {
 export interface ScoreState {
   home: number;
   away: number;
+  homeShots: number;
+  awayShots: number;
   homeGoals: GoalLog[];
   awayGoals: GoalLog[];
 }

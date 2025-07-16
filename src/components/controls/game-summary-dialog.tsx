@@ -38,40 +38,6 @@ const TeamSummaryColumn = ({ team, teamName, score, goals, penalties, playerStat
             </div>
             
             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas por Jugador</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {attendedPlayers.length > 0 ? (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>#</TableHead>
-                                    <TableHead>Nombre</TableHead>
-                                    <TableHead className="text-center">G</TableHead>
-                                    <TableHead className="text-center">A</TableHead>
-                                    <TableHead className="text-center">T</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {attendedPlayers.map(player => (
-                                    <TableRow key={player.number}>
-                                        <TableCell className="font-semibold">{player.number}</TableCell>
-                                        <TableCell className="text-xs text-muted-foreground">{player.name}</TableCell>
-                                        <TableCell className="text-center font-mono">{player.goals}</TableCell>
-                                        <TableCell className="text-center font-mono">{player.assists}</TableCell>
-                                        <TableCell className="text-center font-mono">{player.shots}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    ) : (
-                        <p className="text-sm text-muted-foreground">Sin estadísticas de jugadores.</p>
-                    )}
-                </CardContent>
-            </Card>
-
-            <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xl"><Goal className="h-5 w-5" />Goles</CardTitle>
             </CardHeader>
@@ -144,6 +110,40 @@ const TeamSummaryColumn = ({ team, teamName, score, goals, penalties, playerStat
                 </Table>
                 ) : <p className="text-sm text-muted-foreground">Sin penalidades registradas.</p>}
             </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas por Jugador</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {attendedPlayers.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>#</TableHead>
+                                    <TableHead>Nombre</TableHead>
+                                    <TableHead className="text-center">G</TableHead>
+                                    <TableHead className="text-center">A</TableHead>
+                                    <TableHead className="text-center">T</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {attendedPlayers.map(player => (
+                                    <TableRow key={player.number}>
+                                        <TableCell className="font-semibold">{player.number}</TableCell>
+                                        <TableCell className="text-xs text-muted-foreground">{player.name}</TableCell>
+                                        <TableCell className="text-center font-mono">{player.goals}</TableCell>
+                                        <TableCell className="text-center font-mono">{player.assists}</TableCell>
+                                        <TableCell className="text-center font-mono">{player.shots}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">Sin estadísticas de jugadores.</p>
+                    )}
+                </CardContent>
             </Card>
         </div>
     );

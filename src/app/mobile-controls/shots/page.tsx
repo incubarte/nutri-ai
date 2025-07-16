@@ -22,6 +22,8 @@ export default function MobileShotsPage() {
   const [awayTeamName, setAwayTeamName] = useState<string>('Visitante');
   const [homeAttendedPlayers, setHomeAttendedPlayers] = useState<AttendedPlayerInfo[]>([]);
   const [awayAttendedPlayers, setAwayAttendedPlayers] = useState<AttendedPlayerInfo[]>([]);
+  const [homeShots, setHomeShots] = useState(0);
+  const [awayShots, setAwayShots] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -59,6 +61,9 @@ export default function MobileShotsPage() {
 
             setHomeAttendedPlayers(sortedHomePlayers);
             setAwayAttendedPlayers(sortedAwayPlayers);
+            setHomeShots(liveState.score?.homeShots || 0);
+            setAwayShots(liveState.score?.awayShots || 0);
+
         } else {
             throw new Error("Incomplete game data received from server.");
         }
@@ -82,6 +87,8 @@ export default function MobileShotsPage() {
     }
     const result = await sendRemoteCommand({ type: 'ADD_SHOT', payload: { team, playerNumber } });
     if (result.success) {
+      if (team === 'home') setHomeShots(s => s + 1);
+      if (team === 'away') setAwayShots(s => s + 1);
       toast({
         title: "Tiro Registrado",
         description: `Tiro para el jugador #${playerNumber} del equipo ${team === 'home' ? homeTeamName : awayTeamName}.`,
@@ -120,7 +127,8 @@ export default function MobileShotsPage() {
       <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-3">
-            <h2 className="text-center font-bold text-lg mb-2 truncate">{homeTeamName}</h2>
+            <h2 className="text-center font-bold text-lg mb-1 truncate">{homeTeamName}</h2>
+            <p className="text-center text-sm text-muted-foreground mb-2">Tiros Totales: {homeShots}</p>
             <div className="grid grid-cols-3 gap-2">
               {homeAttendedPlayers.map(player => (
                 <Button key={player.id} onClick={() => handleShot('home', player.number)} className="h-16 text-xl">
@@ -133,7 +141,8 @@ export default function MobileShotsPage() {
         </Card>
         <Card>
           <CardContent className="p-3">
-            <h2 className="text-center font-bold text-lg mb-2 truncate">{awayTeamName}</h2>
+            <h2 className="text-center font-bold text-lg mb-1 truncate">{awayTeamName}</h2>
+             <p className="text-center text-sm text-muted-foreground mb-2">Tiros Totales: {awayShots}</p>
             <div className="grid grid-cols-3 gap-2">
                {awayAttendedPlayers.map(player => (
                 <Button key={player.id} onClick={() => handleShot('away', player.number)} className="h-16 text-xl">
