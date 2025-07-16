@@ -9,7 +9,7 @@ import { Goal, ArrowLeft, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '@/app/actions';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import type { LiveGameState, AttendedPlayerInfo, Team } from '@/types';
+import type { LiveGameState, AttendedPlayerInfo, Team, MobileData } from '@/types';
 import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
@@ -163,13 +163,13 @@ export default function MobileShotsPage() {
         if (!gameStateRes.ok) {
           throw new Error(`Failed to fetch game state: ${gameStateRes.status}`);
         }
-        const liveState: LiveGameState = await gameStateRes.json();
+        const mobileData: MobileData = await gameStateRes.json();
+        const liveState = mobileData.gameState;
 
         if (liveState && liveState.gameSummary) {
             setHomeTeamName(liveState.homeTeamName || 'Local');
             setAwayTeamName(liveState.awayTeamName || 'Visitante');
 
-            // Handle cases where attendance might be undefined or null gracefully
             const homeAttendance = liveState.gameSummary.attendance?.home || [];
             const awayAttendance = liveState.gameSummary.attendance?.away || [];
 

@@ -251,25 +251,23 @@ export interface GameState {
   _initialConfigLoadComplete?: boolean;
 }
 
-
-export interface LiveGameState {
-    clock: ClockState;
-    score: ScoreState;
-    penalties: PenaltiesState;
-    homeTeamName: string;
-    homeTeamSubName?: string;
-    awayTeamName: string;
-    awayTeamSubName?: string;
-    gameSummary: GameSummary;
-    // These are from config but useful for display
+export interface LiveGameState extends LiveState {
+    // This type is a superset used for client-server communication
+    // to package necessary config data with the live state.
     playersPerTeamOnIce?: number; 
     numberOfRegularPeriods?: number;
-    // For remote controls
-    penaltyTypes?: PenaltyTypeDefinition[];
-    defaultPenaltyTypeId?: string | null;
     teams?: TeamData[];
     selectedMatchCategory?: string;
 }
+
+export interface MobileData {
+    gameState: LiveGameState | null;
+    penaltyConfig: {
+        penaltyTypes: PenaltyTypeDefinition[];
+        defaultPenaltyTypeId: string | null;
+    }
+}
+
 
 // --- Remote Commands ---
 export type RemoteCommand = 
