@@ -166,12 +166,12 @@ export default function MobileShotsPage() {
         const mobileData: MobileData = await gameStateRes.json();
         const liveState = mobileData.gameState;
 
-        if (liveState && liveState.gameSummary) {
+        if (liveState) {
             setHomeTeamName(liveState.homeTeamName || 'Local');
             setAwayTeamName(liveState.awayTeamName || 'Visitante');
 
-            const homeAttendance = liveState.gameSummary.attendance?.home || [];
-            const awayAttendance = liveState.gameSummary.attendance?.away || [];
+            const homeAttendance = liveState.gameSummary?.attendance?.home || [];
+            const awayAttendance = liveState.gameSummary?.attendance?.away || [];
 
             const sortedHomePlayers = [...homeAttendance].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
             const sortedAwayPlayers = [...awayAttendance].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
@@ -248,7 +248,7 @@ export default function MobileShotsPage() {
             <p className="text-center text-sm text-muted-foreground mb-2">Tiros Totales: {homeShots}</p>
             <div className="grid grid-cols-3 gap-2">
               {homeAttendedPlayers.map(player => (
-                <Button key={player.id} onClick={() => handleShot('home', player.number)} className="h-16 text-xl">
+                <Button key={player.id} onClick={() => handleShot('home', player.number)} className="h-24 text-3xl">
                   {player.number}
                 </Button>
               ))}
@@ -262,7 +262,7 @@ export default function MobileShotsPage() {
              <p className="text-center text-sm text-muted-foreground mb-2">Tiros Totales: {awayShots}</p>
             <div className="grid grid-cols-3 gap-2">
                {awayAttendedPlayers.map(player => (
-                <Button key={player.id} onClick={() => handleShot('away', player.number)} className="h-16 text-xl">
+                <Button key={player.id} onClick={() => handleShot('away', player.number)} className="h-24 text-3xl">
                   {player.number}
                 </Button>
               ))}
