@@ -5,14 +5,130 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Goal, ArrowLeft } from 'lucide-react';
+import { Goal, ArrowLeft, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '@/app/actions';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import type { LiveGameState, AttendedPlayerInfo } from '@/types';
+import type { LiveGameState, AttendedPlayerInfo, Team } from '@/types';
 import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+
 
 const AUTH_KEY = 'icevision-remote-auth-key';
+
+function AddGoalForm({ homeTeamName, awayTeamName, onGoalSent }: { homeTeamName: string; awayTeamName: string; onGoalSent: () => void }) {
+    const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+    const [scorerNumber, setScorerNumber] = useState('');
+    const [assistNumber, setAssistNumber] = useState('');
+    const [isSending, setIsSending] = useState(false);
+    const { toast } = useToast();
+  
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!selectedTeam) {
+        toast({ title: "Error", description: "Debes seleccionar un equipo.", variant: "destructive" });
+        return;
+      }
+      if (!scorerNumber.trim()) {
+        toast({ title: "Error", description: "El número del goleador es obligatorio.", variant: "destructive" });
+        return;
+      }
+  
+      setIsSending(true);
+      const result = await sendRemoteCommand({
+        type: 'ADD_GOAL',
+        payload: {
+          team: selectedTeam,
+          scorerNumber: scorerNumber.trim(),
+          assistNumber: assistNumber.trim() || undefined,
+        }
+      });
+      setIsSending(false);
+  
+      if (result.success) {
+        toast({ title: "Comando Enviado", description: "El gol ha sido enviado al operador principal." });
+        onGoalSent(); // Close dialog
+      } else {
+        toast({ title: "Error al Enviar", description: result.message, variant: "destructive" });
+      }
+    };
+  
+    return (
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <Label className="text-base">Equipo que Anotó</Label>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <Button
+              type="button"
+              variant={selectedTeam === 'home' ? 'default' : 'outline'}
+              onClick={() => setSelectedTeam('home')}
+              className="h-12 text-base truncate"
+              title={homeTeamName}
+            >
+              {homeTeamName}
+            </Button>
+            <Button
+              type="button"
+              variant={selectedTeam === 'away' ? 'default' : 'outline'}
+              onClick={() => setSelectedTeam('away')}
+              className="h-12 text-base truncate"
+              title={awayTeamName}
+            >
+              {awayTeamName}
+            </Button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="scorer-number"># Goleador</Label>
+            <Input
+              id="scorer-number"
+              type="number"
+              inputMode="numeric"
+              value={scorerNumber}
+              onChange={(e) => setScorerNumber(e.target.value)}
+              placeholder="Ej: 99"
+              className="h-12 text-lg"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="assist-number"># Asistente</Label>
+            <Input
+              id="assist-number"
+              type="number"
+              inputMode="numeric"
+              value={assistNumber}
+              onChange={(e) => setAssistNumber(e.target.value)}
+              placeholder="(Opcional)"
+              className="h-12 text-lg"
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="pt-6">
+          <DialogClose asChild>
+            <Button type="button" variant="outline">Cancelar</Button>
+          </DialogClose>
+          <Button type="submit" disabled={isSending} className="h-14 text-lg">
+            {isSending ? <LoadingSpinner className="mr-2" /> : <Send className="mr-2 h-4 w-4" />}
+            Enviar Gol
+          </Button>
+        </DialogFooter>
+      </form>
+    );
+}
 
 export default function MobileShotsPage() {
   const router = useRouter();
@@ -25,6 +141,7 @@ export default function MobileShotsPage() {
   const [homeShots, setHomeShots] = useState(0);
   const [awayShots, setAwayShots] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isAddGoalDialogOpen, setIsAddGoalDialogOpen] = useState(false);
 
   useEffect(() => {
     const authenticateAndLoad = async () => {
@@ -157,9 +274,25 @@ export default function MobileShotsPage() {
 
       <Separator />
 
-      <Button className="w-full h-16 text-xl" onClick={() => router.push('/mobile-controls')}>
+      <Button className="w-full h-16 text-xl" onClick={() => setIsAddGoalDialogOpen(true)}>
         <Goal className="mr-4 h-6 w-6" /> Añadir Gol
       </Button>
+
+      <Dialog open={isAddGoalDialogOpen} onOpenChange={setIsAddGoalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar un Nuevo Gol</DialogTitle>
+            <DialogDescription>
+              Selecciona el equipo y los números de los jugadores. El comando será enviado al operador principal.
+            </DialogDescription>
+          </DialogHeader>
+          <AddGoalForm 
+            homeTeamName={homeTeamName}
+            awayTeamName={awayTeamName}
+            onGoalSent={() => setIsAddGoalDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
