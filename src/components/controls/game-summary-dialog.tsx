@@ -96,8 +96,8 @@ const TeamSummaryColumn = ({ team, teamName, score, goals, penalties, playerStat
                     {penalties.map(p => (
                         <TableRow key={p.id}>
                         <TableCell>
-                            <div className="font-semibold">#{p.playerNumber}</div>
-                            <div className="text-xs text-muted-foreground">{p.playerName || '---'}</div>
+                            <div className="font-semibold">{p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber}`}</div>
+                            <div className="text-xs text-muted-foreground">{p.isBenchPenalty ? '---' : p.playerName || '---'}</div>
                         </TableCell>
                         <TableCell className="font-mono text-sm">{formatTime(p.initialDuration * 100)}</TableCell>
                         <TableCell>
