@@ -498,6 +498,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'ADD_GOAL': {
       const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
       const team = action.payload.team;
+      const score = { ...state.live.score };
       const gameSummary = { ...state.live.gameSummary };
       const playerStats = { ...gameSummary[team].playerStats };
 
@@ -505,7 +506,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       if (newGoal.scorer?.playerNumber) {
         const scorerNumber = newGoal.scorer.playerNumber;
         const currentScorerStats = playerStats[scorerNumber] || { name: newGoal.scorer.playerName || '', shots: 0, goals: 0, assists: 0 };
-        playerStats[scorerNumber] = { ...currentScorerStats, name: newGoal.scorer.playerName || currentScorerStats.name, goals: currentScorerStats.goals + 1 };
+        playerStats[scorerNumber] = { 
+          ...currentScorerStats, 
+          name: newGoal.scorer.playerName || currentScorerStats.name, 
+          goals: currentScorerStats.goals + 1,
+          shots: currentScorerStats.shots + 1, // Also increment shot count
+        };
+        // Increment total team shots
+        if (team === 'home') score.homeShots = (score.homeShots || 0) + 1;
+        if (team === 'away') score.awayShots = (score.awayShots || 0) + 1;
       }
       
       // Update Assist Stats
@@ -515,17 +524,16 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         playerStats[assistNumber] = { ...currentAssistStats, name: newGoal.assist.playerName || currentAssistStats.name, assists: currentAssistStats.assists + 1 };
       }
       
-      const homeGoals = (team === 'home' ? [...(state.live.score.homeGoals || []), newGoal] : (state.live.score.homeGoals || []));
-      const awayGoals = (team === 'away' ? [...(state.live.score.awayGoals || []), newGoal] : (state.live.score.awayGoals || []));
+      const homeGoals = (team === 'home' ? [...(score.homeGoals || []), newGoal] : (score.homeGoals || []));
+      const awayGoals = (team === 'away' ? [...(score.awayGoals || []), newGoal] : (score.awayGoals || []));
+      
+      score.home = homeGoals.length;
+      score.away = awayGoals.length;
+      score.homeGoals = homeGoals;
+      score.awayGoals = awayGoals;
       
       newState = { ...state, live: { ...state.live, 
-        score: {
-          ...state.live.score,
-          home: homeGoals.length,
-          away: awayGoals.length,
-          homeGoals: homeGoals,
-          awayGoals: awayGoals,
-        },
+        score: score,
         gameSummary: {
           ...gameSummary,
           [team]: {
@@ -563,6 +571,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PLAYER_SHOT': {
       const { team, playerNumber } = action.payload;
+      const score = { ...state.live.score };
       const playerStats = { ...(state.live.gameSummary[team]?.playerStats || {}) };
       
       const attendedPlayer = state.live.gameSummary.attendance[team].find(p => p.number === playerNumber);
@@ -575,7 +584,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         shots: currentStats.shots + 1,
       };
 
+      if (team === 'home') score.homeShots = (score.homeShots || 0) + 1;
+      if (team === 'away') score.awayShots = (score.awayShots || 0) + 1;
+
       newState = { ...state, live: { ...state.live,
+        score: score,
         gameSummary: {
           ...state.live.gameSummary,
           [team]: {
@@ -589,14 +602,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'FINISH_GAME_WITH_OT_GOAL': {
       const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
       const team = action.payload.team;
+      const score = { ...state.live.score };
       const gameSummary = { ...state.live.gameSummary };
       const playerStats = { ...gameSummary[team].playerStats };
 
-      // Update Scorer Stats
+      // Update Scorer Stats (including the shot)
       if (newGoal.scorer?.playerNumber) {
         const scorerNumber = newGoal.scorer.playerNumber;
         const currentScorerStats = playerStats[scorerNumber] || { name: newGoal.scorer.playerName || '', shots: 0, goals: 0, assists: 0 };
-        playerStats[scorerNumber] = { ...currentScorerStats, name: newGoal.scorer.playerName || currentScorerStats.name, goals: currentScorerStats.goals + 1 };
+        playerStats[scorerNumber] = { 
+          ...currentScorerStats, 
+          name: newGoal.scorer.playerName || currentScorerStats.name, 
+          goals: currentScorerStats.goals + 1,
+          shots: currentScorerStats.shots + 1,
+        };
+        // Increment total team shots
+        if (team === 'home') score.homeShots = (score.homeShots || 0) + 1;
+        if (team === 'away') score.awayShots = (score.awayShots || 0) + 1;
       }
       
       // Update Assist Stats
@@ -606,18 +628,17 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         playerStats[assistNumber] = { ...currentAssistStats, name: newGoal.assist.playerName || currentAssistStats.name, assists: currentAssistStats.assists + 1 };
       }
 
-      const homeGoals = (team === 'home' ? [...(state.live.score.homeGoals || []), newGoal] : (state.live.score.homeGoals || []));
-      const awayGoals = (team === 'away' ? [...(state.live.score.awayGoals || []), newGoal] : (state.live.score.awayGoals || []));
+      const homeGoals = (team === 'home' ? [...(score.homeGoals || []), newGoal] : (score.homeGoals || []));
+      const awayGoals = (team === 'away' ? [...(score.awayGoals || []), newGoal] : (score.awayGoals || []));
+      score.home = homeGoals.length;
+      score.away = awayGoals.length;
+      score.homeGoals = homeGoals;
+      score.awayGoals = awayGoals;
+      
       const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
       
       newState = { ...state, live: { ...state.live, 
-        score: {
-          ...state.live.score,
-          home: homeGoals.length,
-          away: awayGoals.length,
-          homeGoals,
-          awayGoals,
-        },
+        score: score,
         clock: {
           ...state.live.clock,
           currentTime: 0,
