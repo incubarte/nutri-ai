@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useGameState, type Team } from "@/contexts/game-state-context";
-import type { PlayerData } from "@/types";
+import type { PlayerData, AttendedPlayerInfo } from "@/types";
 import { User, Shield, Save, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -45,15 +45,14 @@ export function EditTeamPlayersDialog({
   const { toast } = useToast();
   const [editablePlayers, setEditablePlayers] = useState<EditablePlayer[]>([]);
   const [attendedPlayerIds, setAttendedPlayerIds] = useState<Set<string>>(new Set());
-  const isInitialized = useRef(false);
-
+  
   const teamDetails = useMemo(() => {
     if (!state.config) return null;
     return state.config.teams.find(t => t.id === teamId);
   }, [state.config, teamId]);
 
   useEffect(() => {
-    if (isOpen && teamDetails && !isInitialized.current) {
+    if (isOpen && teamDetails) {
       const sortedPlayers = [...teamDetails.players].sort((a, b) => {
         if (a.type === 'goalkeeper' && b.type !== 'goalkeeper') return -1;
         if (a.type !== 'goalkeeper' && b.type === 'goalkeeper') return 1;
@@ -77,13 +76,14 @@ export function EditTeamPlayersDialog({
       setEditablePlayers(
         sortedPlayers.map(p => ({ ...p, localNumber: p.number, isModified: false }))
       );
-      const attendedIds = state.live?.gameSummary?.attendance?.[teamType] || [];
-      setAttendedPlayerIds(new Set(attendedIds));
-      isInitialized.current = true;
+      
+      const attendedInfo = state.live?.gameSummary?.attendance?.[teamType] || [];
+      setAttendedPlayerIds(new Set(attendedInfo.map(p => p.id)));
+
     } else if (!isOpen) {
+      // Reset state when dialog is closed to ensure fresh load next time
       setEditablePlayers([]);
       setAttendedPlayerIds(new Set());
-      isInitialized.current = false;
     }
   }, [isOpen, teamDetails, state.live, teamType]);
 
@@ -172,8 +172,8 @@ export function EditTeamPlayersDialog({
       }
     });
 
-    const originalAttendance = new Set(state.live?.gameSummary?.attendance?.[teamType] || []);
-    const attendanceChanged = !(attendedPlayerIds.size === originalAttendance.size && [...attendedPlayerIds].every(id => originalAttendance.has(id)));
+    const originalAttendedIds = new Set((state.live?.gameSummary?.attendance?.[teamType] || []).map(p => p.id));
+    const attendanceChanged = !(attendedPlayerIds.size === originalAttendedIds.size && [...attendedPlayerIds].every(id => originalAttendedIds.has(id)));
 
     if (attendanceChanged) {
         dispatch({
