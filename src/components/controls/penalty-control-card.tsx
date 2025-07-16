@@ -106,7 +106,15 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     const matchedPlayerForPenaltyDisplay = matchedTeam?.players.find(
       pData => pData.number === penalty.playerNumber || (penalty.playerNumber === "S/N" && !pData.number)
     );
-    const displayPenaltyNumber = penalty.playerNumber || 'S/N';
+
+    const getDisplayNumber = () => {
+      if (penalty.isBenchPenalty) {
+        return `Banco (#${penalty.playerNumber || 'S/N'})`;
+      }
+      return `#${penalty.playerNumber || 'S/N'}`;
+    };
+    
+    const displayPenaltyNumber = getDisplayNumber();
     
     const remainingTimeCs = (penalty._status === 'running' && penalty.expirationTime !== undefined)
       ? Math.max(0, penalty.expirationTime - state.live.clock._liveAbsoluteElapsedTimeCs)
@@ -172,8 +180,8 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                                      <CagedUserIcon size={1.75} />
                                     <div>
                                         <p className="font-semibold text-card-foreground truncate flex items-center">
-                                            #{displayPenaltyNumber}
-                                            {state.config.enablePlayerSelectionForPenalties && state.config.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && (
+                                            {displayPenaltyNumber}
+                                            {state.config.enablePlayerSelectionForPenalties && state.config.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && !penalty.isBenchPenalty && (
                                                 <span className="ml-1 text-xs text-muted-foreground font-normal">
                                                     - {matchedPlayerForPenaltyDisplay.name}
                                                 </span>

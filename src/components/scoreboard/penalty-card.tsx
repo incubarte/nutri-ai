@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { Penalty, ClockState } from '@/types';
@@ -74,7 +73,7 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
   );
 
   const renderPlayerAlias = () => {
-    if (!config.showAliasInScoreboardPenalties || !matchedPlayer || !matchedPlayer.name) return null;
+    if (!config.showAliasInScoreboardPenalties || !matchedPlayer || !matchedPlayer.name || penalty.isBenchPenalty) return null;
     
     const name = matchedPlayer.name;
     let displayName = name;
@@ -95,6 +94,13 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
       </>
     );
   };
+  
+  const getDisplayNumber = () => {
+      if (penalty.isBenchPenalty) {
+        return `Banco (#${penalty.playerNumber || 'S/N'})`;
+      }
+      return `#${penalty.playerNumber || 'S/N'}`;
+    };
 
   const getStatusTextForScoreboard = () => {
     if (isPendingPuck) return "Esperando Puck";
@@ -132,7 +138,7 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
               className="font-semibold"
               style={{ fontSize: styles.playerNumberSize, lineHeight: 1 }}
             >
-              {penalty.playerNumber || 'S/N'}
+              {getDisplayNumber()}
               {renderPlayerAlias()}
             </span>
           </div>
@@ -172,4 +178,3 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
     </Card>
   );
 }
-

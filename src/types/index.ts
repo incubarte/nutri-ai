@@ -12,6 +12,7 @@ export interface PenaltyTypeDefinition {
   name: string;
   duration: number;
   type: 'minor' | 'misconduct';
+  isBenchPenalty?: boolean; // Nuevo campo
 }
 
 export interface Penalty {
@@ -22,6 +23,7 @@ export interface Penalty {
   initialDuration: number; 
   _status?: 'running' | 'pending_concurrent' | 'pending_puck'; 
   penaltyType?: 'minor' | 'misconduct';
+  isBenchPenalty?: boolean; // Nuevo campo
   _limitReached?: ('quantity')[];
 }
 
@@ -123,6 +125,7 @@ export interface PenaltyLog {
   playerName?: string;
   initialDuration: number;
   penaltyType?: 'minor' | 'misconduct';
+  isBenchPenalty?: boolean; // Nuevo campo
   addTimestamp: number;
   addGameTime: number;
   addPeriodText: string;
@@ -308,6 +311,7 @@ export type GameAction =
   | { type: 'ADD_FORMAT_AND_TIMINGS_PROFILE'; payload: { name: string; profileData?: Partial<FormatAndTimingsProfileData> } }
   | { type: 'UPDATE_SELECTED_FT_PROFILE_DATA', payload: Partial<FormatAndTimingsProfileData> }
   | { type: 'UPDATE_FORMAT_AND_TIMINGS_PROFILE_NAME'; payload: { profileId: string; newName: string } }
+  | { type: 'REORDER_PENALTY_TYPES'; payload: { startIndex: number; endIndex: number } }
   | { type: 'DELETE_FORMAT_AND_TIMINGS_PROFILE'; payload: { profileId: string } }
   | { type: 'SELECT_FORMAT_AND_TIMINGS_PROFILE'; payload: { profileId: string | null } }
   | { type: 'LOAD_FORMAT_AND_TIMINGS_PROFILES'; payload: FormatAndTimingsProfile[] }

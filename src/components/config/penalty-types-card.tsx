@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Edit3 } from "lucide-react";
+import { Trash2, Plus, Edit3, GripVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { safeUUID } from "@/lib/utils";
 import {
@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "../ui/switch";
 import { Separator } from "../ui/separator";
+import { cn } from "@/lib/utils";
+import { Checkbox } from "../ui/checkbox";
 
 export interface PenaltyTypesCardRef {
   handleSave: () => boolean;
@@ -35,8 +37,6 @@ interface PenaltyTypesCardProps {
   initialValues: Partial<FormatAndTimingsProfileData>;
 }
 
-const NO_TYPES_DEFINED_PLACEHOLDER_ID = "__NO_TYPES__";
-
 export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCardProps>((props, ref) => {
   const { dispatch } = useGameState();
   const { onDirtyChange, initialValues } = props;
@@ -46,11 +46,12 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
   const [localDefaultPenaltyId, setLocalDefaultPenaltyId] = useState<string | null>(initialValues.defaultPenaltyTypeId || null);
   const [editingPenalty, setEditingPenalty] = useState<PenaltyTypeDefinition | null>(null);
   
-  // New state for player penalty limits
   const [enableMaxPenalties, setEnableMaxPenalties] = useState(initialValues.enableMaxPenaltiesLimit || false);
   const [maxPenalties, setMaxPenalties] = useState(String(initialValues.maxPenaltiesPerPlayer || ''));
   
   const [isDirtyLocal, setIsDirtyLocal] = useState(false);
+  
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
 
   const setValuesFromProfile = (values: Partial<FormatAndTimingsProfileData>) => {
     setLocalPenaltyTypes(values.penaltyTypes || []);
@@ -62,7 +63,6 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
 
   useEffect(() => {
     setValuesFromProfile(initialValues);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues]);
 
   useEffect(() => {
@@ -92,6 +92,32 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
     getIsDirty: () => isDirtyLocal,
     setValues: setValuesFromProfile,
   }));
+  
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, id: string) => {
+    setDraggedItemId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); 
+  };
+  
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetId: string) => {
+    e.preventDefault();
+    if (!draggedItemId || draggedItemId === targetId) return;
+
+    const draggedIndex = localPenaltyTypes.findIndex(p => p.id === draggedItemId);
+    const targetIndex = localPenaltyTypes.findIndex(p => p.id === targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newPenaltyTypes = [...localPenaltyTypes];
+    const [draggedItem] = newPenaltyTypes.splice(draggedIndex, 1);
+    newPenaltyTypes.splice(targetIndex, 0, draggedItem);
+    
+    setLocalPenaltyTypes(newPenaltyTypes);
+    markDirty();
+    setDraggedItemId(null);
+  };
 
   const handleAddNewPenalty = () => {
     setEditingPenalty({ id: safeUUID(), name: '', duration: 120, type: 'minor' });
@@ -151,14 +177,24 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
         </div>
 
         <div className="space-y-2">
-            <Label>Lista de Tipos de Faltas</Label>
+            <Label>Lista de Tipos de Faltas (Arrastra para reordenar)</Label>
             <div className="border rounded-md p-2 space-y-2 max-h-60 overflow-y-auto">
               {localPenaltyTypes.length > 0 ? (
                 localPenaltyTypes.map(p => (
-                  <div key={p.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
-                    <div>
-                      <p className="font-medium">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatTime(p.duration * 100)} - {p.type === 'minor' ? 'Regular' : 'Mala Conducta'}</p>
+                  <div 
+                    key={p.id} 
+                    className="flex items-center justify-between p-2 bg-muted/50 rounded-md"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, p.id)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, p.id)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
+                      <div>
+                        <p className="font-medium">{p.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatTime(p.duration * 100)} - {p.type === 'minor' ? 'Regular' : 'Mala Conducta'}{p.isBenchPenalty ? ' (Banco)' : ''}</p>
+                      </div>
                     </div>
                     <div className="flex items-center">
                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditPenalty(p)}>
@@ -215,6 +251,7 @@ function EditPenaltyDialog({ penalty, isOpen, onOpenChange, onSave }: { penalty:
   const [name, setName] = useState(penalty.name);
   const [duration, setDuration] = useState(String(penalty.duration));
   const [type, setType] = useState<"minor" | "misconduct">(penalty.type);
+  const [isBenchPenalty, setIsBenchPenalty] = useState(penalty.isBenchPenalty || false);
 
   const handleSubmit = () => {
     const durationNum = parseInt(duration, 10);
@@ -222,7 +259,7 @@ function EditPenaltyDialog({ penalty, isOpen, onOpenChange, onSave }: { penalty:
       // Basic validation
       return;
     }
-    onSave({ ...penalty, name: name.trim(), duration: durationNum, type });
+    onSave({ ...penalty, name: name.trim(), duration: durationNum, type, isBenchPenalty });
   };
   
   return (
@@ -252,6 +289,10 @@ function EditPenaltyDialog({ penalty, isOpen, onOpenChange, onSave }: { penalty:
                           <SelectItem value="misconduct">Mala Conducta (No saca jugador)</SelectItem>
                       </SelectContent>
                   </Select>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="isBenchPenalty" checked={isBenchPenalty} onCheckedChange={c => setIsBenchPenalty(!!c)} />
+                <Label htmlFor="isBenchPenalty" className="font-normal">Es una Penalidad de Banco</Label>
               </div>
           </div>
           <DialogFooter>

@@ -68,7 +68,7 @@ export function PenaltyLogDialog({ isOpen, onOpenChange, team, teamName }: Penal
                                     <div className="text-xs text-muted-foreground">{log.addPeriodText}</div>
                                 </TableCell>
                                 <TableCell>
-                                    <div className="font-semibold">#{log.playerNumber}</div>
+                                    <div className="font-semibold">{log.isBenchPenalty ? `Banco (#${log.playerNumber})` : `#${log.playerNumber}`}</div>
                                     <div className="text-xs text-muted-foreground">{log.playerName || 'Jugador no listado'}</div>
                                 </TableCell>
                                 <TableCell className="text-center font-mono">{formatTime(log.initialDuration * 100, { showTenths: false })}</TableCell>
