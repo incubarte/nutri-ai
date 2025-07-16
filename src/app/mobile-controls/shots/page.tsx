@@ -118,9 +118,7 @@ function AddGoalForm({ homeTeamName, awayTeamName, onGoalSent }: { homeTeamName:
         </div>
 
         <DialogFooter className="pt-6">
-          <DialogClose asChild>
-            <Button type="button" variant="outline">Cancelar</Button>
-          </DialogClose>
+          <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
           <Button type="submit" disabled={isSending} className="h-14 text-lg">
             {isSending ? <LoadingSpinner className="mr-2" /> : <Send className="mr-2 h-4 w-4" />}
             Enviar Gol
@@ -172,8 +170,11 @@ export default function MobileShotsPage() {
             setAwayTeamName(liveState.awayTeamName || 'Visitante');
 
             // Handle cases where attendance might be undefined or null gracefully
-            const sortedHomePlayers = [...(liveState.gameSummary.attendance?.home || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
-            const sortedAwayPlayers = [...(liveState.gameSummary.attendance?.away || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
+            const homeAttendance = liveState.gameSummary.attendance?.home || [];
+            const awayAttendance = liveState.gameSummary.attendance?.away || [];
+
+            const sortedHomePlayers = [...homeAttendance].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
+            const sortedAwayPlayers = [...awayAttendance].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
 
             setHomeAttendedPlayers(sortedHomePlayers);
             setAwayAttendedPlayers(sortedAwayPlayers);
@@ -295,4 +296,3 @@ export default function MobileShotsPage() {
     </main>
   );
 }
-
