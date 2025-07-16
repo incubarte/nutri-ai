@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Goal, ArrowLeft, Send } from 'lucide-react';
+import { Goal, ArrowLeft, Send, WifiOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '@/app/actions';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-
 
 const AUTH_KEY = 'icevision-remote-auth-key';
 
@@ -131,71 +130,71 @@ function AddGoalForm({ homeTeamName, awayTeamName, onGoalSent }: { homeTeamName:
 export default function MobileShotsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [liveState, setLiveState] = useState<LiveGameState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [homeTeamName, setHomeTeamName] = useState<string>('Local');
-  const [awayTeamName, setAwayTeamName] = useState<string>('Visitante');
-  const [homeAttendedPlayers, setHomeAttendedPlayers] = useState<AttendedPlayerInfo[]>([]);
-  const [awayAttendedPlayers, setAwayAttendedPlayers] = useState<AttendedPlayerInfo[]>([]);
-  const [homeShots, setHomeShots] = useState(0);
-  const [awayShots, setAwayShots] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
   const [isAddGoalDialogOpen, setIsAddGoalDialogOpen] = useState(false);
 
   useEffect(() => {
-    const authenticateAndLoad = async () => {
-      setIsLoading(true);
-      setError(null);
+    let eventSource: EventSource;
+
+    const connect = async () => {
       try {
         const password = localStorage.getItem(AUTH_KEY);
+        if (!password) {
+            router.replace('/mobile-controls/login');
+            return;
+        }
+
         const authRes = await fetch('/api/auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password }),
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password }),
         });
         const authData = await authRes.json();
         
         if (!authData.authenticated) {
-          router.replace('/mobile-controls/login');
-          return;
+            router.replace('/mobile-controls/login');
+            return;
         }
-
-        const gameStateRes = await fetch('/api/game-state');
-        if (!gameStateRes.ok) {
-          throw new Error(`Failed to fetch game state: ${gameStateRes.status}`);
-        }
-        const mobileData: MobileData = await gameStateRes.json();
-        const liveState = mobileData.gameState;
-
-        if (liveState) {
-            setHomeTeamName(liveState.homeTeamName || 'Local');
-            setAwayTeamName(liveState.awayTeamName || 'Visitante');
-
-            const homeAttendance = liveState.gameSummary?.attendance?.home || [];
-            const awayAttendance = liveState.gameSummary?.attendance?.away || [];
-
-            const sortedHomePlayers = [...homeAttendance].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
-            const sortedAwayPlayers = [...awayAttendance].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
-
-            setHomeAttendedPlayers(sortedHomePlayers);
-            setAwayAttendedPlayers(sortedAwayPlayers);
-            setHomeShots(liveState.score?.homeShots || 0);
-            setAwayShots(liveState.score?.awayShots || 0);
-
-        } else {
-            throw new Error("Incomplete game data received from server.");
+        
+        eventSource = new EventSource('/api/game-state/events');
+        eventSource.onopen = () => {
+          setIsConnected(true);
+          setError(null);
+        };
+        eventSource.onmessage = (event) => {
+          try {
+            const updatedLiveState: LiveGameState = JSON.parse(event.data);
+            setLiveState(updatedLiveState);
+            if (isLoading) setIsLoading(false);
+          } catch(e) {
+             console.error("Error parsing SSE data", e);
+             setError("Error al procesar datos del servidor.");
+          }
+        };
+        eventSource.onerror = () => {
+          setIsConnected(false);
+          setError("Conexión perdida. Intentando reconectar...");
+          setIsLoading(false);
         }
 
       } catch (e) {
-        const errorMessage = e instanceof Error ? e.message : "Error desconocido";
-        setError(`Error reaching server. ${errorMessage}`);
-        console.error("Error loading shots page:", e);
-      } finally {
+        console.error("Auth or initial connection failed", e);
+        setError("Error de autenticación o conexión inicial.");
         setIsLoading(false);
       }
     };
+    
+    connect();
 
-    authenticateAndLoad();
-  }, [router]);
+    return () => {
+        if (eventSource) {
+            eventSource.close();
+        }
+    }
+  }, [router, isLoading]);
 
   const handleShot = async (team: 'home' | 'away', playerNumber: string) => {
     if (!playerNumber) {
@@ -204,11 +203,9 @@ export default function MobileShotsPage() {
     }
     const result = await sendRemoteCommand({ type: 'ADD_SHOT', payload: { team, playerNumber } });
     if (result.success) {
-      if (team === 'home') setHomeShots(s => s + 1);
-      if (team === 'away') setAwayShots(s => s + 1);
       toast({
         title: "Tiro Registrado",
-        description: `Tiro para el jugador #${playerNumber} del equipo ${team === 'home' ? homeTeamName : awayTeamName}.`,
+        description: `Tiro para el jugador #${playerNumber} del equipo ${team === 'home' ? liveState?.homeTeamName : liveState?.awayTeamName}.`,
         duration: 1500,
       });
     } else {
@@ -224,13 +221,22 @@ export default function MobileShotsPage() {
     );
   }
 
-  if (error) {
+  if (error || !liveState) {
      return (
-      <div className="flex justify-center items-center h-screen text-center text-destructive p-4">
-       <p>{error}</p>
+      <div className="flex flex-col justify-center items-center h-screen text-center text-destructive p-4">
+       <WifiOff className="h-12 w-12 mb-4" />
+       <p className="font-semibold">{error || 'No se pudo obtener el estado del partido.'}</p>
       </div>
     );
   }
+
+  const homeTeamName = liveState.homeTeamName || 'Local';
+  const awayTeamName = liveState.awayTeamName || 'Visitante';
+  const homeAttendedPlayers = [...(liveState.gameSummary?.attendance?.home || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
+  const awayAttendedPlayers = [...(liveState.gameSummary?.attendance?.away || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
+  const homeShots = liveState.score?.homeShots || 0;
+  const awayShots = liveState.score?.awayShots || 0;
+
 
   return (
     <main className="w-full max-w-lg mx-auto p-4 space-y-6">

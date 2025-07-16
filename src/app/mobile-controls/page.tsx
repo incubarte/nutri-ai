@@ -1,10 +1,9 @@
 
-
 "use client";
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Team, LiveGameState, PenaltyTypeDefinition } from '@/types';
+import type { Team, LiveGameState, PenaltyTypeDefinition, MobileData } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -245,20 +244,12 @@ function AddPenaltyForm({ homeTeamName, awayTeamName, penaltyTypes, defaultPenal
   );
 }
 
-// Minimal type for the combined data fetch
-interface MobileData {
-  gameState: LiveGameState | null;
-  penaltyConfig: {
-    penaltyTypes: PenaltyTypeDefinition[];
-    defaultPenaltyTypeId: string | null;
-  }
-}
-
 export default function MobileControlsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mobileData, setMobileData] = useState<MobileData | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
   
   const [isAddGoalDialogOpen, setIsAddGoalDialogOpen] = useState(false);
   const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
@@ -266,54 +257,72 @@ export default function MobileControlsPage() {
 
   const { toast } = useToast();
 
-  const fetchInitialData = async () => {
-    setError(null);
-    try {
-      const res = await fetch('/api/game-state');
-      if (!res.ok) throw new Error(`Game state fetch failed: ${res.status}`);
-      
-      const data = await res.json();
-      
-      setMobileData({
-        gameState: data,
-        penaltyConfig: {
-          penaltyTypes: data.penaltyTypes || [],
-          defaultPenaltyTypeId: data.defaultPenaltyTypeId || null,
-        }
-      });
-
-    } catch (e) {
-      console.error("Failed to fetch initial data:", e);
-      const errorMessage = e instanceof Error ? e.message : "No se pudo obtener el estado del partido del servidor.";
-      setError(errorMessage);
-    }
-  };
-
   useEffect(() => {
-    const authenticateAndLoad = async () => {
-      setIsLoading(true);
+    let eventSource: EventSource;
+
+    const connect = async () => {
       try {
         const password = localStorage.getItem(AUTH_KEY);
-        const res = await fetch('/api/auth', {
+        if (!password) {
+            router.replace('/mobile-controls/login');
+            return;
+        }
+
+        const authRes = await fetch('/api/auth', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password }),
         });
-        const data = await res.json();
+        const authData = await authRes.json();
         
-        if (data.authenticated) {
-            await fetchInitialData();
-        } else {
+        if (!authData.authenticated) {
             router.replace('/mobile-controls/login');
+            return;
         }
+
+        const res = await fetch('/api/game-state');
+        if (!res.ok) throw new Error(`Game state fetch failed: ${res.status}`);
+        const data: MobileData = await res.json();
+        setMobileData(data);
+        setIsLoading(false);
+
+        // Now, establish SSE connection
+        eventSource = new EventSource('/api/game-state/events');
+        eventSource.onopen = () => {
+          setIsConnected(true);
+          setError(null);
+        };
+        eventSource.onmessage = (event) => {
+          try {
+            const updatedLiveState: LiveGameState = JSON.parse(event.data);
+            setMobileData(prevData => ({
+                // We only get live state updates, keep the config part from the initial fetch
+                gameState: updatedLiveState,
+                penaltyConfig: prevData?.penaltyConfig || { penaltyTypes: updatedLiveState.penaltyTypes || [], defaultPenaltyTypeId: updatedLiveState.defaultPenaltyTypeId || null }
+            }));
+          } catch(e) {
+             console.error("Error parsing SSE data", e);
+          }
+        };
+        eventSource.onerror = () => {
+          setIsConnected(false);
+          setError("Conexión perdida con el servidor. Intentando reconectar...");
+        }
+
       } catch (e) {
-        console.error("Auth check failed", e);
-        setError("Error de autenticación. Intenta de nuevo.");
-      } finally {
+        console.error("Auth or initial fetch failed", e);
+        setError("Error de autenticación o conexión inicial.");
         setIsLoading(false);
       }
     };
-    authenticateAndLoad();
+    
+    connect();
+
+    return () => {
+        if (eventSource) {
+            eventSource.close();
+        }
+    }
   }, [router]);
   
   const handlePuckInPlay = async () => {
@@ -331,7 +340,7 @@ export default function MobileControlsPage() {
       <main className="w-full h-full p-4 bg-background">
         <div className="flex flex-col h-full w-full items-center justify-center text-center">
           <ShieldCheck className="h-12 w-12 text-primary animate-pulse" />
-          <p className="text-muted-foreground mt-4">Verificando acceso...</p>
+          <p className="text-muted-foreground mt-4">Verificando acceso y cargando datos...</p>
         </div>
       </main>
     );
@@ -344,7 +353,7 @@ export default function MobileControlsPage() {
           <WifiOff className="h-16 w-16" />
           <h1 className="text-2xl font-bold mt-4">Error de Conexión</h1>
           <p className="text-destructive-foreground/80">{error || "No se pudo cargar la información del partido."}</p>
-          <Button onClick={fetchInitialData} className="mt-6">
+          <Button onClick={() => window.location.reload()} className="mt-6">
             <RefreshCw className="mr-2 h-4 w-4" />
             Reintentar
           </Button>
@@ -440,4 +449,3 @@ export default function MobileControlsPage() {
     </main>
   );
 }
-

@@ -1,5 +1,4 @@
 
-
 export interface PlayerStats {
   name: string;
   shots: number;
@@ -12,7 +11,7 @@ export interface PenaltyTypeDefinition {
   name: string;
   duration: number;
   type: 'minor' | 'misconduct';
-  isBenchPenalty?: boolean; // Nuevo campo
+  isBenchPenalty?: boolean;
 }
 
 export interface Penalty {
@@ -23,7 +22,7 @@ export interface Penalty {
   initialDuration: number; 
   _status?: 'running' | 'pending_concurrent' | 'pending_puck'; 
   penaltyType?: 'minor' | 'misconduct';
-  isBenchPenalty?: boolean; // Nuevo campo
+  isBenchPenalty?: boolean;
   _limitReached?: ('quantity')[];
 }
 
@@ -126,7 +125,7 @@ export interface PenaltyLog {
   penaltyName?: string;
   initialDuration: number;
   penaltyType?: 'minor' | 'misconduct';
-  isBenchPenalty?: boolean; // Nuevo campo
+  isBenchPenalty?: boolean;
   addTimestamp: number;
   addGameTime: number;
   addPeriodText: string;
@@ -254,12 +253,12 @@ export interface GameState {
 }
 
 export interface LiveGameState extends LiveState {
-    // This type is a superset used for client-server communication
-    // to package necessary config data with the live state.
     playersPerTeamOnIce?: number; 
     numberOfRegularPeriods?: number;
     teams?: TeamData[];
     selectedMatchCategory?: string;
+    penaltyTypes?: PenaltyTypeDefinition[];
+    defaultPenaltyTypeId?: string | null;
 }
 
 export interface MobileData {
