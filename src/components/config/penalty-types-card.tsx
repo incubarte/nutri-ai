@@ -49,8 +49,6 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
   // New state for player penalty limits
   const [enableMaxPenalties, setEnableMaxPenalties] = useState(initialValues.enableMaxPenaltiesLimit || false);
   const [maxPenalties, setMaxPenalties] = useState(String(initialValues.maxPenaltiesPerPlayer || ''));
-  const [enableMaxTime, setEnableMaxTime] = useState(initialValues.enableMaxPenaltyTimeLimit || false);
-  const [maxTime, setMaxTime] = useState(String(initialValues.maxPenaltyTimePerPlayerMinutes || ''));
   
   const [isDirtyLocal, setIsDirtyLocal] = useState(false);
 
@@ -59,8 +57,6 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
     setLocalDefaultPenaltyId(values.defaultPenaltyTypeId || null);
     setEnableMaxPenalties(values.enableMaxPenaltiesLimit || false);
     setMaxPenalties(String(values.maxPenaltiesPerPlayer || ''));
-    setEnableMaxTime(values.enableMaxPenaltyTimeLimit || false);
-    setMaxTime(String(values.maxPenaltyTimePerPlayerMinutes || ''));
     setIsDirtyLocal(false);
   };
 
@@ -85,8 +81,6 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
           defaultPenaltyTypeId: localDefaultPenaltyId,
           enableMaxPenaltiesLimit: enableMaxPenalties,
           maxPenaltiesPerPlayer: parseInt(maxPenalties, 10) || 3,
-          enableMaxPenaltyTimeLimit: enableMaxTime,
-          maxPenaltyTimePerPlayerMinutes: parseInt(maxTime, 10) || 15,
         }
       });
       setIsDirtyLocal(false);
@@ -197,16 +191,6 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
             <div className="flex items-center justify-between p-3 border rounded-md bg-muted/20">
               <Label htmlFor="maxPenaltiesPerPlayer" className="font-normal">Cantidad máxima de penalidades</Label>
               <Input id="maxPenaltiesPerPlayer" type="number" value={maxPenalties} onChange={(e) => { setMaxPenalties(e.target.value); markDirty(); }} className="w-20 h-8" disabled={!enableMaxPenalties} />
-            </div>
-          </div>
-          <div className="space-y-4 mt-4">
-            <div className="flex items-center justify-between p-3 border rounded-md bg-muted/20">
-              <Label htmlFor="enableMaxTime" className="font-normal">Habilitar límite de tiempo total de penalidad</Label>
-              <Switch id="enableMaxTime" checked={enableMaxTime} onCheckedChange={(c) => { setEnableMaxTime(c); markDirty(); }} />
-            </div>
-             <div className="flex items-center justify-between p-3 border rounded-md bg-muted/20">
-              <Label htmlFor="maxPenaltyTime" className="font-normal">Tiempo máximo de penalidad (minutos)</Label>
-              <Input id="maxPenaltyTime" type="number" value={maxTime} onChange={(e) => { setMaxTime(e.target.value); markDirty(); }} className="w-20 h-8" disabled={!enableMaxTime} />
             </div>
           </div>
         </div>

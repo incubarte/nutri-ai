@@ -130,8 +130,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     
     const ejectionMessage = useMemo(() => {
         if (!penalty._limitReached || penalty._limitReached.length === 0) return null;
-        const reasons = penalty._limitReached.map(reason => reason === 'quantity' ? 'Cantidad' : 'Tiempo').join(' y ');
-        return ` - Expulsado por ${reasons}`;
+        return ` - Expulsado por Cantidad`;
     }, [penalty._limitReached]);
 
 

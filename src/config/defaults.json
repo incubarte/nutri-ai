@@ -16,9 +16,7 @@
     "maxConcurrentPenalties": 2,
     "playersPerTeamOnIce": 5,
     "enableMaxPenaltiesLimit": true,
-    "maxPenaltiesPerPlayer": 3,
-    "enableMaxPenaltyTimeLimit": false,
-    "maxPenaltyTimePerPlayerMinutes": 15
+    "maxPenaltiesPerPlayer": 3
   },
   "penaltyTypes": [
     {

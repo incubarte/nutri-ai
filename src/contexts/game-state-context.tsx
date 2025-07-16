@@ -668,7 +668,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
       }
       
-      const limitReachedReasons: ('quantity' | 'time')[] = [];
+      const limitReachedReasons: ('quantity')[] = [];
       const playerPenalties = state.live.gameSummary[team].penalties.filter(
         p => p.playerNumber === playerNumber && p.endReason !== 'deleted'
       );
@@ -676,13 +676,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       if (state.config.enableMaxPenaltiesLimit) {
         if (playerPenalties.length + 1 >= state.config.maxPenaltiesPerPlayer) {
           limitReachedReasons.push('quantity');
-        }
-      }
-      
-      if (state.config.enableMaxPenaltyTimeLimit) {
-        const totalPenaltyTimeSec = playerPenalties.reduce((acc, p) => acc + p.initialDuration, 0);
-        if ((totalPenaltyTimeSec + penaltyDef.duration) / 60 >= state.config.maxPenaltyTimePerPlayerMinutes) {
-          limitReachedReasons.push('time');
         }
       }
 

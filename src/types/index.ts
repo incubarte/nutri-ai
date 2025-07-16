@@ -22,7 +22,7 @@ export interface Penalty {
   initialDuration: number; 
   _status?: 'running' | 'pending_concurrent' | 'pending_puck'; 
   penaltyType?: 'minor' | 'misconduct';
-  _limitReached?: ('quantity' | 'time')[];
+  _limitReached?: ('quantity')[];
 }
 
 export type Team = 'home' | 'away';
@@ -70,8 +70,6 @@ export interface FormatAndTimingsProfileData {
   defaultPenaltyTypeId: string | null;
   enableMaxPenaltiesLimit: boolean;
   maxPenaltiesPerPlayer: number;
-  enableMaxPenaltyTimeLimit: boolean;
-  maxPenaltyTimePerPlayerMinutes: number;
 }
 
 export type FormatAndTimingsProfile = FormatAndTimingsProfileData;
