@@ -96,7 +96,10 @@ const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): Forma
   id: id || safeUUID(),
   name: name || IN_CODE_INITIAL_PROFILE_NAME,
   ...defaultSettings.formatAndTimings,
-  penaltyTypes: defaultSettings.penaltyTypes as PenaltyTypeDefinition[],
+  penaltyTypes: defaultSettings.penaltyTypes.map(p => ({
+    ...p,
+    isBenchPenalty: p.isBenchPenalty || false,
+  })) as PenaltyTypeDefinition[],
   defaultPenaltyTypeId: defaultSettings.defaultPenaltyTypeId,
 });
 
@@ -113,7 +116,7 @@ const getInitialState = (): GameState => {
   return {
     config: {
       ...defaultSettings.formatAndTimings,
-      penaltyTypes: defaultSettings.penaltyTypes as PenaltyTypeDefinition[],
+      penaltyTypes: defaultSettings.penaltyTypes.map(p => ({...p, isBenchPenalty: p.isBenchPenalty || false })) as PenaltyTypeDefinition[],
       defaultPenaltyTypeId: defaultSettings.defaultPenaltyTypeId,
       formatAndTimingsProfiles: [defaultInitialProfile],
       selectedFormatAndTimingsProfileId: defaultInitialProfile.id,

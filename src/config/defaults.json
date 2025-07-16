@@ -23,25 +23,36 @@
       "id": "menor-2",
       "name": "Menor",
       "duration": 120,
-      "type": "minor"
+      "type": "minor",
+      "isBenchPenalty": false
+    },
+    {
+      "id": "banco-2",
+      "name": "Penalidad de Banco",
+      "duration": 120,
+      "type": "minor",
+      "isBenchPenalty": true
     },
     {
       "id": "doble-menor-4",
       "name": "Doble Menor",
       "duration": 240,
-      "type": "minor"
+      "type": "minor",
+      "isBenchPenalty": false
     },
     {
       "id": "mayor-5",
       "name": "Mayor",
       "duration": 300,
-      "type": "minor"
+      "type": "minor",
+      "isBenchPenalty": false
     },
     {
       "id": "mala-conducta-10",
       "name": "Mala Conducta",
       "duration": 600,
-      "type": "misconduct"
+      "type": "misconduct",
+      "isBenchPenalty": false
     }
   ],
   "defaultPenaltyTypeId": "menor-2",
