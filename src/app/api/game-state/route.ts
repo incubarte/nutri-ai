@@ -8,25 +8,31 @@ export async function GET(request: Request) {
   const gameState = getGameState();
   const config = getConfig();
   
-  // Return both live game state and the necessary parts of the config
-  // that the remote controls need.
+  // Safely construct the response payload to avoid errors when state is null.
+  // This prevents server timeouts caused by spreading a null gameState.
   const responsePayload: LiveGameState = {
-    ...gameState,
-    // Config fields for remote controls
+    clock: gameState?.clock ?? { currentTime: 0, currentPeriod: 0, isClockRunning: false, periodDisplayOverride: null, preTimeoutState: null, clockStartTimeMs: null, remainingTimeAtStartCs: null, absoluteElapsedTimeCs: 0, _liveAbsoluteElapsedTimeCs: 0 },
+    score: {
+      home: gameState?.score?.home ?? 0,
+      away: gameState?.score?.away ?? 0,
+      homeShots: gameState?.score?.homeShots ?? 0,
+      awayShots: gameState?.score?.awayShots ?? 0,
+      homeGoals: gameState?.score?.homeGoals ?? [],
+      awayGoals: gameState?.score?.awayGoals ?? [],
+    },
+    penalties: gameState?.penalties ?? { home: [], away: [] },
+    homeTeamName: gameState?.homeTeamName ?? 'Local',
+    awayTeamName: gameState?.awayTeamName ?? 'Visitante',
+    homeTeamSubName: gameState?.homeTeamSubName,
+    awayTeamSubName: gameState?.awayTeamSubName,
+    gameSummary: gameState?.gameSummary,
+    // Config fields needed for remote controls
     penaltyTypes: config?.penaltyTypes || [],
     defaultPenaltyTypeId: config?.defaultPenaltyTypeId || null,
     teams: config?.teams || [],
     selectedMatchCategory: config?.selectedMatchCategory || '',
-    gameSummary: gameState?.gameSummary,
-    score: {
-      ...gameState?.score,
-      home: gameState?.score.home ?? 0,
-      away: gameState?.score.away ?? 0,
-      homeShots: gameState?.score.homeShots ?? 0,
-      awayShots: gameState?.score.awayShots ?? 0,
-      homeGoals: gameState?.score.homeGoals ?? [],
-      awayGoals: gameState?.score.awayGoals ?? [],
-    }
+    playersPerTeamOnIce: config?.playersPerTeamOnIce,
+    numberOfRegularPeriods: config?.numberOfRegularPeriods,
   };
 
   return NextResponse.json(responsePayload);
