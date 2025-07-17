@@ -9,13 +9,19 @@ export function SoundPlayer() {
   const { state, isLoading } = useGameState();
   const { toast } = useToast();
 
-  const lastPlayedHornTriggerRef = useRef<number>(0);
   const hornAudioRef = useRef<HTMLAudioElement | null>(null);
-
-  const lastPlayedBeepTriggerRef = useRef<number>(0);
   const penaltyAudioRef = useRef<HTMLAudioElement | null>(null);
-
-  const didMountRef = useRef(false);
+  
+  const lastPlayedHornTriggerRef = useRef(state.live?.playHornTrigger || 0);
+  const lastPlayedBeepTriggerRef = useRef(state.live?.playPenaltyBeepTrigger || 0);
+  
+  useEffect(() => {
+    // Initialize the refs on the first render after state is loaded
+    if (!isLoading && state.live) {
+      lastPlayedHornTriggerRef.current = state.live.playHornTrigger;
+      lastPlayedBeepTriggerRef.current = state.live.playPenaltyBeepTrigger;
+    }
+  }, [isLoading, state.live]);
 
   useEffect(() => {
     if (isLoading || !state.config || !state.live) {
@@ -23,21 +29,9 @@ export function SoundPlayer() {
     }
 
     const { config, live } = state;
-
-    if (!didMountRef.current) {
-        lastPlayedHornTriggerRef.current = live.playHornTrigger;
-        lastPlayedBeepTriggerRef.current = live.playPenaltyBeepTrigger;
-        didMountRef.current = true;
-        return;
-    }
-
-    // Horn sound effect logic
+    
+    // --- Horn sound effect logic ---
     if (live.playHornTrigger > lastPlayedHornTriggerRef.current) {
-      // Always update the ref to stay in sync.
-      lastPlayedHornTriggerRef.current = live.playHornTrigger;
-      
-      // Only play the sound if the tab is visible.
-      // This prevents the horn from sounding when returning to a tab where the period has already ended.
       if (typeof document !== 'undefined' && !document.hidden) {
         if (config.playSoundAtPeriodEnd && hornAudioRef.current) {
           hornAudioRef.current.currentTime = 0;
@@ -51,15 +45,13 @@ export function SoundPlayer() {
           });
         }
       }
+      // Always update the ref to stay in sync for the next trigger.
+      lastPlayedHornTriggerRef.current = live.playHornTrigger;
     }
 
-    // Penalty beep sound effect logic
+    // --- Penalty beep sound effect logic ---
     if (live.playPenaltyBeepTrigger > lastPlayedBeepTriggerRef.current) {
-      // Always update the ref for the beep sound as well.
-      lastPlayedBeepTriggerRef.current = live.playPenaltyBeepTrigger;
-      
-      // Apply the same visibility check for consistency.
-      if (typeof document !== 'undefined' && !document.hidden) {
+       if (typeof document !== 'undefined' && !document.hidden) {
         if (config.enablePenaltyCountdownSound && penaltyAudioRef.current) {
           penaltyAudioRef.current.currentTime = 0;
           penaltyAudioRef.current.play().catch(error => {
@@ -72,6 +64,8 @@ export function SoundPlayer() {
           });
         }
       }
+      // Always update the ref for the beep sound as well.
+      lastPlayedBeepTriggerRef.current = live.playPenaltyBeepTrigger;
     }
   }, [state, isLoading, toast]);
 
