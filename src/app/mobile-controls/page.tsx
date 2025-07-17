@@ -253,6 +253,22 @@ function MiniScoreboardDisplay({ gameState }: { gameState: LiveGameState }) {
   if (!gameState) return null;
 
   const { score, penalties, homeTeamName, awayTeamName } = gameState;
+  
+  const getPenaltyDisplay = (p: Penalty) => {
+    const playerIdentifier = p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber}`;
+    const statusInfo = p._status ? `(${statusTextMap[p._status]})` : '(Desconocido)';
+    
+    return (
+      <div 
+        key={p.id} 
+        className={cn("flex items-center gap-2 text-xs", p.penaltyType === 'misconduct' && "text-orange-400")}
+      >
+        <Hourglass className="h-3 w-3 shrink-0" />
+        <span>{playerIdentifier}</span>
+        <span className={cn(p.penaltyType !== 'misconduct' && "text-muted-foreground")}>{statusInfo}</span>
+      </div>
+    );
+  };
 
   return (
     <Card>
@@ -266,13 +282,7 @@ function MiniScoreboardDisplay({ gameState }: { gameState: LiveGameState }) {
             <div className="text-left space-y-1 pt-2 min-h-[5rem]">
               <h4 className="font-semibold text-sm text-muted-foreground">Penalidades</h4>
               {penalties.home.length > 0 ? (
-                penalties.home.map(p => (
-                  <div key={p.id} className="flex items-center gap-2 text-xs">
-                    <Hourglass className="h-3 w-3 shrink-0" />
-                    <span>#{p.playerNumber}</span>
-                    <span className="text-muted-foreground">({p._status ? statusTextMap[p._status] : 'Desconocido'})</span>
-                  </div>
-                ))
+                penalties.home.map(getPenaltyDisplay)
               ) : (
                 <p className="text-xs text-muted-foreground italic">Ninguna</p>
               )}
@@ -286,13 +296,7 @@ function MiniScoreboardDisplay({ gameState }: { gameState: LiveGameState }) {
             <div className="text-left space-y-1 pt-2 min-h-[5rem]">
                <h4 className="font-semibold text-sm text-muted-foreground">Penalidades</h4>
                {penalties.away.length > 0 ? (
-                penalties.away.map(p => (
-                  <div key={p.id} className="flex items-center gap-2 text-xs">
-                    <Hourglass className="h-3 w-3 shrink-0" />
-                    <span>#{p.playerNumber}</span>
-                    <span className="text-muted-foreground">({p._status ? statusTextMap[p._status] : 'Desconocido'})</span>
-                  </div>
-                ))
+                penalties.away.map(getPenaltyDisplay)
               ) : (
                 <p className="text-xs text-muted-foreground italic">Ninguna</p>
               )}
