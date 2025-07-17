@@ -141,7 +141,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   };
 
   const handleToggleClock = () => {
-    if (state.live.clock.periodDisplayOverride === "End of Game") return;
+    if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero) return;
     setEditingSegment(null);
     const isFirstGameAction = state.live.clock.currentPeriod === 0 &&
                               state.live.clock.periodDisplayOverride === 'Warm-up' &&
@@ -616,6 +616,8 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
      if (!state.live) return false;
      return state.live.clock.periodDisplayOverride === 'End of Game' && state.live.score.home === state.live.score.away;
   }, [state.live]);
+  
+  const formattedTime = state.live.clock.isFlashingZero ? "00:00" : formatTime(state.live.clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
 
   return (
     <div className="relative">
@@ -795,7 +797,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 className="w-full max-w-[200px] mx-auto mb-2"
                 variant="default"
                 aria-label={nextActionButtonText}
-                disabled={isNextActionDisabled}
+                disabled={isNextActionDisabled || state.live.clock.isFlashingZero}
               >
                 <ChevronsRight className="mr-2 h-5 w-5" /> {nextActionButtonText}
               </Button>
@@ -805,7 +807,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 className="w-full max-w-[180px] mx-auto mb-2"
                 variant={state.live.clock.isClockRunning ? "destructive" : "default"}
                 aria-label={state.live.clock.isClockRunning ? "Pausar Reloj" : "Iniciar Reloj"}
-                disabled={(state.live.clock.currentTime <= 0 && !state.live.clock.isClockRunning && state.live.clock.periodDisplayOverride !== "Time Out") || state.live.clock.periodDisplayOverride === "End of Game"}
+                disabled={(state.live.clock.currentTime <= 0 && !state.live.clock.isClockRunning && state.live.clock.periodDisplayOverride !== "Time Out") || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero}
               >
                 {state.live.clock.isClockRunning ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
                 {state.live.clock.isClockRunning ? 'Pausar' : 'Iniciar'} Reloj
@@ -819,7 +821,11 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                     FIN
                 </div>
             ) : (
-                <div className={cn("text-5xl font-bold tabular-nums flex items-baseline justify-center gap-0.5", isMainClockLastMinute ? "text-orange-500" : "text-accent")}>
+                <div className={cn(
+                  "text-5xl font-bold tabular-nums flex items-baseline justify-center gap-0.5", 
+                  isMainClockLastMinute ? "text-orange-500" : "text-accent",
+                  state.live.clock.isFlashingZero && "animate-flashing-clock"
+                )}>
                   {!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game") && (
                     <Button
                       variant="ghost"
@@ -947,7 +953,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 size="icon"
                 className="h-7 w-7 text-muted-foreground hover:text-primary-foreground"
                 aria-label="Siguiente Período o Descanso"
-                disabled={isNextActionDisabled || editingSegment !== null}
+                disabled={isNextActionDisabled || editingSegment !== null || state.live.clock.isFlashingZero}
               >
                 <ChevronRight className="h-5 w-5" />
               </Button>
