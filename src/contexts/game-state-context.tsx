@@ -792,7 +792,19 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'ACTIVATE_PENDING_PUCK_PENALTIES': {
-      const activate = (penalties: Penalty[]) => penalties.map(p => p._status === 'pending_puck' ? { ...p, _status: 'pending_concurrent' } : p);
+      const activate = (penalties: Penalty[]) => penalties.map(p => {
+        if (p._status === 'pending_puck') {
+          let updatedPenalty = { ...p, _status: 'pending_concurrent' };
+          // For misconduct penalties, they should start running immediately once puck is in play.
+          if (p.penaltyType === 'misconduct') {
+            updatedPenalty._status = 'running';
+            updatedPenalty.startTime = state.live.clock._liveAbsoluteElapsedTimeCs;
+            updatedPenalty.expirationTime = state.live.clock._liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND);
+          }
+          return updatedPenalty;
+        }
+        return p;
+      });
       newState = { ...state, live: { ...state.live, penalties: { home: activate(state.live.penalties.home), away: activate(state.live.penalties.away) }}};
       break;
     }
@@ -1428,3 +1440,5 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
+    

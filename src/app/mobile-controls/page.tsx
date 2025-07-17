@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { useGameState, formatTime, getPeriodContextFromAbsoluteTime } from '@/contexts/game-state-context';
 
 const AUTH_KEY = 'icevision-remote-auth-key';
 
@@ -250,13 +251,22 @@ const statusTextMap: Record<NonNullable<Penalty['_status']>, string> = {
 };
 
 function MiniScoreboardDisplay({ gameState }: { gameState: LiveGameState }) {
-  if (!gameState) return null;
+  const { state: fullGameState } = useGameState(); // Access full state for context calculations
+  
+  if (!gameState || !fullGameState.config) return null;
 
   const { score, penalties, homeTeamName, awayTeamName } = gameState;
   
   const getPenaltyDisplay = (p: Penalty) => {
     const playerIdentifier = p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber}`;
-    const statusInfo = p._status ? `(${statusTextMap[p._status]})` : '(Desconocido)';
+
+    let statusInfo = '';
+    if (p._status === 'running' && p.expirationTime !== undefined) {
+      const expirationContext = getPeriodContextFromAbsoluteTime(p.expirationTime, fullGameState);
+      statusInfo = `(${formatTime(expirationContext.timeInPeriodCs)}, ${expirationContext.periodText})`;
+    } else if (p._status) {
+      statusInfo = `(${statusTextMap[p._status]})`;
+    }
     
     return (
       <div 
@@ -516,3 +526,5 @@ export default function MobileControlsPage() {
     </main>
   );
 }
+
+    
