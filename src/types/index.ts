@@ -1,4 +1,5 @@
 
+
 export interface PlayerStats {
   name: string;
   shots: number;
@@ -15,7 +16,7 @@ export interface PenaltyTypeDefinition {
 }
 
 export interface Penalty {
-  id: string;
+  id:string;
   playerNumber: string;
   startTime?: number; 
   expirationTime?: number;
@@ -215,6 +216,8 @@ export interface ClockState {
   remainingTimeAtStartCs: number | null;
   absoluteElapsedTimeCs: number;
   _liveAbsoluteElapsedTimeCs: number;
+  isFlashingZero?: boolean;
+  flashingZeroEndTime?: number;
 }
 
 export interface ScoreState {

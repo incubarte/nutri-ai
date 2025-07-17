@@ -19,6 +19,7 @@ export const TEAMS_STORAGE_KEY = 'icevision-teams-data';
 
 const CENTISECONDS_PER_SECOND = 100;
 const TICK_INTERVAL_MS = 200;
+const FLASHING_ZERO_DURATION_MS = 5000;
 export const DEFAULT_HORN_SOUND_PATH = '/audio/default-horn.wav';
 export const DEFAULT_PENALTY_BEEP_PATH = '/audio/penalty_beep.wav';
 
@@ -147,7 +148,7 @@ const getInitialState = (): GameState => {
       clock: {
         currentTime: defaultInitialProfile.defaultWarmUpDuration, currentPeriod: 0, isClockRunning: false,
         periodDisplayOverride: 'Warm-up', preTimeoutState: null, clockStartTimeMs: null, remainingTimeAtStartCs: null,
-        absoluteElapsedTimeCs: 0, _liveAbsoluteElapsedTimeCs: 0,
+        absoluteElapsedTimeCs: 0, _liveAbsoluteElapsedTimeCs: 0, isFlashingZero: false,
       },
       homeTeamName: 'Local', homeTeamSubName: undefined, awayTeamName: 'Visitante', awayTeamSubName: undefined,
       gameSummary: IN_CODE_INITIAL_GAME_SUMMARY, playHornTrigger: 0, playPenaltyBeepTrigger: 0,
@@ -298,6 +299,10 @@ const handleAutoTransition = (currentState: GameState): GameState => {
   newGameStateAfterTransition.live.playHornTrigger = shouldTriggerHorn
     ? currentState.live.playHornTrigger + 1
     : currentState.live.playHornTrigger;
+  
+  newGameStateAfterTransition.live.clock.isFlashingZero = false;
+  newGameStateAfterTransition.live.clock.flashingZeroEndTime = undefined;
+
 
   return newGameStateAfterTransition;
 };
@@ -410,7 +415,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'TOGGLE_CLOCK': {
-      if (state.live.clock.periodDisplayOverride === "End of Game") break;
+      if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero) break;
       const { isClockRunning, clockStartTimeMs, remainingTimeAtStartCs, currentTime, periodDisplayOverride, absoluteElapsedTimeCs } = state.live.clock;
       
       let newClockState: Partial<ClockState> = {};
@@ -813,12 +818,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       let significantChangeOccurred = false;
       const { clock, penalties, gameSummary } = state.live;
       const { config } = state;
-
+      const now = Date.now();
+      
       let currentTimeSnapshot = clock.currentTime;
       let liveAbsoluteElapsedTimeCs = clock.absoluteElapsedTimeCs;
 
+      if (clock.isFlashingZero) {
+        if (now >= (clock.flashingZeroEndTime || 0)) {
+          significantChangeOccurred = true;
+          newState = handleAutoTransition(state);
+        } else {
+          return state; // No other processing during flashing
+        }
+        break;
+      }
+      
       if (clock.isClockRunning && clock.clockStartTimeMs && clock.remainingTimeAtStartCs !== null) {
-        const elapsedCs = Math.floor((Date.now() - clock.clockStartTimeMs) / 10);
+        const elapsedCs = Math.floor((now - clock.clockStartTimeMs) / 10);
         currentTimeSnapshot = Math.max(0, clock.remainingTimeAtStartCs - elapsedCs);
         if (clock.periodDisplayOverride === null) liveAbsoluteElapsedTimeCs = clock.absoluteElapsedTimeCs + elapsedCs;
         if (currentTimeSnapshot !== clock.currentTime) hasChanged = true;
@@ -897,7 +913,21 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       if (clock.isClockRunning && currentTimeSnapshot <= 0) {
         significantChangeOccurred = true;
-        newState = handleAutoTransition(stateWithLiveTime);
+        newState = {
+            ...state,
+            live: {
+                ...state.live,
+                clock: {
+                    ...clock,
+                    currentTime: 0,
+                    isClockRunning: false,
+                    isFlashingZero: true,
+                    flashingZeroEndTime: now + FLASHING_ZERO_DURATION_MS,
+                    clockStartTimeMs: null,
+                    remainingTimeAtStartCs: null,
+                }
+            }
+        };
       } else if (hasChanged) {
         newState = { ...state, live: { ...state.live,
             clock: { ...clock, currentTime: currentTimeSnapshot, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs },
@@ -1317,11 +1347,11 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
-    if (state.live.clock.isClockRunning && isPageVisible && !isLoading) {
-      timerId = setInterval(() => dispatch({ type: 'TICK' }), TICK_INTERVAL_MS);
+    if ((state.live.clock.isClockRunning || state.live.clock.isFlashingZero) && isPageVisible && !isLoading) {
+        timerId = setInterval(() => dispatch({ type: 'TICK' }), TICK_INTERVAL_MS);
     }
     return () => clearInterval(timerId);
-  }, [state.live.clock.isClockRunning, isPageVisible, isLoading]);
+  }, [state.live.clock.isClockRunning, state.live.clock.isFlashingZero, isPageVisible, isLoading]);
   
 
   return (

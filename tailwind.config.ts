@@ -96,12 +96,17 @@ export default {
           '0%, 100%': { borderColor: 'hsl(var(--destructive))' },
           '50%': { borderColor: 'hsl(var(--border))' },
         },
+        'flashing-clock': {
+            '0%, 100%': { opacity: '1' },
+            '50%': { opacity: '0.2' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'score-flash': 'score-flash 0.5s ease-in-out',
         'flashing-border': 'flashing-border 1.5s ease-in-out infinite',
+        'flashing-clock': 'flashing-clock 1s ease-in-out infinite',
       },
     },
   },

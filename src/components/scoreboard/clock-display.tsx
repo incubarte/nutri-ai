@@ -36,6 +36,8 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
     }
   };
 
+  const formattedTime = clock.isFlashingZero ? "00:00" : formatTime(clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
+
   return (
     <div className={cn("text-center", className)}>
       {clock.periodDisplayOverride === "End of Game" ? (
@@ -52,11 +54,12 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
         <div 
           className={cn(
             "font-bold font-headline tabular-nums tracking-tighter",
-            isMainClockLastMinute ? "text-orange-500" : "text-accent"
+            isMainClockLastMinute ? "text-orange-500" : "text-accent",
+            clock.isFlashingZero && "animate-flashing-clock"
           )}
           style={{ fontSize: `${scoreboardLayout.clockSize}rem`, lineHeight: 1 }}
           >
-          {formatTime(clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false })}
+          {formattedTime}
         </div>
       )}
       {clock.periodDisplayOverride !== "End of Game" && (
@@ -68,7 +71,7 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
             <span>
               {getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods)}
             </span>
-            {!clock.isClockRunning && clock.currentTime > 0 && clock.periodDisplayOverride !== "End of Game" && (
+            {!clock.isClockRunning && clock.currentTime > 0 && clock.periodDisplayOverride !== "End of Game" && !clock.isFlashingZero && (
               <span
                 className="absolute left-full top-1/2 transform -translate-y-1/2 ml-3 font-normal text-muted-foreground normal-case tracking-normal px-2 py-1 bg-background/50 rounded-md whitespace-nowrap"
                 style={{ fontSize: '0.4em', lineHeight: 'normal' }}
