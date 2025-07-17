@@ -9,7 +9,7 @@ import { Goal, ArrowLeft, Send, WifiOff, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '@/app/actions';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import type { LiveGameState, AttendedPlayerInfo, Team, MobileData } from '@/types';
+import type { LiveGameState, Team, MobileData } from '@/types';
 import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
