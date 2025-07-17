@@ -33,11 +33,11 @@ export function SoundPlayer() {
 
     // Horn sound effect logic
     if (live.playHornTrigger > lastPlayedHornTriggerRef.current) {
+      // Always update the ref to stay in sync.
       lastPlayedHornTriggerRef.current = live.playHornTrigger;
       
-      // *** INICIO DE LA MODIFICACIÓN ***
-      // Solo reproduce el sonido si la pestaña está visible.
-      // Esto evita que suene la bocina al volver a una pestaña inactiva donde el período ya terminó.
+      // Only play the sound if the tab is visible.
+      // This prevents the horn from sounding when returning to a tab where the period has already ended.
       if (typeof document !== 'undefined' && !document.hidden) {
         if (config.playSoundAtPeriodEnd && hornAudioRef.current) {
           hornAudioRef.current.currentTime = 0;
@@ -51,14 +51,14 @@ export function SoundPlayer() {
           });
         }
       }
-      // *** FIN DE LA MODIFICACIÓN ***
     }
 
     // Penalty beep sound effect logic
     if (live.playPenaltyBeepTrigger > lastPlayedBeepTriggerRef.current) {
+      // Always update the ref for the beep sound as well.
       lastPlayedBeepTriggerRef.current = live.playPenaltyBeepTrigger;
       
-      // También aplicamos la misma lógica aquí para consistencia.
+      // Apply the same visibility check for consistency.
       if (typeof document !== 'undefined' && !document.hidden) {
         if (config.enablePenaltyCountdownSound && penaltyAudioRef.current) {
           penaltyAudioRef.current.currentTime = 0;
