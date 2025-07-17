@@ -119,9 +119,7 @@ function AddGoalForm({ homeTeamName, awayTeamName, onGoalSent }: { homeTeamName:
         </div>
 
         <DialogFooter className="pt-6">
-          <DialogClose asChild>
-            <Button type="button" variant="outline">Cancelar</Button>
-          </DialogClose>
+          <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
           <Button type="submit" disabled={isSending} className="h-14 text-lg">
             {isSending ? <LoadingSpinner className="mr-2" /> : <Send className="mr-2 h-4 w-4" />}
             Enviar Gol
@@ -348,7 +346,6 @@ export default function MobileControlsPage() {
         setMobileData(data);
         setIsLoading(false);
 
-        // Now, establish SSE connection
         eventSource = new EventSource('/api/game-state/events');
         eventSource.onopen = () => {
           setIsConnected(true);
@@ -358,7 +355,6 @@ export default function MobileControlsPage() {
           try {
             const updatedLiveState: LiveGameState = JSON.parse(event.data);
             setMobileData(prevData => ({
-                // We only get live state updates, keep the config part from the initial fetch
                 gameState: updatedLiveState,
                 penaltyConfig: prevData?.penaltyConfig || { penaltyTypes: updatedLiveState.penaltyTypes || [], defaultPenaltyTypeId: updatedLiveState.defaultPenaltyTypeId || null }
             }));
@@ -516,4 +512,3 @@ export default function MobileControlsPage() {
     </main>
   );
 }
-

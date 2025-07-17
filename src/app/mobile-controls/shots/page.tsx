@@ -162,17 +162,16 @@ export default function MobileShotsPage() {
             return;
         }
         
-        // **FIX: Fetch initial state first**
         const initialStateRes = await fetch('/api/game-state');
         if (!initialStateRes.ok) throw new Error("Could not fetch initial game state");
         const initialData: MobileData = await initialStateRes.json();
+        
         if (initialData.gameState) {
           setLiveState(initialData.gameState);
         } else {
           throw new Error("No active game state from server.");
         }
 
-        // Now connect to SSE for live updates
         eventSource = new EventSource('/api/game-state/events');
         eventSource.onopen = () => {
           setIsConnected(true);
@@ -322,4 +321,3 @@ export default function MobileShotsPage() {
     </main>
   );
 }
-
