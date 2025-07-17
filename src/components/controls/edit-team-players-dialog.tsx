@@ -80,12 +80,8 @@ export function EditTeamPlayersDialog({
       const attendedInfo = state.live?.gameSummary?.attendance?.[teamType] || [];
       setAttendedPlayerIds(new Set(attendedInfo.map(p => p.id)));
 
-    } else if (!isOpen) {
-      // Reset state when dialog is closed to ensure fresh load next time
-      setEditablePlayers([]);
-      setAttendedPlayerIds(new Set());
     }
-  }, [isOpen, teamDetails, state.live, teamType]);
+  }, [isOpen, teamDetails]); // Only re-run when the dialog is opened or the fundamental team details change
 
   const handlePlayerNumberChange = (playerId: string, newNumber: string) => {
     if (/^\d*$/.test(newNumber)) {
