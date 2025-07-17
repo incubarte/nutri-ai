@@ -12,62 +12,60 @@ export function SoundPlayer() {
   const hornAudioRef = useRef<HTMLAudioElement | null>(null);
   const penaltyAudioRef = useRef<HTMLAudioElement | null>(null);
   
-  const lastPlayedHornTriggerRef = useRef(state.live?.playHornTrigger || 0);
-  const lastPlayedBeepTriggerRef = useRef(state.live?.playPenaltyBeepTrigger || 0);
-  
-  useEffect(() => {
-    // Initialize the refs on the first render after state is loaded
-    if (!isLoading && state.live) {
-      lastPlayedHornTriggerRef.current = state.live.playHornTrigger;
-      lastPlayedBeepTriggerRef.current = state.live.playPenaltyBeepTrigger;
-    }
-  }, [isLoading, state.live]);
+  // Use a ref to track the previous value of the triggers
+  const prevHornTriggerRef = useRef<number>();
+  const prevBeepTriggerRef = useRef<number>();
 
   useEffect(() => {
     if (isLoading || !state.config || !state.live) {
       return;
     }
 
-    const { config, live } = state;
+    const { playSoundAtPeriodEnd, enablePenaltyCountdownSound } = state.config;
+    const { playHornTrigger, playPenaltyBeepTrigger } = state.live;
     
-    // --- Horn sound effect logic ---
-    if (live.playHornTrigger > lastPlayedHornTriggerRef.current) {
-      if (typeof document !== 'undefined' && !document.hidden) {
-        if (config.playSoundAtPeriodEnd && hornAudioRef.current) {
-          hornAudioRef.current.currentTime = 0;
-          hornAudioRef.current.play().catch(error => {
-            console.warn("Playback prevented for horn sound:", error);
-            toast({
-              title: "Error de Sonido de Bocina",
-              description: "El navegador impidió la reproducción automática del sonido.",
-              variant: "destructive"
-            });
+    // --- Horn Sound Logic ---
+    if (prevHornTriggerRef.current !== undefined && playHornTrigger > prevHornTriggerRef.current) {
+      if (playSoundAtPeriodEnd && hornAudioRef.current && typeof document !== 'undefined' && !document.hidden) {
+        hornAudioRef.current.currentTime = 0;
+        hornAudioRef.current.play().catch(error => {
+          console.warn("Playback prevented for horn sound:", error);
+          toast({
+            title: "Error de Sonido de Bocina",
+            description: "El navegador impidió la reproducción automática del sonido.",
+            variant: "destructive"
           });
-        }
+        });
       }
-      // Always update the ref to stay in sync for the next trigger.
-      lastPlayedHornTriggerRef.current = live.playHornTrigger;
+    }
+    
+    // --- Penalty Beep Logic ---
+    if (prevBeepTriggerRef.current !== undefined && playPenaltyBeepTrigger > prevBeepTriggerRef.current) {
+        if (enablePenaltyCountdownSound && penaltyAudioRef.current && typeof document !== 'undefined' && !document.hidden) {
+            penaltyAudioRef.current.currentTime = 0;
+            penaltyAudioRef.current.play().catch(error => {
+                console.warn("Playback prevented for penalty beep:", error);
+                 toast({
+                  title: "Error de Sonido de Beep",
+                  description: "El navegador impidió la reproducción automática del sonido.",
+                  variant: "destructive"
+                });
+            });
+        }
     }
 
-    // --- Penalty beep sound effect logic ---
-    if (live.playPenaltyBeepTrigger > lastPlayedBeepTriggerRef.current) {
-       if (typeof document !== 'undefined' && !document.hidden) {
-        if (config.enablePenaltyCountdownSound && penaltyAudioRef.current) {
-          penaltyAudioRef.current.currentTime = 0;
-          penaltyAudioRef.current.play().catch(error => {
-            console.warn("Playback prevented for penalty beep:", error);
-            toast({
-              title: "Error de Sonido de Beep",
-              description: "El navegador impidió la reproducción automática del sonido.",
-              variant: "destructive"
-            });
-          });
-        }
-      }
-      // Always update the ref for the beep sound as well.
-      lastPlayedBeepTriggerRef.current = live.playPenaltyBeepTrigger;
-    }
-  }, [state, isLoading, toast]);
+    // Update the refs with the current values for the next render
+    prevHornTriggerRef.current = playHornTrigger;
+    prevBeepTriggerRef.current = playPenaltyBeepTrigger;
+    
+  }, [
+    state.live?.playHornTrigger, 
+    state.live?.playPenaltyBeepTrigger,
+    state.config, 
+    isLoading,
+    toast
+  ]);
+
 
   const handleAudioError = (e: React.SyntheticEvent<HTMLAudioElement, Event>, soundName: string) => {
     const error = e.currentTarget.error;
