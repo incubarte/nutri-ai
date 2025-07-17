@@ -3,12 +3,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Team, LiveGameState, PenaltyTypeDefinition, MobileData } from '@/types';
+import type { Team, LiveGameState, PenaltyTypeDefinition, MobileData, Penalty } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Goal, Send, Users, Siren, WifiOff, RefreshCw, PlayCircle, ShieldCheck, Crosshair } from 'lucide-react';
+import { Goal, Send, Users, Siren, WifiOff, RefreshCw, PlayCircle, ShieldCheck, Crosshair, Hourglass } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '../actions';
 import {
@@ -23,6 +23,7 @@ import {
 import { cn } from '@/lib/utils';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 
 const AUTH_KEY = 'icevision-remote-auth-key';
 
@@ -244,6 +245,67 @@ function AddPenaltyForm({ homeTeamName, awayTeamName, penaltyTypes, defaultPenal
   );
 }
 
+const statusTextMap: Record<NonNullable<Penalty['_status']>, string> = {
+  running: 'Corriendo',
+  pending_concurrent: 'Esperando Slot',
+  pending_puck: 'Esperando Puck',
+};
+
+function MiniScoreboardDisplay({ gameState }: { gameState: LiveGameState }) {
+  if (!gameState) return null;
+
+  const { score, penalties, homeTeamName, awayTeamName } = gameState;
+
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Home Team Column */}
+          <div className="text-center space-y-2">
+            <h3 className="font-bold text-lg truncate" title={homeTeamName}>{homeTeamName}</h3>
+            <p className="text-5xl font-bold text-accent">{score.home}</p>
+            <Separator />
+            <div className="text-left space-y-1 pt-2 min-h-[5rem]">
+              <h4 className="font-semibold text-sm text-muted-foreground">Penalidades</h4>
+              {penalties.home.length > 0 ? (
+                penalties.home.map(p => (
+                  <div key={p.id} className="flex items-center gap-2 text-xs">
+                    <Hourglass className="h-3 w-3 shrink-0" />
+                    <span>#{p.playerNumber}</span>
+                    <span className="text-muted-foreground">({p._status ? statusTextMap[p._status] : 'Desconocido'})</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Ninguna</p>
+              )}
+            </div>
+          </div>
+          {/* Away Team Column */}
+          <div className="text-center space-y-2">
+            <h3 className="font-bold text-lg truncate" title={awayTeamName}>{awayTeamName}</h3>
+            <p className="text-5xl font-bold text-accent">{score.away}</p>
+            <Separator />
+            <div className="text-left space-y-1 pt-2 min-h-[5rem]">
+               <h4 className="font-semibold text-sm text-muted-foreground">Penalidades</h4>
+               {penalties.away.length > 0 ? (
+                penalties.away.map(p => (
+                  <div key={p.id} className="flex items-center gap-2 text-xs">
+                    <Hourglass className="h-3 w-3 shrink-0" />
+                    <span>#{p.playerNumber}</span>
+                    <span className="text-muted-foreground">({p._status ? statusTextMap[p._status] : 'Desconocido'})</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Ninguna</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function MobileControlsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -365,15 +427,15 @@ export default function MobileControlsPage() {
   const { gameState, penaltyConfig } = mobileData;
 
   return (
-    <main className="w-full max-w-md mx-auto space-y-8 pt-8">
-      <div className="text-center space-y-2">
+    <main className="w-full max-w-md mx-auto p-4 space-y-6 pb-8">
+      <div className="text-center space-y-2 pt-4">
         <Users className="mx-auto h-12 w-12 text-primary" />
         <h1 className="text-3xl font-bold text-primary-foreground">Control Remoto</h1>
         <p className="text-muted-foreground">
           Acciones rápidas para el operador auxiliar.
         </p>
       </div>
-      <Card className="mt-12">
+      <Card>
         <CardContent className="p-6 flex flex-col gap-6">
           <Button
             className="w-full h-24 text-2xl font-bold"
@@ -409,6 +471,11 @@ export default function MobileControlsPage() {
           )}
         </CardContent>
       </Card>
+      
+      <Separator />
+
+      <MiniScoreboardDisplay gameState={gameState} />
+
 
       <Dialog open={isAddGoalDialogOpen} onOpenChange={setIsAddGoalDialogOpen}>
         <DialogContent>
@@ -449,3 +516,4 @@ export default function MobileControlsPage() {
     </main>
   );
 }
+

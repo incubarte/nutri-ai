@@ -267,9 +267,10 @@ export default function MobileShotsPage() {
       
       <div className="grid grid-cols-2 gap-4">
         <Card>
-          <CardContent className="p-3">
-            <h2 className="text-center font-bold text-lg mb-1 truncate">{homeTeamName}</h2>
-            <p className="text-center text-sm text-muted-foreground mb-2">Tiros Totales: {homeShots}</p>
+          <CardContent className="p-3 text-center">
+            <h2 className="font-bold text-lg mb-1 truncate">{homeTeamName}</h2>
+            <p className="text-5xl font-bold text-accent mb-3">{liveState.score.home}</p>
+            <p className="text-sm text-muted-foreground mb-3">Tiros Totales: {homeShots}</p>
             <div className="grid grid-cols-3 gap-2">
               {homeAttendedPlayers.map(player => (
                 <Button key={player.id} onClick={() => handleShot('home', player.number)} className="h-24 text-3xl">
@@ -281,9 +282,10 @@ export default function MobileShotsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-3">
-            <h2 className="text-center font-bold text-lg mb-1 truncate">{awayTeamName}</h2>
-             <p className="text-center text-sm text-muted-foreground mb-2">Tiros Totales: {awayShots}</p>
+          <CardContent className="p-3 text-center">
+            <h2 className="font-bold text-lg mb-1 truncate">{awayTeamName}</h2>
+            <p className="text-5xl font-bold text-accent mb-3">{liveState.score.away}</p>
+            <p className="text-sm text-muted-foreground mb-3">Tiros Totales: {awayShots}</p>
             <div className="grid grid-cols-3 gap-2">
                {awayAttendedPlayers.map(player => (
                 <Button key={player.id} onClick={() => handleShot('away', player.number)} className="h-24 text-3xl">
@@ -320,3 +322,4 @@ export default function MobileShotsPage() {
     </main>
   );
 }
+
