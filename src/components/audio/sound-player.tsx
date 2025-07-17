@@ -17,17 +17,13 @@ export function SoundPlayer() {
 
   const didMountRef = useRef(false);
 
-  // This single useEffect handles all logic and is called on every render.
   useEffect(() => {
-    // Do not run any logic until the state is fully loaded.
     if (isLoading || !state.config || !state.live) {
       return;
     }
 
     const { config, live } = state;
 
-    // On the first render cycle after state is loaded, we just sync the refs and then exit.
-    // This prevents sounds from playing on initial page load/hydration.
     if (!didMountRef.current) {
         lastPlayedHornTriggerRef.current = live.playHornTrigger;
         lastPlayedBeepTriggerRef.current = live.playPenaltyBeepTrigger;
@@ -35,37 +31,46 @@ export function SoundPlayer() {
         return;
     }
 
-    // Horn sound effect logic for subsequent renders
+    // Horn sound effect logic
     if (live.playHornTrigger > lastPlayedHornTriggerRef.current) {
       lastPlayedHornTriggerRef.current = live.playHornTrigger;
-
-      if (config.playSoundAtPeriodEnd && hornAudioRef.current) {
-        hornAudioRef.current.currentTime = 0;
-        hornAudioRef.current.play().catch(error => {
-          console.warn("Playback prevented for horn sound:", error);
-          toast({
-            title: "Error de Sonido de Bocina",
-            description: "El navegador impidió la reproducción automática del sonido.",
-            variant: "destructive"
+      
+      // *** INICIO DE LA MODIFICACIÓN ***
+      // Solo reproduce el sonido si la pestaña está visible.
+      // Esto evita que suene la bocina al volver a una pestaña inactiva donde el período ya terminó.
+      if (typeof document !== 'undefined' && !document.hidden) {
+        if (config.playSoundAtPeriodEnd && hornAudioRef.current) {
+          hornAudioRef.current.currentTime = 0;
+          hornAudioRef.current.play().catch(error => {
+            console.warn("Playback prevented for horn sound:", error);
+            toast({
+              title: "Error de Sonido de Bocina",
+              description: "El navegador impidió la reproducción automática del sonido.",
+              variant: "destructive"
+            });
           });
-        });
+        }
       }
+      // *** FIN DE LA MODIFICACIÓN ***
     }
 
-    // Penalty beep sound effect logic for subsequent renders
+    // Penalty beep sound effect logic
     if (live.playPenaltyBeepTrigger > lastPlayedBeepTriggerRef.current) {
       lastPlayedBeepTriggerRef.current = live.playPenaltyBeepTrigger;
       
-      if (config.enablePenaltyCountdownSound && penaltyAudioRef.current) {
-        penaltyAudioRef.current.currentTime = 0;
-        penaltyAudioRef.current.play().catch(error => {
-          console.warn("Playback prevented for penalty beep:", error);
-          toast({
-            title: "Error de Sonido de Beep",
-            description: "El navegador impidió la reproducción automática del sonido.",
-            variant: "destructive"
+      // También aplicamos la misma lógica aquí para consistencia.
+      if (typeof document !== 'undefined' && !document.hidden) {
+        if (config.enablePenaltyCountdownSound && penaltyAudioRef.current) {
+          penaltyAudioRef.current.currentTime = 0;
+          penaltyAudioRef.current.play().catch(error => {
+            console.warn("Playback prevented for penalty beep:", error);
+            toast({
+              title: "Error de Sonido de Beep",
+              description: "El navegador impidió la reproducción automática del sonido.",
+              variant: "destructive"
+            });
           });
-        });
+        }
       }
     }
   }, [state, isLoading, toast]);
@@ -101,7 +106,6 @@ export function SoundPlayer() {
     });
   };
 
-  // It's safe to return early here because all hooks have been called above.
   if (isLoading || !state.config) {
     return null;
   }
