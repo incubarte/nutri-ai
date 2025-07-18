@@ -55,6 +55,7 @@ export function ShootoutDisplay({ team, teamName, attempts, totalRounds, startId
   }
 
   const { scoreboardLayout } = state.config;
+  const goalCount = attempts.filter(a => a.isGoal).length;
   
   // Use the startIdx from props to slice the attempts
   const attemptsToShow = attempts.slice(startIdx, startIdx + MAX_DISPLAY_SLOTS);
@@ -81,13 +82,19 @@ export function ShootoutDisplay({ team, teamName, attempts, totalRounds, startId
 
   return (
     <Card className="bg-card shadow-lg flex-1">
-      <CardHeader className="p-3 md:p-6">
+      <CardHeader className="p-3 md:p-6 flex flex-row items-center justify-between">
         <CardTitle 
           className="text-primary-foreground"
           style={{ fontSize: `${scoreboardLayout.penaltiesTitleSize}rem` }}
         >
-          Shootout - {teamName}
+          {teamName}
         </CardTitle>
+        <span 
+          className="text-accent font-bold font-headline"
+          style={{ fontSize: `${scoreboardLayout.scoreSize * 0.75}rem` }}
+        >
+          {goalCount}
+        </span>
       </CardHeader>
       <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
         <div className="grid grid-cols-5 gap-2 md:gap-4">

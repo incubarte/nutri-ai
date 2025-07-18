@@ -20,6 +20,7 @@ export function FullScoreboard() {
   // Centralize the sliding window logic here
   const maxAttempts = Math.max(shootout.homeAttempts.length, shootout.awayAttempts.length);
   const startIdx = Math.max(0, maxAttempts - (MAX_DISPLAY_SLOTS - 1));
+  const currentRound = maxAttempts + 1;
 
   return (
     <div 
@@ -44,7 +45,7 @@ export function FullScoreboard() {
             className="text-accent font-bold uppercase tracking-widest"
             style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
            >
-             Penales
+             Penales <span className="text-foreground/80 font-normal"> (Ronda {currentRound})</span>
            </h1>
            <div className="w-full max-w-4xl space-y-4">
               <ShootoutDisplay team="home" teamName={homeTeamName} attempts={shootout.homeAttempts} totalRounds={shootout.rounds} startIdx={startIdx} />
