@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Swords, Check, X, Shield, Goal, Flag, Undo2, ChevronsUpDown } from 'lucide-react';
+import { Swords, Check, X, Shield, Goal, Flag, Undo2, ChevronsUpDown, Trophy } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import {
   Popover,
@@ -23,6 +23,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from '@/lib/utils';
+import { Label } from '../ui/label';
 
 const ShooterSelector = ({
   team,
@@ -196,26 +197,47 @@ export const ShootoutControl = () => {
     const handleAwaySelect = useCallback((number: string, name?: string) => {
         setAwaySelection({ number, name });
     }, []);
+    
+    if (!shootout || !shootout.isActive) {
+        return null;
+    }
 
-    const homeGoals = shootout?.homeAttempts.filter(a => a.isGoal).length || 0;
-    const awayGoals = shootout?.awayAttempts.filter(a => a.isGoal).length || 0;
-    const currentRound = Math.max(shootout?.homeAttempts.length || 0, shootout?.awayAttempts.length || 0) + 1;
+    const homeGoals = shootout.homeAttempts.filter(a => a.isGoal).length;
+    const awayGoals = shootout.awayAttempts.filter(a => a.isGoal).length;
+    const currentRound = Math.max(shootout.homeAttempts.length, shootout.awayAttempts.length) + 1;
+    
+    const whoseTurn = useMemo((): Team | 'none' => {
+      if (shootout.homeAttempts.length === shootout.awayAttempts.length) return 'home'; // Default to home if equal
+      if (shootout.homeAttempts.length > shootout.awayAttempts.length) return 'away';
+      return 'home';
+    }, [shootout.homeAttempts, shootout.awayAttempts]);
 
-    const gameIsDecided = useMemo(() => {
-        if (!shootout) return false;
-        // In regular rounds, the game is over if the difference is greater than rounds left for OTHER team
+    const winner = useMemo(() => {
+        const homeRoundsLeft = shootout.rounds - shootout.homeAttempts.length;
+        const awayRoundsLeft = shootout.rounds - shootout.awayAttempts.length;
+
+        // Check for mathematical win before all rounds are complete
         if (currentRound <= shootout.rounds) {
-            const homeRoundsLeft = shootout.rounds - shootout.homeAttempts.length;
-            const awayRoundsLeft = shootout.rounds - shootout.awayAttempts.length;
-            if (homeGoals > awayGoals + awayRoundsLeft) return true;
-            if (awayGoals > homeGoals + homeRoundsLeft) return true;
+            if (homeGoals > awayGoals + awayRoundsLeft) return 'home';
+            if (awayGoals > homeGoals + homeRoundsLeft) return 'away';
         }
-        // In sudden death, if rounds are complete and scores are not equal, game is over
-        if (currentRound > shootout.rounds && shootout.homeAttempts.length === shootout.awayAttempts.length && homeGoals !== awayGoals) {
-            return true;
+
+        // Check for sudden death win
+        if (currentRound > shootout.rounds && shootout.homeAttempts.length === shootout.awayAttempts.length) {
+            if (homeGoals > awayGoals) return 'home';
+            if (awayGoals > homeGoals) return 'away';
         }
-        return false;
+        
+        // Check for win at the end of regulation rounds
+        if(currentRound > shootout.rounds && homeGoals !== awayGoals && shootout.homeAttempts.length === shootout.awayAttempts.length) {
+            return homeGoals > awayGoals ? 'home' : 'away';
+        }
+
+        return null;
     }, [shootout, homeGoals, awayGoals, currentRound]);
+    
+    const gameIsDecided = !!winner;
+
 
     const handleRecordAttempt = (team: Team, isGoal: boolean) => {
         const selection = team === 'home' ? homeSelection : awaySelection;
@@ -229,7 +251,6 @@ export const ShootoutControl = () => {
             (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) &&
             t.category === state.config.selectedMatchCategory
         );
-        // Find player by number to get ID, or use a fallback
         const playerDetails = teamData?.players.find(p => p.number === selection.number);
 
         dispatch({ type: 'RECORD_SHOOTOUT_ATTEMPT', payload: {
@@ -241,11 +262,9 @@ export const ShootoutControl = () => {
         }});
 
         if (team === 'home') {
-            setHomeSelection({ number: "" });
             setHomeSelectorKey(prev => prev + 1);
         }
         if (team === 'away') {
-            setAwaySelection({ number: "" });
             setAwaySelectorKey(prev => prev + 1);
         }
     };
@@ -255,9 +274,6 @@ export const ShootoutControl = () => {
         toast({ title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." });
     };
 
-    if (!shootout || !shootout.isActive) {
-        return null;
-    }
 
     return (
         <Card className="w-full max-w-4xl mx-auto shadow-xl border-indigo-500/50">
@@ -278,14 +294,35 @@ export const ShootoutControl = () => {
                         <p className="text-6xl font-bold text-accent">{score.away + awayGoals}</p>
                     </div>
                 </div>
+                
+                <div className="flex justify-center items-center gap-4">
+                    <Label htmlFor="shootout-rounds">Mejor de:</Label>
+                    <Input
+                        id="shootout-rounds"
+                        type="number"
+                        className="w-20"
+                        value={shootout.rounds}
+                        onChange={(e) => dispatch({ type: 'UPDATE_SHOOTOUT_ROUNDS', payload: parseInt(e.target.value, 10) || 1 })}
+                        disabled={shootout.homeAttempts.length > 0 || shootout.awayAttempts.length > 0}
+                    />
+                    <Label>rondas</Label>
+                </div>
 
                 <Separator />
 
                 <div className="space-y-4">
-                    <h3 className="text-xl font-semibold text-center">Ronda {currentRound}</h3>
+                    <div className="flex justify-center items-center gap-4">
+                         <h3 className="text-xl font-semibold text-center">Ronda {currentRound}</h3>
+                         {winner && (
+                             <div className="flex items-center gap-2 text-yellow-400 font-bold animate-pulse">
+                                <Trophy className="h-5 w-5" />
+                                <span>GANADOR: {winner === 'home' ? homeTeamName : awayTeamName}</span>
+                             </div>
+                         )}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Home Team Shooter */}
-                        <div className="space-y-3 p-4 border rounded-lg">
+                        <div className={cn("space-y-3 p-4 border rounded-lg transition-all", whoseTurn === 'home' && !gameIsDecided && "border-blue-500 ring-2 ring-blue-500/50 animate-pulse")}>
                             <h4 className="font-medium text-center">{homeTeamName}</h4>
                             <ShooterSelector
                                 key={`home-shooter-${homeSelectorKey}`}
@@ -301,7 +338,7 @@ export const ShootoutControl = () => {
                         </div>
 
                         {/* Away Team Shooter */}
-                        <div className="space-y-3 p-4 border rounded-lg">
+                        <div className={cn("space-y-3 p-4 border rounded-lg transition-all", whoseTurn === 'away' && !gameIsDecided && "border-blue-500 ring-2 ring-blue-500/50 animate-pulse")}>
                             <h4 className="font-medium text-center">{awayTeamName}</h4>
                             <ShooterSelector
                                 key={`away-shooter-${awaySelectorKey}`}
@@ -332,7 +369,7 @@ export const ShootoutControl = () => {
                 </div>
 
                 <div className="pt-4 flex flex-col items-center gap-4">
-                    {gameIsDecided && <p className="text-lg font-bold text-green-500 animate-pulse">¡El partido está decidido!</p>}
+                    {gameIsDecided && <p className="text-lg font-bold text-green-500">¡El partido está decidido!</p>}
                     <Button onClick={handleFinishShootout} size="lg">
                         <Flag className="mr-2 h-5 w-5" />Finalizar Tanda de Penales
                     </Button>

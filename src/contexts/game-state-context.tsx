@@ -1075,6 +1075,18 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }};
       break;
     }
+    case 'UPDATE_SHOOTOUT_ROUNDS':
+        if (!state.live.shootout) break;
+        newState = {
+            ...state,
+            live: { ...state.live,
+                shootout: {
+                    ...state.live.shootout,
+                    rounds: action.payload,
+                }
+            }
+        };
+        break;
     case 'RECORD_SHOOTOUT_ATTEMPT': {
         const { team, ...attemptData } = action.payload;
         if (!state.live.shootout) break;

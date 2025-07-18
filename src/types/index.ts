@@ -329,6 +329,7 @@ export type GameAction =
   | { type: 'MANUAL_END_GAME' }
   | { type: 'ADD_EXTRA_OVERTIME' }
   | { type: 'START_SHOOTOUT' }
+  | { type: 'UPDATE_SHOOTOUT_ROUNDS'; payload: number }
   | { type: 'RECORD_SHOOTOUT_ATTEMPT'; payload: { team: Team; playerId: string; playerNumber: string; playerName?: string; isGoal: boolean; } }
   | { type: 'FINISH_SHOOTOUT' }
   | { type: 'ADD_FORMAT_AND_TIMINGS_PROFILE'; payload: { name: string; profileData?: Partial<FormatAndTimingsProfileData> } }
