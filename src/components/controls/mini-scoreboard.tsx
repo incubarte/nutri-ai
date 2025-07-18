@@ -82,7 +82,6 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const [isHomePlayersDialogOpen, setIsHomePlayersDialogOpen] = useState(false);
   const [isAwayPlayersDialogOpen, setIsAwayPlayersDialogOpen] = useState(false);
   const [isTimeoutConfirmOpen, setIsTimeoutConfirmOpen] = useState(false);
-  const [isShootoutConfirmOpen, setIsShootoutConfirmOpen] = useState(false);
   
   useEffect(() => {
     setLocalHomeTeamName(state.live.homeTeamName);
@@ -607,26 +606,6 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
   const timeoutDurationInSeconds = state.config.defaultTimeoutDuration / 100;
   const autoStartBehavior = state.config.autoStartTimeouts ? "se iniciará automáticamente" : "deberá iniciarse manualmente";
-
-  const handleAddExtraOvertime = () => {
-    dispatch({ type: 'ADD_EXTRA_OVERTIME' });
-    toast({ title: "Overtime Extra Añadido", description: "Se ha añadido un período de OT y se ha iniciado un descanso." });
-  };
-  
-  const isTiedAndFinished = useMemo(() => {
-     if (!state.live) return false;
-     return state.live.clock.periodDisplayOverride === 'End of Game' && state.live.score.home === state.live.score.away;
-  }, [state.live]);
-
-  const performStartShootout = () => {
-    dispatch({ type: 'START_SHOOTOUT' });
-    toast({ title: "Tanda de Penales Iniciada" });
-    setIsShootoutConfirmOpen(false);
-  };
-
-  const handlePrepareStartShootout = () => {
-    setIsShootoutConfirmOpen(true);
-  };
   
   const formattedTime = state.live.clock.isFlashingZero ? "00:00" : formatTime(state.live.clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
 
@@ -794,24 +773,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
           {/* Clock & Period Section */}
           <div className="flex-1 space-y-2 text-center">
-            {isTiedAndFinished ? (
-              <div className="flex flex-col items-center gap-2">
-                <Button
-                  onClick={handleAddExtraOvertime}
-                  className="w-full max-w-[200px] mx-auto bg-blue-600 hover:bg-blue-700"
-                  aria-label="Añadir Overtime Extra"
-                >
-                  <PlusCircle className="mr-2 h-5 w-5" /> Añadir Overtime Extra
-                </Button>
-                <Button
-                  onClick={handlePrepareStartShootout}
-                  className="w-full max-w-[200px] mx-auto bg-indigo-600 hover:bg-indigo-700"
-                >
-                  <Swords className="mr-2 h-5 w-5" />
-                  Ir a Tanda de Penales
-                </Button>
-              </div>
-            ) : showNextActionButton ? (
+            {showNextActionButton ? (
               <Button
                 onClick={handleNextAction}
                 className="w-full max-w-[200px] mx-auto mb-2"
@@ -853,7 +815,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                       className="h-6 w-6 text-muted-foreground hover:text-accent self-center mr-1"
                       onClick={() => handleTimeAdjust(-1)}
                       aria-label="Restar 1 segundo al reloj"
-                      disabled={editingSegment !== null || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero}
+                      disabled={editingSegment !== null || state.live.clock.isFlashingZero}
                     >
                       <Minus className="h-3 w-3" />
                     </Button>
@@ -944,7 +906,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                       className="h-6 w-6 text-muted-foreground hover:text-accent self-center ml-1"
                       onClick={() => handleTimeAdjust(1)}
                       aria-label="Sumar 1 segundo al reloj"
-                      disabled={editingSegment !== null || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero}
+                      disabled={editingSegment !== null || state.live.clock.isFlashingZero}
                     >
                       <Plus className="h-3 w-3" />
                     </Button>
@@ -985,7 +947,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
             </div>
             {state.live.clock.preTimeoutState && state.live.clock.periodDisplayOverride !== "End of Game" && (
               <div className={cn(
-                  "text-xs mt-1 normal-case",
+                  "text-xs mt-1 normal-case tracking-normal",
                   isPreTimeoutLastMinute ? "text-orange-500/80" : "text-muted-foreground"
                 )}>
                 Retornando a: {getPeriodText(state.live.clock.preTimeoutState.period, state.config.numberOfRegularPeriods)} - {formatTime(state.live.clock.preTimeoutState.time, { showTenths: isPreTimeoutLastMinute, includeMinutesForTenths: false })}
@@ -1120,24 +1082,6 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
               <AlertDialogCancel onClick={() => setIsTimeoutConfirmOpen(false)}>Cancelar</AlertDialogCancel>
               <AlertDialogAction onClick={performStartTimeout}>
                 Confirmar e Iniciar Time Out
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-       {isShootoutConfirmOpen && (
-        <AlertDialog open={isShootoutConfirmOpen} onOpenChange={setIsShootoutConfirmOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar Inicio de Tanda de Penales</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esto iniciará el modo de tanda de penales (shootout). El reloj principal y las penalidades se pausarán. ¿Estás seguro?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setIsShootoutConfirmOpen(false)}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={performStartShootout}>
-                Confirmar e Iniciar
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

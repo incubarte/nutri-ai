@@ -4,7 +4,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
@@ -95,6 +95,14 @@ const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
   attendance: { home: [], away: [] },
 };
 
+const INITIAL_SHOOTOUT_STATE: ShootoutState = {
+  isActive: false,
+  rounds: 5, // Default to 5 rounds
+  homeAttempts: [],
+  awayAttempts: [],
+};
+
+
 const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): FormatAndTimingsProfile => ({
   id: id || safeUUID(),
   name: name || IN_CODE_INITIAL_PROFILE_NAME,
@@ -150,6 +158,7 @@ const getInitialState = (): GameState => {
         periodDisplayOverride: 'Warm-up', preTimeoutState: null, clockStartTimeMs: null, remainingTimeAtStartCs: null,
         absoluteElapsedTimeCs: 0, _liveAbsoluteElapsedTimeCs: 0, isFlashingZero: false,
       },
+      shootout: INITIAL_SHOOTOUT_STATE,
       homeTeamName: 'Local', homeTeamSubName: undefined, awayTeamName: 'Visitante', awayTeamSubName: undefined,
       gameSummary: IN_CODE_INITIAL_GAME_SUMMARY, playHornTrigger: 0, playPenaltyBeepTrigger: 0,
     },
@@ -1057,6 +1066,79 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
       break;
     }
+    case 'START_SHOOTOUT': {
+      newState = { ...state, live: { ...state.live, 
+        shootout: {
+          ...INITIAL_SHOOTOUT_STATE,
+          isActive: true,
+        }
+      }};
+      break;
+    }
+    case 'RECORD_SHOOTOUT_ATTEMPT': {
+        const { team, ...attemptData } = action.payload;
+        if (!state.live.shootout) break;
+
+        const currentAttempts = state.live.shootout[team === 'home' ? 'homeAttempts' : 'awayAttempts'];
+        const newAttempt = {
+            id: safeUUID(),
+            round: currentAttempts.length + 1,
+            ...attemptData,
+        };
+
+        newState = {
+            ...state,
+            live: { ...state.live,
+                shootout: { ...state.live.shootout,
+                    [team === 'home' ? 'homeAttempts' : 'awayAttempts']: [...currentAttempts, newAttempt],
+                }
+            }
+        };
+        break;
+    }
+    case 'FINISH_SHOOTOUT': {
+        if (!state.live.shootout) break;
+        const { homeAttempts, awayAttempts } = state.live.shootout;
+        const homeGoals = homeAttempts.filter(a => a.isGoal).length;
+        const awayGoals = awayAttempts.filter(a => a.isGoal).length;
+        
+        let newScore = { ...state.live.score };
+        let gameSummaryWithShootoutGoal = { ...state.live.gameSummary };
+
+        if (homeGoals > awayGoals) {
+            newScore.home += 1;
+            const lastScorer = homeAttempts.filter(a => a.isGoal).pop() || homeAttempts.pop();
+            if (lastScorer) {
+              const newGoal: GoalLog = {
+                id: safeUUID(), team: 'home', timestamp: Date.now(), gameTime: 0, periodText: 'SO',
+                scorer: { playerNumber: lastScorer.playerNumber, playerName: lastScorer.playerName },
+              };
+              newScore.homeGoals = [...newScore.homeGoals, newGoal];
+              gameSummaryWithShootoutGoal.home.goals = [...gameSummaryWithShootoutGoal.home.goals, newGoal];
+            }
+        } else if (awayGoals > homeGoals) {
+            newScore.away += 1;
+            const lastScorer = awayAttempts.filter(a => a.isGoal).pop() || awayAttempts.pop();
+            if (lastScorer) {
+              const newGoal: GoalLog = {
+                id: safeUUID(), team: 'away', timestamp: Date.now(), gameTime: 0, periodText: 'SO',
+                scorer: { playerNumber: lastScorer.playerNumber, playerName: lastScorer.playerName },
+              };
+              newScore.awayGoals = [...newScore.awayGoals, newGoal];
+              gameSummaryWithShootoutGoal.away.goals = [...gameSummaryWithShootoutGoal.away.goals, newGoal];
+            }
+        }
+
+        newState = {
+            ...state,
+            live: { ...state.live,
+                score: newScore,
+                gameSummary: gameSummaryWithShootoutGoal,
+                shootout: { ...state.live.shootout, isActive: false },
+            }
+        };
+        break;
+    }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
       const { selectedFormatAndTimingsProfileId, formatAndTimingsProfiles } = state.config;
       if (!selectedFormatAndTimingsProfileId) break;
@@ -1236,6 +1318,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           remainingTimeAtStartCs: (autoStartWarmUp && defaultWarmUpDuration > 0) ? defaultWarmUpDuration : null,
           absoluteElapsedTimeCs: 0, _liveAbsoluteElapsedTimeCs: 0,
         },
+        shootout: INITIAL_SHOOTOUT_STATE,
         homeTeamName: 'Local', homeTeamSubName: undefined, awayTeamName: 'Visitante', awayTeamSubName: undefined,
         gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
         playHornTrigger: state.live.playHornTrigger, playPenaltyBeepTrigger: state.live.playPenaltyBeepTrigger,

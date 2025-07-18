@@ -1,0 +1,164 @@
+{
+  "date": "2025-07-18T20:22:32.917Z",
+  "category": "B",
+  "homeTeam": "ACEMHH",
+  "awayTeam": "Visitante",
+  "finalScore": "3 - 0",
+  "summary": {
+    "home": {
+      "goals": [],
+      "penalties": [
+        {
+          "id": "4c46563a-4023-4422-b2dc-7441d558a25c",
+          "team": "home",
+          "playerNumber": "6",
+          "playerName": "A. BURGES-WEBB",
+          "penaltyName": "Menor (2:00)",
+          "initialDuration": 120,
+          "addTimestamp": 1752703096717,
+          "addGameTime": 132000,
+          "addPeriodText": "1ST",
+          "penaltyType": "minor",
+          "endTimestamp": 1752703157635,
+          "endGameTime": 120275,
+          "endPeriodText": "1ST",
+          "endReason": "completed",
+          "timeServed": 120
+        },
+        {
+          "id": "d0ecd3c4-610d-4474-9abb-e2bf52f2d8b4",
+          "team": "home",
+          "playerNumber": "5",
+          "penaltyName": "Doble Menor (4:00)",
+          "initialDuration": 240,
+          "addTimestamp": 1752703577218,
+          "addGameTime": 12000,
+          "addPeriodText": "Break",
+          "penaltyType": "minor",
+          "endTimestamp": 1752846901084,
+          "endGameTime": 108000,
+          "endPeriodText": "2ND",
+          "endReason": "completed",
+          "timeServed": 240
+        },
+        {
+          "id": "3b9961e4-af57-4cb5-a408-59ca5db75cda",
+          "team": "home",
+          "playerNumber": "4",
+          "penaltyName": "Menor (2:00)",
+          "initialDuration": 120,
+          "addTimestamp": 1752767709371,
+          "addGameTime": 132000,
+          "addPeriodText": "2ND",
+          "penaltyType": "minor",
+          "endTimestamp": 1752812348877,
+          "endGameTime": 120000,
+          "endPeriodText": "2ND",
+          "endReason": "completed",
+          "timeServed": 120
+        },
+        {
+          "id": "0cdeefce-e5df-45e8-acf6-f6e44824654f",
+          "team": "home",
+          "playerNumber": "67",
+          "penaltyName": "Menor (2:00)",
+          "initialDuration": 120,
+          "addTimestamp": 1752767914034,
+          "addGameTime": 132000,
+          "addPeriodText": "2ND",
+          "penaltyType": "minor",
+          "endTimestamp": 1752846901084,
+          "endGameTime": 107736,
+          "endPeriodText": "2ND",
+          "endReason": "completed",
+          "timeServed": 120
+        }
+      ],
+      "playerStats": {
+        "1": {
+          "name": "",
+          "shots": 1,
+          "goals": 1,
+          "assists": 0
+        },
+        "2": {
+          "name": "CASANOVA",
+          "shots": 7,
+          "goals": 0,
+          "assists": 0
+        },
+        "3": {
+          "name": "",
+          "shots": 1,
+          "goals": 1,
+          "assists": 0
+        },
+        "4": {
+          "name": "",
+          "shots": 1,
+          "goals": 1,
+          "assists": 0
+        },
+        "6": {
+          "name": "A. BURGES-WEBB",
+          "shots": 17,
+          "goals": 0,
+          "assists": 0
+        },
+        "7": {
+          "name": "B. BURGES-WEBB",
+          "shots": 4,
+          "goals": 0,
+          "assists": 0
+        }
+      }
+    },
+    "away": {
+      "goals": [],
+      "penalties": [
+        {
+          "id": "e8688b01-badf-494f-85f8-88c784241770",
+          "team": "away",
+          "playerNumber": "52",
+          "penaltyName": "Mala Conducta (10:00)",
+          "initialDuration": 600,
+          "addTimestamp": 1752767967137,
+          "addGameTime": 132000,
+          "addPeriodText": "2ND",
+          "penaltyType": "misconduct",
+          "endTimestamp": 1752846901084,
+          "endGameTime": 72000,
+          "endPeriodText": "2ND",
+          "endReason": "completed",
+          "timeServed": 600
+        }
+      ],
+      "playerStats": {}
+    },
+    "attendance": {
+      "home": [
+        {
+          "id": "ebf9b4b6-77ea-47af-9041-7635884b5f1b",
+          "number": "2",
+          "name": "CASANOVA"
+        },
+        {
+          "id": "9a6d2c49-3b7e-4c43-b93e-4da0a8e597a5",
+          "number": "9",
+          "name": "FORNARI"
+        },
+        {
+          "id": "ea7f9a6c-f969-49b7-9ae8-29e26df0e125",
+          "number": "6",
+          "name": "A. BURGES-WEBB"
+        },
+        {
+          "id": "62051ed4-ca0a-4851-9b23-f1c08ebdb2a4",
+          "number": "7",
+          "name": "B. BURGES-WEBB"
+        }
+      ],
+      "away": []
+    }
+  }
+}

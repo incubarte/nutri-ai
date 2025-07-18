@@ -135,6 +135,7 @@ export default function ControlsPage() {
   const [publicIp, setPublicIp] = useState<string | null>(null);
   const [localPort, setLocalPort] = useState<string>('');
   const [isConnectingTunnel, setIsConnectingTunnel] = useState(false);
+  const [isShootoutConfirmOpen, setIsShootoutConfirmOpen] = useState(false);
 
 
   const prevPeriodDisplayOverrideRef = useRef<string | null>();
@@ -543,6 +544,24 @@ export default function ControlsPage() {
 
   const localUrl = (localIp && localPort) ? `http://${localIp}:${localPort}/mobile-controls` : '';
   const tunnelUrl = state.config.tunnel.status === 'connected' && state.config.tunnel.url ? `${state.config.tunnel.url}/mobile-controls` : '';
+  
+  const handleAddExtraOvertime = () => {
+    dispatch({ type: 'ADD_EXTRA_OVERTIME' });
+    toast({ title: "Overtime Extra Añadido", description: "Se ha añadido un período de OT y se ha iniciado un descanso." });
+  };
+  
+  const isTiedAndFinished = state.live.clock.periodDisplayOverride === 'End of Game' && state.live.score.home === state.live.score.away;
+
+  const performStartShootout = () => {
+    dispatch({ type: 'START_SHOOTOUT' });
+    toast({ title: "Tanda de Penales Iniciada" });
+    setIsShootoutConfirmOpen(false);
+  };
+
+  const handlePrepareStartShootout = () => {
+    setIsShootoutConfirmOpen(true);
+  };
+
 
   if (authStatus === 'loading' || isGameStateLoading || !state.live || !state.config || !state.live.penalties) {
     return (
@@ -636,6 +655,25 @@ export default function ControlsPage() {
             Finalizar por Gol de Oro
           </Button>
         </div>
+      )}
+      
+      {isTiedAndFinished && (
+          <div className="flex flex-col items-center gap-2 mt-4">
+            <Button
+              onClick={handleAddExtraOvertime}
+              className="w-full max-w-[200px] mx-auto bg-blue-600 hover:bg-blue-700"
+              aria-label="Añadir Overtime Extra"
+            >
+              <PlusCircle className="mr-2 h-5 w-5" /> Añadir Overtime Extra
+            </Button>
+            <Button
+              onClick={handlePrepareStartShootout}
+              className="w-full max-w-[200px] mx-auto bg-indigo-600 hover:bg-indigo-700"
+            >
+              <Swords className="mr-2 h-5 w-5" />
+              Ir a Tanda de Penales
+            </Button>
+          </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -754,6 +792,27 @@ export default function ControlsPage() {
             onGameReset={handleResetGame}
         />
       )}
+      
+      {isShootoutConfirmOpen && (
+        <AlertDialog open={isShootoutConfirmOpen} onOpenChange={setIsShootoutConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Inicio de Tanda de Penales</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esto iniciará el modo de tanda de penales (shootout). El reloj principal y las penalidades se pausarán. ¿Estás seguro?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setIsShootoutConfirmOpen(false)}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={performStartShootout}>
+                Confirmar e Iniciar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
 
     </div>
   );
+}
