@@ -157,7 +157,7 @@ export default function MobileScoreboard() {
   if (isLoading) {
     return (
       <div className="flex flex-col h-screen p-4 gap-4 bg-background items-center justify-center">
-        <HockeyPuckSpinner className="h-12 w-12 text-primary" />
+        <HockeyPuckSpinner className="h-24 w-24 text-primary" />
         <p className="text-muted-foreground mt-4">Obteniendo datos del partido...</p>
       </div>
     );

@@ -229,7 +229,7 @@ export default function MobileShotsPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <HockeyPuckSpinner className="h-8 w-8" />
+        <HockeyPuckSpinner className="h-24 w-24" />
       </div>
     );
   }

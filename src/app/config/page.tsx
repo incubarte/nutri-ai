@@ -58,7 +58,7 @@ import { useAuth } from '@/hooks/use-auth';
 
 
 // Lazy load heavy components
-const loadingComponent = () => <div className="flex justify-center items-center p-8"><HockeyPuckSpinner /></div>;
+const loadingComponent = () => <div className="flex justify-center items-center p-8"><HockeyPuckSpinner className="h-36 w-36" /></div>;
 
 const DurationSettingsCard = dynamic(() => import('@/components/config/duration-settings-card').then(mod => mod.DurationSettingsCard), { loading: loadingComponent });
 const PenaltySettingsCard = dynamic(() => import('@/components/config/penalty-settings-card').then(mod => mod.PenaltySettingsCard), { loading: loadingComponent });
@@ -644,7 +644,7 @@ export default function ConfigPage() {
   if (authStatus === 'loading' || isGameStateLoading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
-        <HockeyPuckSpinner className="h-12 w-12 text-primary mb-4" />
+        <HockeyPuckSpinner className="h-24 w-24 text-primary mb-4" />
         <p className="text-xl text-foreground">Cargando configuración...</p>
       </div>
     );

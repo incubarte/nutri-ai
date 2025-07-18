@@ -547,7 +547,7 @@ export default function ControlsPage() {
   if (authStatus === 'loading' || isGameStateLoading || !state.live || !state.config || !state.live.penalties) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
-        <HockeyPuckSpinner className="h-12 w-12 text-primary mb-4" />
+        <HockeyPuckSpinner className="h-24 w-24 text-primary mb-4" />
         <p className="text-xl text-foreground">Cargando...</p>
       </div>
     );

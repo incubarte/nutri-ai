@@ -411,7 +411,7 @@ export default function MobileControlsPage() {
     return (
       <main className="w-full h-full p-4 bg-background">
         <div className="flex flex-col h-full w-full items-center justify-center text-center">
-          <ShieldCheck className="h-12 w-12 text-primary animate-pulse" />
+          <HockeyPuckSpinner className="h-24 w-24" />
           <p className="text-muted-foreground mt-4">Verificando acceso y cargando datos...</p>
         </div>
       </main>
