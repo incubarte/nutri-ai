@@ -254,7 +254,7 @@ export interface LiveState {
   clock: ClockState;
   score: ScoreState;
   penalties: PenaltiesState;
-  shootout?: ShootoutState;
+  shootout: ShootoutState;
   homeTeamName: string;
   homeTeamSubName?: string;
   awayTeamName: string;
@@ -331,6 +331,7 @@ export type GameAction =
   | { type: 'START_SHOOTOUT' }
   | { type: 'UPDATE_SHOOTOUT_ROUNDS'; payload: number }
   | { type: 'RECORD_SHOOTOUT_ATTEMPT'; payload: { team: Team; playerId: string; playerNumber: string; playerName?: string; isGoal: boolean; } }
+  | { type: 'UNDO_LAST_SHOOTOUT_ATTEMPT'; payload: { team: Team } }
   | { type: 'FINISH_SHOOTOUT' }
   | { type: 'ADD_FORMAT_AND_TIMINGS_PROFILE'; payload: { name: string; profileData?: Partial<FormatAndTimingsProfileData> } }
   | { type: 'UPDATE_SELECTED_FT_PROFILE_DATA', payload: Partial<FormatAndTimingsProfileData> }
@@ -362,3 +363,4 @@ export type GameAction =
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
+

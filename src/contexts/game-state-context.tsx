@@ -1108,6 +1108,25 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         };
         break;
     }
+    case 'UNDO_LAST_SHOOTOUT_ATTEMPT': {
+      const { team } = action.payload;
+      if (!state.live.shootout) break;
+
+      const attemptsKey = team === 'home' ? 'homeAttempts' : 'awayAttempts';
+      const currentAttempts = state.live.shootout[attemptsKey];
+      if (currentAttempts.length === 0) break;
+      
+      const newAttempts = currentAttempts.slice(0, -1);
+
+      newState = { ...state, live: { ...state.live,
+          shootout: {
+            ...state.live.shootout,
+            [attemptsKey]: newAttempts,
+          }
+        }
+      };
+      break;
+    }
     case 'FINISH_SHOOTOUT': {
         if (!state.live.shootout) break;
         const { homeAttempts, awayAttempts } = state.live.shootout;

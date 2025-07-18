@@ -206,10 +206,11 @@ export const ShootoutControl = () => {
     const awayGoals = shootout.awayAttempts.filter(a => a.isGoal).length;
     const currentRound = Math.max(shootout.homeAttempts.length, shootout.awayAttempts.length) + 1;
     
-    const whoseTurn = useMemo((): Team | 'none' => {
-      if (shootout.homeAttempts.length === shootout.awayAttempts.length) return 'home'; // Default to home if equal
-      if (shootout.homeAttempts.length > shootout.awayAttempts.length) return 'away';
-      return 'home';
+    const whoseTurn = useMemo((): Team | 'both' | 'none' => {
+        if (shootout.homeAttempts.length === 0 && shootout.awayAttempts.length === 0) return 'both';
+        if (shootout.homeAttempts.length === shootout.awayAttempts.length) return 'home';
+        if (shootout.homeAttempts.length > shootout.awayAttempts.length) return 'away';
+        return 'home';
     }, [shootout.homeAttempts, shootout.awayAttempts]);
 
     const winner = useMemo(() => {
@@ -274,6 +275,10 @@ export const ShootoutControl = () => {
         toast({ title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." });
     };
 
+    const handleUndoAttempt = (team: Team) => {
+        dispatch({ type: 'UNDO_LAST_SHOOTOUT_ATTEMPT', payload: { team } });
+    };
+
 
     return (
         <Card className="w-full max-w-4xl mx-auto shadow-xl border-indigo-500/50">
@@ -322,34 +327,34 @@ export const ShootoutControl = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Home Team Shooter */}
-                        <div className={cn("space-y-3 p-4 border rounded-lg transition-all", whoseTurn === 'home' && !gameIsDecided && "border-blue-500 ring-2 ring-blue-500/50 animate-pulse")}>
+                        <div className={cn("space-y-3 p-4 border rounded-lg transition-all", (whoseTurn === 'home' || whoseTurn === 'both') && "border-blue-500 ring-2 ring-blue-500/50 animate-pulse")}>
                             <h4 className="font-medium text-center">{homeTeamName}</h4>
                             <ShooterSelector
                                 key={`home-shooter-${homeSelectorKey}`}
                                 team="home"
                                 onSelect={handleHomeSelect}
-                                disabled={gameIsDecided}
+                                disabled={false}
                                 keyProp={homeSelectorKey}
                             />
                             <div className="grid grid-cols-2 gap-2">
-                                <Button onClick={() => handleRecordAttempt('home', true)} disabled={!homeSelection.number || gameIsDecided}><Goal className="mr-2 h-4 w-4" />Gol</Button>
-                                <Button onClick={() => handleRecordAttempt('home', false)} disabled={!homeSelection.number || gameIsDecided} variant="outline"><Shield className="mr-2 h-4 w-4" />Atajado</Button>
+                                <Button onClick={() => handleRecordAttempt('home', true)} disabled={!homeSelection.number}><Goal className="mr-2 h-4 w-4" />Gol</Button>
+                                <Button onClick={() => handleRecordAttempt('home', false)} disabled={!homeSelection.number} variant="outline"><Shield className="mr-2 h-4 w-4" />Atajado</Button>
                             </div>
                         </div>
 
                         {/* Away Team Shooter */}
-                        <div className={cn("space-y-3 p-4 border rounded-lg transition-all", whoseTurn === 'away' && !gameIsDecided && "border-blue-500 ring-2 ring-blue-500/50 animate-pulse")}>
+                        <div className={cn("space-y-3 p-4 border rounded-lg transition-all", (whoseTurn === 'away' || whoseTurn === 'both') && "border-blue-500 ring-2 ring-blue-500/50 animate-pulse")}>
                             <h4 className="font-medium text-center">{awayTeamName}</h4>
                             <ShooterSelector
                                 key={`away-shooter-${awaySelectorKey}`}
                                 team="away"
                                 onSelect={handleAwaySelect}
-                                disabled={gameIsDecided}
+                                disabled={false}
                                 keyProp={awaySelectorKey}
                             />
                             <div className="grid grid-cols-2 gap-2">
-                                <Button onClick={() => handleRecordAttempt('away', true)} disabled={!awaySelection.number || gameIsDecided}><Goal className="mr-2 h-4 w-4" />Gol</Button>
-                                <Button onClick={() => handleRecordAttempt('away', false)} disabled={!awaySelection.number || gameIsDecided} variant="outline"><Shield className="mr-2 h-4 w-4" />Atajado</Button>
+                                <Button onClick={() => handleRecordAttempt('away', true)} disabled={!awaySelection.number}><Goal className="mr-2 h-4 w-4" />Gol</Button>
+                                <Button onClick={() => handleRecordAttempt('away', false)} disabled={!awaySelection.number} variant="outline"><Shield className="mr-2 h-4 w-4" />Atajado</Button>
                             </div>
                         </div>
                     </div>
@@ -359,11 +364,21 @@ export const ShootoutControl = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="space-y-2">
-                        <h4 className="font-medium text-muted-foreground">Tiros de {homeTeamName}</h4>
+                        <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-muted-foreground">Tiros de {homeTeamName}</h4>
+                            <Button variant="ghost" size="sm" onClick={() => handleUndoAttempt('home')} disabled={shootout.homeAttempts.length === 0}>
+                                <Undo2 className="h-4 w-4 mr-1" /> Deshacer
+                            </Button>
+                        </div>
                         {shootout.homeAttempts.length > 0 ? shootout.homeAttempts.map(a => <ShootoutAttemptRow key={a.id} attempt={a} />) : <p className="text-sm text-muted-foreground italic">Sin tiros registrados.</p>}
                     </div>
                      <div className="space-y-2">
-                        <h4 className="font-medium text-muted-foreground">Tiros de {awayTeamName}</h4>
+                         <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-muted-foreground">Tiros de {awayTeamName}</h4>
+                            <Button variant="ghost" size="sm" onClick={() => handleUndoAttempt('away')} disabled={shootout.awayAttempts.length === 0}>
+                                <Undo2 className="h-4 w-4 mr-1" /> Deshacer
+                            </Button>
+                        </div>
                         {shootout.awayAttempts.length > 0 ? shootout.awayAttempts.map(a => <ShootoutAttemptRow key={a.id} attempt={a} />) : <p className="text-sm text-muted-foreground italic">Sin tiros registrados.</p>}
                     </div>
                 </div>
