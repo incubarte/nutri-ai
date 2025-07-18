@@ -432,7 +432,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const isPreTimeoutLastMinute = typeof preTimeoutTimeCs === 'number' && preTimeoutTimeCs < 6000 && preTimeoutTimeCs >= 0;
 
   const handleSegmentClick = (segment: EditingSegment) => {
-    if (state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game") return;
+    if (state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero) return;
     setEditingSegment(segment);
     switch (segment) {
       case 'minutes': setEditValue(String(timeParts.minutes).padStart(2, '0')); break;
@@ -489,7 +489,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     "text-5xl font-bold",
     isMainClockLastMinute ? "text-orange-500" : "text-accent"
   );
-  const commonSpanClass = cn(!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game") && "cursor-pointer hover:underline");
+  const commonSpanClass = cn(!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero) && "cursor-pointer hover:underline");
 
   const activeHomePenaltiesCount = state.live.penalties.home.filter(p => p._status === 'running' && p.penaltyType !== 'misconduct').length;
   const playersOnIceForHome = Math.max(0, state.config.playersPerTeamOnIce - activeHomePenaltiesCount);
