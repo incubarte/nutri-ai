@@ -234,10 +234,27 @@ export interface PenaltiesState {
   away: Penalty[];
 }
 
+export interface ShootoutAttempt {
+  id: string;
+  round: number;
+  playerId: string;
+  playerNumber: string;
+  playerName?: string;
+  isGoal: boolean | null; // null for pending, true for goal, false for miss
+}
+
+export interface ShootoutState {
+  isActive: boolean;
+  rounds: number;
+  homeAttempts: ShootoutAttempt[];
+  awayAttempts: ShootoutAttempt[];
+}
+
 export interface LiveState {
   clock: ClockState;
   score: ScoreState;
   penalties: PenaltiesState;
+  shootout?: ShootoutState;
   homeTeamName: string;
   homeTeamSubName?: string;
   awayTeamName: string;
@@ -311,6 +328,9 @@ export type GameAction =
   | { type: 'END_TIMEOUT' }
   | { type: 'MANUAL_END_GAME' }
   | { type: 'ADD_EXTRA_OVERTIME' }
+  | { type: 'START_SHOOTOUT' }
+  | { type: 'RECORD_SHOOTOUT_ATTEMPT'; payload: { team: Team; playerId: string; playerNumber: string; playerName?: string; isGoal: boolean; } }
+  | { type: 'FINISH_SHOOTOUT' }
   | { type: 'ADD_FORMAT_AND_TIMINGS_PROFILE'; payload: { name: string; profileData?: Partial<FormatAndTimingsProfileData> } }
   | { type: 'UPDATE_SELECTED_FT_PROFILE_DATA', payload: Partial<FormatAndTimingsProfileData> }
   | { type: 'UPDATE_FORMAT_AND_TIMINGS_PROFILE_NAME'; payload: { profileId: string; newName: string } }
