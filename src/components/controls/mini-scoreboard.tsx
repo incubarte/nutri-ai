@@ -833,7 +833,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                       className="h-6 w-6 text-muted-foreground hover:text-accent self-center mr-1"
                       onClick={() => handleTimeAdjust(-1)}
                       aria-label="Restar 1 segundo al reloj"
-                      disabled={state.live.clock.currentTime <=0 || editingSegment !== null || state.live.clock.periodDisplayOverride === "End of Game"}
+                      disabled={state.live.clock.currentTime <= 0 || editingSegment !== null || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero}
                     >
                       <Minus className="h-3 w-3" />
                     </Button>
@@ -924,7 +924,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                       className="h-6 w-6 text-muted-foreground hover:text-accent self-center ml-1"
                       onClick={() => handleTimeAdjust(1)}
                       aria-label="Sumar 1 segundo al reloj"
-                      disabled={editingSegment !== null || state.live.clock.periodDisplayOverride === "End of Game"}
+                      disabled={editingSegment !== null || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero}
                     >
                       <Plus className="h-3 w-3" />
                     </Button>
@@ -940,7 +940,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 size="icon"
                 className="h-7 w-7 text-muted-foreground hover:text-primary-foreground"
                 aria-label="Período Anterior o Descanso"
-                disabled={isPreviousPeriodDisabled || editingSegment !== null}
+                disabled={isPreviousPeriodDisabled || editingSegment !== null || state.live.clock.isFlashingZero}
               >
                 <ChevronLeft className="h-5 w-5" />
               </Button>
