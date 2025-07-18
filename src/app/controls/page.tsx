@@ -15,7 +15,7 @@ import type { PlayerData, RemoteCommand } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
@@ -544,17 +544,6 @@ export default function ControlsPage() {
   const localUrl = (localIp && localPort) ? `http://${localIp}:${localPort}/mobile-controls` : '';
   const tunnelUrl = state.config.tunnel.status === 'connected' && state.config.tunnel.url ? `${state.config.tunnel.url}/mobile-controls` : '';
 
-  const isTiedAndFinished = useMemo(() => {
-    if (!state.live) return false;
-    return state.live.clock.periodDisplayOverride === 'End of Game' && state.live.score.home === state.live.score.away;
-  }, [state.live]);
-
-  const handleStartShootout = () => {
-    dispatch({ type: 'START_SHOOTOUT' });
-    toast({ title: "Tanda de Penales Iniciada" });
-  };
-
-
   if (authStatus === 'loading' || isGameStateLoading || !state.live || !state.config || !state.live.penalties) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
@@ -648,30 +637,6 @@ export default function ControlsPage() {
           </Button>
         </div>
       )}
-      
-       {isTiedAndFinished && (
-        <div className="my-6 flex flex-col items-center justify-center gap-4">
-          <p className="text-lg text-primary-foreground font-semibold">El partido ha terminado en empate. ¿Cómo deseas proceder?</p>
-          <div className="flex gap-4">
-            <Button
-              size="lg"
-              className="px-8 py-4 text-base font-semibold h-auto bg-blue-600 hover:bg-blue-700"
-              onClick={() => dispatch({ type: 'ADD_EXTRA_OVERTIME' })}
-            >
-              Añadir Overtime Extra
-            </Button>
-            <Button
-              size="lg"
-              className="px-8 py-4 text-base font-semibold h-auto bg-indigo-600 hover:bg-indigo-700"
-              onClick={handleStartShootout}
-            >
-              <Swords className="mr-2 h-5 w-5" />
-              Ir a Tanda de Penales
-            </Button>
-          </div>
-        </div>
-      )}
-
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <PenaltyControlCard team="home" teamName={state.live.homeTeamName} />
