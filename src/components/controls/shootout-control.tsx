@@ -5,53 +5,38 @@ import React, { useState, useMemo } from 'react';
 import { useGameState, type Team, type PlayerData, type ShootoutAttempt } from '@/contexts/game-state-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Swords, Check, X, Shield, Goal, Flag, Undo2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 
-const PlayerSelector = ({ team, onSelect, disabled, existingAttempts }: { team: Team, onSelect: (player: PlayerData) => void, disabled: boolean, existingAttempts: ShootoutAttempt[] }) => {
-    const { state } = useGameState();
-    const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
+const ShooterSelector = ({ onSelect, disabled }: { onSelect: (playerNumber: string) => void, disabled: boolean }) => {
+    const [playerNumber, setPlayerNumber] = useState("");
 
-    const teamData = useMemo(() => {
-        const teamDetails = state.config.teams.find(t =>
-            t.name === state.live[`${team}TeamName`] &&
-            (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) &&
-            t.category === state.config.selectedMatchCategory
-        );
-        return teamDetails || null;
-    }, [state.config, state.live, team]);
-
-    const availablePlayers = useMemo(() => {
-        if (!teamData) return [];
-        const attemptedPlayerIds = new Set(existingAttempts.map(a => a.playerId));
-        return teamData.players.filter(p => !attemptedPlayerIds.has(p.id));
-    }, [teamData, existingAttempts]);
-
-    const handleSelectChange = (playerId: string) => {
-        const player = teamData?.players.find(p => p.id === playerId);
-        if (player) {
-            setSelectedPlayerId(playerId);
-            onSelect(player);
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const num = e.target.value;
+        if (/^\d*$/.test(num)) {
+            setPlayerNumber(num);
+            onSelect(num);
         }
     };
+    
+    // When a shot is recorded, the input should clear. This effect handles that.
+    React.useEffect(() => {
+        if (disabled) { // disabled becomes true when game is decided
+            setPlayerNumber("");
+        }
+    }, [disabled]);
+
 
     return (
-        <Select value={selectedPlayerId} onValueChange={handleSelectChange} disabled={disabled || availablePlayers.length === 0}>
-            <SelectTrigger className="w-full">
-                <SelectValue placeholder="Seleccionar Jugador..." />
-            </SelectTrigger>
-            <SelectContent>
-                {availablePlayers.length > 0 ? availablePlayers.map(p => (
-                    <SelectItem key={p.id} value={p.id}>
-                        #{p.number || 'S/N'} - {p.name}
-                    </SelectItem>
-                )) : (
-                    <div className="text-sm text-muted-foreground p-2">No hay más jugadores disponibles</div>
-                )}
-            </SelectContent>
-        </Select>
+        <Input
+            value={playerNumber}
+            onChange={handleInputChange}
+            placeholder="Ingresar Nº de Jugador"
+            disabled={disabled}
+            className="text-center text-lg h-12"
+        />
     );
 };
 
@@ -59,7 +44,7 @@ const ShootoutAttemptRow = ({ attempt }: { attempt: ShootoutAttempt }) => (
     <div className="flex items-center justify-between p-2 rounded-md bg-muted/50">
         <div className="flex items-center gap-2">
             <span className="font-mono text-xs text-muted-foreground w-6 text-center">R{attempt.round}</span>
-            <p className="text-sm font-medium">#{attempt.playerNumber} - {attempt.playerName}</p>
+            <p className="text-sm font-medium">#{attempt.playerNumber} - {attempt.playerName || 'Jugador no listado'}</p>
         </div>
         {attempt.isGoal === true && <Check className="h-5 w-5 text-green-500" />}
         {attempt.isGoal === false && <X className="h-5 w-5 text-destructive" />}
@@ -71,8 +56,8 @@ export const ShootoutControl = () => {
     const { state, dispatch } = useGameState();
     const { toast } = useToast();
     const { shootout, homeTeamName, awayTeamName, score } = state.live;
-    const [homeSelection, setHomeSelection] = useState<PlayerData | null>(null);
-    const [awaySelection, setAwaySelection] = useState<PlayerData | null>(null);
+    const [homeSelection, setHomeSelection] = useState<string>("");
+    const [awaySelection, setAwaySelection] = useState<string>("");
 
     const homeGoals = shootout?.homeAttempts.filter(a => a.isGoal).length || 0;
     const awayGoals = shootout?.awayAttempts.filter(a => a.isGoal).length || 0;
@@ -80,21 +65,38 @@ export const ShootoutControl = () => {
 
     const gameIsDecided = useMemo(() => {
         if (!shootout) return false;
-        const roundsLeft = shootout.rounds - (currentRound - 1);
-        return Math.abs(homeGoals - awayGoals) > roundsLeft;
+        // In regular rounds, the game is over if the difference is greater than rounds left for OTHER team
+        if (currentRound <= shootout.rounds) {
+            const homeRoundsLeft = shootout.rounds - shootout.homeAttempts.length;
+            const awayRoundsLeft = shootout.rounds - shootout.awayAttempts.length;
+            if (homeGoals > awayGoals + awayRoundsLeft) return true;
+            if (awayGoals > homeGoals + homeRoundsLeft) return true;
+        }
+        // In sudden death, if rounds are complete and scores are not equal, game is over
+        if (currentRound > shootout.rounds && shootout.homeAttempts.length === shootout.awayAttempts.length && homeGoals !== awayGoals) {
+            return true;
+        }
+        return false;
     }, [shootout, homeGoals, awayGoals, currentRound]);
 
     const handleRecordAttempt = (team: Team, isGoal: boolean) => {
-        const player = team === 'home' ? homeSelection : awaySelection;
-        if (!player) {
-            toast({ title: "Jugador no seleccionado", description: `Por favor, selecciona un jugador para el equipo ${team === 'home' ? homeTeamName : awayTeamName}.`, variant: "destructive" });
+        const playerNumber = team === 'home' ? homeSelection : awaySelection;
+        if (!playerNumber.trim()) {
+            toast({ title: "Número de jugador requerido", description: `Por favor, ingresa el número del jugador para el equipo ${team === 'home' ? homeTeamName : awayTeamName}.`, variant: "destructive" });
             return;
         }
 
-        dispatch({ type: 'RECORD_SHOOTOUT_ATTEMPT', payload: { team, playerId: player.id, playerNumber: player.number, playerName: player.name, isGoal } });
+        const teamData = state.config.teams.find(t =>
+            t.name === state.live[`${team}TeamName`] &&
+            (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) &&
+            t.category === state.config.selectedMatchCategory
+        );
+        const playerDetails = teamData?.players.find(p => p.number === playerNumber);
 
-        if (team === 'home') setHomeSelection(null);
-        if (team === 'away') setAwaySelection(null);
+        dispatch({ type: 'RECORD_SHOOTOUT_ATTEMPT', payload: { team, playerId: playerDetails?.id || `unknown-${playerNumber}`, playerNumber, playerName: playerDetails?.name, isGoal } });
+
+        if (team === 'home') setHomeSelection("");
+        if (team === 'away') setAwaySelection("");
     };
 
     const handleFinishShootout = () => {
@@ -134,7 +136,7 @@ export const ShootoutControl = () => {
                         {/* Home Team Shooter */}
                         <div className="space-y-3 p-4 border rounded-lg">
                             <h4 className="font-medium text-center">{homeTeamName}</h4>
-                            <PlayerSelector team="home" onSelect={setHomeSelection} disabled={gameIsDecided} existingAttempts={shootout.homeAttempts} />
+                            <ShooterSelector onSelect={setHomeSelection} disabled={gameIsDecided} />
                             <div className="grid grid-cols-2 gap-2">
                                 <Button onClick={() => handleRecordAttempt('home', true)} disabled={!homeSelection || gameIsDecided}><Goal className="mr-2 h-4 w-4" />Gol</Button>
                                 <Button onClick={() => handleRecordAttempt('home', false)} disabled={!homeSelection || gameIsDecided} variant="outline"><Shield className="mr-2 h-4 w-4" />Atajado</Button>
@@ -144,7 +146,7 @@ export const ShootoutControl = () => {
                         {/* Away Team Shooter */}
                         <div className="space-y-3 p-4 border rounded-lg">
                             <h4 className="font-medium text-center">{awayTeamName}</h4>
-                            <PlayerSelector team="away" onSelect={setAwaySelection} disabled={gameIsDecided} existingAttempts={shootout.awayAttempts} />
+                            <ShooterSelector onSelect={setAwaySelection} disabled={gameIsDecided} />
                             <div className="grid grid-cols-2 gap-2">
                                 <Button onClick={() => handleRecordAttempt('away', true)} disabled={!awaySelection || gameIsDecided}><Goal className="mr-2 h-4 w-4" />Gol</Button>
                                 <Button onClick={() => handleRecordAttempt('away', false)} disabled={!awaySelection || gameIsDecided} variant="outline"><Shield className="mr-2 h-4 w-4" />Atajado</Button>
