@@ -4,7 +4,7 @@
 import { useGameState } from '@/contexts/game-state-context';
 import { CompactHeaderScoreboard } from './compact-header-scoreboard';
 import { PenaltiesDisplay } from './penalties-display';
-import { ShootoutDisplay } from './shootout-display';
+import { ShootoutDisplay, MAX_DISPLAY_SLOTS } from './shootout-display';
 
 export function FullScoreboard() {
   const { state, isLoading } = useGameState();
@@ -16,6 +16,10 @@ export function FullScoreboard() {
   const { config, live } = state;
   const { scoreboardLayout } = config;
   const { penalties, homeTeamName, awayTeamName, shootout } = live;
+
+  // Centralize the sliding window logic here
+  const maxAttempts = Math.max(shootout.homeAttempts.length, shootout.awayAttempts.length);
+  const startIdx = Math.max(0, maxAttempts - (MAX_DISPLAY_SLOTS - 1));
 
   return (
     <div 
@@ -43,8 +47,8 @@ export function FullScoreboard() {
              Penales
            </h1>
            <div className="w-full max-w-4xl space-y-4">
-              <ShootoutDisplay team="home" teamName={homeTeamName} attempts={shootout.homeAttempts} totalRounds={shootout.rounds} />
-              <ShootoutDisplay team="away" teamName={awayTeamName} attempts={shootout.awayAttempts} totalRounds={shootout.rounds} />
+              <ShootoutDisplay team="home" teamName={homeTeamName} attempts={shootout.homeAttempts} totalRounds={shootout.rounds} startIdx={startIdx} />
+              <ShootoutDisplay team="away" teamName={awayTeamName} attempts={shootout.awayAttempts} totalRounds={shootout.rounds} startIdx={startIdx} />
            </div>
         </div>
       )}

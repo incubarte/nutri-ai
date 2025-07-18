@@ -42,11 +42,12 @@ interface ShootoutDisplayProps {
   teamName: string;
   attempts: ShootoutAttempt[];
   totalRounds: number;
+  startIdx: number; // New prop to control the sliding window
 }
 
-const MAX_DISPLAY_SLOTS = 5;
+export const MAX_DISPLAY_SLOTS = 5;
 
-export function ShootoutDisplay({ team, teamName, attempts, totalRounds }: ShootoutDisplayProps) {
+export function ShootoutDisplay({ team, teamName, attempts, totalRounds, startIdx }: ShootoutDisplayProps) {
   const { state } = useGameState();
 
   if (!state.config) {
@@ -55,11 +56,14 @@ export function ShootoutDisplay({ team, teamName, attempts, totalRounds }: Shoot
 
   const { scoreboardLayout } = state.config;
   
-  const startIdx = Math.max(0, attempts.length - (MAX_DISPLAY_SLOTS - 1));
+  // Use the startIdx from props to slice the attempts
   const attemptsToShow = attempts.slice(startIdx, startIdx + MAX_DISPLAY_SLOTS);
   
   const slots = Array.from({ length: MAX_DISPLAY_SLOTS }).map((_, index) => {
-      const attempt = attemptsToShow[index];
+      // Adjust the index to match the overall attempt number from the sliced array
+      const attemptIndexInFullArray = startIdx + index;
+      const attempt = attempts[attemptIndexInFullArray];
+      
       if (attempt) {
           if(attempt.isGoal) {
             return <GoalIcon key={attempt.id} className="w-full h-full" />;
@@ -68,8 +72,7 @@ export function ShootoutDisplay({ team, teamName, attempts, totalRounds }: Shoot
           }
       }
       // Show placeholder if this round is expected
-      const overallRoundIndex = startIdx + index;
-      if (overallRoundIndex < totalRounds) {
+      if (attemptIndexInFullArray < totalRounds) {
         return <PlaceholderIcon key={`placeholder-${index}`} className="w-full h-full" />;
       }
       return null;
@@ -91,7 +94,7 @@ export function ShootoutDisplay({ team, teamName, attempts, totalRounds }: Shoot
             <AnimatePresence>
               {slots.map((slot, index) => (
                   <motion.div
-                    key={attemptsToShow[index]?.id || `placeholder-${index}`}
+                    key={attemptsToShow.find((_, i) => i === index)?.id || `placeholder-${index}`}
                     className="aspect-square bg-muted/30 rounded-md p-1 md:p-2"
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
