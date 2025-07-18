@@ -81,7 +81,7 @@ export function ShootoutDisplay({ team, teamName, attempts, totalRounds, startId
   return (
     <Card className="bg-card shadow-lg flex-1">
       <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-        <div className="grid grid-cols-[repeat(6,1fr)] items-center gap-2 md:gap-4">
+        <div className="grid grid-cols-[repeat(5,1fr)_1.2fr] items-center gap-2 md:gap-4">
             <CardTitle 
                 className="text-primary-foreground col-span-full mb-2"
                 style={{ fontSize: `${scoreboardLayout.penaltiesTitleSize}rem` }}
@@ -109,14 +109,14 @@ export function ShootoutDisplay({ team, teamName, attempts, totalRounds, startId
           </AnimatePresence>
            {/* Goal Count Box */}
           <motion.div
-              className="aspect-square bg-accent/20 border-2 border-accent/50 rounded-md flex items-center justify-center w-12 h-12 md:w-16 md:h-16 shrink-0"
+              className="aspect-square bg-accent/20 border-2 border-accent/50 rounded-md flex items-center justify-center"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.3 }}
           >
               <span
                   className="text-accent font-bold font-headline"
-                  style={{ fontSize: `${scoreboardLayout.scoreSize * 0.7}rem` }}
+                  style={{ fontSize: `${scoreboardLayout.scoreSize * 0.8}rem` }}
               >
                   {goalCount}
               </span>
