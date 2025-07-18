@@ -1,44 +1,169 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useGameState, type Team, type PlayerData, type ShootoutAttempt } from '@/contexts/game-state-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Swords, Check, X, Shield, Goal, Flag, Undo2 } from 'lucide-react';
+import { Swords, Check, X, Shield, Goal, Flag, Undo2, ChevronsUpDown } from 'lucide-react';
 import { Separator } from '../ui/separator';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from '@/lib/utils';
 
-const ShooterSelector = ({ onSelect, disabled }: { onSelect: (playerNumber: string) => void, disabled: boolean }) => {
-    const [playerNumber, setPlayerNumber] = useState("");
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const num = e.target.value;
-        if (/^\d*$/.test(num)) {
-            setPlayerNumber(num);
-            onSelect(num);
-        }
-    };
-    
-    // When a shot is recorded, the input should clear. This effect handles that.
-    React.useEffect(() => {
-        if (disabled) { // disabled becomes true when game is decided
-            setPlayerNumber("");
-        }
-    }, [disabled]);
-
-
-    return (
-        <Input
-            value={playerNumber}
-            onChange={handleInputChange}
-            placeholder="Ingresar Nº de Jugador"
-            disabled={disabled}
-            className="text-center text-lg h-12"
-        />
+const ShooterSelector = ({
+  team,
+  onSelect,
+  disabled,
+  keyProp, // Used to force re-render and clear state
+}: {
+  team: Team;
+  onSelect: (playerNumber: string, playerName?: string) => void;
+  disabled: boolean;
+  keyProp: number;
+}) => {
+  const { state } = useGameState();
+  const [playerNumber, setPlayerNumber] = useState("");
+  const [playerName, setPlayerName] = useState<string | null>(null);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [playerSearchTerm, setPlayerSearchTerm] = useState('');
+  const justSelectedPlayerRef = useRef(false);
+  
+  const teamData = useMemo(() => {
+    return state.config.teams.find(t =>
+        t.name === state.live[`${team}TeamName`] &&
+        (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) &&
+        t.category === state.config.selectedMatchCategory
     );
+  }, [state, team]);
+
+  const filteredPlayers = useMemo(() => {
+    if (!teamData) return [];
+    let playersToFilter = teamData.players.filter(p => p.number && p.number.trim() !== '');
+    playersToFilter.sort((a, b) => (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0));
+    
+    const searchTermLower = playerSearchTerm.toLowerCase();
+    if (!searchTermLower.trim()) return playersToFilter;
+
+    return playersToFilter.filter(p =>
+        p.number.toLowerCase().includes(searchTermLower) ||
+        p.name.toLowerCase().includes(searchTermLower)
+    );
+  }, [teamData, playerSearchTerm]);
+  
+  // Effect to handle state clearing via keyProp change
+  useEffect(() => {
+    setPlayerNumber("");
+    setPlayerName(null);
+    onSelect("", undefined);
+  }, [keyProp, onSelect]);
+
+  const handleManualInput = (value: string) => {
+    if (/^\d*$/.test(value)) {
+        setPlayerNumber(value);
+        setPlayerName(null); // Clear name if typing manually
+        onSelect(value, undefined);
+    }
+  };
+
+  const handleSelectPlayer = (player: PlayerData) => {
+    setPlayerNumber(player.number);
+    setPlayerName(player.name);
+    onSelect(player.number, player.name);
+    justSelectedPlayerRef.current = true;
+    setIsPopoverOpen(false);
+  };
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const trimmedSearch = playerSearchTerm.trim().toUpperCase();
+      if (filteredPlayers.length > 0) {
+        handleSelectPlayer(filteredPlayers[0]);
+      } else if (trimmedSearch && /^\d+$/.test(trimmedSearch)) {
+        handleManualInput(trimmedSearch);
+      }
+      setIsPopoverOpen(false);
+    }
+  };
+
+
+  return (
+    <Popover
+        open={isPopoverOpen}
+        onOpenChange={(isOpen) => {
+            setIsPopoverOpen(isOpen);
+            if (isOpen) setPlayerSearchTerm('');
+            justSelectedPlayerRef.current = false; 
+        }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={isPopoverOpen}
+          className="w-full justify-between h-12 text-base"
+          disabled={disabled}
+        >
+          {playerNumber
+            ? (
+              <span className="truncate flex items-baseline">
+                <span className="text-xs text-muted-foreground mr-0.5">#</span>
+                <span className="font-semibold">{playerNumber}</span>
+                {playerName && (
+                  <span className="text-xs text-muted-foreground ml-1 truncate"> - {playerName}</span>
+                )}
+              </span>
+            )
+            : <span className="truncate text-muted-foreground">Nº Jugador / Seleccionar...</span>
+          }
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Buscar Nº o Nombre..."
+            value={playerSearchTerm}
+            onValueChange={setPlayerSearchTerm}
+            onKeyDown={handleKeyDown}
+          />
+          <CommandList>
+            <CommandEmpty>
+                No se encontró jugador.
+                {playerSearchTerm.trim() && /^\d+$/.test(playerSearchTerm.trim()) && (
+                    <p className="text-xs text-muted-foreground p-2">Enter para usar: #{playerSearchTerm.trim().toUpperCase()}</p>
+                )}
+            </CommandEmpty>
+            <CommandGroup>
+              {filteredPlayers.map((player) => (
+                <CommandItem key={player.id} value={`${player.number} ${player.name}`} onSelect={() => handleSelectPlayer(player)}>
+                  <Check className={cn("mr-2 h-4 w-4", playerNumber === player.number ? "opacity-100" : "opacity-0")} />
+                  <span className="font-semibold mr-2">#{player.number}</span>
+                  <span className="text-muted-foreground truncate">{player.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
 };
+
 
 const ShootoutAttemptRow = ({ attempt }: { attempt: ShootoutAttempt }) => (
     <div className="flex items-center justify-between p-2 rounded-md bg-muted/50">
@@ -56,8 +181,13 @@ export const ShootoutControl = () => {
     const { state, dispatch } = useGameState();
     const { toast } = useToast();
     const { shootout, homeTeamName, awayTeamName, score } = state.live;
-    const [homeSelection, setHomeSelection] = useState<string>("");
-    const [awaySelection, setAwaySelection] = useState<string>("");
+
+    const [homeSelection, setHomeSelection] = useState<{ number: string, name?: string }>({ number: "" });
+    const [awaySelection, setAwaySelection] = useState<{ number: string, name?: string }>({ number: "" });
+    
+    // Key state to force re-render/reset of ShooterSelector
+    const [homeSelectorKey, setHomeSelectorKey] = useState(0);
+    const [awaySelectorKey, setAwaySelectorKey] = useState(0);
 
     const homeGoals = shootout?.homeAttempts.filter(a => a.isGoal).length || 0;
     const awayGoals = shootout?.awayAttempts.filter(a => a.isGoal).length || 0;
@@ -80,8 +210,8 @@ export const ShootoutControl = () => {
     }, [shootout, homeGoals, awayGoals, currentRound]);
 
     const handleRecordAttempt = (team: Team, isGoal: boolean) => {
-        const playerNumber = team === 'home' ? homeSelection : awaySelection;
-        if (!playerNumber.trim()) {
+        const selection = team === 'home' ? homeSelection : awaySelection;
+        if (!selection.number.trim()) {
             toast({ title: "Número de jugador requerido", description: `Por favor, ingresa el número del jugador para el equipo ${team === 'home' ? homeTeamName : awayTeamName}.`, variant: "destructive" });
             return;
         }
@@ -91,12 +221,25 @@ export const ShootoutControl = () => {
             (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) &&
             t.category === state.config.selectedMatchCategory
         );
-        const playerDetails = teamData?.players.find(p => p.number === playerNumber);
+        // Find player by number to get ID, or use a fallback
+        const playerDetails = teamData?.players.find(p => p.number === selection.number);
 
-        dispatch({ type: 'RECORD_SHOOTOUT_ATTEMPT', payload: { team, playerId: playerDetails?.id || `unknown-${playerNumber}`, playerNumber, playerName: playerDetails?.name, isGoal } });
+        dispatch({ type: 'RECORD_SHOOTOUT_ATTEMPT', payload: {
+          team,
+          playerId: playerDetails?.id || `unknown-${selection.number}`,
+          playerNumber: selection.number,
+          playerName: selection.name || playerDetails?.name,
+          isGoal
+        }});
 
-        if (team === 'home') setHomeSelection("");
-        if (team === 'away') setAwaySelection("");
+        if (team === 'home') {
+            setHomeSelection({ number: "" });
+            setHomeSelectorKey(prev => prev + 1);
+        }
+        if (team === 'away') {
+            setAwaySelection({ number: "" });
+            setAwaySelectorKey(prev => prev + 1);
+        }
     };
 
     const handleFinishShootout = () => {
@@ -136,20 +279,32 @@ export const ShootoutControl = () => {
                         {/* Home Team Shooter */}
                         <div className="space-y-3 p-4 border rounded-lg">
                             <h4 className="font-medium text-center">{homeTeamName}</h4>
-                            <ShooterSelector onSelect={setHomeSelection} disabled={gameIsDecided} />
+                            <ShooterSelector
+                                key={`home-shooter-${homeSelectorKey}`}
+                                team="home"
+                                onSelect={(number, name) => setHomeSelection({ number, name })}
+                                disabled={gameIsDecided}
+                                keyProp={homeSelectorKey}
+                            />
                             <div className="grid grid-cols-2 gap-2">
-                                <Button onClick={() => handleRecordAttempt('home', true)} disabled={!homeSelection || gameIsDecided}><Goal className="mr-2 h-4 w-4" />Gol</Button>
-                                <Button onClick={() => handleRecordAttempt('home', false)} disabled={!homeSelection || gameIsDecided} variant="outline"><Shield className="mr-2 h-4 w-4" />Atajado</Button>
+                                <Button onClick={() => handleRecordAttempt('home', true)} disabled={!homeSelection.number || gameIsDecided}><Goal className="mr-2 h-4 w-4" />Gol</Button>
+                                <Button onClick={() => handleRecordAttempt('home', false)} disabled={!homeSelection.number || gameIsDecided} variant="outline"><Shield className="mr-2 h-4 w-4" />Atajado</Button>
                             </div>
                         </div>
 
                         {/* Away Team Shooter */}
                         <div className="space-y-3 p-4 border rounded-lg">
                             <h4 className="font-medium text-center">{awayTeamName}</h4>
-                            <ShooterSelector onSelect={setAwaySelection} disabled={gameIsDecided} />
+                            <ShooterSelector
+                                key={`away-shooter-${awaySelectorKey}`}
+                                team="away"
+                                onSelect={(number, name) => setAwaySelection({ number, name })}
+                                disabled={gameIsDecided}
+                                keyProp={awaySelectorKey}
+                            />
                             <div className="grid grid-cols-2 gap-2">
-                                <Button onClick={() => handleRecordAttempt('away', true)} disabled={!awaySelection || gameIsDecided}><Goal className="mr-2 h-4 w-4" />Gol</Button>
-                                <Button onClick={() => handleRecordAttempt('away', false)} disabled={!awaySelection || gameIsDecided} variant="outline"><Shield className="mr-2 h-4 w-4" />Atajado</Button>
+                                <Button onClick={() => handleRecordAttempt('away', true)} disabled={!awaySelection.number || gameIsDecided}><Goal className="mr-2 h-4 w-4" />Gol</Button>
+                                <Button onClick={() => handleRecordAttempt('away', false)} disabled={!awaySelection.number || gameIsDecided} variant="outline"><Shield className="mr-2 h-4 w-4" />Atajado</Button>
                             </div>
                         </div>
                     </div>
