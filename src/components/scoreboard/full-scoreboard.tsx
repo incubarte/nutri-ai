@@ -42,10 +42,16 @@ export function FullScoreboard() {
       ) : (
         <div className="flex flex-col items-center gap-4">
            <h1 
-            className="text-accent font-bold uppercase tracking-widest"
+            className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
             style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
            >
-             Penales <span className="text-foreground/80 font-normal"> (Ronda {currentRound})</span>
+             <span>Penales</span>
+             <span 
+                className="text-foreground/80 font-normal"
+                style={{ fontSize: `${scoreboardLayout.periodSize * 1.5 * 0.5}rem` }}
+            >
+                (Ronda {currentRound})
+            </span>
            </h1>
            <div className="w-full max-w-4xl space-y-4">
               <ShootoutDisplay team="home" teamName={homeTeamName} attempts={shootout.homeAttempts} totalRounds={shootout.rounds} startIdx={startIdx} />

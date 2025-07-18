@@ -89,19 +89,13 @@ export function ShootoutDisplay({ team, teamName, attempts, totalRounds, startId
         >
           {teamName}
         </CardTitle>
-        <span 
-          className="text-accent font-bold font-headline"
-          style={{ fontSize: `${scoreboardLayout.scoreSize * 0.75}rem` }}
-        >
-          {goalCount}
-        </span>
       </CardHeader>
       <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-        <div className="grid grid-cols-5 gap-2 md:gap-4">
+        <div className="grid grid-cols-6 gap-2 md:gap-4">
             <AnimatePresence>
               {slots.map((slot, index) => (
                   <motion.div
-                    key={attemptsToShow.find((_, i) => i === index)?.id || `placeholder-${index}`}
+                    key={attempts.find((a, i) => i === startIdx + index)?.id || `placeholder-${index}`}
                     className="aspect-square bg-muted/30 rounded-md p-1 md:p-2"
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -112,6 +106,20 @@ export function ShootoutDisplay({ team, teamName, attempts, totalRounds, startId
                   </motion.div>
               ))}
             </AnimatePresence>
+             {/* Goal Count Box */}
+            <motion.div
+                className="aspect-square bg-accent/20 border-2 border-accent/50 rounded-md flex items-center justify-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+            >
+                <span
+                    className="text-accent font-bold font-headline"
+                    style={{ fontSize: `${scoreboardLayout.scoreSize * 0.6}rem` }}
+                >
+                    {goalCount}
+                </span>
+            </motion.div>
         </div>
       </CardContent>
     </Card>
