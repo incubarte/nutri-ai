@@ -19,8 +19,12 @@ export function FullScoreboard() {
 
   // Centralize the sliding window logic here
   const maxAttempts = Math.max(shootout.homeAttempts.length, shootout.awayAttempts.length);
-  const startIdx = Math.max(0, maxAttempts - (MAX_DISPLAY_SLOTS - 1));
-  const currentRound = maxAttempts + 1;
+  // Only start sliding the window after the 5th attempt slot is filled
+  const startIdx = Math.max(0, maxAttempts - MAX_DISPLAY_SLOTS);
+  const currentRound = shootout.homeAttempts.length + shootout.awayAttempts.length > 0
+    ? Math.max(shootout.homeAttempts.length, shootout.awayAttempts.length) + (shootout.homeAttempts.length === shootout.awayAttempts.length ? 1 : 0)
+    : 1;
+
 
   return (
     <div 
