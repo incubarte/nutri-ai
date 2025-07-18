@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Goal, ArrowLeft, Send, WifiOff, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '@/app/actions';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
 import type { LiveGameState, Team, MobileData } from '@/types';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -119,7 +119,7 @@ function AddGoalForm({ homeTeamName, awayTeamName, onGoalSent }: { homeTeamName:
         <DialogFooter className="pt-6">
           <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
           <Button type="submit" disabled={isSending} className="h-14 text-lg">
-            {isSending ? <LoadingSpinner className="mr-2" /> : <Send className="mr-2 h-4 w-4" />}
+            {isSending ? <HockeyPuckSpinner className="mr-2 h-6 w-6" /> : <Send className="mr-2 h-4 w-4" />}
             Enviar Gol
           </Button>
         </DialogFooter>
@@ -229,7 +229,7 @@ export default function MobileShotsPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <LoadingSpinner className="h-8 w-8" />
+        <HockeyPuckSpinner className="h-8 w-8" />
       </div>
     );
   }

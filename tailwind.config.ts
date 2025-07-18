@@ -100,6 +100,10 @@ export default {
             '0%, 100%': { opacity: '1' },
             '50%': { opacity: '0.2' },
         },
+        'pass-puck': {
+          '0%': { transform: 'translateX(0px)' },
+          '100%': { transform: 'translateX(110px)' },
+        }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -107,6 +111,7 @@ export default {
         'score-flash': 'score-flash 0.5s ease-in-out',
         'flashing-border': 'flashing-border 1.5s ease-in-out infinite',
         'flashing-clock': 'flashing-clock 1s ease-in-out infinite',
+        'pass-puck': 'pass-puck 1s ease-in-out infinite alternate',
       },
     },
   },

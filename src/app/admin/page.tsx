@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Trash2, ShieldAlert, LogIn } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from "@/hooks/use-auth";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
 import { useRouter } from "next/navigation";
 import { GAME_STATE_STORAGE_KEY, TEAMS_STORAGE_KEY } from "@/contexts/game-state-context";
 
@@ -51,7 +51,7 @@ export default function AdminPage() {
   if (authStatus === 'loading') {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
-        <LoadingSpinner className="h-12 w-12 text-primary mb-4" />
+        <HockeyPuckSpinner className="h-12 w-12 text-primary mb-4" />
         <p className="text-xl text-foreground">Verificando acceso...</p>
       </div>
     );

@@ -39,7 +39,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { getActualPeriodText } from '@/contexts/game-state-context';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { LoadingSpinner } from '../ui/loading-spinner';
+import { HockeyPuckSpinner } from '../ui/hockey-puck-spinner';
 import { Separator } from '../ui/separator';
 
 
@@ -341,7 +341,7 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
   if (isLoading || !state.live || !state.config) {
     return (
       <Card className="bg-card shadow-md flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner className="h-8 w-8 text-primary" />
+        <HockeyPuckSpinner className="h-8 w-8 text-primary" />
       </Card>
     );
   }

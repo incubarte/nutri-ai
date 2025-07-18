@@ -42,7 +42,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import isEqual from 'lodash.isequal';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
 import type { DurationSettingsCardRef } from "@/components/config/duration-settings-card";
 import type { PenaltySettingsCardRef } from "@/components/config/penalty-settings-card";
 import type { PenaltyTypesCardRef } from "@/components/config/penalty-types-card";
@@ -58,7 +58,7 @@ import { useAuth } from '@/hooks/use-auth';
 
 
 // Lazy load heavy components
-const loadingComponent = () => <div className="flex justify-center items-center p-8"><LoadingSpinner /></div>;
+const loadingComponent = () => <div className="flex justify-center items-center p-8"><HockeyPuckSpinner /></div>;
 
 const DurationSettingsCard = dynamic(() => import('@/components/config/duration-settings-card').then(mod => mod.DurationSettingsCard), { loading: loadingComponent });
 const PenaltySettingsCard = dynamic(() => import('@/components/config/penalty-settings-card').then(mod => mod.PenaltySettingsCard), { loading: loadingComponent });
@@ -298,7 +298,10 @@ export default function ConfigPage() {
   };
 
   const exportSection = (sectionName: string, configData: object, suggestedBaseName: string) => {
-    const lastFilename = localStorage.getItem('lastExportFilename');
+    let lastFilename: string | null = null;
+    if (typeof window !== 'undefined') {
+      lastFilename = localStorage.getItem('lastExportFilename');
+    }
     const suggestedFilename = lastFilename || `${suggestedBaseName}_config.json`;
     setCurrentExportFilename(suggestedFilename);
 
@@ -641,7 +644,7 @@ export default function ConfigPage() {
   if (authStatus === 'loading' || isGameStateLoading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
-        <LoadingSpinner className="h-12 w-12 text-primary mb-4" />
+        <HockeyPuckSpinner className="h-12 w-12 text-primary mb-4" />
         <p className="text-xl text-foreground">Cargando configuración...</p>
       </div>
     );

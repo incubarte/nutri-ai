@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
 import { safeUUID } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -547,7 +547,7 @@ export default function ControlsPage() {
   if (authStatus === 'loading' || isGameStateLoading || !state.live || !state.config || !state.live.penalties) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
-        <LoadingSpinner className="h-12 w-12 text-primary mb-4" />
+        <HockeyPuckSpinner className="h-12 w-12 text-primary mb-4" />
         <p className="text-xl text-foreground">Cargando...</p>
       </div>
     );
@@ -571,7 +571,7 @@ export default function ControlsPage() {
   if (pageDisplayState === 'Checking' || !instanceId) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
-        <LoadingSpinner className="h-12 w-12 text-primary mb-4" />
+        <HockeyPuckSpinner className="h-12 w-12 text-primary mb-4" />
         <p className="text-xl text-foreground">Verificando instancia de controles...</p>
         <p className="text-sm text-muted-foreground">Esto tomará un momento.</p>
         <p className="text-xs text-muted-foreground mt-2">ID de esta instancia: ...{instanceId ? instanceId.slice(-6) : 'generando...'}</p>

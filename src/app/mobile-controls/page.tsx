@@ -21,7 +21,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useGameState, formatTime, getPeriodContextFromAbsoluteTime } from '@/contexts/game-state-context';
@@ -122,7 +122,7 @@ function AddGoalForm({ homeTeamName, awayTeamName, onGoalSent }: { homeTeamName:
         <DialogFooter className="pt-6">
           <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
           <Button type="submit" disabled={isSending} className="h-14 text-lg">
-            {isSending ? <LoadingSpinner className="mr-2" /> : <Send className="mr-2 h-4 w-4" />}
+            {isSending ? <HockeyPuckSpinner className="mr-2 h-6 w-6" /> : <Send className="mr-2 h-4 w-4" />}
             Enviar Gol
           </Button>
         </DialogFooter>
@@ -236,7 +236,7 @@ function AddPenaltyForm({ homeTeamName, awayTeamName, penaltyTypes, defaultPenal
           <Button type="button" variant="outline">Cancelar</Button>
         </DialogClose>
         <Button type="submit" disabled={isSending} className="h-14 text-lg">
-          {isSending ? <LoadingSpinner className="mr-2" /> : <Send className="mr-2 h-4 w-4" />}
+          {isSending ? <HockeyPuckSpinner className="mr-2 h-6 w-6" /> : <Send className="mr-2 h-4 w-4" />}
           Enviar Penalidad
         </Button>
       </DialogFooter>
@@ -526,5 +526,3 @@ export default function MobileControlsPage() {
     </main>
   );
 }
-
-    

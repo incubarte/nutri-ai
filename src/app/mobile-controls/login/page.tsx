@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LogIn, KeyRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
 
 const AUTH_KEY = 'icevision-remote-auth-key';
 
@@ -81,7 +81,7 @@ export default function LoginPage() {
                     />
                     </div>
                     <Button type="submit" className="w-full h-14 text-lg" disabled={isLoading}>
-                    {isLoading ? <LoadingSpinner className="mr-2" /> : <LogIn className="mr-2 h-5 w-5" />}
+                    {isLoading ? <HockeyPuckSpinner className="mr-2 h-6 w-6" /> : <LogIn className="mr-2 h-5 w-5" />}
                     Ingresar
                     </Button>
                 </form>
