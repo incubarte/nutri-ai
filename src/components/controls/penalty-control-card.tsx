@@ -341,7 +341,7 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
   if (isLoading || !state.live || !state.config) {
     return (
       <Card className="bg-card shadow-md flex items-center justify-center min-h-[400px]">
-        <HockeyPuckSpinner className="h-8 w-8 text-primary" />
+        <HockeyPuckSpinner className="w-12 h-12 text-primary" />
       </Card>
     );
   }

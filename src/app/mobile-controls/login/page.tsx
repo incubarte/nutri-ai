@@ -81,7 +81,7 @@ export default function LoginPage() {
                     />
                     </div>
                     <Button type="submit" className="w-full h-14 text-lg" disabled={isLoading}>
-                    {isLoading ? <HockeyPuckSpinner className="mr-2 h-6 w-6" /> : <LogIn className="mr-2 h-5 w-5" />}
+                    {isLoading ? <HockeyPuckSpinner className="h-6 w-6 mr-2" /> : <LogIn className="mr-2 h-5 w-5" />}
                     Ingresar
                     </Button>
                 </form>
