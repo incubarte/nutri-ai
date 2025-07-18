@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useGameState, type Team, type PlayerData, type ShootoutAttempt } from '@/contexts/game-state-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,7 +31,7 @@ const ShooterSelector = ({
   keyProp, // Used to force re-render and clear state
 }: {
   team: Team;
-  onSelect: (playerNumber: string, playerName?: string) => void;
+  onSelect: (number: string, name?: string) => void;
   disabled: boolean;
   keyProp: number;
 }) => {
@@ -71,21 +71,21 @@ const ShooterSelector = ({
     onSelect("", undefined);
   }, [keyProp, onSelect]);
 
-  const handleManualInput = (value: string) => {
+  const handleManualInput = useCallback((value: string) => {
     if (/^\d*$/.test(value)) {
         setPlayerNumber(value);
         setPlayerName(null); // Clear name if typing manually
         onSelect(value, undefined);
     }
-  };
+  }, [onSelect]);
 
-  const handleSelectPlayer = (player: PlayerData) => {
+  const handleSelectPlayer = useCallback((player: PlayerData) => {
     setPlayerNumber(player.number);
     setPlayerName(player.name);
     onSelect(player.number, player.name);
     justSelectedPlayerRef.current = true;
     setIsPopoverOpen(false);
-  };
+  }, [onSelect]);
   
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -189,6 +189,14 @@ export const ShootoutControl = () => {
     const [homeSelectorKey, setHomeSelectorKey] = useState(0);
     const [awaySelectorKey, setAwaySelectorKey] = useState(0);
 
+    const handleHomeSelect = useCallback((number: string, name?: string) => {
+        setHomeSelection({ number, name });
+    }, []);
+
+    const handleAwaySelect = useCallback((number: string, name?: string) => {
+        setAwaySelection({ number, name });
+    }, []);
+
     const homeGoals = shootout?.homeAttempts.filter(a => a.isGoal).length || 0;
     const awayGoals = shootout?.awayAttempts.filter(a => a.isGoal).length || 0;
     const currentRound = Math.max(shootout?.homeAttempts.length || 0, shootout?.awayAttempts.length || 0) + 1;
@@ -282,7 +290,7 @@ export const ShootoutControl = () => {
                             <ShooterSelector
                                 key={`home-shooter-${homeSelectorKey}`}
                                 team="home"
-                                onSelect={(number, name) => setHomeSelection({ number, name })}
+                                onSelect={handleHomeSelect}
                                 disabled={gameIsDecided}
                                 keyProp={homeSelectorKey}
                             />
@@ -298,7 +306,7 @@ export const ShootoutControl = () => {
                             <ShooterSelector
                                 key={`away-shooter-${awaySelectorKey}`}
                                 team="away"
-                                onSelect={(number, name) => setAwaySelection({ number, name })}
+                                onSelect={handleAwaySelect}
                                 disabled={gameIsDecided}
                                 keyProp={awaySelectorKey}
                             />
