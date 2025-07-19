@@ -5,7 +5,8 @@ Recien se disparo cuando una penalidad le faltaban 10 segundos. (mezlco todo con
 
 
 Funcionalidades
-1.
+1. Agregar configuracion de tiempo parado con diferencia de goles (Booelano, diferencia de goles, ultimos N minutos del partido? que pasa en over?)
+
 
 Mejoras
 2. No grisar las penaldiades esperando puck, solo poner el cartel de esperando puck

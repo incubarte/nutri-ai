@@ -735,7 +735,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       let newStatus: Penalty['_status'] = 'pending_puck';
       let startTime, expirationTime;
 
-      // Penalties that don't reduce player count start immediately.
+      // Penalties that don't reduce player count start immediately once puck is in play.
       if (!penaltyDef.reducesPlayerCount) {
         newStatus = 'running';
         startTime = _liveAbsoluteElapsedTimeCs;
@@ -971,7 +971,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             clock: { ...clock, currentTime: currentTimeSnapshot, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs },
             penalties: { home: sortPenaltiesByStatus(homePenaltiesResult), away: sortPenaltiesByStatus(awayPenaltiesResult) },
             gameSummary: newGameSummary,
-            playHornTrigger: newPlayPenaltyBeepTrigger
+            playPenaltyBeepTrigger: newPlayPenaltyBeepTrigger
         }};
       } else {
         return { ...state, live: { ...state.live, clock: { ...state.live.clock, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs }}};
