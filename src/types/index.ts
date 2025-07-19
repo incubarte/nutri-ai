@@ -266,6 +266,10 @@ export interface LiveState {
   gameSummary: GameSummary;
   playHornTrigger: number;
   playPenaltyBeepTrigger: number;
+  pendingPowerPlayGoal: {
+    team: Team; // The team that conceded the goal (and has the penalty)
+    penaltyId: string;
+  } | null;
 }
 
 export interface LiveGameState extends LiveState {
@@ -308,6 +312,7 @@ export type GameAction =
   | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; penaltyTypeId: string; } } }
   | { type: 'REMOVE_PENALTY'; payload: { team: Team; penaltyId: string } }
   | { type: 'END_PENALTY_FOR_GOAL'; payload: { team: Team; penaltyId: string } }
+  | { type: 'CLEAR_PENDING_POWER_PLAY_GOAL' }
   | { type: 'ADJUST_PENALTY_TIME'; payload: { team: Team; penaltyId: string; delta: number } }
   | { type: 'SET_PENALTY_TIME'; payload: { team: Team; penaltyId: string; time: number } }
   | { type: 'REORDER_PENALTIES'; payload: { team: Team; startIndex: number; endIndex: number } }
@@ -359,5 +364,4 @@ export type GameAction =
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
-
 

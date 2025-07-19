@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -163,6 +164,7 @@ const getInitialState = (): GameState => {
       shootout: INITIAL_SHOOTOUT_STATE,
       homeTeamName: 'Local', homeTeamSubName: undefined, awayTeamName: 'Visitante', awayTeamSubName: undefined,
       gameSummary: IN_CODE_INITIAL_GAME_SUMMARY, playHornTrigger: 0, playPenaltyBeepTrigger: 0,
+      pendingPowerPlayGoal: null,
     },
     _initialConfigLoadComplete: false,
   };
@@ -375,6 +377,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
   let newState: GameState = { ...state };
   let newTimestamp = Date.now();
 
+  // Clear pending power play goal confirmation on almost any penalty change
+  if (action.type !== 'ADD_GOAL' && action.type !== 'CLEAR_PENDING_POWER_PLAY_GOAL' && action.type !== 'TICK' && state.live.pendingPowerPlayGoal) {
+      if ('team' in action.payload && action.payload.team === state.live.pendingPowerPlayGoal.team) {
+          newState.live.pendingPowerPlayGoal = null;
+      }
+  }
+
   switch (action.type) {
     case 'HYDRATE_FROM_STORAGE': {
         let finalState: GameState;
@@ -523,48 +532,63 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_GOAL': {
       const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
-      const team = action.payload.team;
+      const teamScored = action.payload.team;
+      const teamConceded = teamScored === 'home' ? 'away' : 'home';
+      
       const score = { ...state.live.score };
       const gameSummary = { ...state.live.gameSummary };
-      const playerStats = { ...gameSummary[team].playerStats };
+      const playerStatsScored = { ...gameSummary[teamScored].playerStats };
 
       // Update Scorer Stats
       if (newGoal.scorer?.playerNumber) {
         const scorerNumber = newGoal.scorer.playerNumber;
-        const currentScorerStats = playerStats[scorerNumber] || { name: newGoal.scorer.playerName || '', shots: 0, goals: 0, assists: 0 };
-        playerStats[scorerNumber] = { 
+        const currentScorerStats = playerStatsScored[scorerNumber] || { name: newGoal.scorer.playerName || '', shots: 0, goals: 0, assists: 0 };
+        playerStatsScored[scorerNumber] = { 
           ...currentScorerStats, 
           name: newGoal.scorer.playerName || currentScorerStats.name, 
           goals: currentScorerStats.goals + 1,
           shots: currentScorerStats.shots + 1, // Also increment shot count
         };
         // Increment total team shots
-        if (team === 'home') score.homeShots = (score.homeShots || 0) + 1;
-        if (team === 'away') score.awayShots = (score.awayShots || 0) + 1;
+        if (teamScored === 'home') score.homeShots = (score.homeShots || 0) + 1;
+        if (teamScored === 'away') score.awayShots = (score.awayShots || 0) + 1;
       }
       
       // Update Assist Stats
       if (newGoal.assist?.playerNumber) {
         const assistNumber = newGoal.assist.playerNumber;
-        const currentAssistStats = playerStats[assistNumber] || { name: newGoal.assist.playerName || '', shots: 0, goals: 0, assists: 0 };
-        playerStats[assistNumber] = { ...currentAssistStats, name: newGoal.assist.playerName || currentAssistStats.name, assists: currentAssistStats.assists + 1 };
+        const currentAssistStats = playerStatsScored[assistNumber] || { name: newGoal.assist.playerName || '', shots: 0, goals: 0, assists: 0 };
+        playerStatsScored[assistNumber] = { ...currentAssistStats, name: newGoal.assist.playerName || currentAssistStats.name, assists: currentAssistStats.assists + 1 };
       }
       
-      const homeGoals = (team === 'home' ? [...(score.homeGoals || []), newGoal] : (score.homeGoals || []));
-      const awayGoals = (team === 'away' ? [...(score.awayGoals || []), newGoal] : (score.awayGoals || []));
+      const homeGoals = (teamScored === 'home' ? [...(score.homeGoals || []), newGoal] : (score.homeGoals || []));
+      const awayGoals = (teamScored === 'away' ? [...(score.awayGoals || []), newGoal] : (score.awayGoals || []));
       
       score.home = homeGoals.length;
       score.away = awayGoals.length;
       score.homeGoals = homeGoals;
       score.awayGoals = awayGoals;
       
+      let pendingPPGoal: LiveState['pendingPowerPlayGoal'] = null;
+      // Check for power play goal condition
+      const scoringTeamOnIce = state.config.playersPerTeamOnIce - state.live.penalties[teamScored].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
+      const concedingTeamOnIce = state.config.playersPerTeamOnIce - state.live.penalties[teamConceded].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
+
+      if (scoringTeamOnIce > concedingTeamOnIce) {
+          const firstEligiblePenalty = state.live.penalties[teamConceded].find(p => p._status === 'running' && p.clearsOnGoal);
+          if (firstEligiblePenalty) {
+              pendingPPGoal = { team: teamConceded, penaltyId: firstEligiblePenalty.id };
+          }
+      }
+      
       newState = { ...state, live: { ...state.live, 
         score: score,
+        pendingPowerPlayGoal: pendingPPGoal,
         gameSummary: {
           ...gameSummary,
-          [team]: {
-            ...gameSummary[team],
-            playerStats,
+          [teamScored]: {
+            ...gameSummary[teamScored],
+            playerStats: playerStatsScored,
           }
         }
       }};
@@ -781,6 +805,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods), endReason: 'goal_on_pp', timeServed } : p
         )}}
       }};
+      break;
+    }
+    case 'CLEAR_PENDING_POWER_PLAY_GOAL': {
+      newState = { ...state, live: { ...state.live, pendingPowerPlayGoal: null } };
       break;
     }
     case 'ADJUST_PENALTY_TIME': {
@@ -1369,6 +1397,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         homeTeamName: 'Local', homeTeamSubName: undefined, awayTeamName: 'Visitante', awayTeamSubName: undefined,
         gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
         playHornTrigger: state.live.playHornTrigger, playPenaltyBeepTrigger: state.live.playPenaltyBeepTrigger,
+        pendingPowerPlayGoal: null,
       }};
       break;
     }

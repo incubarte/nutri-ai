@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
@@ -21,7 +22,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Trash2, UserPlus, Hourglass, ChevronsUpDown, Check, Info, Goal, X, Plus, Minus } from 'lucide-react';
+import { Trash2, UserPlus, Hourglass, ChevronsUpDown, Check, Info, Goal, X, Plus, Minus, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -74,7 +75,7 @@ const statusTextMap: Record<NonNullable<Penalty['_status']>, string> = {
     pending_puck: 'Esperando Puck',
 };
 
-const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onEditCancel, isDeleteSelectionMode, isSelectedForDeletion, onToggleSelection, onDragStart, onDragEnter, onDragLeave, onDragOver, onDrop, onEndForGoal, onAdjust }: {
+const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onEditCancel, isDeleteSelectionMode, isSelectedForDeletion, onToggleSelection, onDragStart, onDragEnter, onDragLeave, onDragOver, onDrop, onAdjust }: {
     penalty: Penalty;
     team: Team;
     isEditing: boolean;
@@ -89,7 +90,6 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     onDragLeave: () => void;
     onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
     onDrop: (e: React.DragEvent<HTMLDivElement>, targetPenaltyId: string) => void;
-    onEndForGoal: (penalty: Penalty) => void;
     onAdjust: (penaltyId: string, delta: number) => void;
 }) => {
     const { state } = useGameState();
@@ -273,27 +273,6 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                     >
                         <Plus className="h-4 w-4" />
                     </Button>
-                    {penalty.clearsOnGoal && (
-                      <TooltipProvider delayDuration={200}>
-                          <Tooltip>
-                              <TooltipTrigger asChild>
-                                  <Button
-                                      variant="outline"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={(e) => { e.stopPropagation(); onEndForGoal(penalty); }}
-                                      aria-label="Finalizar por gol"
-                                      disabled={isDeleteSelectionMode}
-                                  >
-                                      <Goal className="h-4 w-4 text-green-500" />
-                                  </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                  <p>Finalizar por gol</p>
-                              </TooltipContent>
-                          </Tooltip>
-                      </TooltipProvider>
-                    )}
                 </div>
             </div>
             {statusText && (
@@ -304,6 +283,25 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
             )}
         </Card>
     );
+};
+
+const PowerPlayGoalConfirmation = ({ onConfirm, onDismiss, penaltyNumber }: { onConfirm: () => void; onDismiss: () => void; penaltyNumber: string; }) => {
+  return (
+    <Card className="border-green-500/50 bg-green-900/20 mb-4 animate-in fade-in">
+        <CardContent className="p-3">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-sm text-green-300">
+                    <AlertTriangle className="h-5 w-5 text-green-400" />
+                    <p>La penalidad de <strong>#{penaltyNumber}</strong> se eliminará por Gol. ¿Proceder?</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                    <Button size="sm" onClick={onConfirm} className="bg-green-600 hover:bg-green-700 text-white">Sí</Button>
+                    <Button size="sm" variant="outline" onClick={onDismiss}>No</Button>
+                </div>
+            </div>
+        </CardContent>
+    </Card>
+  );
 };
 
 
@@ -325,15 +323,21 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
   // New state for editing penalty time
   const [editingPenaltyId, setEditingPenaltyId] = useState<string | null>(null);
   
-  const [penaltyForGoalConfirmation, setPenaltyForGoalConfirmation] = useState<Penalty | null>(null);
   const [isDeleteSelectionMode, setIsDeleteSelectionMode] = useState(false);
   const [selectedPenaltyIds, setSelectedPenaltyIds] = useState<string[]>([]);
   const [isMassDeleteConfirmOpen, setIsMassDeleteConfirmOpen] = useState(false);
+  
+  const pendingPPGoal = state.live.pendingPowerPlayGoal;
 
   // Set default penalty type when component loads or penalty types change
   useEffect(() => {
     setPenaltyTypeId(state.config.defaultPenaltyTypeId);
   }, [state.config.defaultPenaltyTypeId, state.config.penaltyTypes]);
+  
+  // Clear selection if penalty list changes
+  useEffect(() => {
+    setSelectedPenaltyIds([]);
+  }, [state.live.penalties]);
 
 
   if (isLoading || !state.live || !state.config) {
@@ -500,15 +504,6 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     setDragOverPenaltyId(null);
   };
   
-  const handleConfirmGoal = () => {
-    if (!penaltyForGoalConfirmation) return;
-
-    dispatch({ type: 'END_PENALTY_FOR_GOAL', payload: { team, penaltyId: penaltyForGoalConfirmation.id } });
-    toast({ title: "Penalidad Finalizada por Gol", description: `La penalidad para el jugador #${penaltyForGoalConfirmation.playerNumber} se finalizó.` });
-
-    setPenaltyForGoalConfirmation(null);
-  };
-  
   const handleToggleSelectionMode = () => {
     setIsDeleteSelectionMode(!isDeleteSelectionMode);
     setSelectedPenaltyIds([]); // Clear selection when toggling mode
@@ -539,6 +534,17 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     setIsDeleteSelectionMode(false);
     setSelectedPenaltyIds([]);
   };
+  
+  const handleConfirmPowerPlayGoal = () => {
+    if (!pendingPPGoal) return;
+    dispatch({ type: 'END_PENALTY_FOR_GOAL', payload: { team: pendingPPGoal.team, penaltyId: pendingPPGoal.penaltyId } });
+    toast({ title: "Penalidad Finalizada", description: "La penalidad se eliminó por el gol en Power Play." });
+  };
+  
+  const handleDismissPowerPlayGoal = () => {
+    dispatch({ type: 'CLEAR_PENDING_POWER_PLAY_GOAL' });
+  };
+
 
   const renderPlayerNumberInput = () => {
     if (teamHasPlayers && matchedTeam) { 
@@ -653,6 +659,9 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
       />
     );
   };
+  
+  const penaltyForConfirmation = pendingPPGoal ? state.live.penalties[pendingPPGoal.team].find(p => p.id === pendingPPGoal.penaltyId) : null;
+
 
   return (
     <>
@@ -713,6 +722,14 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
           </div>
         </form>
       )}
+      
+      {pendingPPGoal && pendingPPGoal.team === team && penaltyForConfirmation && (
+          <PowerPlayGoalConfirmation
+              onConfirm={handleConfirmPowerPlayGoal}
+              onDismiss={handleDismissPowerPlayGoal}
+              penaltyNumber={penaltyForConfirmation.playerNumber}
+          />
+      )}
 
       <div className="space-y-2">
         <Label>
@@ -743,7 +760,6 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
                     onDragLeave={handleDragLeave}
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
-                    onEndForGoal={setPenaltyForGoalConfirmation}
                     onAdjust={(penaltyId, delta) => {
                       dispatch({ type: 'ADJUST_PENALTY_TIME', payload: { team, penaltyId, delta } });
                     }}
@@ -776,24 +792,6 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
           teamName={teamName}
         />
       )}
-      {penaltyForGoalConfirmation && (
-            <AlertDialog open={!!penaltyForGoalConfirmation} onOpenChange={() => setPenaltyForGoalConfirmation(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar Penalidad Finalizada por Gol</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          ¿Estás seguro de que quieres finalizar la penalidad del jugador #{penaltyForGoalConfirmation.playerNumber} por un gol en contra? Esto la eliminará de la lista activa.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setPenaltyForGoalConfirmation(null)}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmGoal}>
-                          Confirmar Gol en PK
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        )}
       {isMassDeleteConfirmOpen && (
         <AlertDialog open={isMassDeleteConfirmOpen} onOpenChange={setIsMassDeleteConfirmOpen}>
             <AlertDialogContent>
