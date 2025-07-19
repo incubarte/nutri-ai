@@ -18,9 +18,11 @@ import type { DurationSettingsCardRef } from "@/components/config/duration-setti
 import type { PenaltySettingsCardRef } from "@/components/config/penalty-settings-card";
 import { DurationSettingsCard } from "@/components/config/duration-settings-card";
 import { PenaltySettingsCard } from "@/components/config/penalty-settings-card";
+import { StoppedTimeAlertCard } from "@/components/config/stopped-time-alert-card";
 import { useGameState, createDefaultFormatAndTimingsProfile, formatTime } from "@/contexts/game-state-context";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import type { FormatAndTimingsProfileData } from "@/types";
+import type { StoppedTimeAlertCardRef } from "@/components/config/stopped-time-alert-card";
 
 interface GameSetupDialogProps {
   isOpen: boolean;
@@ -38,6 +40,10 @@ const ConfirmationView = ({ profileData, onBack }: { profileData: FormatAndTimin
     { label: "Jugadores en Cancha", value: profileData.playersPerTeamOnIce },
     { label: "Máx. Penalidades Concurrentes", value: profileData.maxConcurrentPenalties },
   ];
+  
+  const stoppedTimeAlertSummary = profileData.enableStoppedTimeAlert
+    ? `Sí (Dif. Goles: ${profileData.stoppedTimeAlertGoalDiff}, Tiempo Restante: ${profileData.stoppedTimeAlertTimeRemaining} min)`
+    : "No";
 
   return (
     <div className="space-y-4">
@@ -53,6 +59,10 @@ const ConfirmationView = ({ profileData, onBack }: { profileData: FormatAndTimin
                 <TableCell className="text-right font-semibold">{item.value}</TableCell>
               </TableRow>
             ))}
+             <TableRow>
+                <TableCell className="font-medium text-muted-foreground">Alerta Tiempo Frenado</TableCell>
+                <TableCell className="text-right font-semibold">{stoppedTimeAlertSummary}</TableCell>
+            </TableRow>
           </TableBody>
         </Table>
        </div>
@@ -67,9 +77,11 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
   
   const durationSettingsRef = useRef<DurationSettingsCardRef>(null);
   const penaltySettingsRef = useRef<PenaltySettingsCardRef>(null);
+  const stoppedTimeAlertRef = useRef<StoppedTimeAlertCardRef>(null);
   
   const [isDurationDirty, setIsDurationDirty] = useState(false);
   const [isPenaltyDirty, setIsPenaltyDirty] = useState(false);
+  const [isStoppedTimeAlertDirty, setIsStoppedTimeAlertDirty] = useState(false);
   const [view, setView] = useState<'editing' | 'confirming'>('editing');
 
   // Memoize the profile to ensure stability
@@ -90,18 +102,17 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
     let allSavesSuccessful = true;
 
     if (isDurationDirty && durationSettingsRef.current) {
-      if (!durationSettingsRef.current.handleSave()) {
-        allSavesSuccessful = false;
-      }
+      if (!durationSettingsRef.current.handleSave()) allSavesSuccessful = false;
     }
     if (isPenaltyDirty && penaltySettingsRef.current) {
-      if (!penaltySettingsRef.current.handleSave()) {
-        allSavesSuccessful = false;
-      }
+      if (!penaltySettingsRef.current.handleSave()) allSavesSuccessful = false;
+    }
+    if (isStoppedTimeAlertDirty && stoppedTimeAlertRef.current) {
+      if (!stoppedTimeAlertRef.current.handleSave()) allSavesSuccessful = false;
     }
     
     if (allSavesSuccessful) {
-        if (isDurationDirty || isPenaltyDirty) {
+        if (isDurationDirty || isPenaltyDirty || isStoppedTimeAlertDirty) {
              toast({
                 title: "Configuración Aplicada",
                 description: "Se han guardado los ajustes para el nuevo partido."
@@ -157,6 +168,12 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
                   onDirtyChange={setIsDurationDirty}
                   initialValues={selectedFTProfile}
               />
+              <Separator />
+               <StoppedTimeAlertCard 
+                  ref={stoppedTimeAlertRef}
+                  onDirtyChange={setIsStoppedTimeAlertDirty}
+                  initialValues={selectedFTProfile}
+               />
           </div>
         ) : (
            <div className="py-4">

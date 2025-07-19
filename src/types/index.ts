@@ -74,6 +74,9 @@ export interface FormatAndTimingsProfileData {
   defaultPenaltyTypeId: string | null;
   enableMaxPenaltiesLimit: boolean;
   maxPenaltiesPerPlayer: number;
+  enableStoppedTimeAlert: boolean;
+  stoppedTimeAlertGoalDiff: number;
+  stoppedTimeAlertTimeRemaining: number;
 }
 
 export type FormatAndTimingsProfile = FormatAndTimingsProfileData;
@@ -364,4 +367,3 @@ export type GameAction =
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
-

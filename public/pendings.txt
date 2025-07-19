@@ -1,8 +1,6 @@
 
 Bugs
-1. Se esta disparando el sonido de horn en cualquier momento. 
-Recien se disparo cuando una penalidad le faltaban 10 segundos. (mezlco todo con todo)
-
+1. 
 
 Funcionalidades
 1. Agregar configuracion de tiempo parado con diferencia de goles (Booelano, diferencia de goles, cuando faltan menos de cuanto minutos del ultimo periodo(no cuenta en el over))

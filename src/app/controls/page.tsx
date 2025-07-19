@@ -562,6 +562,17 @@ export default function ControlsPage() {
     setIsShootoutConfirmOpen(true);
   };
 
+  const showStoppedTimeAlert = useMemo(() => {
+    const { config, live } = state;
+    if (!config.enableStoppedTimeAlert || !live) return false;
+    
+    const isLastRegularPeriod = live.clock.currentPeriod === config.numberOfRegularPeriods;
+    const isTimeConditionMet = live.clock.currentTime <= config.stoppedTimeAlertTimeRemaining * 60 * 100;
+    const isGoalDiffConditionMet = Math.abs(live.score.home - live.score.away) <= config.stoppedTimeAlertGoalDiff;
+
+    return isLastRegularPeriod && isTimeConditionMet && isGoalDiffConditionMet;
+  }, [state]);
+
 
   if (authStatus === 'loading' || isGameStateLoading || !state.live || !state.config || !state.live.penalties) {
     return (
@@ -628,6 +639,11 @@ export default function ControlsPage() {
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-8">
+      {showStoppedTimeAlert && (
+          <div className="my-4 p-4 text-center bg-yellow-500 text-yellow-900 font-bold rounded-lg animate-pulse">
+              ¡ATENCIÓN! Se debe frenar el reloj mientras el puck no está en juego!
+          </div>
+      )}
       <MiniScoreboard onScoreClick={handleScoreClick} />
 
       {hasPendingPuckPenalties && (

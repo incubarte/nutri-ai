@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -108,6 +107,9 @@ const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): Forma
   id: id || safeUUID(),
   name: name || IN_CODE_INITIAL_PROFILE_NAME,
   ...defaultSettings.formatAndTimings,
+  enableStoppedTimeAlert: false, // Default for new profiles
+  stoppedTimeAlertGoalDiff: 1,
+  stoppedTimeAlertTimeRemaining: 2,
   penaltyTypes: defaultSettings.penaltyTypes.map(p => ({
     ...p,
     reducesPlayerCount: p.reducesPlayerCount,
@@ -130,6 +132,9 @@ const getInitialState = (): GameState => {
   return {
     config: {
       ...defaultSettings.formatAndTimings,
+      enableStoppedTimeAlert: false,
+      stoppedTimeAlertGoalDiff: 1,
+      stoppedTimeAlertTimeRemaining: 2,
       penaltyTypes: defaultSettings.penaltyTypes.map(p => ({...p, isBenchPenalty: p.isBenchPenalty || false })) as PenaltyTypeDefinition[],
       defaultPenaltyTypeId: defaultSettings.defaultPenaltyTypeId,
       formatAndTimingsProfiles: [defaultInitialProfile],
@@ -794,6 +799,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       newState = { ...state, live: { ...state.live,
         penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId))},
+        pendingPowerPlayGoal: null, // Clear the pending goal confirmation
         gameSummary: { ...state.live.gameSummary, [team]: { ...state.live.gameSummary[team], penalties: state.live.gameSummary[team].penalties.map(p =>
           p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods), endReason: 'goal_on_pp', timeServed } : p
         )}}
@@ -1166,7 +1172,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             [attemptsKey]: newAttempts,
           }
         }
-      };
+      }};
       break;
     }
     case 'FINISH_SHOOTOUT': {
@@ -1629,4 +1635,3 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
 
     
-

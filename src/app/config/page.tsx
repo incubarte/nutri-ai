@@ -45,6 +45,7 @@ import isEqual from 'lodash.isequal';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
 import type { DurationSettingsCardRef } from "@/components/config/duration-settings-card";
 import type { PenaltySettingsCardRef } from "@/components/config/penalty-settings-card";
+import type { StoppedTimeAlertCardRef } from "@/components/config/stopped-time-alert-card";
 import type { PenaltyTypesCardRef } from "@/components/config/penalty-types-card";
 import type { SoundSettingsCardRef } from "@/components/config/sound-settings-card";
 import type { PenaltyCountdownSoundCardRef } from "@/components/config/penalty-countdown-sound-card";
@@ -61,6 +62,7 @@ import { useAuth } from '@/hooks/use-auth';
 const loadingComponent = () => <div className="flex justify-center items-center p-8"><HockeyPuckSpinner className="h-36 w-36" /></div>;
 
 const DurationSettingsCard = dynamic(() => import('@/components/config/duration-settings-card').then(mod => mod.DurationSettingsCard), { loading: loadingComponent });
+const StoppedTimeAlertCard = dynamic(() => import('@/components/config/stopped-time-alert-card').then(mod => mod.StoppedTimeAlertCard), { loading: loadingComponent });
 const PenaltySettingsCard = dynamic(() => import('@/components/config/penalty-settings-card').then(mod => mod.PenaltySettingsCard), { loading: loadingComponent });
 const PenaltyTypesCard = dynamic(() => import('@/components/config/penalty-types-card').then(mod => mod.PenaltyTypesCard), { loading: loadingComponent });
 const SoundSettingsCard = dynamic(() => import('@/components/config/sound-settings-card').then(mod => mod.SoundSettingsCard), { loading: loadingComponent });
@@ -92,6 +94,7 @@ export default function ConfigPage() {
 
   const durationSettingsRef = useRef<DurationSettingsCardRef>(null);
   const penaltySettingsRef = useRef<PenaltySettingsCardRef>(null);
+  const stoppedTimeAlertRef = useRef<StoppedTimeAlertCardRef>(null);
   const penaltyTypesRef = useRef<PenaltyTypesCardRef>(null);
   const soundSettingsRef = useRef<SoundSettingsCardRef>(null);
   const penaltyCountdownSoundRef = useRef<PenaltyCountdownSoundCardRef>(null);
@@ -105,6 +108,7 @@ export default function ConfigPage() {
   
   const [isDurationDirty, setIsDurationDirty] = useState(false);
   const [isPenaltyDirty, setIsPenaltyDirty] = useState(false);
+  const [isStoppedTimeAlertDirty, setIsStoppedTimeAlertDirty] = useState(false);
   const [isPenaltyTypesDirty, setIsPenaltyTypesDirty] = useState(false);
   const [isSoundDirty, setIsSoundDirty] = useState(false);
   const [isPenaltyCountdownSoundDirty, setIsPenaltyCountdownSoundDirty] = useState(false);
@@ -170,14 +174,16 @@ export default function ConfigPage() {
   useEffect(() => {
     if (durationSettingsRef.current) durationSettingsRef.current.setValues(selectedFTProfile);
     if (penaltySettingsRef.current) penaltySettingsRef.current.setValues(selectedFTProfile);
+    if (stoppedTimeAlertRef.current) stoppedTimeAlertRef.current.setValues(selectedFTProfile);
     if (penaltyTypesRef.current) penaltyTypesRef.current.setValues(selectedFTProfile);
     setIsDurationDirty(false);
     setIsPenaltyDirty(false);
+    setIsStoppedTimeAlertDirty(false);
     setIsPenaltyTypesDirty(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFTProfile.id]); 
 
-  const isFormatAndTimingsSectionDirty = isDurationDirty || isPenaltyDirty || isPenaltyTypesDirty;
+  const isFormatAndTimingsSectionDirty = isDurationDirty || isPenaltyDirty || isStoppedTimeAlertDirty || isPenaltyTypesDirty;
   const isSoundAndDisplaySectionDirty = isSoundDirty || isPenaltyCountdownSoundDirty || isTeamSettingsDirty || isLayoutDirty || isDebugDirty;
 
   const handleSaveChanges_FormatAndTimings = () => {
@@ -186,23 +192,22 @@ export default function ConfigPage() {
     if (isDurationDirty && durationSettingsRef.current) {
       if (durationSettingsRef.current.handleSave()) {
         setIsDurationDirty(false);
-      } else {
-        allSavesSuccessful = false;
-      }
+      } else { allSavesSuccessful = false; }
     }
     if (isPenaltyDirty && penaltySettingsRef.current) {
       if (penaltySettingsRef.current.handleSave()) {
         setIsPenaltyDirty(false);
-      } else {
-        allSavesSuccessful = false;
-      }
+      } else { allSavesSuccessful = false; }
+    }
+    if (isStoppedTimeAlertDirty && stoppedTimeAlertRef.current) {
+      if (stoppedTimeAlertRef.current.handleSave()) {
+        setIsStoppedTimeAlertDirty(false);
+      } else { allSavesSuccessful = false; }
     }
     if (isPenaltyTypesDirty && penaltyTypesRef.current) {
       if (penaltyTypesRef.current.handleSave()) {
         setIsPenaltyTypesDirty(false);
-      } else {
-        allSavesSuccessful = false;
-      }
+      } else { allSavesSuccessful = false; }
     }
 
     if (allSavesSuccessful) {
@@ -216,6 +221,7 @@ export default function ConfigPage() {
   const handleDiscardChanges_FormatAndTimings = () => {
     if (durationSettingsRef.current && isDurationDirty) { durationSettingsRef.current.handleDiscard(); setIsDurationDirty(false); }
     if (penaltySettingsRef.current && isPenaltyDirty) { penaltySettingsRef.current.handleDiscard(); setIsPenaltyDirty(false); }
+    if (stoppedTimeAlertRef.current && isStoppedTimeAlertDirty) { stoppedTimeAlertRef.current.handleDiscard(); setIsStoppedTimeAlertDirty(false); }
     if (penaltyTypesRef.current && isPenaltyTypesDirty) { penaltyTypesRef.current.handleDiscard(); setIsPenaltyTypesDirty(false); }
     toast({ title: "Cambios Descartados", description: "Los cambios no guardados en Formato y Tiempos han sido revertidos." });
   };
@@ -395,6 +401,7 @@ export default function ConfigPage() {
         if (dispatchActionType === 'LOAD_FORMAT_AND_TIMINGS_PROFILES') {
             setIsDurationDirty(false);
             setIsPenaltyDirty(false);
+            setIsStoppedTimeAlertDirty(false);
             setIsPenaltyTypesDirty(false);
         } else if (dispatchActionType === 'LOAD_SOUND_AND_DISPLAY_CONFIG') {
             setIsSoundDirty(false);
@@ -447,6 +454,7 @@ export default function ConfigPage() {
     dispatch({ type: 'RESET_CONFIG_TO_DEFAULTS' });
     setIsDurationDirty(false);
     setIsPenaltyDirty(false);
+    setIsStoppedTimeAlertDirty(false);
     setIsPenaltyTypesDirty(false);
     setIsSoundDirty(false);
     setIsPenaltyCountdownSoundDirty(false);
@@ -483,12 +491,7 @@ export default function ConfigPage() {
 
   const confirmSwitchFTProfile = () => {
     if (pendingFTProfileIdToSelect) {
-        if (durationSettingsRef.current) durationSettingsRef.current.handleDiscard();
-        if (penaltySettingsRef.current) penaltySettingsRef.current.handleDiscard();
-        if (penaltyTypesRef.current) penaltyTypesRef.current.handleDiscard();
-        setIsDurationDirty(false);
-        setIsPenaltyDirty(false);
-        setIsPenaltyTypesDirty(false);
+        handleDiscardChanges_FormatAndTimings();
         dispatch({ type: 'SELECT_FORMAT_AND_TIMINGS_PROFILE', payload: { profileId: pendingFTProfileIdToSelect } });
     }
     setIsConfirmSwitchFTProfileDialogOpen(false);
@@ -711,6 +714,8 @@ export default function ConfigPage() {
             <PenaltySettingsCard ref={penaltySettingsRef} onDirtyChange={setIsPenaltyDirty} initialValues={selectedFTProfile} />
             <Separator />
             <DurationSettingsCard ref={durationSettingsRef} onDirtyChange={setIsDurationDirty} initialValues={selectedFTProfile} />
+            <Separator />
+            <StoppedTimeAlertCard ref={stoppedTimeAlertRef} onDirtyChange={setIsStoppedTimeAlertDirty} initialValues={selectedFTProfile} />
             <Separator />
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="item-1">
