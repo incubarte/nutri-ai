@@ -877,7 +877,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
       
       if (clock.isClockRunning && clock.clockStartTimeMs && clock.remainingTimeAtStartCs !== null) {
-        const elapsedCs = Math.floor((now - clock.clockStartTimeMs) / 10);
+        const elapsedCs = Math.floor((Date.now() - clock.clockStartTimeMs) / 10);
         currentTimeSnapshot = Math.max(0, clock.remainingTimeAtStartCs - elapsedCs);
         if (clock.periodDisplayOverride === null) liveAbsoluteElapsedTimeCs = clock.absoluteElapsedTimeCs + elapsedCs;
         if (currentTimeSnapshot !== clock.currentTime) hasChanged = true;
@@ -1153,7 +1153,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'UNDO_LAST_SHOOTOUT_ATTEMPT': {
-      if (!state.live.shootout) break;
+      if (!state.live.shootout) {
+        break;
+      }
       const { team } = action.payload;
       const { shootout } = state.live;
       const attemptsKey = team === 'home' ? 'homeAttempts' : 'awayAttempts';
@@ -1174,7 +1176,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             [attemptsKey]: newAttempts,
           }
         }
-      }};
+      };
       break;
     }
     case 'FINISH_SHOOTOUT': {
@@ -1635,5 +1637,7 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
+    
 
     
