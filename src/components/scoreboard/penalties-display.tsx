@@ -27,8 +27,7 @@ export function PenaltiesDisplay({ teamDisplayType, teamName, penalties, mode = 
   const noPenaltiesStyle = isMobile ? { fontSize: '0.875rem' } : { fontSize: `${state.config.scoreboardLayout.penaltyPlayerNumberSize * 0.5}rem` };
   const morePenaltiesStyle = isMobile ? {} : { fontSize: `${state.config.scoreboardLayout.penaltyPlayerNumberSize * 0.4}rem` };
   
-  // Filter out penalties that do not reduce player count for display on the scoreboard
-  const penaltiesToDisplay = penalties.filter(p => p.reducesPlayerCount);
+  const penaltiesToDisplay = penalties;
   const penaltiesToShow = isMobile ? penaltiesToDisplay : penaltiesToDisplay.slice(0, 3);
 
   return (
