@@ -186,10 +186,10 @@ export default function MobileScoreboard() {
   }
 
   const playersPerTeam = gameState.playersPerTeamOnIce || 5;
-  const activeHomePenaltiesCount = gameState.penalties.home.filter(p => p._status === 'running' && p.penaltyType !== 'misconduct').length;
+  const activeHomePenaltiesCount = gameState.penalties.home.filter(p => p._status === 'running' && p.reducesPlayerCount).length;
   const playersOnIceForHome = Math.max(0, playersPerTeam - activeHomePenaltiesCount);
 
-  const activeAwayPenaltiesCount = gameState.penalties.away.filter(p => p._status === 'running' && p.penaltyType !== 'misconduct').length;
+  const activeAwayPenaltiesCount = gameState.penalties.away.filter(p => p._status === 'running' && p.reducesPlayerCount).length;
   const playersOnIceForAway = Math.max(0, playersPerTeam - activeAwayPenaltiesCount);
 
   const visibleHomePenalties = gameState.penalties.home.filter(p => (p._visualRemainingTimeCs ?? 0) > 0);

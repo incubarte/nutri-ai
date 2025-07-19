@@ -491,10 +491,10 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   );
   const commonSpanClass = cn(!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero) && "cursor-pointer hover:underline");
 
-  const activeHomePenaltiesCount = state.live.penalties.home.filter(p => p._status === 'running' && p.penaltyType !== 'misconduct').length;
+  const activeHomePenaltiesCount = state.live.penalties.home.filter(p => p._status === 'running' && p.reducesPlayerCount).length;
   const playersOnIceForHome = Math.max(0, state.config.playersPerTeamOnIce - activeHomePenaltiesCount);
 
-  const activeAwayPenaltiesCount = state.live.penalties.away.filter(p => p._status === 'running' && p.penaltyType !== 'misconduct').length;
+  const activeAwayPenaltiesCount = state.live.penalties.away.filter(p => p._status === 'running' && p.reducesPlayerCount).length;
   const playersOnIceForAway = Math.max(0, state.config.playersPerTeamOnIce - activeAwayPenaltiesCount);
 
   const handleMatchCategoryChange = (categoryId: string) => {
@@ -605,7 +605,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     state.live.clock.periodDisplayOverride === "Time Out";
 
   const timeoutDurationInSeconds = state.config.defaultTimeoutDuration / 100;
-  const autoStartBehavior = state.config.autoStartTimeouts ? "se iniciará automáticamente" : "deberá iniciarse manualmente";
+  const autoStartBehavior = state.config.autoStartTimeouts ? "se iniciará automáticamente" : "deberá iniciarse manually";
   
   const formattedTime = state.live.clock.isFlashingZero ? "00:00" : formatTime(state.live.clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
 
@@ -683,7 +683,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
           <div className="flex-1 w-full sm:w-auto">
             <div className="flex justify-center items-center gap-1 mb-1 h-5 md:h-6 lg:h-7">
               {playersOnIceForHome > 0 && Array(playersOnIceForHome).fill(null).map((_, index) => (
-                <User key={`home-player-${index}`} className="h-5 w-5 md:h-6 md:w-6 lg:h-7 lg:w-7 text-primary-foreground/80" />
+                <User key={`home-player-${index}`} className="h-5 w-5 md:h-6 md:w-6 lg:h-7 text-primary-foreground/80" />
               ))}
               {playersOnIceForHome === 0 && state.config.playersPerTeamOnIce > 0 && (
                 <span className="text-xs text-destructive animate-pulse">0 JUGADORES</span>
@@ -960,7 +960,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
           <div className="flex-1 w-full sm:w-auto">
             <div className="flex justify-center items-center gap-1 mb-1 h-5 md:h-6 lg:h-7">
               {playersOnIceForAway > 0 && Array(playersOnIceForAway).fill(null).map((_, index) => (
-                <User key={`away-player-${index}`} className="h-5 w-5 md:h-6 md:w-6 lg:h-7 lg:w-7 text-primary-foreground/80" />
+                <User key={`away-player-${index}`} className="h-5 w-5 md:h-6 md:w-6 lg:h-7 text-primary-foreground/80" />
               ))}
               {playersOnIceForAway === 0 && state.config.playersPerTeamOnIce > 0 && (
                 <span className="text-xs text-destructive animate-pulse">0 JUGADORES</span>

@@ -19,10 +19,10 @@ export function CompactHeaderScoreboard() {
   const { scoreboardLayout, playersPerTeamOnIce, selectedMatchCategory, availableCategories } = config;
   const { penalties, score, homeTeamName, awayTeamName } = live;
 
-  const activeHomePenaltiesCount = penalties.home.filter(p => p._status === 'running' && p.penaltyType !== 'misconduct').length;
+  const activeHomePenaltiesCount = penalties.home.filter(p => p._status === 'running' && p.reducesPlayerCount).length;
   const playersOnIceForHome = Math.max(0, playersPerTeamOnIce - activeHomePenaltiesCount);
 
-  const activeAwayPenaltiesCount = penalties.away.filter(p => p._status === 'running' && p.penaltyType !== 'misconduct').length;
+  const activeAwayPenaltiesCount = penalties.away.filter(p => p._status === 'running' && p.reducesPlayerCount).length;
   const playersOnIceForAway = Math.max(0, playersPerTeamOnIce - activeAwayPenaltiesCount);
 
   const matchCategoryName = getCategoryNameById(selectedMatchCategory, availableCategories);
