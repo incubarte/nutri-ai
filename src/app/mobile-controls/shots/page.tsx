@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -136,8 +136,27 @@ export default function MobileShotsPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [isAddGoalDialogOpen, setIsAddGoalDialogOpen] = useState(false);
 
+  const fetchAndSetState = useCallback(async () => {
+    try {
+      const initialStateRes = await fetch('/api/game-state');
+      if (!initialStateRes.ok) throw new Error("Could not fetch initial game state");
+      const initialData: MobileData = await initialStateRes.json();
+      
+      if (initialData.gameState) {
+        setLiveState(initialData.gameState);
+        setError(null);
+      } else {
+        throw new Error("No active game state from server.");
+      }
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : "Error de conexión.";
+      console.error("Fetch state failed", e);
+      setError(errorMessage);
+    }
+  }, []);
+
   useEffect(() => {
-    let eventSource: EventSource;
+    let eventSource: EventSource | null = null;
 
     const connect = async () => {
       setIsLoading(true);
@@ -162,15 +181,7 @@ export default function MobileShotsPage() {
             return;
         }
         
-        const initialStateRes = await fetch('/api/game-state');
-        if (!initialStateRes.ok) throw new Error("Could not fetch initial game state");
-        const initialData: MobileData = await initialStateRes.json();
-        
-        if (initialData.gameState) {
-          setLiveState(initialData.gameState);
-        } else {
-          throw new Error("No active game state from server.");
-        }
+        await fetchAndSetState();
 
         eventSource = new EventSource('/api/game-state/events');
         eventSource.onopen = () => {
@@ -207,22 +218,34 @@ export default function MobileShotsPage() {
             eventSource.close();
         }
     }
-  }, [router]);
+  }, [router, fetchAndSetState]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchAndSetState();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchAndSetState]);
 
   const handleShot = async (team: 'home' | 'away', playerNumber: string) => {
     if (!playerNumber) {
         toast({ title: "Error", description: "El jugador no tiene un número asignado.", variant: 'destructive' });
         return;
     }
-    const result = await sendRemoteCommand({ type: 'ADD_SHOT', payload: { team, playerNumber } });
-    if (result.success) {
-      toast({
-        title: "Tiro Registrado",
-        description: `Tiro para el jugador #${playerNumber} del equipo ${team === 'home' ? liveState?.homeTeamName : liveState?.awayTeamName}.`,
+    const teamName = team === 'home' ? liveState?.homeTeamName : liveState?.awayTeamName;
+    toast({
+        title: "Registrando Tiro",
+        description: `Enviando tiro para el jugador #${playerNumber} de ${teamName}.`,
         duration: 1500,
-      });
-    } else {
-      toast({ title: "Error", description: result.message, variant: 'destructive' });
+    });
+    const result = await sendRemoteCommand({ type: 'ADD_SHOT', payload: { team, playerNumber } });
+    if (!result.success) {
+      toast({ title: "Error de Envío", description: result.message, variant: 'destructive' });
     }
   };
 

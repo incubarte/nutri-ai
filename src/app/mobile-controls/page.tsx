@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Team, LiveGameState, PenaltyTypeDefinition, MobileData, Penalty } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -331,8 +331,21 @@ export default function MobileControlsPage() {
 
   const { toast } = useToast();
 
+  const fetchAndSetMobileData = useCallback(async () => {
+    try {
+      const res = await fetch('/api/game-state');
+      if (!res.ok) throw new Error(`Game state fetch failed: ${res.status}`);
+      const data: MobileData = await res.json();
+      setMobileData(data);
+      setError(null);
+    } catch (e) {
+      console.error("Failed to fetch mobile data:", e);
+      setError("No se pudo obtener el estado del partido del servidor.");
+    }
+  }, []);
+
   useEffect(() => {
-    let eventSource: EventSource;
+    let eventSource: EventSource | null = null;
 
     const connect = async () => {
       try {
@@ -354,10 +367,7 @@ export default function MobileControlsPage() {
             return;
         }
 
-        const res = await fetch('/api/game-state');
-        if (!res.ok) throw new Error(`Game state fetch failed: ${res.status}`);
-        const data: MobileData = await res.json();
-        setMobileData(data);
+        await fetchAndSetMobileData();
         setIsLoading(false);
 
         eventSource = new EventSource('/api/game-state/events');
@@ -395,7 +405,20 @@ export default function MobileControlsPage() {
             eventSource.close();
         }
     }
-  }, [router]);
+  }, [router, fetchAndSetMobileData]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchAndSetMobileData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchAndSetMobileData]);
   
   const handlePuckInPlay = async () => {
     const result = await sendRemoteCommand({ type: 'ACTIVATE_PENDING_PUCK_PENALTIES' });
