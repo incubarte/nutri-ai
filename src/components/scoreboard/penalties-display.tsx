@@ -27,7 +27,7 @@ export function PenaltiesDisplay({ teamDisplayType, teamName, penalties, mode = 
   const noPenaltiesStyle = isMobile ? { fontSize: '0.875rem' } : { fontSize: `${state.config.scoreboardLayout.penaltyPlayerNumberSize * 0.5}rem` };
   const morePenaltiesStyle = isMobile ? {} : { fontSize: `${state.config.scoreboardLayout.penaltyPlayerNumberSize * 0.4}rem` };
   
-  const penaltiesToDisplay = penalties;
+  const penaltiesToDisplay = penalties.filter(p => p.reducesPlayerCount);
   const penaltiesToShow = isMobile ? penaltiesToDisplay : penaltiesToDisplay.slice(0, 3);
 
   return (
