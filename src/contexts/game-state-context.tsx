@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -110,6 +109,8 @@ const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): Forma
   ...defaultSettings.formatAndTimings,
   penaltyTypes: defaultSettings.penaltyTypes.map(p => ({
     ...p,
+    reducesPlayerCount: p.reducesPlayerCount,
+    clearsOnGoal: p.clearsOnGoal,
     isBenchPenalty: p.isBenchPenalty || false,
   })) as PenaltyTypeDefinition[],
   defaultPenaltyTypeId: defaultSettings.defaultPenaltyTypeId,
@@ -327,10 +328,8 @@ const statusOrderValues: Record<NonNullable<Penalty['_status']>, number> = {
 const sortPenaltiesByStatus = (penalties: Penalty[]): Penalty[] => {
   const penaltiesToSort = [...penalties];
   return penaltiesToSort.sort((a, b) => {
-    const aIsMisconduct = a.penaltyType === 'misconduct';
-    const bIsMisconduct = b.penaltyType === 'misconduct';
-    if (aIsMisconduct && !bIsMisconduct) return 1;
-    if (!aIsMisconduct && bIsMisconduct) return -1;
+    if (!a.reducesPlayerCount && b.reducesPlayerCount) return 1;
+    if (a.reducesPlayerCount && !b.reducesPlayerCount) return -1;
     
     const aStatusVal = a._status ? (statusOrderValues[a._status] ?? 5) : 0;
     const bStatusVal = b._status ? (statusOrderValues[b._status] ?? 5) : 0;
@@ -696,12 +695,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
       
       const limitReachedReasons: ('quantity')[] = [];
-      // Do not count bench penalties towards a player's limit.
       const playerPenalties = state.live.gameSummary[team].penalties.filter(
         p => p.playerNumber === playerNumber && p.endReason !== 'deleted' && !p.isBenchPenalty
       );
       
-      // Only check quantity limit for non-bench penalties
       if (state.config.enableMaxPenaltiesLimit && !penaltyDef.isBenchPenalty) {
         if (playerPenalties.length + 1 >= state.config.maxPenaltiesPerPlayer) {
           limitReachedReasons.push('quantity');
@@ -714,7 +711,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       let newStatus: Penalty['_status'] = 'pending_puck';
       let startTime, expirationTime;
 
-      if (penaltyDef.type === 'misconduct') {
+      // Penalties that don't reduce player count start immediately.
+      if (!penaltyDef.reducesPlayerCount) {
         newStatus = 'running';
         startTime = _liveAbsoluteElapsedTimeCs;
         expirationTime = _liveAbsoluteElapsedTimeCs + penaltyDef.duration * CENTISECONDS_PER_SECOND;
@@ -724,7 +722,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         id: newPenaltyId, 
         playerNumber: playerNumber,
         initialDuration: penaltyDef.duration,
-        penaltyType: penaltyDef.type,
+        reducesPlayerCount: penaltyDef.reducesPlayerCount,
+        clearsOnGoal: penaltyDef.clearsOnGoal,
         isBenchPenalty: penaltyDef.isBenchPenalty,
         _status: newStatus,
         startTime,
@@ -738,10 +737,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const newPenaltyLog: PenaltyLog = {
         id: newPenaltyId, team, playerNumber: newPenalty.playerNumber, playerName: playerDetails?.name,
         penaltyName: penaltyDef.name,
-        initialDuration: newPenalty.initialDuration, addTimestamp: Date.now(), addGameTime: state.live.clock.currentTime,
-        addPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
-        penaltyType: newPenalty.penaltyType,
+        initialDuration: newPenalty.initialDuration,
+        reducesPlayerCount: newPenalty.reducesPlayerCount,
+        clearsOnGoal: newPenalty.clearsOnGoal,
         isBenchPenalty: newPenalty.isBenchPenalty,
+        addTimestamp: Date.now(), addGameTime: state.live.clock.currentTime,
+        addPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
       };
 
       newState = { ...state, live: { ...state.live,
@@ -769,7 +770,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
      case 'END_PENALTY_FOR_GOAL': {
       const { team, penaltyId } = action.payload;
       const penaltyToEnd = state.live.penalties[team].find(p => p.id === penaltyId);
-      if (!penaltyToEnd || penaltyToEnd.penaltyType === 'misconduct') break;
+      if (!penaltyToEnd || !penaltyToEnd.clearsOnGoal) break;
 
       const remainingTimeCs = penaltyToEnd.expirationTime !== undefined ? Math.max(0, penaltyToEnd.expirationTime - state.live.clock._liveAbsoluteElapsedTimeCs) : penaltyToEnd.initialDuration * 100;
       const timeServed = penaltyToEnd.initialDuration - Math.round(remainingTimeCs / 100);
@@ -811,7 +812,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         if (p._status === 'pending_puck') {
           let updatedPenalty = { ...p, _status: 'pending_concurrent' };
           // For misconduct penalties, they should start running immediately once puck is in play.
-          if (p.penaltyType === 'misconduct') {
+          if (!p.reducesPlayerCount) {
             updatedPenalty._status = 'running';
             updatedPenalty.startTime = state.live.clock._liveAbsoluteElapsedTimeCs;
             updatedPenalty.expirationTime = state.live.clock._liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND);
@@ -876,9 +877,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           });
 
           let stillRunning = runningPenalties.filter(p => !expiredPenalties.find(exp => exp.id === p.id));
-          // Only 'minor' penalties count towards the concurrent limit
-          let availableSlots = config.maxConcurrentPenalties - stillRunning.filter(p => p.penaltyType !== 'misconduct').length;
-          const playersServing = new Set(stillRunning.filter(p => p.penaltyType !== 'misconduct').map(p => p.playerNumber));
+          let availableSlots = config.maxConcurrentPenalties - stillRunning.filter(p => p.reducesPlayerCount).length;
+          const playersServing = new Set(stillRunning.filter(p => p.reducesPlayerCount).map(p => p.playerNumber));
           
           let pendingConcurrent = teamPenalties.filter(p => p._status === 'pending_concurrent');
           for (const p of pendingConcurrent) {
@@ -886,7 +886,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                   significantChangeOccurred = true;
                   stillRunning.push({ ...p, _status: 'running', startTime: liveAbsoluteElapsedTimeCs, expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND) });
                   playersServing.add(p.playerNumber);
-                  availableSlots--;
+                  if (p.reducesPlayerCount) availableSlots--;
               }
           }
           

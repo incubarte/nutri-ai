@@ -176,7 +176,8 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
                         className="text-muted-foreground mt-1"
                         style={{ fontSize: styles.totalDurationSize }}
                       >
-                        ({formatTime(penalty.initialDuration * 100, { showTenths: false })} Min)
+                        ({formatTime(penalty.initialDuration * 100, { showTenths: false })})
+                         {!penalty.reducesPlayerCount && <span className="text-blue-400 font-semibold"> (No reduce)</span>}
                       </div>
                       {statusText && (
                         <div className={cn(

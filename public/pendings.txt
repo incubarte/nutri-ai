@@ -1,9 +1,11 @@
 
 Bugs
-1. 
+1. Se esta disparando el sonido de horn en cualquier momento. 
+Recien se disparo cuando una penalidad le faltaban 10 segundos. (mezlco todo con todo)
+
 
 Funcionalidades
-1.Penales
+1.
 
 Mejoras
 2. No grisar las penaldiades esperando puck, solo poner el cartel de esperando puck

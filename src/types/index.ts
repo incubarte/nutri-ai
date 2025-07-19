@@ -11,8 +11,8 @@ export interface PenaltyTypeDefinition {
   id: string;
   name: string;
   duration: number;
-  reducesPlayerCount: boolean; // Replaces 'type'
-  clearsOnGoal: boolean;      // New property
+  reducesPlayerCount: boolean; 
+  clearsOnGoal: boolean;      
   isBenchPenalty?: boolean;
 }
 
@@ -23,9 +23,8 @@ export interface Penalty {
   expirationTime?: number;
   initialDuration: number; 
   _status?: 'running' | 'pending_concurrent' | 'pending_puck'; 
-  penaltyType?: 'minor' | 'misconduct'; // This is now legacy, logic will use the booleans
-  reducesPlayerCount: boolean; // Add to live penalty object
-  clearsOnGoal: boolean; // Add to live penalty object
+  reducesPlayerCount: boolean;
+  clearsOnGoal: boolean;
   isBenchPenalty?: boolean;
   _limitReached?: ('quantity')[];
 }
@@ -360,4 +359,5 @@ export type GameAction =
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
+
 
