@@ -3,8 +3,7 @@ Bugs
 1. 
 
 Funcionalidades
-1. Agregar configuracion de tiempo parado con diferencia de goles (Booelano, diferencia de goles, cuando faltan menos de cuanto minutos del ultimo periodo(no cuenta en el over))
-Con esta config mosrar un cartel que indique en controles ATENTO QUE ES CON TIEMPO PARADO!
+1. 
 
 Mejoras
 2. No grisar las penaldiades esperando puck, solo poner el cartel de esperando puck
