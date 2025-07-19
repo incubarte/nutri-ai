@@ -238,18 +238,6 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                 </div>
 
                 <div className="flex items-center gap-1">
-                     {penalty.clearsOnGoal && penalty._status === 'running' && (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-green-500 hover:text-green-400"
-                            onClick={handleGoalEndPenalty}
-                            disabled={isDeleteSelectionMode || isEditing}
-                            aria-label="Finalizar penalidad por gol"
-                        >
-                            <Goal className="h-5 w-5" />
-                        </Button>
-                    )}
                     <Button
                         variant="ghost"
                         size="icon"
@@ -292,6 +280,18 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                     >
                         <Plus className="h-4 w-4" />
                     </Button>
+                     {penalty.clearsOnGoal && penalty._status === 'running' && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-green-500 hover:text-green-400"
+                            onClick={handleGoalEndPenalty}
+                            disabled={isDeleteSelectionMode || isEditing}
+                            aria-label="Finalizar penalidad por gol"
+                        >
+                            <Goal className="h-5 w-5" />
+                        </Button>
+                    )}
                 </div>
             </div>
             {statusText && (
