@@ -103,7 +103,7 @@ const INITIAL_SHOOTOUT_STATE: ShootoutState = {
 };
 
 
-const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): FormatAndTimingsProfile => ({
+export const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): FormatAndTimingsProfile => ({
   id: id || safeUUID(),
   name: name || IN_CODE_INITIAL_PROFILE_NAME,
   ...defaultSettings.formatAndTimings,
@@ -119,7 +119,7 @@ const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): Forma
   defaultPenaltyTypeId: defaultSettings.defaultPenaltyTypeId,
 });
 
-const createDefaultScoreboardLayoutProfile = (id?: string, name?: string): ScoreboardLayoutProfile => ({
+export const createDefaultScoreboardLayoutProfile = (id?: string, name?: string): ScoreboardLayoutProfile => ({
     id: id || safeUUID(),
     name: name || IN_CODE_INITIAL_LAYOUT_PROFILE_NAME,
     ...INITIAL_LAYOUT_SETTINGS
@@ -730,11 +730,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const { _liveAbsoluteElapsedTimeCs } = state.live.clock;
       const newPenaltyId = safeUUID();
       
-      let newStatus: Penalty['_status'] = 'pending_puck';
+      let newStatus: Penalty['_status'];
       let startTime, expirationTime;
-
-      // Penalties that don't reduce player count start immediately once puck is in play.
-      if (!penaltyDef.reducesPlayerCount) {
+      
+      if (penaltyDef.reducesPlayerCount) {
+        newStatus = 'pending_puck';
+        startTime = undefined;
+        expirationTime = undefined;
+      } else {
         newStatus = 'running';
         startTime = _liveAbsoluteElapsedTimeCs;
         expirationTime = _liveAbsoluteElapsedTimeCs + penaltyDef.duration * CENTISECONDS_PER_SECOND;
@@ -1155,7 +1158,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const { shootout } = state.live;
       const attemptsKey = team === 'home' ? 'homeAttempts' : 'awayAttempts';
       const currentAttempts = shootout[attemptsKey];
-      if (currentAttempts.length === 0) break;
       
       const newAttempts = currentAttempts.slice(0, -1);
       
