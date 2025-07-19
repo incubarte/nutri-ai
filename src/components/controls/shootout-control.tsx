@@ -207,11 +207,22 @@ export const ShootoutControl = () => {
     const currentRound = Math.max(shootout.homeAttempts.length, shootout.awayAttempts.length) + 1;
     
     const whoseTurn = useMemo((): Team | 'both' | 'none' => {
-        if (shootout.homeAttempts.length === 0 && shootout.awayAttempts.length === 0) return 'both';
-        if (shootout.homeAttempts.length === shootout.awayAttempts.length) return 'home';
-        if (shootout.homeAttempts.length > shootout.awayAttempts.length) return 'away';
-        return 'home';
-    }, [shootout.homeAttempts, shootout.awayAttempts]);
+        const { homeAttempts, awayAttempts, initiator } = shootout;
+        const totalAttempts = homeAttempts.length + awayAttempts.length;
+
+        if (totalAttempts === 0) {
+            return 'both'; // At the start, anyone can go.
+        }
+
+        // If the number of attempts is equal, it's the initiator's turn for the new round.
+        if (homeAttempts.length === awayAttempts.length) {
+            return initiator;
+        }
+
+        // Otherwise, it's the turn of the team with fewer attempts.
+        return homeAttempts.length < awayAttempts.length ? 'home' : 'away';
+        
+    }, [shootout]);
 
     const winner = useMemo(() => {
         const homeRoundsLeft = shootout.rounds - shootout.homeAttempts.length;

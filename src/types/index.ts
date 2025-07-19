@@ -248,6 +248,7 @@ export interface ShootoutState {
   rounds: number;
   homeAttempts: ShootoutAttempt[];
   awayAttempts: ShootoutAttempt[];
+  initiator: Team | null; // Track who started the shootout
 }
 
 export interface LiveState {

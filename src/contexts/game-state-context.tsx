@@ -97,9 +97,10 @@ const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
 
 const INITIAL_SHOOTOUT_STATE: ShootoutState = {
   isActive: false,
-  rounds: 5, // Default to 5 rounds
+  rounds: 5,
   homeAttempts: [],
   awayAttempts: [],
+  initiator: null,
 };
 
 
@@ -1088,39 +1089,54 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         };
         break;
     case 'RECORD_SHOOTOUT_ATTEMPT': {
-        const { team, ...attemptData } = action.payload;
-        if (!state.live.shootout) break;
+      if (!state.live.shootout) break;
+      const { team, ...attemptData } = action.payload;
+      const { shootout } = state.live;
+      const currentAttempts = shootout[team === 'home' ? 'homeAttempts' : 'awayAttempts'];
+      
+      const newAttempt: ShootoutAttempt = {
+          id: safeUUID(),
+          round: currentAttempts.length + 1,
+          ...attemptData,
+      };
 
-        const currentAttempts = state.live.shootout[team === 'home' ? 'homeAttempts' : 'awayAttempts'];
-        const newAttempt = {
-            id: safeUUID(),
-            round: currentAttempts.length + 1,
-            ...attemptData,
-        };
+      let newInitiator = shootout.initiator;
+      if (!newInitiator) {
+          newInitiator = team;
+      }
 
-        newState = {
-            ...state,
-            live: { ...state.live,
-                shootout: { ...state.live.shootout,
-                    [team === 'home' ? 'homeAttempts' : 'awayAttempts']: [...currentAttempts, newAttempt],
-                }
-            }
-        };
-        break;
+      newState = {
+          ...state,
+          live: { ...state.live,
+              shootout: {
+                  ...shootout,
+                  initiator: newInitiator,
+                  [team === 'home' ? 'homeAttempts' : 'awayAttempts']: [...currentAttempts, newAttempt],
+              }
+          }
+      };
+      break;
     }
     case 'UNDO_LAST_SHOOTOUT_ATTEMPT': {
-      const { team } = action.payload;
       if (!state.live.shootout) break;
-
+      const { team } = action.payload;
+      const { shootout } = state.live;
       const attemptsKey = team === 'home' ? 'homeAttempts' : 'awayAttempts';
-      const currentAttempts = state.live.shootout[attemptsKey];
+      const currentAttempts = shootout[attemptsKey];
       if (currentAttempts.length === 0) break;
       
       const newAttempts = currentAttempts.slice(0, -1);
+      
+      let newInitiator = shootout.initiator;
+      // If we are undoing the very first shot, reset the initiator
+      if (shootout.homeAttempts.length + shootout.awayAttempts.length === 1) {
+          newInitiator = null;
+      }
 
       newState = { ...state, live: { ...state.live,
           shootout: {
-            ...state.live.shootout,
+            ...shootout,
+            initiator: newInitiator,
             [attemptsKey]: newAttempts,
           }
         }
