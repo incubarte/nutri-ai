@@ -570,7 +570,7 @@ export default function ControlsPage() {
     const isTimeConditionMet = live.clock.currentTime <= config.stoppedTimeAlertTimeRemaining * 60 * 100;
     const isGoalDiffConditionMet = Math.abs(live.score.home - live.score.away) <= config.stoppedTimeAlertGoalDiff;
 
-    return isLastRegularPeriod && isTimeConditionMet && isGoalDiffConditionMet;
+    return isLastRegularPeriod && isTimeConditionMet && isGoalDiffConditionMet && live.clock.periodDisplayOverride === null;
   }, [state]);
 
 
