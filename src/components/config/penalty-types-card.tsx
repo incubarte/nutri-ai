@@ -114,7 +114,7 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
   };
 
   const handleAddNewPenalty = () => {
-    setEditingPenalty({ id: safeUUID(), name: '', duration: 120, type: 'minor' });
+    setEditingPenalty({ id: safeUUID(), name: '', duration: 120, reducesPlayerCount: true, clearsOnGoal: true, isBenchPenalty: false });
   };
   
   const handleEditPenalty = (penalty: PenaltyTypeDefinition) => {
@@ -190,7 +190,7 @@ export const PenaltyTypesCard = forwardRef<PenaltyTypesCardRef, PenaltyTypesCard
                       <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
                       <div>
                         <p className="font-medium">{p.name}</p>
-                        <p className="text-xs text-muted-foreground">{formatTime(p.duration * 100)} - {p.type === 'minor' ? 'Regular' : 'Mala Conducta'}{p.isBenchPenalty ? ' (Banco)' : ''}</p>
+                        <p className="text-xs text-muted-foreground">{formatTime(p.duration * 100)}{p.isBenchPenalty ? ' (Banco)' : ''}</p>
                       </div>
                     </div>
                     <div className="flex items-center">
@@ -250,7 +250,8 @@ PenaltyTypesCard.displayName = "PenaltyTypesCard";
 function EditPenaltyDialog({ penalty, isOpen, onOpenChange, onSave }: { penalty: PenaltyTypeDefinition, isOpen: boolean, onOpenChange: (open: boolean) => void, onSave: (penalty: PenaltyTypeDefinition) => void }) {
   const [name, setName] = useState(penalty.name);
   const [duration, setDuration] = useState(String(penalty.duration));
-  const [type, setType] = useState<"minor" | "misconduct">(penalty.type);
+  const [reducesPlayerCount, setReducesPlayerCount] = useState(penalty.reducesPlayerCount);
+  const [clearsOnGoal, setClearsOnGoal] = useState(penalty.clearsOnGoal);
   const [isBenchPenalty, setIsBenchPenalty] = useState(penalty.isBenchPenalty || false);
 
   const handleSubmit = () => {
@@ -259,7 +260,7 @@ function EditPenaltyDialog({ penalty, isOpen, onOpenChange, onSave }: { penalty:
       // Basic validation
       return;
     }
-    onSave({ ...penalty, name: name.trim(), duration: durationNum, type, isBenchPenalty });
+    onSave({ ...penalty, name: name.trim(), duration: durationNum, reducesPlayerCount, clearsOnGoal, isBenchPenalty });
   };
   
   return (
@@ -272,23 +273,19 @@ function EditPenaltyDialog({ penalty, isOpen, onOpenChange, onSave }: { penalty:
           <div className="space-y-4 py-4">
               <div>
                   <Label htmlFor="penaltyName">Nombre</Label>
-                  <Input id="penaltyName" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Menor, Doble Menor"/>
+                  <Input id="penaltyName" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Menor, Mayor"/>
               </div>
               <div>
                   <Label htmlFor="penaltyDuration">Duración (en segundos)</Label>
                   <Input id="penaltyDuration" type="number" value={duration} onChange={e => setDuration(e.target.value)} placeholder="Ej: 120"/>
               </div>
-              <div>
-                  <Label htmlFor="penaltyType">Tipo</Label>
-                  <Select value={type} onValueChange={(v: "minor" | "misconduct") => setType(v)}>
-                      <SelectTrigger id="penaltyType">
-                          <SelectValue placeholder="Seleccionar tipo..."/>
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="minor">Regular (Saca jugador)</SelectItem>
-                          <SelectItem value="misconduct">Mala Conducta (No saca jugador)</SelectItem>
-                      </SelectContent>
-                  </Select>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="reducesPlayerCount" checked={reducesPlayerCount} onCheckedChange={c => setReducesPlayerCount(!!c)} />
+                <Label htmlFor="reducesPlayerCount" className="font-normal">Reduce jugadores en juego</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="clearsOnGoal" checked={clearsOnGoal} onCheckedChange={c => setClearsOnGoal(!!c)} />
+                <Label htmlFor="clearsOnGoal" className="font-normal">Se elimina por gol en contra</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox id="isBenchPenalty" checked={isBenchPenalty} onCheckedChange={c => setIsBenchPenalty(!!c)} />

@@ -11,7 +11,8 @@ export interface PenaltyTypeDefinition {
   id: string;
   name: string;
   duration: number;
-  type: 'minor' | 'misconduct';
+  reducesPlayerCount: boolean; // Replaces 'type'
+  clearsOnGoal: boolean;      // New property
   isBenchPenalty?: boolean;
 }
 
@@ -22,7 +23,9 @@ export interface Penalty {
   expirationTime?: number;
   initialDuration: number; 
   _status?: 'running' | 'pending_concurrent' | 'pending_puck'; 
-  penaltyType?: 'minor' | 'misconduct';
+  penaltyType?: 'minor' | 'misconduct'; // This is now legacy, logic will use the booleans
+  reducesPlayerCount: boolean; // Add to live penalty object
+  clearsOnGoal: boolean; // Add to live penalty object
   isBenchPenalty?: boolean;
   _limitReached?: ('quantity')[];
 }
@@ -125,7 +128,8 @@ export interface PenaltyLog {
   playerName?: string;
   penaltyName?: string;
   initialDuration: number;
-  penaltyType?: 'minor' | 'misconduct';
+  reducesPlayerCount: boolean;
+  clearsOnGoal: boolean;
   isBenchPenalty?: boolean;
   addTimestamp: number;
   addGameTime: number;
@@ -263,14 +267,6 @@ export interface LiveState {
   gameSummary: GameSummary;
   playHornTrigger: number;
   playPenaltyBeepTrigger: number;
-}
-
-export interface GameState {
-  config: ConfigState;
-  live: LiveState;
-  _lastActionOriginator?: string;
-  _lastUpdatedTimestamp?: number;
-  _initialConfigLoadComplete?: boolean;
 }
 
 export interface LiveGameState extends LiveState {

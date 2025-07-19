@@ -135,8 +135,6 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
         
     const displayStatus = penalty._status ? statusTextMap[penalty._status] : 'Estado Desconocido';
     
-    const isMisconduct = penalty.penaltyType === 'misconduct';
-    
     const ejectionMessage = useMemo(() => {
         if (!penalty._limitReached || penalty._limitReached.length === 0) return null;
         return ` - Expulsado`;
@@ -164,7 +162,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                 isPendingPuck && "opacity-40 bg-yellow-500/5 border-yellow-500/30",
                 penalty._limitReached && "bg-amber-500/10 border-amber-500/40",
                 isEndingSoon && "animate-flashing-border border-2",
-                isMisconduct && "border-blue-500/30"
+                !penalty.reducesPlayerCount && "border-blue-500/30"
             )}
         >
             <div className="flex justify-between items-center w-full gap-2">
@@ -194,7 +192,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                                         </p>
                                         <p className="text-xs text-muted-foreground">
                                             Total: {formatTime(penalty.initialDuration * 100)}
-                                            {isMisconduct && <span className="text-blue-400 font-semibold"> (Mala Conducta)</span>}
+                                            {!penalty.reducesPlayerCount && <span className="text-blue-400 font-semibold"> (No reduce)</span>}
                                         </p>
                                     </div>
                                 </div>
@@ -275,7 +273,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                     >
                         <Plus className="h-4 w-4" />
                     </Button>
-                    {!isMisconduct && (
+                    {penalty.clearsOnGoal && (
                       <TooltipProvider delayDuration={200}>
                           <Tooltip>
                               <TooltipTrigger asChild>
