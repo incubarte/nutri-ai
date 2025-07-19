@@ -310,7 +310,6 @@ const handleAutoTransition = (currentState: GameState): GameState => {
   newGameStateAfterTransition.live.clock.isFlashingZero = false;
   newGameStateAfterTransition.live.clock.flashingZeroEndTime = undefined;
 
-
   return newGameStateAfterTransition;
 };
 
@@ -833,7 +832,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const activate = (penalties: Penalty[]) => penalties.map(p => {
         if (p._status === 'pending_puck') {
           let updatedPenalty = { ...p, _status: 'pending_concurrent' };
-          // For misconduct penalties, they should start running immediately once puck is in play.
+          // For penalties that don't reduce player count, start them running immediately.
           if (!p.reducesPlayerCount) {
             updatedPenalty._status = 'running';
             updatedPenalty.startTime = state.live.clock._liveAbsoluteElapsedTimeCs;
@@ -947,7 +946,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       if (clock.isClockRunning && currentTimeSnapshot <= 0) {
         significantChangeOccurred = true;
         
-        // Trigger horn sound only if it's not a timeout ending
         const shouldTriggerHorn = clock.periodDisplayOverride !== "Time Out";
         
         newState = {
@@ -1631,3 +1629,4 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
 
     
+
