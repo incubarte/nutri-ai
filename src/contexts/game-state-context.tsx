@@ -215,8 +215,7 @@ const handleAutoTransition = (currentState: GameState): GameState => {
   const { currentPeriod, periodDisplayOverride, preTimeoutState } = currentState.live.clock;
   const { score } = currentState.live;
   const totalGamePeriods = numberOfRegularPeriods + numberOfOvertimePeriods;
-  let shouldTriggerHorn = true;
-
+  
   switch(periodDisplayOverride) {
     case 'Warm-up':
       // Warm-up ends, start Period 1 (paused)
@@ -288,7 +287,6 @@ const handleAutoTransition = (currentState: GameState): GameState => {
       break;
 
     default: // No transition, e.g. "End of Game"
-      shouldTriggerHorn = false;
       break;
   }
 
@@ -308,10 +306,6 @@ const handleAutoTransition = (currentState: GameState): GameState => {
     newGameStateAfterTransition.live.clock.clockStartTimeMs = Date.now();
     newGameStateAfterTransition.live.clock.remainingTimeAtStartCs = newGameStateAfterTransition.live.clock.currentTime;
   }
-
-  newGameStateAfterTransition.live.playHornTrigger = shouldTriggerHorn
-    ? currentState.live.playHornTrigger + 1
-    : currentState.live.playHornTrigger;
   
   newGameStateAfterTransition.live.clock.isFlashingZero = false;
   newGameStateAfterTransition.live.clock.flashingZeroEndTime = undefined;
@@ -861,6 +855,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       let currentTimeSnapshot = clock.currentTime;
       let liveAbsoluteElapsedTimeCs = clock.absoluteElapsedTimeCs;
+      let playHornTrigger = state.live.playHornTrigger;
+      let playPenaltyBeepTrigger = state.live.playPenaltyBeepTrigger;
 
       if (clock.isFlashingZero) {
         if (now >= (clock.flashingZeroEndTime || 0)) {
@@ -882,8 +878,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
       
       const newGameSummary: GameSummary = JSON.parse(JSON.stringify(gameSummary));
-      let newPlayPenaltyBeepTrigger = state.live.playPenaltyBeepTrigger;
-
+      
       const processPenalties = (team: Team): Penalty[] => {
           const teamPenalties = penalties[team];
           const runningPenalties = teamPenalties.filter(p => p._status === 'running');
@@ -934,7 +929,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                       const prevRem = p.expirationTime - clock._liveAbsoluteElapsedTimeCs;
                       const currRem = p.expirationTime - liveAbsoluteElapsedTimeCs;
                       if (currRem / 100 <= config.penaltyCountdownStartTime && currRem > 0 && Math.floor(prevRem / 100) > Math.floor(currRem / 100)) {
-                          newPlayPenaltyBeepTrigger++;
+                          playPenaltyBeepTrigger++;
                           hasChanged = true;
                       }
                   }
@@ -951,6 +946,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       if (clock.isClockRunning && currentTimeSnapshot <= 0) {
         significantChangeOccurred = true;
+        
+        // Trigger horn sound only if it's not a timeout ending
+        const shouldTriggerHorn = clock.periodDisplayOverride !== "Time Out";
+        
         newState = {
             ...state,
             live: {
@@ -963,7 +962,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                     flashingZeroEndTime: now + FLASHING_ZERO_DURATION_MS,
                     clockStartTimeMs: null,
                     remainingTimeAtStartCs: null,
-                }
+                },
+                playHornTrigger: shouldTriggerHorn ? playHornTrigger + 1 : playHornTrigger,
             }
         };
       } else if (hasChanged) {
@@ -971,7 +971,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             clock: { ...clock, currentTime: currentTimeSnapshot, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs },
             penalties: { home: sortPenaltiesByStatus(homePenaltiesResult), away: sortPenaltiesByStatus(awayPenaltiesResult) },
             gameSummary: newGameSummary,
-            playPenaltyBeepTrigger: newPlayPenaltyBeepTrigger
+            playPenaltyBeepTrigger: playPenaltyBeepTrigger
         }};
       } else {
         return { ...state, live: { ...state.live, clock: { ...state.live.clock, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs }}};
