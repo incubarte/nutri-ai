@@ -92,7 +92,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     onDrop: (e: React.DragEvent<HTMLDivElement>, targetPenaltyId: string) => void;
     onAdjust: (penaltyId: string, delta: number) => void;
 }) => {
-    const { state } = useGameState();
+    const { state, dispatch } = useGameState();
     const [editTimeValue, setEditTimeValue] = useState('');
 
     const teamSubName = team === 'home' ? state.live.homeTeamSubName : state.live.awayTeamSubName;
@@ -143,6 +143,13 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
     const penaltyLogDetails = state.live.gameSummary[team]?.penalties.find(p => p.id === penalty.id);
     const penaltyNameForTooltip = penaltyLogDetails?.penaltyName || "Tipo desconocido";
 
+
+    const handleGoalEndPenalty = () => {
+        dispatch({
+            type: 'END_PENALTY_FOR_GOAL',
+            payload: { team, penaltyId: penalty.id }
+        });
+    };
 
     return (
         <Card
@@ -231,6 +238,18 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                 </div>
 
                 <div className="flex items-center gap-1">
+                     {penalty.clearsOnGoal && penalty._status === 'running' && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-green-500 hover:text-green-400"
+                            onClick={handleGoalEndPenalty}
+                            disabled={isDeleteSelectionMode || isEditing}
+                            aria-label="Finalizar penalidad por gol"
+                        >
+                            <Goal className="h-5 w-5" />
+                        </Button>
+                    )}
                     <Button
                         variant="ghost"
                         size="icon"
