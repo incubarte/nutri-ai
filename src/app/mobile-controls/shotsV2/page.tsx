@@ -148,52 +148,84 @@ export default function MobileShotsV2Page() {
   }, [router, fetchAndSetState]);
 
   const processCommand = useCallback((command: string) => {
-    let processedCommand = command.toLowerCase().trim();
-    const events: string[] = [];
+    const processedText = command.toLowerCase().trim();
+    if (!processedText) return;
 
-    // Regex for goals with assists: "gol local/visitante 12 asistencia 32"
-    const goalWithAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)\s+asistencia\s+(\d+)/g;
+    const eventsToDispatch: { index: number; type: 'goal' | 'shot'; payload: any; description: string }[] = [];
     
-    // Regex for goals without assists: "gol local/visitante 12"
+    const goalWithAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)\s+asistencia\s+(\d+)/g;
     const goalWithoutAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)/g;
-
-    // Regex for shots: "local/visitante 12"
     const shotRegex = /(local|loca|visitante|visitantes)\s+(\d+)/g;
 
-    // Process goals with assists first
-    processedCommand = processedCommand.replace(goalWithAssistRegex, (match, teamWord, scorerNumber, assistNumber) => {
-        const team: Team = (teamWord === 'local' || teamWord === 'loca') ? 'home' : 'away';
-        sendRemoteCommand({ type: 'ADD_GOAL', payload: { team, scorerNumber, assistNumber } });
-        const eventDescription = `Gol ${team} #${scorerNumber} (Asist. #${assistNumber})`;
-        events.unshift(eventDescription);
-        toast({ title: "Comando de Gol Enviado", description: eventDescription });
-        return ''; // Remove matched part
-    });
-
-    // Process goals without assists
-    processedCommand = processedCommand.replace(goalWithoutAssistRegex, (match, teamWord, scorerNumber) => {
-        const team: Team = (teamWord === 'local' || teamWord === 'loca') ? 'home' : 'away';
-        sendRemoteCommand({ type: 'ADD_GOAL', payload: { team, scorerNumber } });
-        const eventDescription = `Gol ${team} #${scorerNumber}`;
-        events.unshift(eventDescription);
-        toast({ title: "Comando de Gol Enviado", description: eventDescription });
-        return ''; // Remove matched part
-    });
-
-    // Process remaining as shots
-    processedCommand.replace(shotRegex, (match, teamWord, playerNumber) => {
-        const team: Team = (teamWord === 'local' || teamWord === 'loca') ? 'home' : 'away';
-        sendRemoteCommand({ type: 'ADD_SHOT', payload: { team, playerNumber } });
-        const eventDescription = `Tiro ${team} #${playerNumber}`;
-        events.unshift(eventDescription);
-        toast({ title: "Comando de Tiro Enviado", description: eventDescription, duration: 1500 });
-        return ''; // Remove matched part
-    });
-
-    if (events.length > 0) {
-        setProcessedEvents(prev => [...events, ...prev]);
+    // Find all potential matches with their indices
+    let match;
+    while ((match = goalWithAssistRegex.exec(processedText)) !== null) {
+      const team: Team = (match[1] === 'local' || match[1] === 'loca') ? 'home' : 'away';
+      eventsToDispatch.push({
+        index: match.index,
+        type: 'goal',
+        payload: { team, scorerNumber: match[2], assistNumber: match[3] },
+        description: `Gol ${team} #${match[2]} (Asist. #${match[3]})`
+      });
+    }
+    while ((match = goalWithoutAssistRegex.exec(processedText)) !== null) {
+      const team: Team = (match[1] === 'local' || match[1] === 'loca') ? 'home' : 'away';
+      eventsToDispatch.push({
+        index: match.index,
+        type: 'goal',
+        payload: { team, scorerNumber: match[2] },
+        description: `Gol ${team} #${match[2]}`
+      });
+    }
+    while ((match = shotRegex.exec(processedText)) !== null) {
+        const team: Team = (match[1] === 'local' || match[1] === 'loca') ? 'home' : 'away';
+        eventsToDispatch.push({
+            index: match.index,
+            type: 'shot',
+            payload: { team, playerNumber: match[2] },
+            description: `Tiro ${team} #${match[2]}`
+        });
     }
 
+    // Sort events by their appearance order in the string
+    eventsToDispatch.sort((a, b) => a.index - b.index);
+
+    // Filter out nested matches (e.g., a "shot" that was part of a "goal" command)
+    const finalEvents: typeof eventsToDispatch = [];
+    let lastProcessedIndex = -1;
+    for (const event of eventsToDispatch) {
+        let isNested = false;
+        for (const otherEvent of eventsToDispatch) {
+            if (event === otherEvent) continue;
+            const otherMatchText = processedText.substring(otherEvent.index, otherEvent.index + (otherEvent.type === 'goal' ? 10 : 5)); // Approx length
+            if (otherMatchText.includes(processedText.substring(event.index, event.index + 5))) {
+                 if(event.type === 'shot' && otherEvent.type === 'goal' && event.index > otherEvent.index) {
+                     isNested = true;
+                     break;
+                 }
+            }
+        }
+        if (!isNested) {
+            finalEvents.push(event);
+        }
+    }
+
+
+    const eventsDescriptions: string[] = [];
+    finalEvents.forEach(event => {
+      if (event.type === 'goal') {
+        sendRemoteCommand({ type: 'ADD_GOAL', payload: event.payload });
+        toast({ title: "Comando de Gol Enviado", description: event.description });
+      } else if (event.type === 'shot') {
+        sendRemoteCommand({ type: 'ADD_SHOT', payload: event.payload });
+        toast({ title: "Comando de Tiro Enviado", description: event.description, duration: 1500 });
+      }
+      eventsDescriptions.push(event.description);
+    });
+
+    if (eventsDescriptions.length > 0) {
+      setProcessedEvents(prev => [...eventsDescriptions.reverse(), `--- Transcripción Finalizada ---`, ...prev]);
+    }
   }, [toast]);
 
 
