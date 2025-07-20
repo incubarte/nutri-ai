@@ -37,9 +37,9 @@ export default function MobileShotsV2Page() {
   
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [finalTranscript, setFinalTranscript] = useState('');
   const [isSupported, setIsSupported] = useState(true);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const commandTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchAndSetState = useCallback(async () => {
     try {
@@ -94,6 +94,45 @@ export default function MobileShotsV2Page() {
     connect();
   }, [router, fetchAndSetState]);
 
+  const processCommand = useCallback((command: string) => {
+    let processedCommand = command.toLowerCase().trim();
+
+    // Regex for goals with assists: "gol local 12 asistencia 32"
+    const goalWithAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)\s+asistencia\s+(\d+)/g;
+    
+    // Regex for goals without assists: "gol local 12"
+    const goalWithoutAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)/g;
+
+    // Regex for shots: "local 12"
+    const shotRegex = /(local|loca|visitante|visitantes)\s+(\d+)/g;
+
+    // Process goals with assists first
+    processedCommand = processedCommand.replace(goalWithAssistRegex, (match, teamWord, scorerNumber, assistNumber) => {
+        const team: Team = (teamWord === 'local' || teamWord === 'loca') ? 'home' : 'away';
+        sendRemoteCommand({ type: 'ADD_GOAL', payload: { team, scorerNumber, assistNumber } });
+        toast({ title: "Comando de Gol Enviado", description: `Equipo: ${team}, Gol: #${scorerNumber}, Asist: #${assistNumber}` });
+        return ''; // Remove matched part
+    });
+
+    // Process goals without assists
+    processedCommand = processedCommand.replace(goalWithoutAssistRegex, (match, teamWord, scorerNumber) => {
+        const team: Team = (teamWord === 'local' || teamWord === 'loca') ? 'home' : 'away';
+        sendRemoteCommand({ type: 'ADD_GOAL', payload: { team, scorerNumber } });
+        toast({ title: "Comando de Gol Enviado", description: `Equipo: ${team}, Gol: #${scorerNumber}` });
+        return ''; // Remove matched part
+    });
+
+    // Process remaining as shots
+    processedCommand.replace(shotRegex, (match, teamWord, playerNumber) => {
+        const team: Team = (teamWord === 'local' || teamWord === 'loca') ? 'home' : 'away';
+        sendRemoteCommand({ type: 'ADD_SHOT', payload: { team, playerNumber } });
+        toast({ title: "Comando de Tiro Enviado", description: `Tiro para ${team} #${playerNumber}` });
+        return ''; // Remove matched part
+    });
+
+  }, [toast]);
+
+
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -105,21 +144,21 @@ export default function MobileShotsV2Page() {
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'es-AR';
+    
+    let accumulatedFinalTranscript = '';
 
     recognition.onresult = (event: any) => {
-      let finalTranscript = '';
       let interimTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
+      accumulatedFinalTranscript = ''; // Reset on new result to rebuild from final parts
+      for (let i = 0; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
+          accumulatedFinalTranscript += event.results[i][0].transcript;
         } else {
           interimTranscript += event.results[i][0].transcript;
         }
       }
       setTranscript(interimTranscript);
-      if (finalTranscript) {
-        processCommand(finalTranscript);
-      }
+      setFinalTranscript(accumulatedFinalTranscript);
     };
 
     recognition.onerror = (event: any) => {
@@ -133,66 +172,19 @@ export default function MobileShotsV2Page() {
 
     recognition.onend = () => {
       setIsListening(false);
+      if (finalTranscript.trim()) {
+        processCommand(finalTranscript);
+      }
+       setFinalTranscript(''); // Clear after processing
     };
 
     recognitionRef.current = recognition;
-  }, [toast]);
-  
-  const processCommand = (command: string) => {
-    const lowerCommand = command.toLowerCase().trim();
-    const words = lowerCommand.split(/\s+/);
+  }, [toast, processCommand]);
 
-    for (let i = 0; i < words.length; i++) {
-        const teamWord = words[i];
-        let team: Team | null = null;
-        if (teamWord === 'local' || teamWord === 'loca') { // Common misrecognition
-            team = 'home';
-        } else if (teamWord === 'visitante' || teamWord === 'visitantes') {
-            team = 'away';
-        }
-
-        if (team) {
-            // Check for goal command
-            if (i > 0 && (words[i-1] === 'gol' || words[i-1] === 'gold')) {
-                const scorerNumber = words[i+1];
-                if (scorerNumber && /^\d+$/.test(scorerNumber)) {
-                    let assistNumber;
-                    if (words[i+2] === 'asistencia' && words[i+3] && /^\d+$/.test(words[i+3])) {
-                        assistNumber = words[i+3];
-                        i += 3; // Consume assist words
-                    }
-                    sendRemoteCommand({ type: 'ADD_GOAL', payload: { team, scorerNumber, assistNumber } });
-                    toast({ title: "Comando de Gol Enviado", description: `Equipo: ${team}, Gol: #${scorerNumber}, Asist: #${assistNumber || 'N/A'}` });
-                }
-            } 
-            // Check for shot command
-            else {
-                const playerNumber = words[i+1];
-                if (playerNumber && /^\d+$/.test(playerNumber)) {
-                    sendRemoteCommand({ type: 'ADD_SHOT', payload: { team, playerNumber } });
-                    toast({ title: "Comando de Tiro Enviado", description: `Tiro para ${team} #${playerNumber}` });
-                    i++; // Consume player number
-                }
-            }
-        }
-    }
-  };
-
-
-  const handleListen = () => {
-    if (!recognitionRef.current) return;
-    if (isListening) {
-      recognitionRef.current.stop();
-    } else {
-      setTranscript('');
-      recognitionRef.current.start();
-      setIsListening(true);
-    }
-  };
-  
   const handleTouchStart = () => {
     if (recognitionRef.current && !isListening) {
         setTranscript('');
+        setFinalTranscript('');
         recognitionRef.current.start();
         setIsListening(true);
     }
@@ -201,7 +193,7 @@ export default function MobileShotsV2Page() {
   const handleTouchEnd = () => {
     if (recognitionRef.current && isListening) {
         recognitionRef.current.stop();
-        setIsListening(false);
+        // onend will handle the rest
     }
   };
 
@@ -250,7 +242,7 @@ export default function MobileShotsV2Page() {
       </div>
       <div className="text-center">
         <p className="text-muted-foreground">Mantén presionado el botón y habla.</p>
-        <p className="text-xs text-muted-foreground">Ej: "Local 25", "Gol visitante 10 asistencia 22"</p>
+        <p className="text-xs text-muted-foreground">Ej: "Local 25, gol visitante 10 asistencia 22"</p>
       </div>
       
       <div className="flex-grow flex flex-col items-center justify-center">
@@ -286,3 +278,4 @@ export default function MobileShotsV2Page() {
     </main>
   );
 }
+
