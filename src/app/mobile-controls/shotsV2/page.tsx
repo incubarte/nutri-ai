@@ -159,7 +159,6 @@ export default function MobileShotsV2Page() {
 
   const processCommand = useCallback((command: string) => {
     let baseText = command.toLowerCase().trim();
-    // Clean up mobile transcription artifacts
     baseText = baseText.replace(/locallocal/g, 'local').replace(/\s+de\s+/g, ' ');
 
     let processedText = ` ${baseText} `;
@@ -174,7 +173,6 @@ export default function MobileShotsV2Page() {
     
     let match;
 
-    // Process goals with assistance first
     while ((match = goalWithAssistRegex.exec(processedText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
@@ -187,7 +185,6 @@ export default function MobileShotsV2Page() {
         goalWithAssistRegex.lastIndex = 0;
     }
     
-    // Process goals without assistance
     while ((match = goalWithoutAssistRegex.exec(processedText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
@@ -200,7 +197,6 @@ export default function MobileShotsV2Page() {
         goalWithoutAssistRegex.lastIndex = 0;
     }
     
-    // Process remaining shots
     while ((match = shotRegex.exec(processedText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
@@ -245,18 +241,22 @@ export default function MobileShotsV2Page() {
     
     recognition.onresult = (event: any) => {
       let interimTranscript = '';
-      let currentFinalTranscript = ''; // Rebuild final transcript from results
+      let finalTranscript = '';
       
       for (let i = 0; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          currentFinalTranscript += event.results[i][0].transcript;
+          finalTranscript += event.results[i][0].transcript;
         } else {
           interimTranscript += event.results[i][0].transcript;
         }
       }
+      
+      const liveText = interimTranscript || finalTranscript;
+      setTranscript(liveText.replace(/locallocal/g, 'local'));
 
-      setTranscript(interimTranscript.replace(/locallocal/g, 'local'));
-      finalTranscriptRef.current = currentFinalTranscript.trim();
+      if (finalTranscript) {
+        finalTranscriptRef.current = finalTranscript.trim();
+      }
     };
 
     recognition.onerror = (event: any) => {
