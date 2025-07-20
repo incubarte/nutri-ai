@@ -240,23 +240,21 @@ export default function MobileShotsV2Page() {
     recognition.lang = 'es-AR';
     
     recognition.onresult = (event: any) => {
+      // Rebuild the transcript from the results list in every event.
+      // This is more robust for different browser behaviors.
       let interimTranscript = '';
-      let finalTranscript = '';
-      
+      finalTranscriptRef.current = '';
+
       for (let i = 0; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
+          finalTranscriptRef.current += event.results[i][0].transcript;
         } else {
           interimTranscript += event.results[i][0].transcript;
         }
       }
-      
-      const liveText = interimTranscript || finalTranscript;
-      setTranscript(liveText.replace(/locallocal/g, 'local'));
 
-      if (finalTranscript) {
-        finalTranscriptRef.current = finalTranscript.trim();
-      }
+      const liveText = interimTranscript || finalTranscriptRef.current;
+      setTranscript(liveText.replace(/locallocal/g, 'local'));
     };
 
     recognition.onerror = (event: any) => {
@@ -270,7 +268,7 @@ export default function MobileShotsV2Page() {
 
     recognition.onend = () => {
       setIsListening(false);
-      const cleanedFinalTranscript = finalTranscriptRef.current.replace(/locallocal/g, 'local');
+      const cleanedFinalTranscript = finalTranscriptRef.current.replace(/locallocal/g, 'local').trim();
       
       if (cleanedFinalTranscript) {
         setTranscript(cleanedFinalTranscript); // Show final result briefly
@@ -388,5 +386,3 @@ export default function MobileShotsV2Page() {
     </main>
   );
 }
-
-    
