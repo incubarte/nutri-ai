@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Separator } from '@/components/ui/separator';
 
 const AUTH_KEY = 'icevision-remote-auth-key';
 
@@ -179,7 +180,8 @@ export default function MobileShotsV2Page() {
     let match;
 
     // --- 1. Find all potential commands ---
-    while ((match = goalWithAssistRegex.exec(baseText)) !== null) {
+    let textForSimpleGoals = baseText;
+    while ((match = goalWithAssistRegex.exec(textForSimpleGoals)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
             index: match.index,
@@ -189,12 +191,12 @@ export default function MobileShotsV2Page() {
             match: match[0],
             length: match[0].length,
         });
+        // Replace matched part to avoid re-matching
+        textForSimpleGoals = textForSimpleGoals.substring(0, match.index) + ' '.repeat(match[0].length) + textForSimpleGoals.substring(match.index + match[0].length);
     }
     
-    // Replace "gol con asistencia" to avoid it being matched again as "gol"
-    let textForSimpleGoals = baseText.replace(goalWithAssistRegex, (m) => ' '.repeat(m.length));
-
-    while ((match = goalWithoutAssistRegex.exec(textForSimpleGoals)) !== null) {
+    let textForShots = textForSimpleGoals;
+    while ((match = goalWithoutAssistRegex.exec(textForShots)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
             index: match.index,
@@ -204,11 +206,10 @@ export default function MobileShotsV2Page() {
             match: match[0],
             length: match[0].length,
         });
+        // Replace matched part
+        textForShots = textForShots.substring(0, match.index) + ' '.repeat(match[0].length) + textForShots.substring(match.index + match[0].length);
     }
-
-    // Replace all goals to avoid them being matched as shots
-    let textForShots = textForSimpleGoals.replace(goalWithoutAssistRegex, (m) => ' '.repeat(m.length));
-
+    
     while ((match = shotRegex.exec(textForShots)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
@@ -277,7 +278,7 @@ export default function MobileShotsV2Page() {
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = false; // Set to false to avoid mobile issues
+    recognition.interimResults = false;
     recognition.lang = 'es-AR';
     
     recognition.onresult = (event: any) => {
@@ -291,6 +292,7 @@ export default function MobileShotsV2Page() {
       const cleanedTranscript = final_transcript.replace(/locallocal/g, 'local').trim();
       
       if (cleanedTranscript) {
+        setHighlightedTranscript(<p className="italic text-muted-foreground">{cleanedTranscript}</p>);
         processCommand(cleanedTranscript);
       }
     };
