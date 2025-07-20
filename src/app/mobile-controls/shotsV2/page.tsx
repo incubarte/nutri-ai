@@ -158,19 +158,21 @@ export default function MobileShotsV2Page() {
   }, [router, fetchAndSetState]);
 
   const processCommand = useCallback((command: string) => {
-    let processedText = ` ${command.toLowerCase().trim()} `;
-    if (!processedText) return;
+    let baseText = command.toLowerCase().trim();
+    // Remove "de" to allow for "gol de local..."
+    let processedText = ` ${baseText.replace(/\s+de\s+/g, ' ')} `;
+    
+    if (!processedText.trim()) return;
 
     const eventsToDispatch: { index: number; type: 'goal' | 'shot'; payload: any; description: string }[] = [];
     
-    // Use word boundaries to avoid partial matches
     const goalWithAssistRegex = /\bgol\s+(local|loca|visitante|visitantes)\s+(\d+)\s+asistencia\s+(\d+)\b/g;
     const goalWithoutAssistRegex = /\bgol\s+(local|loca|visitante|visitantes)\s+(\d+)(\s+sin\s+asistencia)?\b/g;
     const shotRegex = /\b(local|loca|visitante|visitantes)\s+(\d+)\b/g;
     
     let match;
 
-    // Process goals with assists first, and blank them out so they aren't re-processed
+    // 1. Find all goals with assists and blank them out
     while ((match = goalWithAssistRegex.exec(processedText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
@@ -180,10 +182,10 @@ export default function MobileShotsV2Page() {
             description: `Gol ${team === 'home' ? 'Local' : 'Visitante'} #${match[2]} (Asist. #${match[3]})`
         });
         processedText = processedText.substring(0, match.index) + ' '.repeat(match[0].length) + processedText.substring(match.index + match[0].length);
-        goalWithAssistRegex.lastIndex = 0; // Reset regex index after modification
+        goalWithAssistRegex.lastIndex = 0; 
     }
 
-    // Process goals without assists
+    // 2. Find all goals without assists and blank them out
     while ((match = goalWithoutAssistRegex.exec(processedText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
@@ -193,10 +195,10 @@ export default function MobileShotsV2Page() {
             description: `Gol ${team === 'home' ? 'Local' : 'Visitante'} #${match[2]}`
         });
         processedText = processedText.substring(0, match.index) + ' '.repeat(match[0].length) + processedText.substring(match.index + match[0].length);
-        goalWithoutAssistRegex.lastIndex = 0; // Reset regex index
+        goalWithoutAssistRegex.lastIndex = 0;
     }
 
-    // Process remaining as shots
+    // 3. Find all remaining shots
     while ((match = shotRegex.exec(processedText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
