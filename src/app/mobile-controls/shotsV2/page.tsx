@@ -235,26 +235,19 @@ export default function MobileShotsV2Page() {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.interimResults = false;
     recognition.lang = 'es-AR';
     
     recognition.onresult = (event: any) => {
-      // Rebuild the transcript from the results list in every event.
-      // This is more robust for different browser behaviors.
-      let interimTranscript = '';
-      finalTranscriptRef.current = '';
-
+      let finalTranscript = '';
       for (let i = 0; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalTranscriptRef.current += event.results[i][0].transcript;
-        } else {
-          interimTranscript += event.results[i][0].transcript;
+          finalTranscript += event.results[i][0].transcript;
         }
       }
-
-      const liveText = interimTranscript || finalTranscriptRef.current;
-      setTranscript(liveText.replace(/locallocal/g, 'local'));
+      finalTranscriptRef.current = finalTranscript.trim();
+      setTranscript(finalTranscriptRef.current);
     };
 
     recognition.onerror = (event: any) => {
@@ -271,7 +264,6 @@ export default function MobileShotsV2Page() {
       const cleanedFinalTranscript = finalTranscriptRef.current.replace(/locallocal/g, 'local').trim();
       
       if (cleanedFinalTranscript) {
-        setTranscript(cleanedFinalTranscript); // Show final result briefly
         setAllTranscripts(prev => [cleanedFinalTranscript, ...prev]);
         processCommand(cleanedFinalTranscript);
       }
@@ -366,11 +358,11 @@ export default function MobileShotsV2Page() {
       
       <Card className="min-h-[80px]">
         <CardHeader className="py-2">
-            <CardTitle className="text-sm font-medium">Transcripción en vivo</CardTitle>
+            <CardTitle className="text-sm font-medium">Transcripción</CardTitle>
         </CardHeader>
         <CardContent className="py-2">
             <p className="text-muted-foreground italic">
-                {transcript || 'Esperando dictado...'}
+                {transcript || (isListening ? 'Escuchando...' : 'Esperando dictado...')}
             </p>
         </CardContent>
       </Card>
