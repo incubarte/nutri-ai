@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const AUTH_KEY = 'icevision-remote-auth-key';
 
@@ -67,9 +68,18 @@ const HistoryList = ({ title, items, icon: Icon }: { title: string, items: strin
             </CardHeader>
             <CardContent>
                 <div className="space-y-1 text-sm text-muted-foreground">
+                    <TooltipProvider delayDuration={100}>
                     {visibleItems.length > 0 ? visibleItems.map((item, index) => (
-                        <p key={index} className="truncate" title={item}>{item}</p>
+                        <Tooltip key={index}>
+                            <TooltipTrigger asChild>
+                                <p className="truncate cursor-default">{item}</p>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{item}</p>
+                            </TooltipContent>
+                        </Tooltip>
                     )) : <p className="italic">No hay items aún.</p>}
+                    </TooltipProvider>
                     {items.length > 10 && <p className="text-xs text-center pt-1">...y {items.length - 10} más.</p>}
                 </div>
             </CardContent>
@@ -160,28 +170,28 @@ export default function MobileShotsV2Page() {
     let match;
 
     // Process goals with assists first and remove them from the string
-    while ((match = goalWithAssistRegex.exec(processedText)) !== null) {
-      const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
-      eventsToDispatch.push({
-        index: match.index,
-        type: 'goal',
-        payload: { team, scorerNumber: match[2], assistNumber: match[3] },
-        description: `Gol ${team} #${match[2]} (Asist. #${match[3]})`
-      });
-    }
-    processedText = processedText.replace(goalWithAssistRegex, '');
+    processedText = processedText.replace(goalWithAssistRegex, (fullMatch, teamName, scorer, assist, index) => {
+        const team: Team = (teamName.startsWith('local') || teamName.startsWith('loca')) ? 'home' : 'away';
+        eventsToDispatch.push({
+            index: index,
+            type: 'goal',
+            payload: { team, scorerNumber: scorer, assistNumber: assist },
+            description: `Gol ${teamName.startsWith('local') ? 'Local' : 'Visitante'} #${scorer} (Asist. #${assist})`
+        });
+        return ''; 
+    });
 
     // Process goals without assists
-    while ((match = goalWithoutAssistRegex.exec(processedText)) !== null) {
-      const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
-      eventsToDispatch.push({
-        index: match.index,
-        type: 'goal',
-        payload: { team, scorerNumber: match[2] },
-        description: `Gol ${team} #${match[2]}`
-      });
-    }
-    processedText = processedText.replace(goalWithoutAssistRegex, '');
+    processedText = processedText.replace(goalWithoutAssistRegex, (fullMatch, teamName, scorer, _, index) => {
+        const team: Team = (teamName.startsWith('local') || teamName.startsWith('loca')) ? 'home' : 'away';
+        eventsToDispatch.push({
+            index: index,
+            type: 'goal',
+            payload: { team, scorerNumber: scorer },
+            description: `Gol ${teamName.startsWith('local') ? 'Local' : 'Visitante'} #${scorer}`
+        });
+        return '';
+    });
 
     // Process remaining as shots
     while ((match = shotRegex.exec(processedText)) !== null) {
@@ -190,7 +200,7 @@ export default function MobileShotsV2Page() {
             index: match.index,
             type: 'shot',
             payload: { team, playerNumber: match[2] },
-            description: `Tiro ${team} #${match[2]}`
+            description: `Tiro ${match[1].startsWith('local') ? 'Local' : 'Visitante'} #${match[2]}`
         });
     }
 
