@@ -106,6 +106,8 @@ export default function MobileShotsV2Page() {
 
   const [allTranscripts, setAllTranscripts] = useState<React.ReactNode[]>([]);
   const [processedEvents, setProcessedEvents] = useState<React.ReactNode[]>([]);
+  const stopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
 
   const fetchAndSetState = useCallback(async () => {
     try {
@@ -181,7 +183,7 @@ export default function MobileShotsV2Page() {
 
     // --- 1. Find all potential commands ---
     let textForSimpleGoals = baseText;
-    while ((match = goalWithAssistRegex.exec(textForSimpleGoals)) !== null) {
+    while ((match = goalWithAssistRegex.exec(baseText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
             index: match.index,
@@ -286,17 +288,13 @@ export default function MobileShotsV2Page() {
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = false; // Changed to false for better mobile reliability
+    recognition.interimResults = false;
     recognition.lang = 'es-AR';
     
     recognition.onresult = (event: any) => {
         let transcript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-                transcript += event.results[i][0].transcript;
-            } else {
-                // Now ignored due to interimResults = false
-            }
+            transcript += event.results[i][0].transcript;
         }
         const cleanedTranscript = transcript.trim();
         if (cleanedTranscript) {
@@ -321,6 +319,10 @@ export default function MobileShotsV2Page() {
   }, [toast, processCommand]);
 
   const handleTouchStart = () => {
+    if (stopTimeoutRef.current) {
+      clearTimeout(stopTimeoutRef.current);
+      stopTimeoutRef.current = null;
+    }
     if (recognitionRef.current && !isListening) {
         setLiveTranscript('');
         setFinalTranscript('');
@@ -337,11 +339,13 @@ export default function MobileShotsV2Page() {
 
   const handleTouchEnd = () => {
     if (recognitionRef.current && isListening) {
-        try {
-          recognitionRef.current.stop();
-        } catch(e) {
-          console.error("Could not stop recognition", e);
-        }
+        stopTimeoutRef.current = setTimeout(() => {
+            try {
+              recognitionRef.current?.stop();
+            } catch(e) {
+              console.error("Could not stop recognition", e);
+            }
+        }, 500); // 500ms delay
     }
   };
 
