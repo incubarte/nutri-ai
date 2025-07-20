@@ -173,6 +173,31 @@ export default function MobileShotsV2Page() {
     baseText = baseText.replace(/\bgolf\b/g, 'gol');
     baseText = baseText.replace(/\basistente\b/g, 'asistencia');
 
+    const numberWords: { [key: string]: string } = {
+        'cero': '0', 'uno': '1', 'dos': '2', 'tres': '3', 'cuatro': '4', 'cinco': '5', 'seis': '6', 'siete': '7', 'ocho': '8', 'nueve': '9',
+        'diez': '10', 'once': '11', 'doce': '12', 'trece': '13', 'catorce': '14', 'quince': '15',
+        'dieciséis': '16', 'diecisiete': '17', 'dieciocho': '18', 'diecinueve': '19',
+        'veinte': '20', 'veintiuno': '21', 'veintidós': '22', 'veintitrés': '23', 'veinticuatro': '24',
+        'veinticinco': '25', 'veintiséis': '26', 'veintisiete': '27', 'veintiocho': '28', 'veintinueve': '29',
+        'treinta': '30', 'cuarenta': '40', 'cincuenta': '50', 'sesenta': '60', 'setenta': '70', 'ochenta': '80', 'noventa': '90'
+    };
+    
+    // Replace composite numbers first (e.g., "treinta y uno")
+    for (let i = 31; i < 100; i++) {
+        if (i % 10 !== 0) {
+            const tens = Math.floor(i / 10) * 10;
+            const ones = i % 10;
+            const tensWord = Object.keys(numberWords).find(key => numberWords[key] === String(tens));
+            const onesWord = Object.keys(numberWords).find(key => numberWords[key] === String(ones));
+            if (tensWord && onesWord) {
+                baseText = baseText.replace(new RegExp(`\\b${tensWord} y ${onesWord}\\b`, 'g'), String(i));
+            }
+        }
+    }
+    // Replace single number words
+    Object.entries(numberWords).forEach(([word, digit]) => {
+      baseText = baseText.replace(new RegExp(`\\b${word}\\b`, 'g'), digit);
+    });
 
     if (!baseText) return;
     
@@ -342,19 +367,19 @@ export default function MobileShotsV2Page() {
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = false;
+    recognition.interimResults = false; // Set to false to avoid issues on mobile
     recognition.lang = 'es-AR';
     
     recognition.onresult = (event: any) => {
         let fullTranscript = "";
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-                fullTranscript += event.results[i][0].transcript;
-            }
+        // Reconstruct the full transcript from all results in this single event
+        for (let i = 0; i < event.results.length; ++i) {
+            fullTranscript += event.results[i][0].transcript;
         }
         
         const cleanedTranscript = fullTranscript.trim();
         if (cleanedTranscript) {
+            // Show the final transcript briefly for user feedback
             setHighlightedTranscript(<p className="italic text-muted-foreground">{cleanedTranscript}</p>);
             processCommand(cleanedTranscript);
         }
