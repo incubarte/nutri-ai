@@ -1,0 +1,116 @@
+{
+  "date": "2025-07-19T17:16:47.157Z",
+  "category": "A",
+  "homeTeam": "Local",
+  "awayTeam": "Visitante",
+  "finalScore": "4 - 3",
+  "summary": {
+    "home": {
+      "goals": [],
+      "penalties": [
+        {
+          "id": "7a55b4ba-bbbc-41db-830d-454547f651ba",
+          "team": "home",
+          "playerNumber": "4",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1752942424296,
+          "addGameTime": 27416,
+          "addPeriodText": "2ND",
+          "endTimestamp": 1752942440530,
+          "endGameTime": 25795,
+          "endPeriodText": "2ND",
+          "endReason": "goal_on_pp",
+          "timeServed": 15
+        },
+        {
+          "id": "403cf8dd-e120-4adc-a962-cd9aaa5c3bd7",
+          "team": "home",
+          "playerNumber": "6",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1752942450227,
+          "addGameTime": 24834,
+          "addPeriodText": "2ND",
+          "endTimestamp": 1752942596295,
+          "endGameTime": 12573,
+          "endPeriodText": "2ND",
+          "endReason": "completed",
+          "timeServed": 120
+        }
+      ],
+      "playerStats": {
+        "1": {
+          "name": "",
+          "shots": 1,
+          "goals": 1,
+          "assists": 0
+        },
+        "2": {
+          "name": "",
+          "shots": 2,
+          "goals": 2,
+          "assists": 0
+        },
+        "3": {
+          "name": "",
+          "shots": 1,
+          "goals": 1,
+          "assists": 0
+        },
+        "4": {
+          "name": "",
+          "shots": 1,
+          "goals": 1,
+          "assists": 0
+        },
+        "5": {
+          "name": "",
+          "shots": 1,
+          "goals": 1,
+          "assists": 0
+        },
+        "7": {
+          "name": "",
+          "shots": 1,
+          "goals": 1,
+          "assists": 0
+        }
+      }
+    },
+    "away": {
+      "goals": [],
+      "penalties": [],
+      "playerStats": {
+        "1": {
+          "name": "",
+          "shots": 1,
+          "goals": 1,
+          "assists": 0
+        },
+        "3": {
+          "name": "",
+          "shots": 1,
+          "goals": 1,
+          "assists": 0
+        },
+        "7": {
+          "name": "",
+          "shots": 1,
+          "goals": 1,
+          "assists": 0
+        }
+      }
+    },
+    "attendance": {
+      "home": [],
+      "away": []
+    }
+  }
+}

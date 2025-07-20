@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Goal, Send, Users, Siren, WifiOff, RefreshCw, PlayCircle, ShieldCheck, Crosshair, Hourglass } from 'lucide-react';
+import { Goal, Send, Users, Siren, WifiOff, RefreshCw, PlayCircle, ShieldCheck, Crosshair, Hourglass, Mic } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '../actions';
 import {
@@ -471,25 +471,33 @@ export default function MobileControlsPage() {
       <Card>
         <CardContent className="p-6 flex flex-col gap-6">
           <Button
-            className="w-full h-24 text-2xl font-bold"
+            className="w-full h-16 text-xl font-bold"
             onClick={() => setIsAddGoalDialogOpen(true)}
           >
-            <Goal className="mr-4 h-8 w-8" />
+            <Goal className="mr-4 h-6 w-6" />
             Añadir Gol
           </Button>
           <Button
-            className="w-full h-24 text-2xl font-bold"
+            className="w-full h-16 text-xl font-bold"
             onClick={() => router.push('/mobile-controls/shots')}
           >
-            <Crosshair className="mr-4 h-8 w-8" />
+            <Crosshair className="mr-4 h-6 w-6" />
             Registrar Tiro
           </Button>
+          <Button
+            className="w-full h-16 text-xl font-bold"
+            onClick={() => router.push('/mobile-controls/shotsV2')}
+            variant="secondary"
+          >
+            <Mic className="mr-4 h-6 w-6" />
+            Registrar con Voz (Beta)
+          </Button>
            <Button
-            className="w-full h-24 text-2xl font-bold"
+            className="w-full h-16 text-xl font-bold"
             onClick={() => setIsAddPenaltyDialogOpen(true)}
             variant="destructive"
           >
-            <Siren className="mr-4 h-8 w-8" />
+            <Siren className="mr-4 h-6 w-6" />
             Añadir Penalidad
           </Button>
           {showPuckInPlayButton && (
@@ -549,3 +557,4 @@ export default function MobileControlsPage() {
     </main>
   );
 }
+
