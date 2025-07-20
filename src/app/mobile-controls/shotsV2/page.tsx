@@ -97,8 +97,6 @@ export default function MobileShotsV2Page() {
   const [error, setError] = useState<string | null>(null);
   
   const [isListening, setIsListening] = useState(false);
-  const [liveTranscript, setLiveTranscript] = useState('');
-  const [finalTranscript, setFinalTranscript] = useState('');
   const [highlightedTranscript, setHighlightedTranscript] = useState<React.ReactNode>(null);
 
   const [isSupported, setIsSupported] = useState(true);
@@ -311,7 +309,7 @@ export default function MobileShotsV2Page() {
          const unprocessedText = baseText.substring(lastIndex, event.index).trim();
          if (unprocessedText) {
             highlightedNodes.push(<span key={`unprocessed-${idx}`}>{unprocessedText} </span>);
-            eventsDescriptions.push(<span key={`log-unprocessed-${idx}`} className="text-gray-500 italic">No procesado: "{unprocessedText}"</span>);
+            eventsDescriptions.unshift(<span key={`log-unprocessed-${idx}`} className="text-gray-500 italic">No procesado: "{unprocessedText}"</span>);
          }
       }
       
@@ -335,7 +333,7 @@ export default function MobileShotsV2Page() {
         sendRemoteCommand({ type: 'ADD_PENALTY', payload: event.payload });
         toast({ title: "Comando de Penalidad Enviado", description: event.description });
       }
-      eventsDescriptions.push(<span key={`log-processed-${idx}`} className={colorClass}>{event.description}</span>);
+      eventsDescriptions.unshift(<span key={`log-processed-${idx}`} className={colorClass}>{event.description}</span>);
     });
 
     // Add any remaining unprocessed text at the end
@@ -343,13 +341,12 @@ export default function MobileShotsV2Page() {
         const remainingText = baseText.substring(lastIndex).trim();
         if (remainingText) {
             highlightedNodes.push(<span key="unprocessed-end">{remainingText}</span>);
-            eventsDescriptions.push(<span key="log-unprocessed-end" className="text-gray-500 italic">No procesado: "{remainingText}"</span>);
+            eventsDescriptions.unshift(<span key="log-unprocessed-end" className="text-gray-500 italic">No procesado: "{remainingText}"</span>);
         }
     }
     
     const finalHighlightedTranscript = <p>{highlightedNodes}</p>;
     setHighlightedTranscript(finalHighlightedTranscript);
-    setFinalTranscript(baseText);
 
     if (eventsDescriptions.length > 0) {
       setAllTranscripts(prev => [finalHighlightedTranscript, ...prev]);
@@ -367,19 +364,17 @@ export default function MobileShotsV2Page() {
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = false; // Set to false to avoid issues on mobile
+    recognition.interimResults = false;
     recognition.lang = 'es-AR';
     
     recognition.onresult = (event: any) => {
         let fullTranscript = "";
-        // Reconstruct the full transcript from all results in this single event
         for (let i = 0; i < event.results.length; ++i) {
             fullTranscript += event.results[i][0].transcript;
         }
         
         const cleanedTranscript = fullTranscript.trim();
         if (cleanedTranscript) {
-            // Show the final transcript briefly for user feedback
             setHighlightedTranscript(<p className="italic text-muted-foreground">{cleanedTranscript}</p>);
             processCommand(cleanedTranscript);
         }
@@ -406,8 +401,6 @@ export default function MobileShotsV2Page() {
       stopTimeoutRef.current = null;
     }
     if (recognitionRef.current && !isListening) {
-        setLiveTranscript('');
-        setFinalTranscript('');
         setHighlightedTranscript(null);
         try {
           recognitionRef.current.start();
@@ -497,8 +490,30 @@ export default function MobileShotsV2Page() {
       </div>
       
       <Card className="min-h-[80px]">
-        <CardHeader className="py-2">
+        <CardHeader className="py-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-medium">Transcripción Procesada</CardTitle>
+            <Dialog>
+                <DialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={allTranscripts.length === 0}>
+                        <History className="h-4 w-4" />
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Historial Completo de Transcripciones</DialogTitle>
+                    </DialogHeader>
+                    <ScrollArea className="h-72 my-4 pr-3">
+                        <div className="space-y-2">
+                            {allTranscripts.length > 0 ? allTranscripts.map((item, index) => (
+                                <div key={index} className="text-sm border-b pb-2">{item}</div>
+                            )) : <p className="text-sm text-center text-muted-foreground">No hay transcripciones.</p>}
+                        </div>
+                    </ScrollArea>
+                    <DialogFooter>
+                        <DialogClose asChild><Button>Cerrar</Button></DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </CardHeader>
         <CardContent className="py-2">
             <div className="text-muted-foreground">
@@ -508,8 +523,9 @@ export default function MobileShotsV2Page() {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        <HistoryList title="Historial de Transcripciones" items={allTranscripts} icon={History} />
-        <HistoryList title="Últimos Eventos Enviados" items={processedEvents} icon={List} />
+        <div className="md:col-span-2">
+           <HistoryList title="Últimos Eventos Enviados" items={processedEvents} icon={List} />
+        </div>
       </div>
 
       <div className="text-center mt-4">
