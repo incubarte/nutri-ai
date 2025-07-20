@@ -158,40 +158,43 @@ export default function MobileShotsV2Page() {
   }, [router, fetchAndSetState]);
 
   const processCommand = useCallback((command: string) => {
-    let processedText = command.toLowerCase().trim();
+    let processedText = ` ${command.toLowerCase().trim()} `;
     if (!processedText) return;
 
     const eventsToDispatch: { index: number; type: 'goal' | 'shot'; payload: any; description: string }[] = [];
     
-    const goalWithAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)\s+asistencia\s+(\d+)/g;
-    const goalWithoutAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)(\s+sin\s+asistencia)?/g;
-    const shotRegex = /(local|loca|visitante|visitantes)\s+(\d+)/g;
+    // Use word boundaries to avoid partial matches
+    const goalWithAssistRegex = /\bgol\s+(local|loca|visitante|visitantes)\s+(\d+)\s+asistencia\s+(\d+)\b/g;
+    const goalWithoutAssistRegex = /\bgol\s+(local|loca|visitante|visitantes)\s+(\d+)(\s+sin\s+asistencia)?\b/g;
+    const shotRegex = /\b(local|loca|visitante|visitantes)\s+(\d+)\b/g;
     
     let match;
 
-    // Process goals with assists first and remove them from the string
-    processedText = processedText.replace(goalWithAssistRegex, (fullMatch, teamName, scorer, assist, index) => {
-        const team: Team = (teamName.startsWith('local') || teamName.startsWith('loca')) ? 'home' : 'away';
+    // Process goals with assists first, and blank them out so they aren't re-processed
+    while ((match = goalWithAssistRegex.exec(processedText)) !== null) {
+        const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
-            index: index,
+            index: match.index,
             type: 'goal',
-            payload: { team, scorerNumber: scorer, assistNumber: assist },
-            description: `Gol ${teamName.startsWith('local') ? 'Local' : 'Visitante'} #${scorer} (Asist. #${assist})`
+            payload: { team, scorerNumber: match[2], assistNumber: match[3] },
+            description: `Gol ${team === 'home' ? 'Local' : 'Visitante'} #${match[2]} (Asist. #${match[3]})`
         });
-        return ''; 
-    });
+        processedText = processedText.substring(0, match.index) + ' '.repeat(match[0].length) + processedText.substring(match.index + match[0].length);
+        goalWithAssistRegex.lastIndex = 0; // Reset regex index after modification
+    }
 
     // Process goals without assists
-    processedText = processedText.replace(goalWithoutAssistRegex, (fullMatch, teamName, scorer, _, index) => {
-        const team: Team = (teamName.startsWith('local') || teamName.startsWith('loca')) ? 'home' : 'away';
+    while ((match = goalWithoutAssistRegex.exec(processedText)) !== null) {
+        const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
-            index: index,
+            index: match.index,
             type: 'goal',
-            payload: { team, scorerNumber: scorer },
-            description: `Gol ${teamName.startsWith('local') ? 'Local' : 'Visitante'} #${scorer}`
+            payload: { team, scorerNumber: match[2] },
+            description: `Gol ${team === 'home' ? 'Local' : 'Visitante'} #${match[2]}`
         });
-        return '';
-    });
+        processedText = processedText.substring(0, match.index) + ' '.repeat(match[0].length) + processedText.substring(match.index + match[0].length);
+        goalWithoutAssistRegex.lastIndex = 0; // Reset regex index
+    }
 
     // Process remaining as shots
     while ((match = shotRegex.exec(processedText)) !== null) {
