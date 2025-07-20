@@ -108,7 +108,7 @@ export default function MobileShotsV2Page() {
     try {
       const initialStateRes = await fetch('/api/game-state');
       if (!initialStateRes.ok) throw new Error("Could not fetch initial game state");
-      const initialData: MobileData = await initialDataRes.json();
+      const initialData: MobileData = await initialStateRes.json();
       
       if (initialData.gameState) {
         setLiveState(initialData.gameState);
