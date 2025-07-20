@@ -148,7 +148,7 @@ export default function MobileShotsV2Page() {
   }, [router, fetchAndSetState]);
 
   const processCommand = useCallback((command: string) => {
-    const processedText = command.toLowerCase().trim();
+    let processedText = command.toLowerCase().trim();
     if (!processedText) return;
 
     const eventsToDispatch: { index: number; type: 'goal' | 'shot'; payload: any; description: string }[] = [];
@@ -156,11 +156,12 @@ export default function MobileShotsV2Page() {
     const goalWithAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)\s+asistencia\s+(\d+)/g;
     const goalWithoutAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)/g;
     const shotRegex = /(local|loca|visitante|visitantes)\s+(\d+)/g;
-
-    // Find all potential matches with their indices
+    
     let match;
+
+    // Process goals with assists first and remove them from the string
     while ((match = goalWithAssistRegex.exec(processedText)) !== null) {
-      const team: Team = (match[1] === 'local' || match[1] === 'loca') ? 'home' : 'away';
+      const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
       eventsToDispatch.push({
         index: match.index,
         type: 'goal',
@@ -168,8 +169,11 @@ export default function MobileShotsV2Page() {
         description: `Gol ${team} #${match[2]} (Asist. #${match[3]})`
       });
     }
+    processedText = processedText.replace(goalWithAssistRegex, '');
+
+    // Process goals without assists
     while ((match = goalWithoutAssistRegex.exec(processedText)) !== null) {
-      const team: Team = (match[1] === 'local' || match[1] === 'loca') ? 'home' : 'away';
+      const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
       eventsToDispatch.push({
         index: match.index,
         type: 'goal',
@@ -177,8 +181,11 @@ export default function MobileShotsV2Page() {
         description: `Gol ${team} #${match[2]}`
       });
     }
+    processedText = processedText.replace(goalWithoutAssistRegex, '');
+
+    // Process remaining as shots
     while ((match = shotRegex.exec(processedText)) !== null) {
-        const team: Team = (match[1] === 'local' || match[1] === 'loca') ? 'home' : 'away';
+        const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
             index: match.index,
             type: 'shot',
@@ -187,32 +194,11 @@ export default function MobileShotsV2Page() {
         });
     }
 
-    // Sort events by their appearance order in the string
+    // Sort events by their appearance order in the original string
     eventsToDispatch.sort((a, b) => a.index - b.index);
 
-    // Filter out nested matches (e.g., a "shot" that was part of a "goal" command)
-    const finalEvents: typeof eventsToDispatch = [];
-    let lastProcessedIndex = -1;
-    for (const event of eventsToDispatch) {
-        let isNested = false;
-        for (const otherEvent of eventsToDispatch) {
-            if (event === otherEvent) continue;
-            const otherMatchText = processedText.substring(otherEvent.index, otherEvent.index + (otherEvent.type === 'goal' ? 10 : 5)); // Approx length
-            if (otherMatchText.includes(processedText.substring(event.index, event.index + 5))) {
-                 if(event.type === 'shot' && otherEvent.type === 'goal' && event.index > otherEvent.index) {
-                     isNested = true;
-                     break;
-                 }
-            }
-        }
-        if (!isNested) {
-            finalEvents.push(event);
-        }
-    }
-
-
     const eventsDescriptions: string[] = [];
-    finalEvents.forEach(event => {
+    eventsToDispatch.forEach(event => {
       if (event.type === 'goal') {
         sendRemoteCommand({ type: 'ADD_GOAL', payload: event.payload });
         toast({ title: "Comando de Gol Enviado", description: event.description });
@@ -243,8 +229,8 @@ export default function MobileShotsV2Page() {
     
     recognition.onresult = (event: any) => {
       let interimTranscript = '';
-      let currentFinalTranscript = '';
-      for (let i = 0; i < event.results.length; ++i) {
+      let currentFinalTranscript = finalTranscriptRef.current;
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
             currentFinalTranscript += event.results[i][0].transcript;
         } else {
@@ -272,6 +258,7 @@ export default function MobileShotsV2Page() {
         processCommand(trimmedFinalTranscript);
       }
       finalTranscriptRef.current = '';
+      setTranscript('');
     };
 
     recognitionRef.current = recognition;
@@ -338,7 +325,7 @@ export default function MobileShotsV2Page() {
       </div>
       <div className="text-center">
         <p className="text-muted-foreground">Mantén presionado el botón y habla.</p>
-        <p className="text-xs text-muted-foreground">Ej: "Local 25, gol visitante 10 asistencia 22"</p>
+        <p className="text-xs text-muted-foreground">Ej: "Local 25, Local 26, Visitante 12, Visitante 63"</p>
       </div>
       
       <div className="flex flex-col items-center justify-center py-4">
