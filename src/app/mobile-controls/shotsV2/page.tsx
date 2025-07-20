@@ -154,7 +154,7 @@ export default function MobileShotsV2Page() {
     const eventsToDispatch: { index: number; type: 'goal' | 'shot'; payload: any; description: string }[] = [];
     
     const goalWithAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)\s+asistencia\s+(\d+)/g;
-    const goalWithoutAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)/g;
+    const goalWithoutAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)(\s+sin\s+asistencia)?/g;
     const shotRegex = /(local|loca|visitante|visitantes)\s+(\d+)/g;
     
     let match;
