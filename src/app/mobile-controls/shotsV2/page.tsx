@@ -28,7 +28,7 @@ interface SpeechRecognition extends EventTarget {
   onstart: (() => void) | null;
   onresult: ((event: any) => void) | null;
   onerror: ((event: any) => void) | null;
-  onend: (() => void) | null;
+  onend: ((event: any) => void) | null;
 }
 
 const HistoryList = ({ title, items, icon: Icon }: { title: string, items: string[], icon: React.ElementType }) => {
@@ -174,6 +174,7 @@ export default function MobileShotsV2Page() {
     
     let match;
 
+    // Process goals with assistance first
     while ((match = goalWithAssistRegex.exec(processedText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
@@ -183,9 +184,10 @@ export default function MobileShotsV2Page() {
             description: `Gol ${team === 'home' ? 'Local' : 'Visitante'} #${match[2]} (Asist. #${match[3]})`
         });
         processedText = processedText.substring(0, match.index) + ' '.repeat(match[0].length) + processedText.substring(match.index + match[0].length);
-        goalWithAssistRegex.lastIndex = 0; 
+        goalWithAssistRegex.lastIndex = 0;
     }
-
+    
+    // Process goals without assistance
     while ((match = goalWithoutAssistRegex.exec(processedText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
@@ -197,14 +199,15 @@ export default function MobileShotsV2Page() {
         processedText = processedText.substring(0, match.index) + ' '.repeat(match[0].length) + processedText.substring(match.index + match[0].length);
         goalWithoutAssistRegex.lastIndex = 0;
     }
-
+    
+    // Process remaining shots
     while ((match = shotRegex.exec(processedText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
             index: match.index,
             type: 'shot',
             payload: { team, playerNumber: match[2] },
-            description: `Tiro ${match[1].startsWith('local') ? 'Local' : 'Visitante'} #${match[2]}`
+            description: `Tiro ${team === 'home' ? 'Local' : 'Visitante'} #${match[2]}`
         });
     }
 
@@ -242,18 +245,18 @@ export default function MobileShotsV2Page() {
     
     recognition.onresult = (event: any) => {
       let interimTranscript = '';
-      let currentFinalTranscript = finalTranscriptRef.current;
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        const transcriptPart = event.results[i][0].transcript;
+      let currentFinalTranscript = ''; // Rebuild final transcript from results
+      
+      for (let i = 0; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-            currentFinalTranscript += transcriptPart;
+          currentFinalTranscript += event.results[i][0].transcript;
         } else {
-            interimTranscript += transcriptPart;
+          interimTranscript += event.results[i][0].transcript;
         }
       }
-      // Clean up mobile transcription artifact for live view
+
       setTranscript(interimTranscript.replace(/locallocal/g, 'local'));
-      finalTranscriptRef.current = currentFinalTranscript;
+      finalTranscriptRef.current = currentFinalTranscript.trim();
     };
 
     recognition.onerror = (event: any) => {
@@ -267,16 +270,16 @@ export default function MobileShotsV2Page() {
 
     recognition.onend = () => {
       setIsListening(false);
-      const cleanedFinalTranscript = finalTranscriptRef.current.trim().replace(/locallocal/g, 'local');
+      const cleanedFinalTranscript = finalTranscriptRef.current.replace(/locallocal/g, 'local');
+      
       if (cleanedFinalTranscript) {
-        // Show final transcript briefly for mobile users who don't get interim results
-        setTranscript(cleanedFinalTranscript);
+        setTranscript(cleanedFinalTranscript); // Show final result briefly
         setAllTranscripts(prev => [cleanedFinalTranscript, ...prev]);
         processCommand(cleanedFinalTranscript);
       }
+      
       finalTranscriptRef.current = '';
-      // Don't clear the visual transcript immediately, let it show
-      setTimeout(() => setTranscript(''), 1000);
+      setTimeout(() => setTranscript(''), 1500); // Clear visual transcript after a delay
     };
 
     recognitionRef.current = recognition;
@@ -385,3 +388,5 @@ export default function MobileShotsV2Page() {
     </main>
   );
 }
+
+    
