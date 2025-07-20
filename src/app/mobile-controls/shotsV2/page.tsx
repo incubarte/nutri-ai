@@ -9,7 +9,7 @@ import { ArrowLeft, Mic, MicOff, WifiOff, RefreshCw, List, History } from 'lucid
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '@/app/actions';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
-import type { LiveGameState, Team, MobileData } from '@/types';
+import type { LiveGameState, Team, MobileData, PenaltyTypeDefinition } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -92,7 +92,7 @@ const HistoryList = ({ title, items, icon: Icon }: { title: string, items: React
 export default function MobileShotsV2Page() {
   const router = useRouter();
   const { toast } = useToast();
-  const [liveState, setLiveState] = useState<LiveGameState | null>(null);
+  const [mobileData, setMobileData] = useState<MobileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -116,7 +116,7 @@ export default function MobileShotsV2Page() {
       const initialData: MobileData = await initialStateRes.json();
       
       if (initialData.gameState) {
-        setLiveState(initialData.gameState);
+        setMobileData(initialData);
         setError(null);
       } else {
         throw new Error("No active game state from server.");
@@ -163,27 +163,71 @@ export default function MobileShotsV2Page() {
   }, [router, fetchAndSetState]);
 
   const processCommand = useCallback((command: string) => {
+    if (!mobileData?.penaltyConfig?.penaltyTypes) return;
+
     let baseText = command.toLowerCase().trim();
     // Sanitization
     baseText = baseText.replace(/locallocal/g, 'local');
     baseText = baseText.replace(/\s+de\s+/g, ' ');
+    baseText = baseText.replace(/\s+jugador\s+/g, ' ');
     baseText = baseText.replace(/\bgolf\b/g, 'gol');
     baseText = baseText.replace(/\basistente\b/g, 'asistencia');
+
 
     if (!baseText) return;
     
     // Use an array of objects to store commands and their original positions
-    const eventsToDispatch: { index: number; type: 'goal' | 'shot'; payload: any; description: string; match: string; length: number }[] = [];
+    const eventsToDispatch: { index: number; type: 'goal' | 'shot' | 'penalty'; payload: any; description: string; match: string; length: number }[] = [];
     
+    // --- Regex patterns ---
     const goalWithAssistRegex = /\bgol\s+(local|loca|visitante|visitantes)\s+(\d+)\s+asistencia\s+(\d+)\b/g;
     const goalWithoutAssistRegex = /\bgol\s+(local|loca|visitante|visitantes)\s+(\d+)(\s+sin\s+asistencia)?\b/g;
     const shotRegex = /\b(local|loca|visitante|visitantes)\s+(\d+)\b/g;
     
+    const penaltyTypeNameRegexPart = mobileData.penaltyConfig.penaltyTypes.map(p => p.name.toLowerCase()).join('|');
+    const penaltyRegex = new RegExp(`\\b(penalidad|penalidades)\\s+(${penaltyTypeNameRegexPart})\\s+(local|loca|visitante|visitantes)\\s+(\\d+)\\b`, 'g');
+    const benchPenaltyRegex = new RegExp(`\\b(penalidad|penalidades)\\s+banco\\s+(local|loca|visitante|visitantes)\\s+(\\d+)\\b`, 'g');
+
+
     let match;
+    let textToProcess = baseText;
 
     // --- 1. Find all potential commands ---
-    let textForSimpleGoals = baseText;
-    while ((match = goalWithAssistRegex.exec(baseText)) !== null) {
+
+    // Find Penalties first, as they are more specific than shots
+    while ((match = penaltyRegex.exec(textToProcess)) !== null) {
+      const penaltyTypeName = match[2];
+      const penaltyDef = mobileData.penaltyConfig.penaltyTypes.find(p => p.name.toLowerCase() === penaltyTypeName);
+      if (penaltyDef) {
+        const team: Team = (match[3].startsWith('local') || match[3].startsWith('loca')) ? 'home' : 'away';
+        eventsToDispatch.push({
+          index: match.index,
+          type: 'penalty',
+          payload: { team, playerNumber: match[4], penaltyTypeId: penaltyDef.id },
+          description: `Pen. ${penaltyDef.name} ${team === 'home' ? 'Local' : 'Visitante'} #${match[4]}`,
+          match: match[0],
+          length: match[0].length,
+        });
+      }
+    }
+    
+    while ((match = benchPenaltyRegex.exec(textToProcess)) !== null) {
+        const penaltyDef = mobileData.penaltyConfig.penaltyTypes.find(p => p.isBenchPenalty);
+        if (penaltyDef) {
+            const team: Team = (match[2].startsWith('local') || match[2].startsWith('loca')) ? 'home' : 'away';
+            eventsToDispatch.push({
+                index: match.index,
+                type: 'penalty',
+                payload: { team, playerNumber: match[3], penaltyTypeId: penaltyDef.id },
+                description: `Pen. Banco ${team === 'home' ? 'Local' : 'Visitante'} #${match[3]}`,
+                match: match[0],
+                length: match[0].length,
+            });
+        }
+    }
+    
+    // Find Goals
+    while ((match = goalWithAssistRegex.exec(textToProcess)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
             index: match.index,
@@ -193,12 +237,9 @@ export default function MobileShotsV2Page() {
             match: match[0],
             length: match[0].length,
         });
-        // Replace matched part to avoid re-matching
-        textForSimpleGoals = textForSimpleGoals.substring(0, match.index) + ' '.repeat(match[0].length) + textForSimpleGoals.substring(match.index + match[0].length);
     }
     
-    let textForShots = textForSimpleGoals;
-    while ((match = goalWithoutAssistRegex.exec(textForShots)) !== null) {
+    while ((match = goalWithoutAssistRegex.exec(textToProcess)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
             index: match.index,
@@ -208,43 +249,53 @@ export default function MobileShotsV2Page() {
             match: match[0],
             length: match[0].length,
         });
-        // Replace matched part
-        textForShots = textForShots.substring(0, match.index) + ' '.repeat(match[0].length) + textForShots.substring(match.index + match[0].length);
     }
     
-    while ((match = shotRegex.exec(textForShots)) !== null) {
-        const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
-        eventsToDispatch.push({
+    // Find Shots
+    while ((match = shotRegex.exec(textToProcess)) !== null) {
+      const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
+      eventsToDispatch.push({
             index: match.index,
             type: 'shot',
-            payload: { team, playerNumber: match[2] },
+            payload: { team: team, playerNumber: match[2] },
             description: `Tiro ${team === 'home' ? 'Local' : 'Visitante'} #${match[2]}`,
             match: match[0],
-            length: match[0].length,
+            length: match[0].length
         });
     }
-    
-    // --- 2. Sort all found events by their original position in the text ---
+
+    // --- 2. Sort all found events by their original position and remove overlaps ---
     eventsToDispatch.sort((a, b) => a.index - b.index);
+    const finalEvents: typeof eventsToDispatch = [];
+    let lastIndexProcessed = -1;
+    for (const event of eventsToDispatch) {
+        if (event.index >= lastIndexProcessed) {
+            finalEvents.push(event);
+            lastIndexProcessed = event.index + event.length;
+        }
+    }
 
     // --- 3. Dispatch commands and generate highlighted transcript and processed event list ---
-    const eventsToLog: React.ReactNode[] = [];
+    const eventsDescriptions: React.ReactNode[] = [];
     let lastIndex = 0;
     const highlightedNodes: React.ReactNode[] = [];
 
-    eventsToDispatch.forEach((event, idx) => {
+    finalEvents.forEach((event, idx) => {
       // Add unprocessed text before the current match
       if(event.index > lastIndex) {
          const unprocessedText = baseText.substring(lastIndex, event.index).trim();
          if (unprocessedText) {
-            highlightedNodes.push(<span key={`unprocessed-${idx}`}>{unprocessedText}</span>);
-            eventsToLog.push(<span key={`log-unprocessed-${idx}`} className="text-gray-500 italic">No procesado: "{unprocessedText}"</span>);
+            highlightedNodes.push(<span key={`unprocessed-${idx}`}>{unprocessedText} </span>);
+            eventsDescriptions.push(<span key={`log-unprocessed-${idx}`} className="text-gray-500 italic">No procesado: "{unprocessedText}"</span>);
          }
       }
       
       // Add the highlighted match
-      const colorClass = event.type === 'goal' ? 'text-green-400 font-bold' : 'text-blue-400 font-semibold';
-      highlightedNodes.push(<span key={event.index} className={colorClass}> {event.match} </span>);
+      let colorClass = '';
+      if (event.type === 'goal') colorClass = 'text-green-400 font-bold';
+      else if (event.type === 'shot') colorClass = 'text-blue-400 font-semibold';
+      else if (event.type === 'penalty') colorClass = 'text-orange-400 font-bold';
+      highlightedNodes.push(<span key={event.index} className={colorClass}>{event.match} </span>);
       
       lastIndex = event.index + event.length;
 
@@ -255,8 +306,11 @@ export default function MobileShotsV2Page() {
       } else if (event.type === 'shot') {
         sendRemoteCommand({ type: 'ADD_SHOT', payload: event.payload });
         toast({ title: "Comando de Tiro Enviado", description: event.description, duration: 1500 });
+      } else if (event.type === 'penalty') {
+        sendRemoteCommand({ type: 'ADD_PENALTY', payload: event.payload });
+        toast({ title: "Comando de Penalidad Enviado", description: event.description });
       }
-      eventsToLog.push(<span key={`log-processed-${idx}`} className={colorClass}>{event.description}</span>);
+      eventsDescriptions.push(<span key={`log-processed-${idx}`} className={colorClass}>{event.description}</span>);
     });
 
     // Add any remaining unprocessed text at the end
@@ -264,7 +318,7 @@ export default function MobileShotsV2Page() {
         const remainingText = baseText.substring(lastIndex).trim();
         if (remainingText) {
             highlightedNodes.push(<span key="unprocessed-end">{remainingText}</span>);
-            eventsToLog.push(<span key="log-unprocessed-end" className="text-gray-500 italic">No procesado: "{remainingText}"</span>);
+            eventsDescriptions.push(<span key="log-unprocessed-end" className="text-gray-500 italic">No procesado: "{remainingText}"</span>);
         }
     }
     
@@ -272,11 +326,11 @@ export default function MobileShotsV2Page() {
     setHighlightedTranscript(finalHighlightedTranscript);
     setFinalTranscript(baseText);
 
-    if (eventsToLog.length > 0) {
+    if (eventsDescriptions.length > 0) {
       setAllTranscripts(prev => [finalHighlightedTranscript, ...prev]);
-      setProcessedEvents(prev => [...eventsToLog, <Separator key={`sep-${Date.now()}`} className="my-2" />, ...prev]);
+      setProcessedEvents(prev => [...eventsDescriptions, <Separator key={`sep-${Date.now()}`} className="my-2" />, ...prev]);
     }
-  }, [toast]);
+  }, [toast, mobileData]);
 
 
   useEffect(() => {
@@ -292,11 +346,14 @@ export default function MobileShotsV2Page() {
     recognition.lang = 'es-AR';
     
     recognition.onresult = (event: any) => {
-        let transcript = '';
+        let fullTranscript = "";
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-            transcript += event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                fullTranscript += event.results[i][0].transcript;
+            }
         }
-        const cleanedTranscript = transcript.trim();
+        
+        const cleanedTranscript = fullTranscript.trim();
         if (cleanedTranscript) {
             setHighlightedTranscript(<p className="italic text-muted-foreground">{cleanedTranscript}</p>);
             processCommand(cleanedTranscript);
@@ -358,7 +415,7 @@ export default function MobileShotsV2Page() {
     );
   }
 
-  if (error || !liveState) {
+  if (error || !mobileData?.gameState) {
      return (
       <div className="flex flex-col justify-center items-center h-screen text-center text-destructive p-4">
        <WifiOff className="h-12 w-12 mb-4" />
@@ -419,8 +476,8 @@ export default function MobileShotsV2Page() {
             <CardTitle className="text-sm font-medium">Transcripción Procesada</CardTitle>
         </CardHeader>
         <CardContent className="py-2">
-            <div className="text-muted-foreground italic">
-                {highlightedTranscript || (isListening ? 'Escuchando...' : 'Esperando dictado...')}
+            <div className="text-muted-foreground">
+                {highlightedTranscript || (isListening ? <span className="italic">Escuchando...</span> : <span className="italic">Esperando dictado...</span>)}
             </div>
         </CardContent>
       </Card>
