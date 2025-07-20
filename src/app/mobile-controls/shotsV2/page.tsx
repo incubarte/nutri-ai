@@ -71,7 +71,7 @@ const HistoryList = ({ title, items, icon: Icon }: { title: string, items: React
                 <div className="space-y-1 text-sm text-muted-foreground">
                     <TooltipProvider delayDuration={100}>
                     {visibleItems.length > 0 ? visibleItems.map((item, index) => (
-                        <Tooltip key={index}>
+                         <Tooltip key={index}>
                             <TooltipTrigger asChild>
                                 <div className="truncate cursor-default">{item}</div>
                             </TooltipTrigger>
@@ -225,20 +225,24 @@ export default function MobileShotsV2Page() {
     // --- 2. Sort all found events by their original position in the text ---
     eventsToDispatch.sort((a, b) => a.index - b.index);
 
-    // --- 3. Dispatch commands and generate highlighted transcript ---
-    const eventsDescriptions: React.ReactNode[] = [];
+    // --- 3. Dispatch commands and generate highlighted transcript and processed event list ---
+    const eventsToLog: React.ReactNode[] = [];
     let lastIndex = 0;
     const highlightedNodes: React.ReactNode[] = [];
 
     eventsToDispatch.forEach((event, idx) => {
       // Add unprocessed text before the current match
       if(event.index > lastIndex) {
-         highlightedNodes.push(<span key={`unprocessed-${idx}`}>{baseText.substring(lastIndex, event.index)}</span>);
+         const unprocessedText = baseText.substring(lastIndex, event.index).trim();
+         if (unprocessedText) {
+            highlightedNodes.push(<span key={`unprocessed-${idx}`}>{unprocessedText}</span>);
+            eventsToLog.push(<span key={`log-unprocessed-${idx}`} className="text-gray-500 italic">No procesado: "{unprocessedText}"</span>);
+         }
       }
       
       // Add the highlighted match
       const colorClass = event.type === 'goal' ? 'text-green-400 font-bold' : 'text-blue-400 font-semibold';
-      highlightedNodes.push(<span key={event.index} className={colorClass}>{event.match}</span>);
+      highlightedNodes.push(<span key={event.index} className={colorClass}> {event.match} </span>);
       
       lastIndex = event.index + event.length;
 
@@ -250,21 +254,25 @@ export default function MobileShotsV2Page() {
         sendRemoteCommand({ type: 'ADD_SHOT', payload: event.payload });
         toast({ title: "Comando de Tiro Enviado", description: event.description, duration: 1500 });
       }
-      eventsDescriptions.push(<span key={idx} className={colorClass}>{event.description}</span>);
+      eventsToLog.push(<span key={`log-processed-${idx}`} className={colorClass}>{event.description}</span>);
     });
 
     // Add any remaining unprocessed text at the end
     if(lastIndex < baseText.length) {
-        highlightedNodes.push(<span key="unprocessed-end">{baseText.substring(lastIndex)}</span>);
+        const remainingText = baseText.substring(lastIndex).trim();
+        if (remainingText) {
+            highlightedNodes.push(<span key="unprocessed-end">{remainingText}</span>);
+            eventsToLog.push(<span key="log-unprocessed-end" className="text-gray-500 italic">No procesado: "{remainingText}"</span>);
+        }
     }
     
     const finalHighlightedTranscript = <p>{highlightedNodes}</p>;
     setHighlightedTranscript(finalHighlightedTranscript);
     setFinalTranscript(baseText);
 
-    if (eventsDescriptions.length > 0) {
+    if (eventsToLog.length > 0) {
       setAllTranscripts(prev => [finalHighlightedTranscript, ...prev]);
-      setProcessedEvents(prev => [...eventsDescriptions, <Separator key={`sep-${Date.now()}`} className="my-2" />, ...prev]);
+      setProcessedEvents(prev => [...eventsToLog, <Separator key={`sep-${Date.now()}`} className="my-2" />, ...prev]);
     }
   }, [toast]);
 
@@ -278,23 +286,23 @@ export default function MobileShotsV2Page() {
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = false;
+    recognition.interimResults = false; // Changed to false for better mobile reliability
     recognition.lang = 'es-AR';
     
     recognition.onresult = (event: any) => {
-      let final_transcript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          final_transcript += event.results[i][0].transcript;
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                transcript += event.results[i][0].transcript;
+            } else {
+                // Now ignored due to interimResults = false
+            }
         }
-      }
-      
-      const cleanedTranscript = final_transcript.replace(/locallocal/g, 'local').trim();
-      
-      if (cleanedTranscript) {
-        setHighlightedTranscript(<p className="italic text-muted-foreground">{cleanedTranscript}</p>);
-        processCommand(cleanedTranscript);
-      }
+        const cleanedTranscript = transcript.trim();
+        if (cleanedTranscript) {
+            setHighlightedTranscript(<p className="italic text-muted-foreground">{cleanedTranscript}</p>);
+            processCommand(cleanedTranscript);
+        }
     };
 
     recognition.onerror = (event: any) => {
