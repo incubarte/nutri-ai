@@ -28,7 +28,7 @@ interface SpeechRecognition extends EventTarget {
   onstart: (() => void) | null;
   onresult: ((event: any) => void) | null;
   onerror: ((event: any) => void) | null;
-  onend: ((event: any) => void) | null;
+  onend: (() => void) | null;
 }
 
 const HistoryList = ({ title, items, icon: Icon }: { title: string, items: string[], icon: React.ElementType }) => {
@@ -97,6 +97,8 @@ export default function MobileShotsV2Page() {
   
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [highlightedTranscript, setHighlightedTranscript] = useState<React.ReactNode>(null);
+
   const [isSupported, setIsSupported] = useState(true);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const finalTranscriptRef = useRef<string>('');
@@ -159,13 +161,17 @@ export default function MobileShotsV2Page() {
 
   const processCommand = useCallback((command: string) => {
     let baseText = command.toLowerCase().trim();
-    baseText = baseText.replace(/locallocal/g, 'local').replace(/\s+de\s+/g, ' ');
+    // Sanitization
+    baseText = baseText.replace(/locallocal/g, 'local');
+    baseText = baseText.replace(/\s+de\s+/g, ' ');
+    baseText = baseText.replace(/\bgolf\b/g, 'gol');
+    baseText = baseText.replace(/\basistente\b/g, 'asistencia');
 
-    let processedText = ` ${baseText} `;
+    let processedText = ` ${baseText} `; // Pad with spaces for reliable regex matching
     
     if (!processedText.trim()) return;
 
-    const eventsToDispatch: { index: number; type: 'goal' | 'shot'; payload: any; description: string }[] = [];
+    const eventsToDispatch: { index: number; type: 'goal' | 'shot'; payload: any; description: string; match: string }[] = [];
     
     const goalWithAssistRegex = /\bgol\s+(local|loca|visitante|visitantes)\s+(\d+)\s+asistencia\s+(\d+)\b/g;
     const goalWithoutAssistRegex = /\bgol\s+(local|loca|visitante|visitantes)\s+(\d+)(\s+sin\s+asistencia)?\b/g;
@@ -173,16 +179,16 @@ export default function MobileShotsV2Page() {
     
     let match;
 
+    // --- 1. Find all potential commands and their positions ---
     while ((match = goalWithAssistRegex.exec(processedText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
             index: match.index,
             type: 'goal',
             payload: { team, scorerNumber: match[2], assistNumber: match[3] },
-            description: `Gol ${team === 'home' ? 'Local' : 'Visitante'} #${match[2]} (Asist. #${match[3]})`
+            description: `Gol ${team === 'home' ? 'Local' : 'Visitante'} #${match[2]} (Asist. #${match[3]})`,
+            match: match[0],
         });
-        processedText = processedText.substring(0, match.index) + ' '.repeat(match[0].length) + processedText.substring(match.index + match[0].length);
-        goalWithAssistRegex.lastIndex = 0;
     }
     
     while ((match = goalWithoutAssistRegex.exec(processedText)) !== null) {
@@ -191,26 +197,64 @@ export default function MobileShotsV2Page() {
             index: match.index,
             type: 'goal',
             payload: { team, scorerNumber: match[2] },
-            description: `Gol ${team === 'home' ? 'Local' : 'Visitante'} #${match[2]}`
+            description: `Gol ${team === 'home' ? 'Local' : 'Visitante'} #${match[2]}`,
+            match: match[0],
         });
-        processedText = processedText.substring(0, match.index) + ' '.repeat(match[0].length) + processedText.substring(match.index + match[0].length);
-        goalWithoutAssistRegex.lastIndex = 0;
     }
     
     while ((match = shotRegex.exec(processedText)) !== null) {
-        const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
             index: match.index,
             type: 'shot',
             payload: { team, playerNumber: match[2] },
-            description: `Tiro ${team === 'home' ? 'Local' : 'Visitante'} #${match[2]}`
+            description: `Tiro ${team === 'home' ? 'Local' : 'Visitante'} #${match[2]}`,
+            match: match[0],
         });
     }
 
-    eventsToDispatch.sort((a, b) => a.index - b.index);
+    // --- 2. Remove overlapping matches (e.g., a goal shouldn't also be a shot) ---
+    const finalEvents = [];
+    const processedIndices = new Set<number>();
+    // Sort by length of match, longest first, to prioritize more specific commands (goal over shot)
+    eventsToDispatch.sort((a,b) => b.match.length - a.match.length);
+    
+    for (const event of eventsToDispatch) {
+        let isOverlapping = false;
+        for (let i = 0; i < event.match.length; i++) {
+            if (processedIndices.has(event.index + i)) {
+                isOverlapping = true;
+                break;
+            }
+        }
+        if (!isOverlapping) {
+            finalEvents.push(event);
+            for (let i = 0; i < event.match.length; i++) {
+                processedIndices.add(event.index + i);
+            }
+        }
+    }
+    
+    // Sort back by original index to process in spoken order
+    finalEvents.sort((a, b) => a.index - b.index);
 
+    // --- 3. Dispatch commands and generate highlighted transcript ---
     const eventsDescriptions: string[] = [];
-    eventsToDispatch.forEach(event => {
+    let lastIndex = 0;
+    const highlightedNodes: React.ReactNode[] = [];
+
+    finalEvents.forEach((event, idx) => {
+      // Add unprocessed text before the current match
+      if(event.index > lastIndex) {
+         highlightedNodes.push(<span key={`unprocessed-${idx}`}>{baseText.substring(lastIndex, event.index)}</span>);
+      }
+      
+      // Add the highlighted match
+      const colorClass = event.type === 'goal' ? 'text-green-400 font-bold' : 'text-blue-400 font-semibold';
+      highlightedNodes.push(<span key={event.index} className={colorClass}>{event.match}</span>);
+      
+      lastIndex = event.index + event.match.length;
+
+      // Dispatch the command
       if (event.type === 'goal') {
         sendRemoteCommand({ type: 'ADD_GOAL', payload: event.payload });
         toast({ title: "Comando de Gol Enviado", description: event.description });
@@ -221,8 +265,16 @@ export default function MobileShotsV2Page() {
       eventsDescriptions.push(event.description);
     });
 
+    // Add any remaining unprocessed text at the end
+    if(lastIndex < baseText.length) {
+        highlightedNodes.push(<span key="unprocessed-end">{baseText.substring(lastIndex)}</span>);
+    }
+    
+    setHighlightedTranscript(<p>{highlightedNodes}</p>);
+
+
     if (eventsDescriptions.length > 0) {
-      setProcessedEvents(prev => [...eventsDescriptions.reverse(), `--- Transcripción Finalizada ---`, ...prev]);
+      setProcessedEvents(prev => [...eventsDescriptions, `--- Transcripción Finalizada ---`, ...prev].reverse());
     }
   }, [toast]);
 
@@ -241,35 +293,34 @@ export default function MobileShotsV2Page() {
     
     recognition.onresult = (event: any) => {
       let finalTranscript = '';
-      for (let i = 0; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        }
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript;
+          }
       }
-      finalTranscriptRef.current = finalTranscript.trim();
-      setTranscript(finalTranscriptRef.current);
+      const cleanedTranscript = finalTranscript.replace(/locallocal/g, 'local').trim();
+      finalTranscriptRef.current = cleanedTranscript;
+      setTranscript(cleanedTranscript);
     };
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error', event.error);
-      if (event.error === 'no-speech' || event.error === 'audio-capture') {
-        // Ignore these common errors
-      } else {
+      if (event.error !== 'no-speech' && event.error !== 'audio-capture' && event.error !== 'aborted') {
         toast({ title: "Error de Reconocimiento", description: `Error: ${event.error}`, variant: "destructive" });
       }
+      setIsListening(false);
     };
 
     recognition.onend = () => {
       setIsListening(false);
-      const cleanedFinalTranscript = finalTranscriptRef.current.replace(/locallocal/g, 'local').trim();
+      const transcriptToProcess = finalTranscriptRef.current;
       
-      if (cleanedFinalTranscript) {
-        setAllTranscripts(prev => [cleanedFinalTranscript, ...prev]);
-        processCommand(cleanedFinalTranscript);
+      if (transcriptToProcess) {
+        setAllTranscripts(prev => [transcriptToProcess, ...prev]);
+        processCommand(transcriptToProcess);
       }
       
       finalTranscriptRef.current = '';
-      setTimeout(() => setTranscript(''), 1500); // Clear visual transcript after a delay
     };
 
     recognitionRef.current = recognition;
@@ -278,6 +329,7 @@ export default function MobileShotsV2Page() {
   const handleTouchStart = () => {
     if (recognitionRef.current && !isListening) {
         setTranscript('');
+        setHighlightedTranscript(null);
         finalTranscriptRef.current = '';
         recognitionRef.current.start();
         setIsListening(true);
@@ -287,7 +339,6 @@ export default function MobileShotsV2Page() {
   const handleTouchEnd = () => {
     if (recognitionRef.current && isListening) {
         recognitionRef.current.stop();
-        // onend will handle the rest
     }
   };
 
@@ -336,7 +387,7 @@ export default function MobileShotsV2Page() {
       </div>
       <div className="text-center">
         <p className="text-muted-foreground">Mantén presionado el botón y habla.</p>
-        <p className="text-xs text-muted-foreground">Ej: "Local 25, Local 26, Visitante 12, Visitante 63"</p>
+        <p className="text-xs text-muted-foreground">Ej: "Gol Local 10 asistencia 12, visitante 43, local 22"</p>
       </div>
       
       <div className="flex flex-col items-center justify-center py-4">
@@ -358,18 +409,18 @@ export default function MobileShotsV2Page() {
       
       <Card className="min-h-[80px]">
         <CardHeader className="py-2">
-            <CardTitle className="text-sm font-medium">Transcripción</CardTitle>
+            <CardTitle className="text-sm font-medium">Transcripción Procesada</CardTitle>
         </CardHeader>
         <CardContent className="py-2">
-            <p className="text-muted-foreground italic">
-                {transcript || (isListening ? 'Escuchando...' : 'Esperando dictado...')}
-            </p>
+            <div className="text-muted-foreground italic">
+                {highlightedTranscript || (isListening ? 'Escuchando...' : 'Esperando dictado...')}
+            </div>
         </CardContent>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        <HistoryList title="Últimas Transcripciones" items={allTranscripts} icon={History} />
-        <HistoryList title="Últimos Eventos Enviados" items={processedEvents} icon={List} />
+        <HistoryList title="Historial de Transcripciones" items={allTranscripts} icon={History} />
+        <HistoryList title="Historial de Eventos Enviados" items={processedEvents} icon={List} />
       </div>
 
       <div className="text-center mt-4">
