@@ -87,9 +87,9 @@ export default function MobileShotsV2Page() {
   
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [finalTranscript, setFinalTranscript] = useState('');
   const [isSupported, setIsSupported] = useState(true);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const finalTranscriptRef = useRef<string>('');
 
   const [allTranscripts, setAllTranscripts] = useState<string[]>([]);
   const [processedEvents, setProcessedEvents] = useState<string[]>([]);
@@ -166,7 +166,7 @@ export default function MobileShotsV2Page() {
         sendRemoteCommand({ type: 'ADD_GOAL', payload: { team, scorerNumber, assistNumber } });
         const eventDescription = `Gol ${team} #${scorerNumber} (Asist. #${assistNumber})`;
         events.unshift(eventDescription);
-        toast({ title: "Comando Enviado", description: eventDescription });
+        toast({ title: "Comando de Gol Enviado", description: eventDescription });
         return ''; // Remove matched part
     });
 
@@ -176,7 +176,7 @@ export default function MobileShotsV2Page() {
         sendRemoteCommand({ type: 'ADD_GOAL', payload: { team, scorerNumber } });
         const eventDescription = `Gol ${team} #${scorerNumber}`;
         events.unshift(eventDescription);
-        toast({ title: "Comando Enviado", description: eventDescription });
+        toast({ title: "Comando de Gol Enviado", description: eventDescription });
         return ''; // Remove matched part
     });
 
@@ -186,7 +186,7 @@ export default function MobileShotsV2Page() {
         sendRemoteCommand({ type: 'ADD_SHOT', payload: { team, playerNumber } });
         const eventDescription = `Tiro ${team} #${playerNumber}`;
         events.unshift(eventDescription);
-        toast({ title: "Comando Enviado", description: eventDescription, duration: 1500 });
+        toast({ title: "Comando de Tiro Enviado", description: eventDescription, duration: 1500 });
         return ''; // Remove matched part
     });
 
@@ -209,20 +209,18 @@ export default function MobileShotsV2Page() {
     recognition.interimResults = true;
     recognition.lang = 'es-AR';
     
-    let accumulatedFinalTranscript = '';
-
     recognition.onresult = (event: any) => {
       let interimTranscript = '';
-      accumulatedFinalTranscript = ''; // Reset on new result to rebuild from final parts
+      let currentFinalTranscript = '';
       for (let i = 0; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          accumulatedFinalTranscript += event.results[i][0].transcript;
+            currentFinalTranscript += event.results[i][0].transcript;
         } else {
-          interimTranscript += event.results[i][0].transcript;
+            interimTranscript += event.results[i][0].transcript;
         }
       }
       setTranscript(interimTranscript);
-      setFinalTranscript(accumulatedFinalTranscript);
+      finalTranscriptRef.current = currentFinalTranscript;
     };
 
     recognition.onerror = (event: any) => {
@@ -236,12 +234,12 @@ export default function MobileShotsV2Page() {
 
     recognition.onend = () => {
       setIsListening(false);
-      const trimmedFinalTranscript = finalTranscript.trim();
+      const trimmedFinalTranscript = finalTranscriptRef.current.trim();
       if (trimmedFinalTranscript) {
         setAllTranscripts(prev => [trimmedFinalTranscript, ...prev]);
         processCommand(trimmedFinalTranscript);
       }
-       setFinalTranscript(''); // Clear after processing
+      finalTranscriptRef.current = '';
     };
 
     recognitionRef.current = recognition;
@@ -250,7 +248,7 @@ export default function MobileShotsV2Page() {
   const handleTouchStart = () => {
     if (recognitionRef.current && !isListening) {
         setTranscript('');
-        setFinalTranscript('');
+        finalTranscriptRef.current = '';
         recognitionRef.current.start();
         setIsListening(true);
     }
