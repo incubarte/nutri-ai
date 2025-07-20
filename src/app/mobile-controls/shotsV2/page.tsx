@@ -108,7 +108,7 @@ export default function MobileShotsV2Page() {
     try {
       const initialStateRes = await fetch('/api/game-state');
       if (!initialStateRes.ok) throw new Error("Could not fetch initial game state");
-      const initialData: MobileData = await initialStateRes.json();
+      const initialData: MobileData = await initialDataRes.json();
       
       if (initialData.gameState) {
         setLiveState(initialData.gameState);
@@ -159,8 +159,10 @@ export default function MobileShotsV2Page() {
 
   const processCommand = useCallback((command: string) => {
     let baseText = command.toLowerCase().trim();
-    // Remove "de" to allow for "gol de local..."
-    let processedText = ` ${baseText.replace(/\s+de\s+/g, ' ')} `;
+    // Clean up mobile transcription artifacts
+    baseText = baseText.replace(/locallocal/g, 'local').replace(/\s+de\s+/g, ' ');
+
+    let processedText = ` ${baseText} `;
     
     if (!processedText.trim()) return;
 
@@ -172,7 +174,6 @@ export default function MobileShotsV2Page() {
     
     let match;
 
-    // 1. Find all goals with assists and blank them out
     while ((match = goalWithAssistRegex.exec(processedText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
@@ -185,7 +186,6 @@ export default function MobileShotsV2Page() {
         goalWithAssistRegex.lastIndex = 0; 
     }
 
-    // 2. Find all goals without assists and blank them out
     while ((match = goalWithoutAssistRegex.exec(processedText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
@@ -198,7 +198,6 @@ export default function MobileShotsV2Page() {
         goalWithoutAssistRegex.lastIndex = 0;
     }
 
-    // 3. Find all remaining shots
     while ((match = shotRegex.exec(processedText)) !== null) {
         const team: Team = (match[1].startsWith('local') || match[1].startsWith('loca')) ? 'home' : 'away';
         eventsToDispatch.push({
@@ -209,7 +208,6 @@ export default function MobileShotsV2Page() {
         });
     }
 
-    // Sort events by their appearance order in the original string
     eventsToDispatch.sort((a, b) => a.index - b.index);
 
     const eventsDescriptions: string[] = [];
@@ -246,13 +244,15 @@ export default function MobileShotsV2Page() {
       let interimTranscript = '';
       let currentFinalTranscript = finalTranscriptRef.current;
       for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const transcriptPart = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-            currentFinalTranscript += event.results[i][0].transcript;
+            currentFinalTranscript += transcriptPart;
         } else {
-            interimTranscript += event.results[i][0].transcript;
+            interimTranscript += transcriptPart;
         }
       }
-      setTranscript(interimTranscript);
+      // Clean up mobile transcription artifact for live view
+      setTranscript(interimTranscript.replace(/locallocal/g, 'local'));
       finalTranscriptRef.current = currentFinalTranscript;
     };
 
@@ -267,13 +267,16 @@ export default function MobileShotsV2Page() {
 
     recognition.onend = () => {
       setIsListening(false);
-      const trimmedFinalTranscript = finalTranscriptRef.current.trim();
-      if (trimmedFinalTranscript) {
-        setAllTranscripts(prev => [trimmedFinalTranscript, ...prev]);
-        processCommand(trimmedFinalTranscript);
+      const cleanedFinalTranscript = finalTranscriptRef.current.trim().replace(/locallocal/g, 'local');
+      if (cleanedFinalTranscript) {
+        // Show final transcript briefly for mobile users who don't get interim results
+        setTranscript(cleanedFinalTranscript);
+        setAllTranscripts(prev => [cleanedFinalTranscript, ...prev]);
+        processCommand(cleanedFinalTranscript);
       }
       finalTranscriptRef.current = '';
-      setTranscript('');
+      // Don't clear the visual transcript immediately, let it show
+      setTimeout(() => setTranscript(''), 1000);
     };
 
     recognitionRef.current = recognition;
