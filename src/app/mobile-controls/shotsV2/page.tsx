@@ -5,13 +5,15 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Mic, MicOff, WifiOff, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Mic, MicOff, WifiOff, RefreshCw, List, History } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendRemoteCommand } from '@/app/actions';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
 import type { LiveGameState, Team, MobileData } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const AUTH_KEY = 'icevision-remote-auth-key';
 
@@ -28,6 +30,54 @@ interface SpeechRecognition extends EventTarget {
   onend: (() => void) | null;
 }
 
+const HistoryList = ({ title, items, icon: Icon }: { title: string, items: string[], icon: React.ElementType }) => {
+    const visibleItems = items.slice(0, 10);
+    return (
+        <Card>
+            <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        <span>{title}</span>
+                    </div>
+                     <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" disabled={items.length === 0}>Ver todo</Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-lg">
+                            <DialogHeader>
+                                <DialogTitle>Historial Completo: {title}</DialogTitle>
+                                <DialogDescription>Lista completa de todos los items registrados.</DialogDescription>
+                            </DialogHeader>
+                            <ScrollArea className="h-72 my-4 pr-3">
+                                <div className="space-y-1">
+                                    {items.length > 0 ? items.map((item, index) => (
+                                        <p key={index} className="text-sm border-b pb-1 text-muted-foreground">{item}</p>
+                                    )) : <p className="text-sm text-center text-muted-foreground">No hay items.</p>}
+                                </div>
+                            </ScrollArea>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button>Cerrar</Button>
+                                </DialogClose>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                    {visibleItems.length > 0 ? visibleItems.map((item, index) => (
+                        <p key={index} className="truncate" title={item}>{item}</p>
+                    )) : <p className="italic">No hay items aún.</p>}
+                    {items.length > 10 && <p className="text-xs text-center pt-1">...y {items.length - 10} más.</p>}
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
+
 export default function MobileShotsV2Page() {
   const router = useRouter();
   const { toast } = useToast();
@@ -40,6 +90,9 @@ export default function MobileShotsV2Page() {
   const [finalTranscript, setFinalTranscript] = useState('');
   const [isSupported, setIsSupported] = useState(true);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  const [allTranscripts, setAllTranscripts] = useState<string[]>([]);
+  const [processedEvents, setProcessedEvents] = useState<string[]>([]);
 
   const fetchAndSetState = useCallback(async () => {
     try {
@@ -96,21 +149,24 @@ export default function MobileShotsV2Page() {
 
   const processCommand = useCallback((command: string) => {
     let processedCommand = command.toLowerCase().trim();
+    const events: string[] = [];
 
-    // Regex for goals with assists: "gol local 12 asistencia 32"
+    // Regex for goals with assists: "gol local/visitante 12 asistencia 32"
     const goalWithAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)\s+asistencia\s+(\d+)/g;
     
-    // Regex for goals without assists: "gol local 12"
+    // Regex for goals without assists: "gol local/visitante 12"
     const goalWithoutAssistRegex = /gol\s+(local|loca|visitante|visitantes)\s+(\d+)/g;
 
-    // Regex for shots: "local 12"
+    // Regex for shots: "local/visitante 12"
     const shotRegex = /(local|loca|visitante|visitantes)\s+(\d+)/g;
 
     // Process goals with assists first
     processedCommand = processedCommand.replace(goalWithAssistRegex, (match, teamWord, scorerNumber, assistNumber) => {
         const team: Team = (teamWord === 'local' || teamWord === 'loca') ? 'home' : 'away';
         sendRemoteCommand({ type: 'ADD_GOAL', payload: { team, scorerNumber, assistNumber } });
-        toast({ title: "Comando de Gol Enviado", description: `Equipo: ${team}, Gol: #${scorerNumber}, Asist: #${assistNumber}` });
+        const eventDescription = `Gol ${team} #${scorerNumber} (Asist. #${assistNumber})`;
+        events.unshift(eventDescription);
+        toast({ title: "Comando Enviado", description: eventDescription });
         return ''; // Remove matched part
     });
 
@@ -118,7 +174,9 @@ export default function MobileShotsV2Page() {
     processedCommand = processedCommand.replace(goalWithoutAssistRegex, (match, teamWord, scorerNumber) => {
         const team: Team = (teamWord === 'local' || teamWord === 'loca') ? 'home' : 'away';
         sendRemoteCommand({ type: 'ADD_GOAL', payload: { team, scorerNumber } });
-        toast({ title: "Comando de Gol Enviado", description: `Equipo: ${team}, Gol: #${scorerNumber}` });
+        const eventDescription = `Gol ${team} #${scorerNumber}`;
+        events.unshift(eventDescription);
+        toast({ title: "Comando Enviado", description: eventDescription });
         return ''; // Remove matched part
     });
 
@@ -126,9 +184,15 @@ export default function MobileShotsV2Page() {
     processedCommand.replace(shotRegex, (match, teamWord, playerNumber) => {
         const team: Team = (teamWord === 'local' || teamWord === 'loca') ? 'home' : 'away';
         sendRemoteCommand({ type: 'ADD_SHOT', payload: { team, playerNumber } });
-        toast({ title: "Comando de Tiro Enviado", description: `Tiro para ${team} #${playerNumber}` });
+        const eventDescription = `Tiro ${team} #${playerNumber}`;
+        events.unshift(eventDescription);
+        toast({ title: "Comando Enviado", description: eventDescription, duration: 1500 });
         return ''; // Remove matched part
     });
+
+    if (events.length > 0) {
+        setProcessedEvents(prev => [...events, ...prev]);
+    }
 
   }, [toast]);
 
@@ -172,8 +236,10 @@ export default function MobileShotsV2Page() {
 
     recognition.onend = () => {
       setIsListening(false);
-      if (finalTranscript.trim()) {
-        processCommand(finalTranscript);
+      const trimmedFinalTranscript = finalTranscript.trim();
+      if (trimmedFinalTranscript) {
+        setAllTranscripts(prev => [trimmedFinalTranscript, ...prev]);
+        processCommand(trimmedFinalTranscript);
       }
        setFinalTranscript(''); // Clear after processing
     };
@@ -233,7 +299,7 @@ export default function MobileShotsV2Page() {
 
 
   return (
-    <main className="w-full max-w-lg mx-auto p-4 space-y-6 flex flex-col h-[80vh]">
+    <main className="w-full max-w-2xl mx-auto p-4 space-y-4">
        <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4" />
@@ -245,7 +311,7 @@ export default function MobileShotsV2Page() {
         <p className="text-xs text-muted-foreground">Ej: "Local 25, gol visitante 10 asistencia 22"</p>
       </div>
       
-      <div className="flex-grow flex flex-col items-center justify-center">
+      <div className="flex flex-col items-center justify-center py-4">
           <Button
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
@@ -262,20 +328,25 @@ export default function MobileShotsV2Page() {
           </Button>
       </div>
       
-      <Card className="min-h-[100px]">
-        <CardHeader>
-            <CardTitle className="text-lg">Transcripción en vivo</CardTitle>
+      <Card className="min-h-[80px]">
+        <CardHeader className="py-2">
+            <CardTitle className="text-sm font-medium">Transcripción en vivo</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-2">
             <p className="text-muted-foreground italic">
                 {transcript || 'Esperando dictado...'}
             </p>
         </CardContent>
       </Card>
-      <div className="text-center">
-        <Badge variant="secondary">Estado: {isListening ? 'Activado' : 'Inactivo'}</Badge>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <HistoryList title="Últimas Transcripciones" items={allTranscripts} icon={History} />
+        <HistoryList title="Últimos Eventos Enviados" items={processedEvents} icon={List} />
+      </div>
+
+      <div className="text-center mt-4">
+        <Badge variant="secondary">Estado Mic: {isListening ? 'Activado' : 'Inactivo'}</Badge>
       </div>
     </main>
   );
 }
-
