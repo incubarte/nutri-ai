@@ -34,6 +34,8 @@ type PageDisplayState = 'Checking' | 'Primary' | 'Secondary';
 const QRTooltipContent = ({ title, url, ipAddress, ipLabel, status, isConnecting, onConnect }: { title: string; url: string; ipAddress?: string; ipLabel?: string; status: 'connected' | 'disconnected' | 'error' | 'connecting'; isConnecting?: boolean; onConnect?: () => void; }) => {
     const { toast } = useToast();
     const [remotePassword, setRemotePassword] = useState<string | null>('cargando...');
+    const [combinedInfoQrValue, setCombinedInfoQrValue] = useState('');
+
 
     useEffect(() => {
         const fetchPassword = async () => {
@@ -51,6 +53,15 @@ const QRTooltipContent = ({ title, url, ipAddress, ipLabel, status, isConnecting
         };
         fetchPassword();
     }, []);
+
+    useEffect(() => {
+        if (ipAddress && remotePassword && !remotePassword.includes('cargando')) {
+            const qrText = `Clave de túnel: ${ipAddress}\nClave de acceso: ${remotePassword}`;
+            setCombinedInfoQrValue(qrText);
+        } else {
+            setCombinedInfoQrValue('');
+        }
+    }, [ipAddress, remotePassword]);
 
 
     const handleCopyToClipboard = (text: string, label: string) => {
@@ -81,8 +92,15 @@ const QRTooltipContent = ({ title, url, ipAddress, ipLabel, status, isConnecting
     return (
         <div className="flex flex-col items-center gap-4 p-4 bg-popover text-popover-foreground w-64">
             <p className="font-semibold text-lg">{title}</p>
-            <div className="bg-white p-2 rounded-md">
-                <QRCodeSVG value={url} size={140} />
+             <div className="flex items-end gap-2">
+                <div className="bg-white p-2 rounded-md">
+                    <QRCodeSVG value={url} size={140} />
+                </div>
+                {combinedInfoQrValue && (
+                    <div className="bg-white p-1 rounded-md">
+                        <QRCodeSVG value={combinedInfoQrValue} size={50} />
+                    </div>
+                )}
             </div>
              {ipAddress && (
                  <div className="w-full text-center">
