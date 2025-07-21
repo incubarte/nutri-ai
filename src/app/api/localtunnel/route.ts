@@ -57,13 +57,15 @@ export async function POST(request: Request) {
       const tunnel = await localtunnel({ port: port, subdomain: dynamicSubdomain });
       globalForTunnel.tunnel = tunnel;
       
-      console.log(`Localtunnel conectado en: ${tunnel.url}`);
-      globalForTunnel.tunnelStatus = {
-          status: 'connected',
-          url: tunnel.url,
-          subdomain: dynamicSubdomain,
-          lastMessage: `Conectado a ${tunnel.url}`,
-      };
+      tunnel.on('url', (url: string) => {
+        console.log(`Localtunnel conectado en: ${url}`);
+        globalForTunnel.tunnelStatus = {
+            status: 'connected',
+            url: url,
+            subdomain: dynamicSubdomain,
+            lastMessage: `Conectado a ${url}`,
+        };
+      });
 
       tunnel.on('error', (err: any) => {
         console.warn('Error en el túnel (localtunnel):', err?.message || err);
