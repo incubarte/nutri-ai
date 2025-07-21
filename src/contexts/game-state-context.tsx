@@ -3,7 +3,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
@@ -89,8 +89,8 @@ const IN_CODE_INITIAL_AVAILABLE_CATEGORIES: CategoryData[] = IN_CODE_INITIAL_CAT
 const IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY = IN_CODE_INITIAL_AVAILABLE_CATEGORIES[0]?.id || '';
 
 const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
-  home: { goals: [], penalties: [], playerStats: {} },
-  away: { goals: [], penalties: [], playerStats: {} },
+  home: { goals: [], penalties: [], playerStats: {}, homeShotsLog: [] },
+  away: { goals: [], penalties: [], playerStats: {}, awayShotsLog: [] },
   attendance: { home: [], away: [] },
 };
 
@@ -619,11 +619,20 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PLAYER_SHOT': {
       const { team, playerNumber } = action.payload;
-      const score = { ...state.live.score };
-      const playerStats = { ...(state.live.gameSummary[team]?.playerStats || {}) };
-      
       const attendedPlayer = state.live.gameSummary.attendance[team].find(p => p.number === playerNumber);
       
+      const newShotLog: ShotLog = {
+        id: safeUUID(),
+        team,
+        timestamp: Date.now(),
+        gameTime: state.live.clock.currentTime,
+        periodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
+        playerNumber,
+        playerName: attendedPlayer?.name,
+      };
+
+      const score = { ...state.live.score };
+      const playerStats = { ...(state.live.gameSummary[team]?.playerStats || {}) };
       const currentStats = playerStats[playerNumber] || { name: attendedPlayer?.name || '', shots: 0, goals: 0, assists: 0 };
       
       playerStats[playerNumber] = {
@@ -632,6 +641,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         shots: currentStats.shots + 1,
       };
 
+      const teamShotsLogKey: 'homeShotsLog' | 'awayShotsLog' = `${team}ShotsLog`;
+      const updatedShotsLog = [...(state.live.gameSummary[team]?.[teamShotsLogKey] || []), newShotLog];
+      
       if (team === 'home') score.homeShots = (score.homeShots || 0) + 1;
       if (team === 'away') score.awayShots = (score.awayShots || 0) + 1;
 
@@ -641,7 +653,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           ...state.live.gameSummary,
           [team]: {
             ...state.live.gameSummary[team],
-            playerStats
+            playerStats,
+            [teamShotsLogKey]: updatedShotsLog,
           }
         }
       }};

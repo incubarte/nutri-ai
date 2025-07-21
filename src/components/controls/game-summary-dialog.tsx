@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { useGameState, formatTime, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getEndReasonText } from "@/contexts/game-state-context";
+import { useGameState, formatTime, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getEndReasonText, type ShotLog } from "@/contexts/game-state-context";
 import type { PlayerStats } from '@/types';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -121,7 +121,7 @@ const PenaltiesSection = ({ team, teamName, penalties }: { team: Team; teamName:
     );
 };
 
-const PlayerStatsSection = ({ team, teamName, playerStats, includeShots = true }: { team: Team; teamName: string; playerStats: PlayerStats | undefined; includeShots?: boolean }) => {
+const PlayerStatsSection = ({ playerStats }: { playerStats: PlayerStats | undefined; }) => {
     const attendedPlayers = useMemo(() => {
         if (!playerStats) return [];
         return Object.entries(playerStats).map(([playerNumber, stats]) => ({
@@ -134,17 +134,17 @@ const PlayerStatsSection = ({ team, teamName, playerStats, includeShots = true }
         return attendedPlayers.reduce((acc, player) => {
             acc.goals += player.goals || 0;
             acc.assists += player.assists || 0;
-            if (includeShots) acc.shots += player.shots || 0;
+            acc.shots += player.shots || 0;
             return acc;
         }, { goals: 0, assists: 0, shots: 0 });
-    }, [attendedPlayers, includeShots]);
+    }, [attendedPlayers]);
     
-    const hasAnyData = attendedPlayers.some(p => p.goals > 0 || p.assists > 0 || (includeShots && p.shots > 0));
+    const hasAnyData = attendedPlayers.some(p => p.goals > 0 || p.assists > 0 || p.shots > 0);
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas por Jugador</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas</CardTitle>
             </CardHeader>
             <CardContent>
                 {hasAnyData ? (
@@ -155,7 +155,7 @@ const PlayerStatsSection = ({ team, teamName, playerStats, includeShots = true }
                                 <TableHead>Nombre</TableHead>
                                 <TableHead className="text-center">G</TableHead>
                                 <TableHead className="text-center">A</TableHead>
-                                {includeShots && <TableHead className="text-center">T</TableHead>}
+                                <TableHead className="text-center">T</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -165,7 +165,7 @@ const PlayerStatsSection = ({ team, teamName, playerStats, includeShots = true }
                                     <TableCell className="text-xs text-muted-foreground">{player.name}</TableCell>
                                     <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
                                     <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
-                                    {includeShots && <TableCell className="text-center font-mono">{player.shots || 0}</TableCell>}
+                                    <TableCell className="text-center font-mono">{player.shots || 0}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -174,7 +174,7 @@ const PlayerStatsSection = ({ team, teamName, playerStats, includeShots = true }
                                 <TableCell colSpan={2} className="text-right font-bold">TOTAL</TableCell>
                                 <TableCell className="text-center font-bold font-mono">{totals.goals}</TableCell>
                                 <TableCell className="text-center font-bold font-mono">{totals.assists}</TableCell>
-                                {includeShots && <TableCell className="text-center font-bold font-mono">{totals.shots}</TableCell>}
+                                <TableCell className="text-center font-bold font-mono">{totals.shots}</TableCell>
                             </TableRow>
                         </UiTableFooter>
                     </Table>
@@ -263,8 +263,9 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     });
   };
 
-  const getPlayerStatsForPeriod = (teamGoals: GoalLog[]): PlayerStats => {
+  const getPlayerStatsForPeriod = (teamGoals: GoalLog[], teamShots: ShotLog[]): PlayerStats => {
       const stats: Record<string, { name: string; goals: number; assists: number; shots: number }> = {};
+      
       teamGoals.forEach(g => {
           if (g.scorer?.playerNumber) {
               if (!stats[g.scorer.playerNumber]) stats[g.scorer.playerNumber] = { name: g.scorer.playerName || '', goals: 0, assists: 0, shots: 0 };
@@ -275,6 +276,14 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
               stats[g.assist.playerNumber].assists++;
           }
       });
+
+      teamShots.forEach(s => {
+          if (s.playerNumber) {
+              if (!stats[s.playerNumber]) stats[s.playerNumber] = { name: s.playerName || '', goals: 0, assists: 0, shots: 0 };
+              stats[s.playerNumber].shots++;
+          }
+      });
+
       return stats as PlayerStats;
   };
 
@@ -313,8 +322,8 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
 
             {/* General Player Stats Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <PlayerStatsSection team="home" teamName={state.live.homeTeamName} playerStats={state.live.gameSummary.home.playerStats} />
-              <PlayerStatsSection team="away" teamName={state.live.awayTeamName} playerStats={state.live.gameSummary.away.playerStats} />
+              <PlayerStatsSection playerStats={state.live.gameSummary.home.playerStats} />
+              <PlayerStatsSection playerStats={state.live.gameSummary.away.playerStats} />
             </div>
 
             <Separator />
@@ -330,23 +339,27 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
                     {allPeriodTexts.map(periodText => {
                        const homeGoalsInPeriod = allHomeGoals.filter(g => g.periodText === periodText);
                        const awayGoalsInPeriod = allAwayGoals.filter(g => g.periodText === periodText);
-                       const homePlayerStatsInPeriod = getPlayerStatsForPeriod(homeGoalsInPeriod);
-                       const awayPlayerStatsInPeriod = getPlayerStatsForPeriod(awayGoalsInPeriod);
+                       const homeShotsInPeriod = (state.live.gameSummary.home.homeShotsLog || []).filter(s => s.periodText === periodText);
+                       const awayShotsInPeriod = (state.live.gameSummary.away.awayShotsLog || []).filter(s => s.periodText === periodText);
+                       const homePlayerStatsInPeriod = getPlayerStatsForPeriod(homeGoalsInPeriod, homeShotsInPeriod);
+                       const awayPlayerStatsInPeriod = getPlayerStatsForPeriod(awayGoalsInPeriod, awayShotsInPeriod);
+                       const homePenaltiesInPeriod = allHomePenalties.filter(p => p.addPeriodText === periodText);
+                       const awayPenaltiesInPeriod = allAwayPenalties.filter(p => p.addPeriodText === periodText);
 
                       return (
                         <div key={periodText} className="space-y-4">
                           <h3 className="text-xl font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <GoalsSection team="home" teamName={state.live.homeTeamName} goals={homeGoalsInPeriod} />
                               <GoalsSection team="away" teamName={state.live.awayTeamName} goals={awayGoalsInPeriod} />
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <PlayerStatsSection team="home" teamName={state.live.homeTeamName} playerStats={homePlayerStatsInPeriod} includeShots={false} />
-                              <PlayerStatsSection team="away" teamName={state.live.awayTeamName} playerStats={awayPlayerStatsInPeriod} includeShots={false} />
+                              <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={homePenaltiesInPeriod} />
+                              <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={awayPenaltiesInPeriod} />
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={allHomePenalties.filter(p => p.addPeriodText === periodText)} />
-                              <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={allAwayPenalties.filter(p => p.addPeriodText === periodText)} />
+                              <PlayerStatsSection playerStats={homePlayerStatsInPeriod} />
+                              <PlayerStatsSection playerStats={awayPlayerStatsInPeriod} />
                           </div>
                         </div>
                       )
@@ -370,4 +383,3 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     </Dialog>
   );
 }
-

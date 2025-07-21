@@ -143,6 +143,16 @@ export interface PenaltyLog {
   timeServed?: number;
 }
 
+export interface ShotLog {
+  id: string;
+  team: Team;
+  timestamp: number;
+  gameTime: number;
+  periodText: string;
+  playerNumber: string;
+  playerName?: string;
+}
+
 export interface AttendedPlayerInfo {
   id: string;
   number: string;
@@ -153,12 +163,14 @@ export interface GameSummary {
   home: {
     goals: GoalLog[];
     penalties: PenaltyLog[];
-    playerStats: Record<string, PlayerStats>; 
+    playerStats: Record<string, PlayerStats>;
+    homeShotsLog: ShotLog[];
   };
   away: {
     goals: GoalLog[];
     penalties: PenaltyLog[];
     playerStats: Record<string, PlayerStats>;
+    awayShotsLog: ShotLog[];
   };
   attendance: {
     home: AttendedPlayerInfo[]; 
