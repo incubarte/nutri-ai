@@ -9,11 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter as UiTableFooter } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Goal, Siren, X, FileText, FileDown, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { exportGameSummaryPDF } from "@/lib/pdf-generator";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 
 interface GameSummaryDialogProps {
   isOpen: boolean;
@@ -58,6 +59,11 @@ const GoalsSection = ({ team, teamName, goals }: { team: Team; teamName: string;
                         </TableRow>
                     ))}
                     </TableBody>
+                    <UiTableFooter>
+                        <TableRow>
+                            <TableCell colSpan={3} className="text-right font-bold">Total Goles: {goals.length}</TableCell>
+                        </TableRow>
+                    </UiTableFooter>
                 </Table>
                 ) : <p className="text-sm text-muted-foreground">Sin goles registrados.</p>}
             </CardContent>
@@ -76,6 +82,7 @@ const PenaltiesSection = ({ team, teamName, penalties }: { team: Team; teamName:
                 <Table>
                     <TableHeader>
                     <TableRow>
+                        <TableHead>Tiempo</TableHead>
                         <TableHead>Jugador</TableHead>
                         <TableHead>Tipo</TableHead>
                         <TableHead>Duración</TableHead>
@@ -85,6 +92,10 @@ const PenaltiesSection = ({ team, teamName, penalties }: { team: Team; teamName:
                     <TableBody>
                     {penalties.map(p => (
                         <TableRow key={p.id}>
+                        <TableCell>
+                            <div className="font-mono text-sm">{formatTime(p.addGameTime)}</div>
+                            <div className="text-xs text-muted-foreground">{p.addPeriodText}</div>
+                        </TableCell>
                         <TableCell>
                             <div className="font-semibold">{p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber}`}</div>
                             <div className="text-xs text-muted-foreground">{p.isBenchPenalty ? '---' : p.playerName || '---'}</div>
@@ -98,6 +109,11 @@ const PenaltiesSection = ({ team, teamName, penalties }: { team: Team; teamName:
                         </TableRow>
                     ))}
                     </TableBody>
+                     <UiTableFooter>
+                        <TableRow>
+                            <TableCell colSpan={5} className="text-right font-bold">Total Penalidades: {penalties.length}</TableCell>
+                        </TableRow>
+                    </UiTableFooter>
                 </Table>
                 ) : <p className="text-sm text-muted-foreground">Sin penalidades registradas.</p>}
             </CardContent>
@@ -113,6 +129,15 @@ const PlayerStatsSection = ({ team, teamName, playerStats }: { team: Team; teamN
             ...stats
         })).sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
     }, [playerStats]);
+
+    const totals = useMemo(() => {
+        return attendedPlayers.reduce((acc, player) => {
+            acc.goals += player.goals || 0;
+            acc.assists += player.assists || 0;
+            acc.shots += player.shots || 0;
+            return acc;
+        }, { goals: 0, assists: 0, shots: 0 });
+    }, [attendedPlayers]);
 
     return (
         <Card>
@@ -142,6 +167,14 @@ const PlayerStatsSection = ({ team, teamName, playerStats }: { team: Team; teamN
                                 </TableRow>
                             ))}
                         </TableBody>
+                        <UiTableFooter>
+                            <TableRow>
+                                <TableCell colSpan={2} className="text-right font-bold">TOTAL</TableCell>
+                                <TableCell className="text-center font-bold font-mono">{totals.goals}</TableCell>
+                                <TableCell className="text-center font-bold font-mono">{totals.assists}</TableCell>
+                                <TableCell className="text-center font-bold font-mono">{totals.shots}</TableCell>
+                            </TableRow>
+                        </UiTableFooter>
                     </Table>
                 ) : (
                     <p className="text-sm text-muted-foreground">Sin estadísticas de jugadores.</p>
@@ -156,25 +189,39 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
   const { state } = useGameState();
   const { toast } = useToast();
   
-  const homeGoals = useMemo(() => {
+  const allHomeGoals = useMemo(() => {
     if (!state.live.score) return [];
     return [...(state.live.score.homeGoals || [])].sort((a, b) => a.timestamp - b.timestamp);
   }, [state.live.score]);
   
-  const awayGoals = useMemo(() => {
+  const allAwayGoals = useMemo(() => {
     if (!state.live.score) return [];
     return [...(state.live.score.awayGoals || [])].sort((a, b) => a.timestamp - b.timestamp);
   }, [state.live.score]);
   
-  const homePenalties = useMemo(() => {
+  const allHomePenalties = useMemo(() => {
       if (!state.live.gameSummary.home) return [];
       return [...state.live.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
   }, [state.live.gameSummary.home]);
 
-  const awayPenalties = useMemo(() => {
+  const allAwayPenalties = useMemo(() => {
       if (!state.live.gameSummary.away) return [];
       return [...state.live.gameSummary.away.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
   }, [state.live.gameSummary.away]);
+
+  const getPeriodNumber = (periodText: string): number => {
+    if (!state.config) return 0;
+    if (periodText.startsWith('OT')) return state.config.numberOfRegularPeriods + parseInt(periodText.replace('OT', '') || '1', 10);
+    if (periodText === 'Warm-up') return 0;
+    return parseInt(periodText.replace(/ST|ND|RD|TH/,''), 10);
+  }
+  
+  const allPeriodTexts = useMemo(() => {
+      const uniquePeriodTexts = new Set(
+          [...allHomeGoals, ...allAwayGoals, ...allHomePenalties, ...allAwayPenalties].map(e => e.addPeriodText || e.periodText)
+      );
+      return Array.from(uniquePeriodTexts).sort((a, b) => getPeriodNumber(a) - getPeriodNumber(b));
+  }, [allHomeGoals, allAwayGoals, allHomePenalties, allAwayPenalties]);
 
 
   const escapeCsvCell = (cellData: any): string => {
@@ -189,10 +236,10 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     const headers = ['Equipo', 'Tipo', 'Tiempo Juego', 'Periodo', '# Jugador', 'Nombre', '# Jugador 2', 'Nombre 2', 'Duración Pen.', 'Estado Pen.'];
     const rows: string[][] = [];
 
-    homeGoals.forEach(g => rows.push([state.live.homeTeamName, 'Gol', formatTime(g.gameTime), g.periodText, g.scorer?.playerNumber || 'S/N', g.scorer?.playerName || '---', g.assist?.playerNumber || '', g.assist?.playerName || '', '', '']));
-    awayGoals.forEach(g => rows.push([state.live.awayTeamName, 'Gol', formatTime(g.gameTime), g.periodText, g.scorer?.playerNumber || 'S/N', g.scorer?.playerName || '---', g.assist?.playerNumber || '', g.assist?.playerName || '', '', '']));
-    homePenalties.forEach(p => rows.push([state.live.homeTeamName, 'Penalidad', formatTime(p.addGameTime), p.addPeriodText, p.playerNumber, p.playerName || '---', '', '', formatTime(p.initialDuration * 100), getEndReasonText(p.endReason) ]));
-    awayPenalties.forEach(p => rows.push([state.live.awayTeamName, 'Penalidad', formatTime(p.addGameTime), p.addPeriodText, p.playerNumber, p.playerName || '---', '', '', formatTime(p.initialDuration * 100), getEndReasonText(p.endReason) ]));
+    allHomeGoals.forEach(g => rows.push([state.live.homeTeamName, 'Gol', formatTime(g.gameTime), g.periodText, g.scorer?.playerNumber || 'S/N', g.scorer?.playerName || '---', g.assist?.playerNumber || '', g.assist?.playerName || '', '', '']));
+    allAwayGoals.forEach(g => rows.push([state.live.awayTeamName, 'Gol', formatTime(g.gameTime), g.periodText, g.scorer?.playerNumber || 'S/N', g.scorer?.playerName || '---', g.assist?.playerNumber || '', g.assist?.playerName || '', '', '']));
+    allHomePenalties.forEach(p => rows.push([state.live.homeTeamName, 'Penalidad', formatTime(p.addGameTime), p.addPeriodText, p.playerNumber, p.playerName || '---', '', '', formatTime(p.initialDuration * 100), getEndReasonText(p.endReason) ]));
+    allAwayPenalties.forEach(p => rows.push([state.live.awayTeamName, 'Penalidad', formatTime(p.addGameTime), p.addPeriodText, p.playerNumber, p.playerName || '---', '', '', formatTime(p.initialDuration * 100), getEndReasonText(p.endReason) ]));
 
     const csvContent = "data:text/csv;charset=utf-8," 
       + [headers.map(escapeCsvCell).join(','), ...rows.map(row => row.map(escapeCsvCell).join(','))].join('\n');
@@ -231,27 +278,55 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
 
         <ScrollArea className="flex-grow my-4 border-y py-4 pr-6 -mr-6">
           <div className="space-y-6">
-            {/* Goals Section */}
+            {/* General Goals Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <GoalsSection team="home" teamName={state.live.homeTeamName} goals={homeGoals} />
-              <GoalsSection team="away" teamName={state.live.awayTeamName} goals={awayGoals} />
+              <GoalsSection team="home" teamName={state.live.homeTeamName} goals={allHomeGoals} />
+              <GoalsSection team="away" teamName={state.live.awayTeamName} goals={allAwayGoals} />
             </div>
 
             <Separator />
             
-            {/* Penalties Section */}
+            {/* General Penalties Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={homePenalties} />
-              <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={awayPenalties} />
+              <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={allHomePenalties} />
+              <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={allAwayPenalties} />
             </div>
 
             <Separator />
 
-            {/* Player Stats Section */}
+            {/* General Player Stats Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <PlayerStatsSection team="home" teamName={state.live.homeTeamName} playerStats={state.live.gameSummary.home.playerStats} />
               <PlayerStatsSection team="away" teamName={state.live.awayTeamName} playerStats={state.live.gameSummary.away.playerStats} />
             </div>
+
+            <Separator />
+
+            {/* Per-Period Stats */}
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="item-1">
+                <AccordionTrigger className="text-xl text-primary-foreground hover:no-underline">
+                  Estadísticas por Periodo
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-8 pl-2">
+                    {allPeriodTexts.map(periodText => (
+                      <div key={periodText} className="space-y-4">
+                        <h3 className="text-xl font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <GoalsSection team="home" teamName={state.live.homeTeamName} goals={allHomeGoals.filter(g => g.periodText === periodText)} />
+                            <GoalsSection team="away" teamName={state.live.awayTeamName} goals={allAwayGoals.filter(g => g.periodText === periodText)} />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={allHomePenalties.filter(p => p.addPeriodText === periodText)} />
+                            <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={allAwayPenalties.filter(p => p.addPeriodText === periodText)} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         </ScrollArea>
         <DialogFooter className="flex-wrap">
