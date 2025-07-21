@@ -1,17 +1,33 @@
 
 import { NextResponse } from 'next/server';
-import localtunnel, { type Tunnel } from 'localtunnel';
+import localtunnel from 'localtunnel';
+import type { Tunnel } from 'localtunnel';
 
-// Mantener una referencia global al túnel activo.
-// Esto es importante porque los módulos de Next.js pueden ser recargados en desarrollo.
+// `localtunnel` returns a Promise that resolves to the tunnel object.
+// We'll store this tunnel object in the global scope.
 const globalForTunnel = globalThis as unknown as {
-  activeTunnel: Tunnel | undefined;
+  tunnel: Tunnel | undefined;
+  tunnelStatus: {
+    status: 'disconnected' | 'connecting' | 'connected' | 'error';
+    url: string | null;
+    subdomain: string | null;
+    lastMessage: string | null;
+  };
 };
 
-// --- Helper para generar el subdominio ---
-import defaults from '@/config/defaults.json';
+// Initialize the status if it doesn't exist
+if (!globalForTunnel.tunnelStatus) {
+    globalForTunnel.tunnelStatus = {
+        status: 'disconnected',
+        url: null,
+        subdomain: null,
+        lastMessage: null,
+    };
+}
+
+
 const getDynamicSubdomain = () => {
-  const prefix = defaults.tunnel.subdomainPrefix || 'icevision-fs';
+  const prefix = 'icevision-fs'; // Keep prefix consistent
   const randomNumber = Math.floor(10000 + Math.random() * 90000); // 5-digit random number
   return `${prefix}-${randomNumber}`;
 };
@@ -21,7 +37,7 @@ export async function POST(request: Request) {
   const { action, port } = await request.json();
 
   if (action === 'connect') {
-    if (globalForTunnel.activeTunnel) {
+    if (globalForTunnel.tunnel) {
       return NextResponse.json({ success: false, message: 'Ya existe un túnel activo.' }, { status: 400 });
     }
     if (!port) {
@@ -31,49 +47,55 @@ export async function POST(request: Request) {
     const dynamicSubdomain = getDynamicSubdomain();
 
     try {
-      const tunnel = await localtunnel({ port: Number(port), subdomain: dynamicSubdomain });
-      globalForTunnel.activeTunnel = tunnel;
+      globalForTunnel.tunnelStatus = {
+          status: 'connecting',
+          url: null,
+          subdomain: dynamicSubdomain,
+          lastMessage: 'Iniciando conexión...'
+      };
+      
+      const tunnel = await localtunnel({ port: port, subdomain: dynamicSubdomain });
+      globalForTunnel.tunnel = tunnel;
+      
+      console.log(`Localtunnel conectado en: ${tunnel.url}`);
+      globalForTunnel.tunnelStatus = {
+          status: 'connected',
+          url: tunnel.url,
+          subdomain: dynamicSubdomain,
+          lastMessage: `Conectado a ${tunnel.url}`,
+      };
 
-      console.log(`Localtunnel abierto en: ${tunnel.url}`);
-
+      tunnel.on('error', (err: any) => {
+        console.warn('Error en el túnel (localtunnel):', err?.message || err);
+        // This won't be reflected in the initial response but good for server logs
+      });
+      
       tunnel.on('close', () => {
         console.log('Túnel cerrado.');
-        globalForTunnel.activeTunnel = undefined;
-        // Podrías usar un webhook o un event emitter aquí para notificar al frontend.
+        globalForTunnel.tunnel = undefined;
+        // Don't update status here to avoid race conditions if a new one is connecting
       });
-
-      tunnel.on('error', (err) => {
-        // Silently log the error on the server if needed, but don't console.error to avoid noise
-        // console.log('Error en el túnel:', err);
-        globalForTunnel.activeTunnel = undefined;
-      });
-
-      return NextResponse.json({ success: true, url: tunnel.url, subdomain: dynamicSubdomain });
+      
+      return NextResponse.json({ success: true, message: 'Túnel conectado.', url: tunnel.url, subdomain: dynamicSubdomain });
 
     } catch (error: any) {
-      // Don't log to console to avoid noise, just return the error message.
-      // console.error('Error al crear el túnel:', error);
-      globalForTunnel.activeTunnel = undefined;
+      console.error('Error al crear el túnel:', error);
+      globalForTunnel.tunnel = undefined;
+      globalForTunnel.tunnelStatus = { status: 'error', url: null, subdomain: dynamicSubdomain, lastMessage: error.message || 'Error desconocido al iniciar el túnel.'};
       return NextResponse.json({ success: false, message: error.message || 'Error desconocido al iniciar el túnel.' }, { status: 500 });
     }
 
   } else if (action === 'disconnect') {
-    if (globalForTunnel.activeTunnel) {
-      globalForTunnel.activeTunnel.close();
-      globalForTunnel.activeTunnel = undefined;
+    if (globalForTunnel.tunnel) {
+      globalForTunnel.tunnel.close();
+      globalForTunnel.tunnel = undefined;
+      globalForTunnel.tunnelStatus = { status: 'disconnected', url: null, subdomain: null, lastMessage: 'Túnel desconectado.' };
       return NextResponse.json({ success: true, message: 'Túnel desconectado.' });
     } else {
       return NextResponse.json({ success: false, message: 'No hay ningún túnel activo para desconectar.' }, { status: 400 });
     }
   } else if (action === 'status') {
-     if (globalForTunnel.activeTunnel) {
-        // Extraer el subdominio de la URL para devolverlo
-        const urlParts = new URL(globalForTunnel.activeTunnel.url);
-        const subdomain = urlParts.hostname.split('.')[0];
-        return NextResponse.json({ success: true, status: 'connected', url: globalForTunnel.activeTunnel.url, subdomain });
-     } else {
-        return NextResponse.json({ success: true, status: 'disconnected', url: null, subdomain: null });
-     }
+     return NextResponse.json({ success: true, ...globalForTunnel.tunnelStatus });
   }
 
   return NextResponse.json({ success: false, message: 'Acción no válida.' }, { status: 400 });
