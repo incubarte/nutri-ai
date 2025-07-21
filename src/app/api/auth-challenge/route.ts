@@ -12,13 +12,13 @@ import { headers } from 'next/headers';
 
 export async function POST(request: Request) {
   try {
-    const { action, requestId, selection } = await request.json();
+    const { action, requestId, selection, userAgent } = await request.json();
     const reqHeaders = headers();
     const clientIp = (reqHeaders.get('x-forwarded-for') ?? '127.0.0.1').split(',')[0].trim();
 
     switch (action) {
       case 'request': {
-        const newRequest = createAccessRequest(clientIp);
+        const newRequest = createAccessRequest(clientIp, userAgent);
         return NextResponse.json({ success: true, request: newRequest });
       }
 

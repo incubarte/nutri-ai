@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -128,6 +127,19 @@ const QRTooltipContent = ({ title, url, ipAddress, ipLabel, status, isConnecting
     );
 };
 
+const parseUserAgent = (uaString?: string): string => {
+    if (!uaString) return 'Dispositivo Desconocido';
+    
+    // Simple parser for demonstration
+    if (uaString.includes('Android')) return 'Chrome en Android';
+    if (uaString.includes('iPhone') || uaString.includes('iPad')) return 'Safari en iOS';
+    if (uaString.includes('Macintosh')) return 'Navegador en Mac';
+    if (uaString.includes('Windows')) return 'Navegador en Windows';
+    
+    return 'Dispositivo Desconocido';
+};
+
+
 const AccessRequestManager = () => {
     const [requests, setRequests] = useState<AccessRequest[]>([]);
     const [approvedChallenges, setApprovedChallenges] = useState<Record<string, Challenge>>({});
@@ -213,7 +225,9 @@ const AccessRequestManager = () => {
                     <div className="grid gap-2">
                         {requests.map((req) => (
                             <div key={req.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 p-2 border rounded-md">
-                                <span className="text-sm font-mono truncate" title={req.ip}>{req.ip}</span>
+                                <span className="text-sm font-medium truncate" title={req.userAgent}>
+                                  {parseUserAgent(req.userAgent)}
+                                </span>
                                 {approvedChallenges[req.id] ? (
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs">Elige:</span>

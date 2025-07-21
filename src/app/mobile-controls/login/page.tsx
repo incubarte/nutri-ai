@@ -29,10 +29,11 @@ export default function LoginPage() {
     setScreenState('requesting');
     setError(null);
     try {
+      const userAgent = navigator.userAgent;
       const res = await fetch('/api/auth-challenge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'request' }),
+        body: JSON.stringify({ action: 'request', userAgent }),
       });
       const data = await res.json();
       if (data.success && data.request) {

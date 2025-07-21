@@ -114,9 +114,9 @@ const shuffleArray = (array: any[]) => {
 };
 
 
-export function createAccessRequest(ip: string): AccessRequest {
+export function createAccessRequest(ip: string, userAgent?: string): AccessRequest {
     const id = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    const request: AccessRequest = { id, ip, timestamp: Date.now() };
+    const request: AccessRequest = { id, ip, timestamp: Date.now(), userAgent };
     accessRequests.set(id, request);
     // Set a timeout to remove the request after 2 minutes
     setTimeout(() => removeAccessRequest(id), 2 * 60 * 1000);

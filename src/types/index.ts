@@ -315,6 +315,7 @@ export interface AccessRequest {
     id: string;
     ip: string;
     timestamp: number;
+    userAgent?: string;
     challenge?: Challenge;
 }
 
