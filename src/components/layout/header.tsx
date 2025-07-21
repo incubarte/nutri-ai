@@ -172,7 +172,7 @@ export function Header() {
     <>
     {isLoading && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <HockeyPuckSpinner className="h-10 w-10 text-primary" />
+            <HockeyPuckSpinner className="h-24 w-24 text-primary" />
         </div>
     )}
     <header
