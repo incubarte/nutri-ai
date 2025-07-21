@@ -11,11 +11,11 @@ import { GoldenGoalDialog } from '@/components/controls/golden-goal-dialog';
 import { GameSetupDialog } from '@/components/controls/game-setup-dialog';
 import { ShootoutControl } from '@/components/controls/shootout-control';
 import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getActualPeriodText, formatTime } from '@/contexts/game-state-context';
-import type { PlayerData, RemoteCommand } from '@/types';
+import type { PlayerData, RemoteCommand, AccessRequest, Challenge } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
@@ -23,6 +23,7 @@ import { safeUUID } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -124,6 +125,116 @@ const QRTooltipContent = ({ title, url, ipAddress, ipLabel, status, isConnecting
                 Copiar URL de conexión
              </Button>
         </div>
+    );
+};
+
+const AccessRequestManager = () => {
+    const [requests, setRequests] = useState<AccessRequest[]>([]);
+    const [approvedChallenges, setApprovedChallenges] = useState<Record<string, Challenge>>({});
+    const { toast } = useToast();
+
+    const fetchRequests = useCallback(async () => {
+        try {
+            const res = await fetch('/api/auth-challenge');
+            if (res.ok) {
+                const data = await res.json();
+                setRequests(data.requests || []);
+            }
+        } catch (e) {
+            console.warn("Could not fetch access requests", e);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchRequests();
+        const interval = setInterval(fetchRequests, 5000); // Poll for new requests
+        return () => clearInterval(interval);
+    }, [fetchRequests]);
+
+    const handleApprove = async (requestId: string) => {
+        try {
+            const res = await fetch('/api/auth-challenge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'approve', requestId }),
+            });
+            const data = await res.json();
+            if (data.success && data.challenge) {
+                setApprovedChallenges(prev => ({ ...prev, [requestId]: data.challenge }));
+                toast({ title: "Desafío enviado", description: `Indica al usuario que seleccione el número ${data.challenge.correctNumber}.` });
+            } else {
+                toast({ title: "Error", description: data.message || "No se pudo aprobar la solicitud.", variant: "destructive" });
+            }
+        } catch (e) {
+            toast({ title: "Error de Red", description: "No se pudo comunicar con el servidor.", variant: "destructive" });
+        }
+    };
+
+    const handleReject = async (requestId: string) => {
+        try {
+            await fetch('/api/auth-challenge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'reject', requestId }),
+            });
+            toast({ title: "Solicitud Rechazada" });
+            fetchRequests(); // Refresh list
+        } catch (e) {
+            toast({ title: "Error de Red", variant: "destructive" });
+        }
+    };
+
+    if (requests.length === 0) return null;
+
+    return (
+        <Popover>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <PopoverTrigger asChild>
+                            <Button variant="destructive" className="fixed top-20 right-4 z-50 animate-pulse">
+                                Pedido de Acceso ({requests.length})
+                            </Button>
+                        </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">
+                        <p>Hay usuarios remotos esperando tu aprobación para acceder a los controles.</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+            <PopoverContent className="w-80">
+                <div className="grid gap-4">
+                    <div className="space-y-2">
+                        <h4 className="font-medium leading-none">Solicitudes Pendientes</h4>
+                        <p className="text-sm text-muted-foreground">
+                            Aprueba o rechaza el acceso para los usuarios remotos.
+                        </p>
+                    </div>
+                    <div className="grid gap-2">
+                        {requests.map((req) => (
+                            <div key={req.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 p-2 border rounded-md">
+                                <span className="text-sm font-mono truncate" title={req.ip}>{req.ip}</span>
+                                {approvedChallenges[req.id] ? (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs">Elige:</span>
+                                        <span className="font-bold text-lg text-primary">{approvedChallenges[req.id].correctNumber}</span>
+                                    </div>
+                                ) : (
+                                  <>
+                                    <Button size="icon" className="h-7 w-7 bg-green-600 hover:bg-green-700" onClick={() => handleApprove(req.id)}>
+                                        <Check className="h-4 w-4" />
+                                    </Button>
+                                    <Button size="icon" variant="destructive" className="h-7 w-7" onClick={() => handleReject(req.id)}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
     );
 };
 
@@ -560,8 +671,8 @@ export default function ControlsPage() {
     };
   }, [state.config.tunnel, localIp]);
 
-  const localUrl = (localIp && localPort) ? `http://${localIp}:${localPort}/mobile-controls` : '';
-  const tunnelUrl = state.config.tunnel.status === 'connected' && state.config.tunnel.url ? `${state.config.tunnel.url}/mobile-controls` : '';
+  const localUrl = (localIp && localPort) ? `http://${localIp}:${localPort}/mobile-controls/login` : '';
+  const tunnelUrl = state.config.tunnel.status === 'connected' && state.config.tunnel.url ? `${state.config.tunnel.url}/mobile-controls/login` : '';
   
   const handleAddExtraOvertime = () => {
     dispatch({ type: 'ADD_EXTRA_OVERTIME' });
@@ -734,6 +845,7 @@ export default function ControlsPage() {
 
       {/* Connection Status Indicators */}
       <div className="fixed bottom-4 right-4 flex flex-col items-end gap-2 z-50">
+          <AccessRequestManager />
           <TooltipProvider>
               <Tooltip delayDuration={100}>
                   <TooltipTrigger asChild>

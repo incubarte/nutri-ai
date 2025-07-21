@@ -305,6 +305,20 @@ export interface MobileData {
 }
 
 
+// --- Auth Challenge ---
+export interface Challenge {
+    options: number[];
+    correctNumber: number;
+}
+
+export interface AccessRequest {
+    id: string;
+    ip: string;
+    timestamp: number;
+    challenge?: Challenge;
+}
+
+
 // --- Remote Commands ---
 export type RemoteCommand = 
   | { type: 'ADD_GOAL'; payload: { team: Team; scorerNumber: string; assistNumber?: string } }

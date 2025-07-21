@@ -1,4 +1,4 @@
-import type { LiveGameState, ConfigState, RemoteCommand } from '@/types';
+import type { LiveGameState, ConfigState, RemoteCommand, AccessRequest, Challenge } from '@/types';
 import { EventEmitter } from 'events';
 import { headers } from 'next/headers';
 import fs from 'fs';
@@ -7,6 +7,7 @@ import os from 'os';
 
 let storedConfig: ConfigState | null = null;
 let storedGameState: LiveGameState | null = null;
+let accessRequests: Map<string, AccessRequest> = new Map();
 
 const PASSWORD_FILE_PATH = path.join(os.tmpdir(), '.remote_password');
 
@@ -100,6 +101,69 @@ export function isClientLocal(request: Request): boolean {
     // non-loopback IP as "remote", requiring a password. This is a safer default.
     return false;
 }
+
+// --- Auth Challenge Management ---
+
+// Helper function to shuffle an array
+const shuffleArray = (array: any[]) => {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+};
+
+
+export function createAccessRequest(ip: string): AccessRequest {
+    const id = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const request: AccessRequest = { id, ip, timestamp: Date.now() };
+    accessRequests.set(id, request);
+    // Set a timeout to remove the request after 2 minutes
+    setTimeout(() => removeAccessRequest(id), 2 * 60 * 1000);
+    return request;
+}
+
+export function getAccessRequest(id: string): AccessRequest | undefined {
+    return accessRequests.get(id);
+}
+
+export function getAllAccessRequests(): AccessRequest[] {
+    return Array.from(accessRequests.values());
+}
+
+export function removeAccessRequest(id: string): void {
+    accessRequests.delete(id);
+}
+
+export function approveAccessRequest(id: string): Challenge | null {
+    const request = accessRequests.get(id);
+    if (!request || request.challenge) {
+        return null;
+    }
+
+    const correctNumber = Math.floor(Math.random() * 100) + 1;
+    const options: number[] = [correctNumber];
+    while (options.length < 5) {
+        const randomNumber = Math.floor(Math.random() * 100) + 1;
+        if (!options.includes(randomNumber)) {
+            options.push(randomNumber);
+        }
+    }
+
+    const challenge: Challenge = {
+        options: shuffleArray(options),
+        correctNumber,
+    };
+
+    request.challenge = challenge;
+    accessRequests.set(id, request);
+    
+    // Reset timeout on approval to give user time to respond
+    setTimeout(() => removeAccessRequest(id), 2 * 60 * 1000);
+
+    return challenge;
+}
+
 
 // Ensure password file is checked/created on startup
 getRemoteAccessPassword();

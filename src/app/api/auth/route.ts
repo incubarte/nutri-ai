@@ -3,34 +3,26 @@ import { NextResponse } from 'next/server';
 import { getRemoteAccessPassword, isClientLocal } from '@/lib/server-side-store';
 import { headers } from 'next/headers';
 
+// This endpoint is now a fallback and for local auth checks.
+// The primary remote auth flow is handled by /api/auth-challenge
 export async function POST(request: Request) {
   try {
     const clientIsLocal = isClientLocal(request);
-    const reqHeaders = headers();
-    const clientIp = (reqHeaders.get('x-forwarded-for') ?? '127.0.0.1').split(',')[0].trim();
-
+    
     // Local clients are always authenticated
     if (clientIsLocal) {
-        console.log(`[AUTH DEBUG] Local client detected (IP: ${clientIp}). Access granted.`);
         return NextResponse.json({ authenticated: true });
     }
 
-    // Remote clients need to provide a password
+    // Remote clients with a stored password (from a previous successful challenge)
     const { password } = await request.json();
     const serverPassword = getRemoteAccessPassword();
     
-    console.log(`[AUTH DEBUG] Remote client login attempt:
-      - Client IP: ${clientIp}
-      - Is Local?: ${clientIsLocal}
-      - Expected Password: '${serverPassword}'
-      - Received Password: '${password}'`);
-
     if (password && password === serverPassword) {
-        console.log(`[AUTH DEBUG] Password MATCH. Access granted.`);
         return NextResponse.json({ authenticated: true });
     }
     
-    console.log(`[AUTH DEBUG] Password MISMATCH. Access denied.`);
+    // If no password or wrong password, they are unauthenticated and should use the challenge flow.
     return NextResponse.json({ authenticated: false }, { status: 401 });
 
   } catch (error) {
