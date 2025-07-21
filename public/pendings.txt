@@ -1,6 +1,8 @@
 
 Bugs
-1. 
+1. Revisar si es correcto este cambio.
+Si una penalidad se elimina por Gol. 
+=> Las penalidades esperando slot vuelven a esperando puck en juego para evitar comenzar automaticamente.
 
 Funcionalidades
 1. 

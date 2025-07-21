@@ -1,4 +1,5 @@
-import type { LiveGameState, ConfigState, RemoteCommand, AccessRequest, Challenge } from '@/types';
+
+import type { LiveGameState, ConfigState, RemoteCommand, AccessRequest } from '@/types';
 import { EventEmitter } from 'events';
 import { headers } from 'next/headers';
 import fs from 'fs';
@@ -104,22 +105,17 @@ export function isClientLocal(request: Request): boolean {
 
 // --- Auth Challenge Management ---
 
-// Helper function to shuffle an array
-const shuffleArray = (array: any[]) => {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
-};
-
-
-export function createAccessRequest(ip: string, userAgent?: string): AccessRequest {
+export function createAccessRequest(ip: string, userAgent: string | undefined, verificationNumber: number): AccessRequest {
     const id = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    const request: AccessRequest = { id, ip, timestamp: Date.now(), userAgent };
+    const request: AccessRequest = { id, ip, timestamp: Date.now(), userAgent, verificationNumber, approved: false };
     accessRequests.set(id, request);
-    // Set a timeout to remove the request after 2 minutes
-    setTimeout(() => removeAccessRequest(id), 2 * 60 * 1000);
+    // Set a timeout to remove the request after 2 minutes if it's not approved.
+    setTimeout(() => {
+        const req = accessRequests.get(id);
+        if (req && !req.approved) {
+             removeAccessRequest(id);
+        }
+    }, 2 * 60 * 1000);
     return request;
 }
 
@@ -128,40 +124,25 @@ export function getAccessRequest(id: string): AccessRequest | undefined {
 }
 
 export function getAllAccessRequests(): AccessRequest[] {
-    return Array.from(accessRequests.values());
+    return Array.from(accessRequests.values()).filter(req => !req.approved);
 }
 
 export function removeAccessRequest(id: string): void {
     accessRequests.delete(id);
 }
 
-export function approveAccessRequest(id: string): Challenge | null {
+export function approveAccessRequest(id: string): boolean {
     const request = accessRequests.get(id);
-    if (!request || request.challenge) {
-        return null;
+    if (!request) {
+        return false;
     }
-
-    const correctNumber = Math.floor(Math.random() * 100) + 1;
-    const options: number[] = [correctNumber];
-    while (options.length < 5) {
-        const randomNumber = Math.floor(Math.random() * 100) + 1;
-        if (!options.includes(randomNumber)) {
-            options.push(randomNumber);
-        }
-    }
-
-    const challenge: Challenge = {
-        options: shuffleArray(options),
-        correctNumber,
-    };
-
-    request.challenge = challenge;
+    request.approved = true;
     accessRequests.set(id, request);
     
-    // Reset timeout on approval to give user time to respond
-    setTimeout(() => removeAccessRequest(id), 2 * 60 * 1000);
-
-    return challenge;
+    // Remove the request after a short period to allow the client to fetch the password
+    setTimeout(() => removeAccessRequest(id), 30 * 1000);
+    
+    return true;
 }
 
 

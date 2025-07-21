@@ -5,22 +5,20 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { KeyRound, Send, RefreshCw, CheckCircle, WifiOff } from 'lucide-react';
+import { KeyRound, Send, RefreshCw, CheckCircle, WifiOff, Fingerprint, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
-import type { AccessRequest, Challenge } from '@/types';
+import type { AccessRequest } from '@/types';
 import { cn } from '@/lib/utils';
 
 const AUTH_KEY = 'icevision-remote-auth-key';
 
-type AuthScreenState = 'idle' | 'requesting' | 'waiting' | 'challenge' | 'error';
+type AuthScreenState = 'idle' | 'requesting' | 'waiting' | 'approved' | 'error';
 
 export default function LoginPage() {
   const [screenState, setScreenState] = useState<AuthScreenState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [requestInfo, setRequestInfo] = useState<AccessRequest | null>(null);
-  const [challenge, setChallenge] = useState<Challenge | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -30,10 +28,12 @@ export default function LoginPage() {
     setError(null);
     try {
       const userAgent = navigator.userAgent;
+      const verificationNumber = Math.floor(Math.random() * 100) + 1; // 1 to 100
+      
       const res = await fetch('/api/auth-challenge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'request', userAgent }),
+        body: JSON.stringify({ action: 'request', userAgent, verificationNumber }),
       });
       const data = await res.json();
       if (data.success && data.request) {
@@ -48,60 +48,44 @@ export default function LoginPage() {
     }
   };
   
-  const checkRequestStatus = useCallback(async () => {
+  const checkApprovalStatus = useCallback(async () => {
     if (!requestInfo?.id || screenState !== 'waiting') return;
 
     try {
-        const res = await fetch('/api/auth-challenge');
-        if (!res.ok) return; // Don't show error for polling
-        const data = await res.json();
-        const myRequest = (data.requests as AccessRequest[]).find(r => r.id === requestInfo.id);
-
-        if (!myRequest) {
-            // Request was likely rejected or expired
-            setError("Tu solicitud fue rechazada o ha expirado.");
-            setScreenState('error');
-        } else if (myRequest.challenge) {
-            setChallenge(myRequest.challenge);
-            setScreenState('challenge');
+        const res = await fetch('/api/auth-challenge/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestId: requestInfo.id }),
+        });
+        
+        if (res.status === 404) {
+             setError("Tu solicitud fue rechazada o ha expirado.");
+             setScreenState('error');
+             return;
         }
+
+        if (res.ok) {
+            const data = await res.json();
+            if (data.approved) {
+                localStorage.setItem(AUTH_KEY, data.password);
+                setScreenState('approved');
+                toast({ title: '¡Acceso Concedido!', description: 'Serás redirigido a los controles.' });
+                setTimeout(() => router.replace('/mobile-controls'), 1500);
+            }
+        }
+        // No-op for other statuses, just keep polling.
     } catch (e) {
-        // Ignore polling errors
+        // Ignore polling errors to avoid flashing error messages on temporary network issues.
+        console.warn("Polling for approval failed, will retry.", e);
     }
-  }, [requestInfo, screenState]);
+  }, [requestInfo, screenState, router, toast]);
 
   useEffect(() => {
     if (screenState === 'waiting') {
-        const interval = setInterval(checkRequestStatus, 2000);
+        const interval = setInterval(checkApprovalStatus, 2500);
         return () => clearInterval(interval);
     }
-  }, [screenState, checkRequestStatus]);
-  
-  const handleChallengeResponse = async (selection: number) => {
-    if (!requestInfo?.id) return;
-    setIsSubmitting(true);
-    try {
-        const res = await fetch('/api/auth-challenge', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'respond', requestId: requestInfo.id, selection }),
-        });
-        const data = await res.json();
-        if (data.success && data.authenticated) {
-            localStorage.setItem(AUTH_KEY, data.password);
-            toast({ title: '¡Acceso Concedido!', description: 'Serás redirigido a los controles.' });
-            router.replace('/mobile-controls');
-        } else {
-            setError(data.message || "Selección incorrecta.");
-            setScreenState('error');
-        }
-    } catch(e) {
-        setError("Error de red al enviar la respuesta.");
-        setScreenState('error');
-    } finally {
-        setIsSubmitting(false);
-    }
-  };
+  }, [screenState, checkApprovalStatus]);
 
 
   const renderContent = () => {
@@ -112,7 +96,7 @@ export default function LoginPage() {
             <CardHeader>
               <CardTitle>Solicitar Acceso</CardTitle>
               <CardDescription>
-                Presiona el botón para solicitar acceso al operador principal. Deberás estar cerca para que vea tu solicitud.
+                Presiona el botón para solicitar acceso al operador principal. Necesitarás decirle el número de verificación que aparece en pantalla.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -125,7 +109,7 @@ export default function LoginPage() {
       
       case 'requesting':
         return (
-            <CardContent className="flex flex-col items-center justify-center p-8 min-h-[16rem]">
+            <CardContent className="flex flex-col items-center justify-center p-8 min-h-[18rem]">
                 <HockeyPuckSpinner className="h-16 w-16" />
                 <p className="text-muted-foreground mt-4">Enviando solicitud...</p>
             </CardContent>
@@ -133,43 +117,26 @@ export default function LoginPage() {
 
       case 'waiting':
         return (
-            <CardContent className="flex flex-col items-center justify-center p-8 text-center min-h-[16rem]">
-                <CheckCircle className="h-12 w-12 text-green-500 mb-4 animate-pulse" />
-                <p className="font-semibold">Solicitud enviada al operador.</p>
+            <CardContent className="flex flex-col items-center justify-center p-8 text-center min-h-[18rem]">
+                <Fingerprint className="h-12 w-12 text-blue-500 mb-4 animate-pulse" />
+                <p className="font-semibold text-lg">Dile este número al operador:</p>
+                <p className="font-bold text-6xl text-primary my-2">{requestInfo?.verificationNumber}</p>
                 <p className="text-muted-foreground">Esperando aprobación...</p>
             </CardContent>
         );
 
-      case 'challenge':
+      case 'approved':
         return (
-          <>
-            <CardHeader className="text-center">
-              <CardTitle>¡Responde al Desafío!</CardTitle>
-              <CardDescription>
-                El operador te indicará cuál de los siguientes números debes presionar para obtener acceso.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center gap-4">
-              <div className="grid grid-cols-5 gap-2 w-full">
-                {challenge?.options.map(num => (
-                  <Button 
-                    key={num} 
-                    onClick={() => handleChallengeResponse(num)} 
-                    className="aspect-square h-auto text-2xl"
-                    disabled={isSubmitting}
-                  >
-                    {num}
-                  </Button>
-                ))}
-              </div>
-              {isSubmitting && <HockeyPuckSpinner className="h-8 w-8 mt-2" />}
+            <CardContent className="flex flex-col items-center justify-center p-8 text-center min-h-[18rem]">
+                <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
+                <p className="font-semibold text-xl">¡Aprobado!</p>
+                <p className="text-muted-foreground">Redirigiendo a los controles...</p>
             </CardContent>
-          </>
         );
 
       case 'error':
          return (
-            <CardContent className="flex flex-col items-center justify-center p-8 text-center min-h-[16rem] text-destructive">
+            <CardContent className="flex flex-col items-center justify-center p-8 text-center min-h-[18rem] text-destructive">
                 <WifiOff className="h-12 w-12 mb-4" />
                 <p className="font-semibold">Error</p>
                 <p className="text-destructive-foreground/80">{error}</p>

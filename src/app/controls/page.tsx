@@ -10,11 +10,11 @@ import { GoldenGoalDialog } from '@/components/controls/golden-goal-dialog';
 import { GameSetupDialog } from '@/components/controls/game-setup-dialog';
 import { ShootoutControl } from '@/components/controls/shootout-control';
 import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getActualPeriodText, formatTime } from '@/contexts/game-state-context';
-import type { PlayerData, RemoteCommand, AccessRequest, Challenge } from '@/types';
+import type { PlayerData, RemoteCommand, AccessRequest } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X, Fingerprint } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
@@ -142,7 +142,6 @@ const parseUserAgent = (uaString?: string): string => {
 
 const AccessRequestManager = () => {
     const [requests, setRequests] = useState<AccessRequest[]>([]);
-    const [approvedChallenges, setApprovedChallenges] = useState<Record<string, Challenge>>({});
     const { toast } = useToast();
 
     const fetchRequests = useCallback(async () => {
@@ -171,9 +170,9 @@ const AccessRequestManager = () => {
                 body: JSON.stringify({ action: 'approve', requestId }),
             });
             const data = await res.json();
-            if (data.success && data.challenge) {
-                setApprovedChallenges(prev => ({ ...prev, [requestId]: data.challenge }));
-                toast({ title: "Desafío enviado", description: `Indica al usuario que seleccione el número ${data.challenge.correctNumber}.` });
+            if (data.success) {
+                toast({ title: "Acceso Aprobado", description: `Se ha concedido acceso al dispositivo.` });
+                fetchRequests(); // Refresh the list
             } else {
                 toast({ title: "Error", description: data.message || "No se pudo aprobar la solicitud.", variant: "destructive" });
             }
@@ -225,24 +224,21 @@ const AccessRequestManager = () => {
                     <div className="grid gap-2">
                         {requests.map((req) => (
                             <div key={req.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 p-2 border rounded-md">
-                                <span className="text-sm font-medium truncate" title={req.userAgent}>
-                                  {parseUserAgent(req.userAgent)}
-                                </span>
-                                {approvedChallenges[req.id] ? (
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs">Elige:</span>
-                                        <span className="font-bold text-lg text-primary">{approvedChallenges[req.id].correctNumber}</span>
+                                <div className="flex items-center gap-2 truncate">
+                                    <Fingerprint className="h-5 w-5 text-blue-400 shrink-0"/>
+                                    <div className="truncate">
+                                      <span className="text-sm font-semibold text-primary">{req.verificationNumber}</span>
+                                      <span className="text-xs text-muted-foreground ml-2 truncate" title={req.userAgent}>
+                                        {parseUserAgent(req.userAgent)}
+                                      </span>
                                     </div>
-                                ) : (
-                                  <>
-                                    <Button size="icon" className="h-7 w-7 bg-green-600 hover:bg-green-700" onClick={() => handleApprove(req.id)}>
-                                        <Check className="h-4 w-4" />
-                                    </Button>
-                                    <Button size="icon" variant="destructive" className="h-7 w-7" onClick={() => handleReject(req.id)}>
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                  </>
-                                )}
+                                </div>
+                                <Button size="icon" className="h-7 w-7 bg-green-600 hover:bg-green-700" onClick={() => handleApprove(req.id)}>
+                                    <Check className="h-4 w-4" />
+                                </Button>
+                                <Button size="icon" variant="destructive" className="h-7 w-7" onClick={() => handleReject(req.id)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
                             </div>
                         ))}
                     </div>
@@ -860,8 +856,8 @@ export default function ControlsPage() {
       {/* Connection Status Indicators */}
       <div className="fixed bottom-4 right-4 flex flex-col items-end gap-2 z-50">
           <AccessRequestManager />
-          <TooltipProvider>
-              <Tooltip delayDuration={100}>
+          <TooltipProvider delayDuration={100}>
+              <Tooltip>
                   <TooltipTrigger asChild>
                       <Badge className={cn("flex items-center gap-2 transition-all text-white cursor-help", statusIndicators.local.className)}>
                           <span className={cn("h-2 w-2 rounded-full", statusIndicators.local.dotClassName)}></span>

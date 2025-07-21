@@ -306,17 +306,13 @@ export interface MobileData {
 
 
 // --- Auth Challenge ---
-export interface Challenge {
-    options: number[];
-    correctNumber: number;
-}
-
 export interface AccessRequest {
     id: string;
     ip: string;
     timestamp: number;
     userAgent?: string;
-    challenge?: Challenge;
+    verificationNumber: number;
+    approved: boolean;
 }
 
 
