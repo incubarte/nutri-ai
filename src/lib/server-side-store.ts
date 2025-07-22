@@ -1,10 +1,11 @@
-
-import type { LiveGameState, ConfigState, RemoteCommand, AccessRequest } from '@/types';
+import type { LiveGameState, ConfigState, RemoteCommand, AccessRequest, TunnelState } from '@/types';
 import { EventEmitter } from 'events';
 import { headers } from 'next/headers';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import localtunnel, { type Tunnel } from 'localtunnel';
+
 
 let storedConfig: ConfigState | null = null;
 let storedGameState: LiveGameState | null = null;
@@ -54,6 +55,7 @@ export function getRemoteAccessPassword(): string {
 const globalForEmitters = globalThis as unknown as {
   gameStateEmitter: EventEmitter | undefined;
   commandEmitter: EventEmitter | undefined;
+  tunnelInstance: Tunnel | undefined;
 };
 
 export const gameStateEmitter =
@@ -73,6 +75,13 @@ export function getConfig(): ConfigState | null {
 
 export function setConfig(newConfig: ConfigState): void {
   storedConfig = newConfig;
+}
+
+export function updateTunnelState(updates: Partial<TunnelState>) {
+  if (storedConfig) {
+    const newTunnelState = { ...storedConfig.tunnel, ...updates };
+    setConfig({ ...storedConfig, tunnel: newTunnelState });
+  }
 }
 
 export function getGameState(): LiveGameState | null {
@@ -143,6 +152,71 @@ export function approveAccessRequest(id: string): boolean {
     setTimeout(() => removeAccessRequest(id), 30 * 1000);
     
     return true;
+}
+
+
+// --- Tunnel Management with Reconnect ---
+let isManuallyClosing = false;
+
+const getDynamicSubdomain = () => {
+    const prefix = 'icevision-fs';
+    const randomNumber = Math.floor(10000 + Math.random() * 90000);
+    return `${prefix}-${randomNumber}`;
+};
+
+export async function connectTunnel(port: number): Promise<Partial<TunnelState>> {
+    const subdomain = getDynamicSubdomain();
+    isManuallyClosing = false;
+    console.log(`[Tunnel] Attempting to connect on port ${port} with subdomain ${subdomain}...`);
+    
+    return new Promise(async (resolve) => {
+        const createAndHandleTunnel = async () => {
+            try {
+                const tunnel = await localtunnel({ port, subdomain });
+                globalForEmitters.tunnelInstance = tunnel;
+
+                tunnel.on('url', (url: string) => {
+                    console.log(`[Tunnel] Connected successfully at: ${url}`);
+                    const successState: Partial<TunnelState> = { status: 'connected', url, subdomain };
+                    updateTunnelState(successState);
+                    resolve(successState);
+                });
+
+                tunnel.on('error', (err: any) => {
+                    console.warn('[Tunnel] Error:', err?.message || err);
+                    updateTunnelState({ status: 'error', lastMessage: err.message || 'Unknown tunnel error' });
+                    // No need to resolve here, the 'close' event will handle it.
+                });
+
+                tunnel.on('close', () => {
+                    console.log('[Tunnel] Connection closed.');
+                    globalForEmitters.tunnelInstance = undefined;
+                    updateTunnelState({ status: 'disconnected', url: null, subdomain: null });
+                    if (!isManuallyClosing) {
+                        console.log('[Tunnel] Unexpected close. Reconnecting in 3 seconds...');
+                        setTimeout(createAndHandleTunnel, 3000);
+                    }
+                });
+            } catch (error: any) {
+                console.error('[Tunnel] Failed to create tunnel:', error);
+                const errorState: Partial<TunnelState> = { status: 'error', lastMessage: error.message || 'Failed to start tunnel' };
+                updateTunnelState(errorState);
+                resolve(errorState);
+            }
+        };
+        await createAndHandleTunnel();
+    });
+}
+
+
+export function disconnectTunnel(): void {
+    isManuallyClosing = true;
+    if (globalForEmitters.tunnelInstance) {
+        globalForEmitters.tunnelInstance.close();
+        globalForEmitters.tunnelInstance = undefined;
+        console.log('[Tunnel] Disconnected manually.');
+    }
+    updateTunnelState({ status: 'disconnected', url: null, subdomain: null });
 }
 
 
