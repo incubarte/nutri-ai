@@ -10,7 +10,7 @@ import { GoldenGoalDialog } from '@/components/controls/golden-goal-dialog';
 import { GameSetupDialog } from '@/components/controls/game-setup-dialog';
 import { ShootoutControl } from '@/components/controls/shootout-control';
 import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getActualPeriodText, formatTime } from '@/contexts/game-state-context';
-import type { PlayerData, RemoteCommand, AccessRequest } from '@/types';
+import type { PlayerData, RemoteCommand, AccessRequest, TunnelState } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
@@ -31,7 +31,7 @@ const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
 
 type PageDisplayState = 'Checking' | 'Primary' | 'Secondary';
 
-const QRTooltipContent = ({ title, url, ipAddress, ipLabel, status, isConnecting, onConnect }: { title: string; url: string; ipAddress?: string; ipLabel?: string; status: 'connected' | 'disconnected' | 'error' | 'connecting'; isConnecting?: boolean; onConnect?: () => void; }) => {
+const QRTooltipContent = ({ title, url, ipAddress, ipLabel, status, isConnecting, onConnect, onDisconnect }: { title: string; url: string; ipAddress?: string; ipLabel?: string; status: TunnelState['status']; isConnecting?: boolean; onConnect?: () => void; onDisconnect?: () => void; }) => {
     const { toast } = useToast();
     const [remotePassword, setRemotePassword] = useState<string | null>('cargando...');
     const [combinedInfoQrValue, setCombinedInfoQrValue] = useState('');
@@ -71,6 +71,31 @@ const QRTooltipContent = ({ title, url, ipAddress, ipLabel, status, isConnecting
         toast({ title: "Error al Copiar", description: `No se pudo copiar: ${label}`, variant: "destructive" });
         });
     };
+    
+    if (status === 'error') {
+       return (
+            <div className="flex flex-col items-center gap-4 p-4 bg-popover text-popover-foreground text-center">
+                <p className="font-semibold text-lg">{title}</p>
+                <div className="p-2 text-sm text-destructive">
+                    <p>Error de conexión.</p>
+                </div>
+                 <div className="flex gap-2">
+                    {onDisconnect && (
+                         <Button onClick={onDisconnect} disabled={isConnecting} size="sm" variant="outline" className="mt-2">
+                           {isConnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PowerOff className="mr-2 h-4 w-4" />}
+                           Desconectar
+                         </Button>
+                    )}
+                    {onConnect && (
+                      <Button onClick={onConnect} disabled={isConnecting} size="sm" className="mt-2">
+                        {isConnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Power className="mr-2 h-4 w-4" />}
+                        Reconectar
+                      </Button>
+                    )}
+                 </div>
+            </div>
+        );
+    }
 
     if (!url) {
         return (
@@ -660,6 +685,27 @@ export default function ControlsPage() {
     }
   };
 
+  const handleTunnelDisconnect = async () => {
+      setIsConnectingTunnel(true);
+      dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'connecting', lastMessage: null } });
+      try {
+        const response = await fetch('/api/localtunnel', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'disconnect' }),
+        });
+        const data = await response.json();
+        if (data.success) {
+            dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'disconnected', url: null, subdomain: null, lastMessage: data.message || 'Desconectado.' } });
+            toast({ title: "Túnel Desconectado" });
+        } else {
+            dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'error', lastMessage: data.message || "Error al desconectar." } });
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error de red.';
+        dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'error', lastMessage: errorMessage } });
+      } finally {
+        setIsConnectingTunnel(false);
+      }
+  };
 
   const statusIndicators = useMemo(() => {
     const tunnelStatus = state.config.tunnel.status || 'disconnected';
@@ -675,8 +721,8 @@ export default function ControlsPage() {
         internet: {
             status: tunnelStatus,
             text: 'Control Remoto - Internet',
-            className: tunnelStatus === 'connected' ? 'bg-green-600 hover:bg-green-700' : (tunnelStatus === 'error' ? 'bg-destructive hover:bg-destructive/90' : 'bg-yellow-500 hover:bg-yellow-600'),
-            dotClassName: tunnelStatus === 'connected' ? 'bg-white' : (tunnelStatus === 'error' ? 'bg-white' : 'bg-black/50 animate-pulse')
+            className: tunnelStatus === 'connected' ? 'bg-green-600 hover:bg-green-700' : (tunnelStatus === 'error' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'),
+            dotClassName: tunnelStatus === 'connected' ? 'bg-white' : (tunnelStatus === 'error' ? 'bg-white animate-pulse' : 'bg-black/50')
         }
     };
   }, [state.config.tunnel, localIp]);
@@ -684,6 +730,35 @@ export default function ControlsPage() {
   const localUrl = (localIp && localPort) ? `http://${localIp}:${localPort}/mobile-controls/login` : '';
   const tunnelUrl = state.config.tunnel.status === 'connected' && state.config.tunnel.url ? `${state.config.tunnel.url}/mobile-controls/login` : '';
   
+  // Health check for tunnel
+  useEffect(() => {
+    if (pageDisplayState !== 'Primary' || state.config.tunnel.status !== 'connected') {
+      return;
+    }
+
+    const healthCheckInterval = setInterval(async () => {
+      try {
+        const response = await fetch('/api/localtunnel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'health-check' }),
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (data.status === 'error') {
+                dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'error', lastMessage: data.message || 'El túnel no responde.' } });
+            }
+        }
+      } catch(e) {
+         dispatch({ type: 'UPDATE_TUNNEL_STATE', payload: { status: 'error', lastMessage: 'Error de red al verificar el túnel.' } });
+      }
+    }, 20000); // Check every 20 seconds
+
+    return () => clearInterval(healthCheckInterval);
+
+  }, [pageDisplayState, state.config.tunnel.status, dispatch]);
+
+
   const handleAddExtraOvertime = () => {
     dispatch({ type: 'ADD_EXTRA_OVERTIME' });
     toast({ title: "Overtime Extra Añadido", description: "Se ha añadido un período de OT y se ha iniciado un descanso." });
@@ -872,9 +947,9 @@ export default function ControlsPage() {
                        />
                   </TooltipContent>
               </Tooltip>
-              <Tooltip delayDuration={100}>
+              <Tooltip>
                   <TooltipTrigger asChild>
-                      <Badge className={cn("flex items-center gap-2 transition-all text-white cursor-help", statusIndicators.internet.className)}>
+                      <Badge className={cn("flex items-center gap-2 transition-all cursor-help", statusIndicators.internet.className, statusIndicators.internet.status === 'error' ? 'text-black' : 'text-white')}>
                           <span className={cn("h-2 w-2 rounded-full", statusIndicators.internet.dotClassName)}></span>
                           <span className="text-xs">{statusIndicators.internet.text}</span>
                       </Badge>
@@ -888,6 +963,7 @@ export default function ControlsPage() {
                             status={state.config.tunnel.status}
                             isConnecting={isConnectingTunnel}
                             onConnect={handleTunnelConnect}
+                            onDisconnect={handleTunnelDisconnect}
                         />
                   </TooltipContent>
               </Tooltip>
