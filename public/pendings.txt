@@ -2,10 +2,12 @@
 Bugs
 1. Revisar si es correcto este cambio.
 Si una penalidad se elimina por Gol. 
-=> Las penalidades esperando slot vuelven a esperando puck en juego para evitar comenzar automaticamente.
+=> Las penalidades esperando slot vuelven a esperando puck en juego para evitar comenzar automaticamente ya qu el puck no esta en juego.
+(Esto antes de liberar el slot por un tema de condicion de carrera)
 
 Funcionalidades
-1. 
+1. Ver si ya se puede scar la clave de acceso de la pagina de config ya que pasa a ser de uo interna.
+2. Sacar la clave de acceso de los tooltips de acceso remoto en la pagina de controles.
 
 Mejoras
 2. No grisar las penaldiades esperando puck, solo poner el cartel de esperando puck
