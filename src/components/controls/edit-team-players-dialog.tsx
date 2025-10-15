@@ -54,23 +54,12 @@ export function EditTeamPlayersDialog({
   useEffect(() => {
     if (isOpen && teamDetails) {
       const sortedPlayers = [...teamDetails.players].sort((a, b) => {
+        // Rule 1: Goalkeepers come before players.
         if (a.type === 'goalkeeper' && b.type !== 'goalkeeper') return -1;
         if (a.type !== 'goalkeeper' && b.type === 'goalkeeper') return 1;
-        
-        const numAEmpty = !a.number;
-        const numBEmpty = !b.number;
 
-        if (numAEmpty && !numBEmpty) return 1;
-        if (!numAEmpty && numBEmpty) return -1;
-        if (numAEmpty && numBEmpty) return a.name.localeCompare(b.name);
-
-        const numA = parseInt(a.number, 10);
-        const numB = parseInt(b.number, 10);
-
-        if (isNaN(numA) && isNaN(numB)) return a.name.localeCompare(b.name);
-        if (isNaN(numA)) return 1;
-        if (isNaN(numB)) return -1;
-        return numA - numB;
+        // Rule 2: Within the same type (goalkeeper or player), sort by name alphabetically.
+        return a.name.localeCompare(b.name);
       });
 
       setEditablePlayers(
