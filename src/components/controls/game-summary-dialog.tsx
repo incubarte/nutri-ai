@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { useGameState, formatTime, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getEndReasonText, type ShotLog } from "@/contexts/game-state-context";
+import { useGameState, formatTime, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo } from "@/contexts/game-state-context";
 import type { PlayerStats } from '@/types';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -121,33 +121,43 @@ const PenaltiesSection = ({ team, teamName, penalties }: { team: Team; teamName:
     );
 };
 
-const PlayerStatsSection = ({ playerStats }: { playerStats: PlayerStats | undefined; }) => {
-    const attendedPlayers = useMemo(() => {
-        if (!playerStats) return [];
-        return Object.entries(playerStats).map(([playerNumber, stats]) => ({
-            number: playerNumber,
-            ...stats
-        })).sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
-    }, [playerStats]);
+const PlayerStatsSection = ({ team, teamName }: { team: Team; teamName: string; }) => {
+    const { state } = useGameState();
+    const playerStats = state.live.gameSummary[team]?.playerStats || {};
+    const attendance = state.live.gameSummary.attendance[team] || [];
+
+    const attendedPlayersWithStats = useMemo(() => {
+        return attendance.map(attendedPlayer => {
+            const stats = playerStats[attendedPlayer.number] || { goals: 0, assists: 0, shots: 0 };
+            return {
+                number: attendedPlayer.number,
+                name: attendedPlayer.name,
+                ...stats,
+            };
+        }).sort((a, b) => {
+            // Sort by name first, then by number
+            const nameComparison = a.name.localeCompare(b.name);
+            if (nameComparison !== 0) return nameComparison;
+            return (parseInt(a.number) || 999) - (parseInt(b.number) || 999);
+        });
+    }, [attendance, playerStats]);
 
     const totals = useMemo(() => {
-        return attendedPlayers.reduce((acc, player) => {
+        return attendedPlayersWithStats.reduce((acc, player) => {
             acc.goals += player.goals || 0;
             acc.assists += player.assists || 0;
             acc.shots += player.shots || 0;
             return acc;
         }, { goals: 0, assists: 0, shots: 0 });
-    }, [attendedPlayers]);
+    }, [attendedPlayersWithStats]);
     
-    const hasAnyData = attendedPlayers.some(p => p.goals > 0 || p.assists > 0 || p.shots > 0);
-
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas - {teamName}</CardTitle>
             </CardHeader>
             <CardContent>
-                {hasAnyData ? (
+                {attendedPlayersWithStats.length > 0 ? (
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -159,7 +169,7 @@ const PlayerStatsSection = ({ playerStats }: { playerStats: PlayerStats | undefi
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {attendedPlayers.map(player => (
+                            {attendedPlayersWithStats.map(player => (
                                 <TableRow key={player.number}>
                                     <TableCell className="font-semibold">{player.number}</TableCell>
                                     <TableCell className="text-xs text-muted-foreground">{player.name}</TableCell>
@@ -179,7 +189,7 @@ const PlayerStatsSection = ({ playerStats }: { playerStats: PlayerStats | undefi
                         </UiTableFooter>
                     </Table>
                 ) : (
-                    <p className="text-sm text-muted-foreground">Sin estadísticas de jugadores para este periodo.</p>
+                    <p className="text-sm text-muted-foreground">No hay jugadores con asistencia registrada.</p>
                 )}
             </CardContent>
         </Card>
@@ -262,7 +272,7 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
         description: `El archivo ${filename} se ha guardado.`,
     });
   };
-
+  
   const getPlayerStatsForPeriod = (teamGoals: GoalLog[], teamShots: ShotLog[]): PlayerStats => {
       const stats: Record<string, { name: string; goals: number; assists: number; shots: number }> = {};
       
@@ -322,8 +332,8 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
 
             {/* General Player Stats Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <PlayerStatsSection playerStats={state.live.gameSummary.home.playerStats} />
-              <PlayerStatsSection playerStats={state.live.gameSummary.away.playerStats} />
+                <PlayerStatsSection team="home" teamName={state.live.homeTeamName} />
+                <PlayerStatsSection team="away" teamName={state.live.awayTeamName} />
             </div>
 
             <Separator />
@@ -341,8 +351,45 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
                        const awayGoalsInPeriod = allAwayGoals.filter(g => g.periodText === periodText);
                        const homeShotsInPeriod = (state.live.gameSummary.home.homeShotsLog || []).filter(s => s.periodText === periodText);
                        const awayShotsInPeriod = (state.live.gameSummary.away.awayShotsLog || []).filter(s => s.periodText === periodText);
-                       const homePlayerStatsInPeriod = getPlayerStatsForPeriod(homeGoalsInPeriod, homeShotsInPeriod);
-                       const awayPlayerStatsInPeriod = getPlayerStatsForPeriod(awayGoalsInPeriod, awayShotsInPeriod);
+                       
+                       const homeAttendance = state.live.gameSummary.attendance.home || [];
+                       const awayAttendance = state.live.gameSummary.attendance.away || [];
+
+                        const getPlayerStatsForPeriod = (
+                            goals: GoalLog[],
+                            shots: ShotLog[],
+                            attendance: AttendedPlayerInfo[]
+                        ): Record<string, PlayerStats> => {
+                            const stats: Record<string, PlayerStats> = {};
+
+                            // Initialize stats for all attended players
+                            attendance.forEach(player => {
+                                stats[player.number] = { name: player.name, goals: 0, assists: 0, shots: 0 };
+                            });
+
+                            // Add goal stats
+                            goals.forEach(g => {
+                                if (g.scorer?.playerNumber && stats[g.scorer.playerNumber]) {
+                                    stats[g.scorer.playerNumber].goals++;
+                                }
+                                if (g.assist?.playerNumber && stats[g.assist.playerNumber]) {
+                                    stats[g.assist.playerNumber].assists++;
+                                }
+                            });
+
+                            // Add shot stats
+                            shots.forEach(s => {
+                                if (s.playerNumber && stats[s.playerNumber]) {
+                                    stats[s.playerNumber].shots++;
+                                }
+                            });
+                            return stats;
+                        };
+
+
+                       const homePlayerStatsInPeriod = getPlayerStatsForPeriod(homeGoalsInPeriod, homeShotsInPeriod, homeAttendance);
+                       const awayPlayerStatsInPeriod = getPlayerStatsForPeriod(awayGoalsInPeriod, awayShotsInPeriod, awayAttendance);
+
                        const homePenaltiesInPeriod = allHomePenalties.filter(p => p.addPeriodText === periodText);
                        const awayPenaltiesInPeriod = allAwayPenalties.filter(p => p.addPeriodText === periodText);
 
@@ -358,8 +405,8 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
                               <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={awayPenaltiesInPeriod} />
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <PlayerStatsSection playerStats={homePlayerStatsInPeriod} />
-                              <PlayerStatsSection playerStats={awayPlayerStatsInPeriod} />
+                              <PlayerStatsSection team="home" teamName={state.live.homeTeamName} playerStats={homePlayerStatsInPeriod} />
+                              <PlayerStatsSection team="away" teamName={state.live.awayTeamName} playerStats={awayPlayerStatsInPeriod} />
                           </div>
                         </div>
                       )
