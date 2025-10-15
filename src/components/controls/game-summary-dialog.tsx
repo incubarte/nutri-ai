@@ -121,21 +121,20 @@ const PenaltiesSection = ({ team, teamName, penalties }: { team: Team; teamName:
     );
 };
 
-const PlayerStatsSection = ({ team, teamName }: { team: Team; teamName: string; }) => {
-    const { state } = useGameState();
-    const playerStats = state.live.gameSummary[team]?.playerStats || {};
-    const attendance = state.live.gameSummary.attendance[team] || [];
-
+const PlayerStatsSection = ({ team, teamName, playerStats, attendance }: { team: Team; teamName: string; playerStats?: PlayerStats; attendance?: AttendedPlayerInfo[] }) => {
+    
     const attendedPlayersWithStats = useMemo(() => {
-        return attendance.map(attendedPlayer => {
-            const stats = playerStats[attendedPlayer.number] || { goals: 0, assists: 0, shots: 0 };
+        const statsToUse = playerStats || {};
+        const attendanceToUse = attendance || [];
+
+        return attendanceToUse.map(attendedPlayer => {
+            const stats = statsToUse[attendedPlayer.number] || { goals: 0, assists: 0, shots: 0 };
             return {
                 number: attendedPlayer.number,
                 name: attendedPlayer.name,
                 ...stats,
             };
         }).sort((a, b) => {
-            // Sort by name first, then by number
             const nameComparison = a.name.localeCompare(b.name);
             if (nameComparison !== 0) return nameComparison;
             return (parseInt(a.number) || 999) - (parseInt(b.number) || 999);
@@ -272,30 +271,6 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
         description: `El archivo ${filename} se ha guardado.`,
     });
   };
-  
-  const getPlayerStatsForPeriod = (teamGoals: GoalLog[], teamShots: ShotLog[]): PlayerStats => {
-      const stats: Record<string, { name: string; goals: number; assists: number; shots: number }> = {};
-      
-      teamGoals.forEach(g => {
-          if (g.scorer?.playerNumber) {
-              if (!stats[g.scorer.playerNumber]) stats[g.scorer.playerNumber] = { name: g.scorer.playerName || '', goals: 0, assists: 0, shots: 0 };
-              stats[g.scorer.playerNumber].goals++;
-          }
-          if (g.assist?.playerNumber) {
-              if (!stats[g.assist.playerNumber]) stats[g.assist.playerNumber] = { name: g.assist.playerName || '', goals: 0, assists: 0, shots: 0 };
-              stats[g.assist.playerNumber].assists++;
-          }
-      });
-
-      teamShots.forEach(s => {
-          if (s.playerNumber) {
-              if (!stats[s.playerNumber]) stats[s.playerNumber] = { name: s.playerName || '', goals: 0, assists: 0, shots: 0 };
-              stats[s.playerNumber].shots++;
-          }
-      });
-
-      return stats as PlayerStats;
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -332,8 +307,8 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
 
             {/* General Player Stats Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <PlayerStatsSection team="home" teamName={state.live.homeTeamName} />
-                <PlayerStatsSection team="away" teamName={state.live.awayTeamName} />
+                <PlayerStatsSection team="home" teamName={state.live.homeTeamName} playerStats={state.live.gameSummary.home.playerStats} attendance={state.live.gameSummary.attendance.home} />
+                <PlayerStatsSection team="away" teamName={state.live.awayTeamName} playerStats={state.live.gameSummary.away.playerStats} attendance={state.live.gameSummary.attendance.away} />
             </div>
 
             <Separator />
@@ -357,38 +332,36 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
 
                         const getPlayerStatsForPeriod = (
                             goals: GoalLog[],
-                            shots: ShotLog[],
-                            attendance: AttendedPlayerInfo[]
-                        ): Record<string, PlayerStats> => {
-                            const stats: Record<string, PlayerStats> = {};
+                            shots: ShotLog[]
+                        ): PlayerStats => {
+                            const stats: Record<string, { name: string; goals: number; assists: number; shots: number }> = {};
 
-                            // Initialize stats for all attended players
-                            attendance.forEach(player => {
-                                stats[player.number] = { name: player.name, goals: 0, assists: 0, shots: 0 };
-                            });
-
-                            // Add goal stats
                             goals.forEach(g => {
-                                if (g.scorer?.playerNumber && stats[g.scorer.playerNumber]) {
+                                if (g.scorer?.playerNumber) {
+                                    if (!stats[g.scorer.playerNumber]) stats[g.scorer.playerNumber] = { name: g.scorer.playerName || '', goals: 0, assists: 0, shots: 0 };
                                     stats[g.scorer.playerNumber].goals++;
+                                    stats[g.scorer.playerNumber].name = g.scorer.playerName || stats[g.scorer.playerNumber].name;
                                 }
-                                if (g.assist?.playerNumber && stats[g.assist.playerNumber]) {
+                                if (g.assist?.playerNumber) {
+                                    if (!stats[g.assist.playerNumber]) stats[g.assist.playerNumber] = { name: g.assist.playerName || '', goals: 0, assists: 0, shots: 0 };
                                     stats[g.assist.playerNumber].assists++;
+                                    stats[g.assist.playerNumber].name = g.assist.playerName || stats[g.assist.playerNumber].name;
                                 }
                             });
 
-                            // Add shot stats
                             shots.forEach(s => {
-                                if (s.playerNumber && stats[s.playerNumber]) {
+                                if (s.playerNumber) {
+                                    if (!stats[s.playerNumber]) stats[s.playerNumber] = { name: s.playerName || '', goals: 0, assists: 0, shots: 0 };
                                     stats[s.playerNumber].shots++;
+                                    stats[s.playerNumber].name = s.playerName || stats[s.playerNumber].name;
                                 }
                             });
-                            return stats;
+                            return stats as PlayerStats;
                         };
 
 
-                       const homePlayerStatsInPeriod = getPlayerStatsForPeriod(homeGoalsInPeriod, homeShotsInPeriod, homeAttendance);
-                       const awayPlayerStatsInPeriod = getPlayerStatsForPeriod(awayGoalsInPeriod, awayShotsInPeriod, awayAttendance);
+                       const homePlayerStatsInPeriod = getPlayerStatsForPeriod(homeGoalsInPeriod, homeShotsInPeriod);
+                       const awayPlayerStatsInPeriod = getPlayerStatsForPeriod(awayGoalsInPeriod, awayShotsInPeriod);
 
                        const homePenaltiesInPeriod = allHomePenalties.filter(p => p.addPeriodText === periodText);
                        const awayPenaltiesInPeriod = allAwayPenalties.filter(p => p.addPeriodText === periodText);
@@ -405,8 +378,8 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
                               <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={awayPenaltiesInPeriod} />
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <PlayerStatsSection team="home" teamName={state.live.homeTeamName} playerStats={homePlayerStatsInPeriod} />
-                              <PlayerStatsSection team="away" teamName={state.live.awayTeamName} playerStats={awayPlayerStatsInPeriod} />
+                              <PlayerStatsSection team="home" teamName={state.live.homeTeamName} playerStats={homePlayerStatsInPeriod} attendance={homeAttendance} />
+                              <PlayerStatsSection team="away" teamName={state.live.awayTeamName} playerStats={awayPlayerStatsInPeriod} attendance={awayAttendance} />
                           </div>
                         </div>
                       )
