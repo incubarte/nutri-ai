@@ -17,12 +17,16 @@ export function FullScoreboard() {
   const { scoreboardLayout } = config;
   const { penalties, homeTeamName, awayTeamName, shootout } = live;
 
-  // Centralize the sliding window logic here
-  const maxAttempts = Math.max(shootout.homeAttempts.length, shootout.awayAttempts.length);
+  // Centralize the sliding window logic here, ensuring shootout exists
+  const homeAttempts = shootout?.homeAttempts || [];
+  const awayAttempts = shootout?.awayAttempts || [];
+  const totalRounds = shootout?.rounds || 5;
+
+  const maxAttempts = Math.max(homeAttempts.length, awayAttempts.length);
   // Only start sliding the window after the 5th attempt slot is filled
   const startIdx = Math.max(0, maxAttempts - MAX_DISPLAY_SLOTS);
-  const currentRound = shootout.homeAttempts.length + shootout.awayAttempts.length > 0
-    ? Math.max(shootout.homeAttempts.length, shootout.awayAttempts.length) + (shootout.homeAttempts.length === shootout.awayAttempts.length ? 1 : 0)
+  const currentRound = homeAttempts.length + awayAttempts.length > 0
+    ? Math.max(homeAttempts.length, awayAttempts.length) + (homeAttempts.length === awayAttempts.length ? 1 : 0)
     : 1;
 
 
@@ -35,7 +39,7 @@ export function FullScoreboard() {
         transform: `translateX(${scoreboardLayout.scoreboardHorizontalPosition}rem)`
       }}
     >
-      {!shootout.isActive ? (
+      {!shootout?.isActive ? (
         <>
           <CompactHeaderScoreboard />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12">
@@ -58,8 +62,8 @@ export function FullScoreboard() {
             </span>
            </h1>
            <div className="w-full max-w-4xl space-y-4">
-              <ShootoutDisplay team="home" teamName={homeTeamName} attempts={shootout.homeAttempts} totalRounds={shootout.rounds} startIdx={startIdx} />
-              <ShootoutDisplay team="away" teamName={awayTeamName} attempts={shootout.awayAttempts} totalRounds={shootout.rounds} startIdx={startIdx} />
+              <ShootoutDisplay team="home" teamName={homeTeamName} attempts={homeAttempts} totalRounds={totalRounds} startIdx={startIdx} />
+              <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
            </div>
         </div>
       )}
