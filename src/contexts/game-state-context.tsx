@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -529,7 +530,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'ADD_GOAL': {
-      const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
+      const { clock } = state.live;
+      let periodTextForLog = getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods || 2);
+      if (clock.periodDisplayOverride === 'Break' || clock.periodDisplayOverride === 'Pre-OT Break') {
+        periodTextForLog = getPeriodText(clock.currentPeriod, state.config.numberOfRegularPeriods || 2);
+      }
+
+      const newGoal: GoalLog = { ...action.payload, id: safeUUID(), periodText: periodTextForLog };
       const teamScored = action.payload.team;
       const teamConceded = teamScored === 'home' ? 'away' : 'home';
       
@@ -545,7 +552,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           ...currentScorerStats, 
           name: newGoal.scorer.playerName || currentScorerStats.name, 
           goals: currentScorerStats.goals + 1,
-          shots: currentScorerStats.shots + 1, // Also increment shot count
+          shots: currentScorerStats.shots + 1,
         };
         // Increment total team shots
         if (teamScored === 'home') score.homeShots = (score.homeShots || 0) + 1;
@@ -587,6 +594,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           [teamScored]: {
             ...gameSummary[teamScored],
             playerStats: playerStatsScored,
+            goals: [...gameSummary[teamScored].goals, newGoal]
           }
         }
       }};
@@ -660,6 +668,73 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }};
       break;
     }
+    case 'SET_PLAYER_SHOTS': {
+        const { team, playerNumber, periodText, shotCount } = action.payload;
+        const { live, config } = state;
+        const { gameSummary } = live;
+
+        const attendedPlayer = gameSummary.attendance[team].find(p => p.number === playerNumber);
+        if (!attendedPlayer) break;
+
+        const shotsLogKey = `${team}ShotsLog` as const;
+        const otherPeriodsShots = (gameSummary[team]?.[shotsLogKey] || []).filter(shot => shot.periodText !== periodText || shot.playerNumber !== playerNumber);
+        
+        const newShotsForPeriod: ShotLog[] = Array.from({ length: shotCount }, (_, i) => ({
+            id: safeUUID(),
+            team,
+            timestamp: Date.now() + i, // Add slight offset to ensure unique timestamps if needed
+            gameTime: 0, // gameTime is less important for manual adjustments
+            periodText,
+            playerNumber,
+            playerName: attendedPlayer.name
+        }));
+
+        const newShotsLog = [...otherPeriodsShots, ...newShotsForPeriod];
+        
+        // Recalculate total player stats from the new log
+        const newPlayerStats = { ...gameSummary[team].playerStats };
+        const allPlayerNumbers = new Set(Object.keys(newPlayerStats).concat(newShotsLog.map(s => s.playerNumber)));
+        
+        allPlayerNumbers.forEach(num => {
+            const playerInAttendance = gameSummary.attendance[team].find(p => p.number === num);
+            if(playerInAttendance) {
+                const goalsForPlayer = gameSummary[team].goals.filter(g => g.scorer?.playerNumber === num).length;
+                const assistsForPlayer = gameSummary[team].goals.filter(g => g.assist?.playerNumber === num).length;
+                const shotsForPlayer = newShotsLog.filter(s => s.playerNumber === num).length;
+                 newPlayerStats[num] = {
+                    name: playerInAttendance.name,
+                    goals: goalsForPlayer,
+                    assists: assistsForPlayer,
+                    shots: shotsForPlayer
+                };
+            }
+        });
+
+        // Recalculate total team shots
+        const newTeamShotCount = newShotsLog.length;
+        const newScoreState = {
+            ...live.score,
+            [`${team}Shots`]: newTeamShotCount
+        };
+
+        newState = {
+            ...state,
+            live: {
+                ...live,
+                score: newScoreState,
+                gameSummary: {
+                    ...gameSummary,
+                    [team]: {
+                        ...gameSummary[team],
+                        playerStats: newPlayerStats,
+                        [shotsLogKey]: newShotsLog
+                    }
+                }
+            }
+        };
+
+        break;
+    }
     case 'FINISH_GAME_WITH_OT_GOAL': {
       const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
       const team = action.payload.team;
@@ -713,7 +788,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         },
         gameSummary: {
           ...gameSummary,
-          [team]: { ...gameSummary[team], playerStats }
+          [team]: { ...gameSummary[team], playerStats, goals: [...gameSummary[team].goals, newGoal] }
         },
         playHornTrigger: state.live.playHornTrigger + 1,
       }};
@@ -722,7 +797,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'ADD_PENALTY': {
       const { team, penalty } = action.payload;
       const { penaltyTypeId, playerNumber } = penalty;
-      const penaltyDef = state.config.penaltyTypes.find(p => p.id === penaltyTypeId);
+      const { clock } = state.live;
+      const { config } = state;
+      const penaltyDef = config.penaltyTypes.find(p => p.id === penaltyTypeId);
 
       if (!penaltyDef) {
         console.error(`Penalty definition with id ${penaltyTypeId} not found.`);
@@ -734,13 +811,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         p => p.playerNumber === playerNumber && p.endReason !== 'deleted' && !p.isBenchPenalty
       );
       
-      if (state.config.enableMaxPenaltiesLimit && !penaltyDef.isBenchPenalty) {
-        if (playerPenalties.length + 1 >= state.config.maxPenaltiesPerPlayer) {
+      if (config.enableMaxPenaltiesLimit && !penaltyDef.isBenchPenalty) {
+        if (playerPenalties.length + 1 >= config.maxPenaltiesPerPlayer) {
           limitReachedReasons.push('quantity');
         }
       }
 
-      const { _liveAbsoluteElapsedTimeCs } = state.live.clock;
+      const { _liveAbsoluteElapsedTimeCs } = clock;
       const newPenaltyId = safeUUID();
       
       let newStatus: Penalty['_status'];
@@ -769,9 +846,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         _limitReached: limitReachedReasons.length > 0 ? limitReachedReasons : undefined,
       };
 
-      const teamDetails = state.config.teams.find(t => t.name === state.live[`${team}TeamName`] && (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
+      const teamDetails = config.teams.find(t => t.name === state.live[`${team}TeamName`] && (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) && t.category === config.selectedMatchCategory);
       const playerDetails = teamDetails?.players.find(p => p.number === newPenalty.playerNumber);
 
+      let periodTextForLog = getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, config.numberOfRegularPeriods || 2);
+      if (clock.periodDisplayOverride === 'Break' || clock.periodDisplayOverride === 'Pre-OT Break') {
+        periodTextForLog = getPeriodText(clock.currentPeriod, config.numberOfRegularPeriods || 2);
+      }
+      
       const newPenaltyLog: PenaltyLog = {
         id: newPenaltyId, team, playerNumber: newPenalty.playerNumber, playerName: playerDetails?.name,
         penaltyName: penaltyDef.name,
@@ -779,8 +861,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         reducesPlayerCount: newPenalty.reducesPlayerCount,
         clearsOnGoal: newPenalty.clearsOnGoal,
         isBenchPenalty: newPenalty.isBenchPenalty,
-        addTimestamp: Date.now(), addGameTime: state.live.clock.currentTime,
-        addPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
+        addTimestamp: Date.now(), addGameTime: clock.currentTime,
+        addPeriodText: periodTextForLog,
       };
 
       newState = { ...state, live: { ...state.live,
@@ -1592,7 +1674,7 @@ export const getActualPeriodText = (period: number, override: PeriodDisplayOverr
 };
 
 export const getPeriodText = (period: number, numRegPeriods: number): string => {
-    if (period === 0) return "WARM-UP";
+    if (period === 0) return "Warm-up";
     if (period < 0) return "---";
     if (period <= numRegPeriods) {
         if (period === 1) return "1ST";

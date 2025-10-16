@@ -330,10 +330,11 @@ export type GameAction =
   | { type: 'ADJUST_TIME'; payload: number }
   | { type: 'SET_PERIOD'; payload: number }
   | { type: 'RESET_PERIOD_CLOCK' }
-  | { type: 'ADD_GOAL'; payload: Omit<GoalLog, 'id'> }
+  | { type: 'ADD_GOAL'; payload: Omit<GoalLog, 'id'| 'periodText'> & { periodText?: string } }
   | { type: 'EDIT_GOAL'; payload: { goalId: string; updates: Partial<GoalLog> } }
   | { type: 'DELETE_GOAL'; payload: { goalId: string } }
   | { type: 'ADD_PLAYER_SHOT'; payload: { team: Team; playerNumber: string } }
+  | { type: 'SET_PLAYER_SHOTS', payload: { team: Team; playerNumber: string; periodText: string; shotCount: number } }
   | { type: 'FINISH_GAME_WITH_OT_GOAL'; payload: Omit<GoalLog, 'id'> }
   | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; penaltyTypeId: string; } } }
   | { type: 'REMOVE_PENALTY'; payload: { team: Team; penaltyId: string } }
