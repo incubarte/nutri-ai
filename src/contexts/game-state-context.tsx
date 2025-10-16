@@ -635,6 +635,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         timestamp: Date.now(),
         gameTime: state.live.clock.currentTime,
         periodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
+        playerId: attendedPlayer?.id || `unknown-${playerNumber}`,
         playerNumber,
         playerName: attendedPlayer?.name,
       };
@@ -669,15 +670,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'SET_PLAYER_SHOTS': {
-        const { team, playerNumber, periodText, shotCount } = action.payload;
-        const { live, config } = state;
+        const { team, playerId, playerNumber, periodText, shotCount } = action.payload;
+        const { live } = state;
         const { gameSummary } = live;
 
-        const attendedPlayer = gameSummary.attendance[team].find(p => p.number === playerNumber);
+        const attendedPlayer = gameSummary.attendance[team].find(p => p.id === playerId);
         if (!attendedPlayer) break;
 
         const shotsLogKey = `${team}ShotsLog` as const;
-        const otherPeriodsShots = (gameSummary[team]?.[shotsLogKey] || []).filter(shot => shot.periodText !== periodText || shot.playerNumber !== playerNumber);
+        const otherShots = (gameSummary[team]?.[shotsLogKey] || []).filter(shot => shot.playerId !== playerId || shot.periodText !== periodText);
         
         const newShotsForPeriod: ShotLog[] = Array.from({ length: shotCount }, (_, i) => ({
             id: safeUUID(),
@@ -685,11 +686,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             timestamp: Date.now() + i, // Add slight offset to ensure unique timestamps if needed
             gameTime: 0, // gameTime is less important for manual adjustments
             periodText,
-            playerNumber,
+            playerId: attendedPlayer.id,
+            playerNumber: attendedPlayer.number,
             playerName: attendedPlayer.name
         }));
 
-        const newShotsLog = [...otherPeriodsShots, ...newShotsForPeriod];
+        const newShotsLog = [...otherShots, ...newShotsForPeriod];
         
         // Recalculate total player stats from the new log
         const newPlayerStats = { ...gameSummary[team].playerStats };
@@ -797,8 +799,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'ADD_PENALTY': {
       const { team, penalty } = action.payload;
       const { penaltyTypeId, playerNumber } = penalty;
-      const { clock } = state.live;
-      const { config } = state;
+      const { clock, config } = state;
       const penaltyDef = config.penaltyTypes.find(p => p.id === penaltyTypeId);
 
       if (!penaltyDef) {

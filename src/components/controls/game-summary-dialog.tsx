@@ -144,6 +144,7 @@ const EditableShotCell = ({ team, periodText, player, onSave }: { team: Team, pe
             type: 'SET_PLAYER_SHOTS',
             payload: {
                 team,
+                playerId: player.id,
                 playerNumber: player.number,
                 periodText,
                 shotCount: newShotCount
@@ -189,18 +190,36 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
 
         const playerMap = new Map<string, PlayerData & { shots: number, goals: number, assists: number }>();
 
+        // Initialize map with all attended players
         attendanceToUse.forEach(attendedPlayer => {
-            const playerStat = statsToUse[attendedPlayer.number];
             playerMap.set(attendedPlayer.id, {
                 id: attendedPlayer.id,
                 number: attendedPlayer.number,
                 name: attendedPlayer.name,
-                type: 'player', // type is not critical here
-                shots: playerStat?.shots || 0,
-                goals: playerStat?.goals || 0,
-                assists: playerStat?.assists || 0
+                type: 'player', // type is not critical here, can be placeholder
+                shots: 0,
+                goals: 0,
+                assists: 0,
             });
         });
+        
+        // Populate with stats
+        Object.entries(statsToUse).forEach(([playerNumber, stats]) => {
+            // Find player by number, but could be more robust if IDs were used
+            const playerInMap = Array.from(playerMap.values()).find(p => p.number === playerNumber);
+            if(playerInMap) {
+                const existingPlayer = playerMap.get(playerInMap.id);
+                if (existingPlayer) {
+                    playerMap.set(existingPlayer.id, {
+                        ...existingPlayer,
+                        shots: stats.shots || 0,
+                        goals: stats.goals || 0,
+                        assists: stats.assists || 0,
+                    });
+                }
+            }
+        });
+
 
         return Array.from(playerMap.values()).sort((a, b) => {
             const nameComparison = a.name.localeCompare(b.name);
@@ -238,7 +257,7 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                         <TableBody>
                             {attendedPlayersWithStats.map(player => (
                                 <TableRow key={player.id}>
-                                    <TableCell className="font-semibold">{player.number}</TableCell>
+                                    <TableCell className="font-semibold">{player.number || 'S/N'}</TableCell>
                                     <TableCell className="text-xs text-muted-foreground">{player.name}</TableCell>
                                     <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
                                     <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
@@ -301,23 +320,26 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     if (!state.config) return [];
     const playedPeriods = new Set<string>();
     
-    // Add periods from goals
-    [...allHomeGoals, ...allAwayGoals].forEach(g => playedPeriods.add(g.periodText));
-    
-    // Add periods from penalties
-    [...allHomePenalties, ...allAwayPenalties].forEach(p => playedPeriods.add(p.addPeriodText));
-
     const lastPlayedPeriodNumber = state.live.clock.currentPeriod;
+    // Iterate up to the last period that was actually played
     for (let i = 1; i <= lastPlayedPeriodNumber; i++) {
         const periodText = getPeriodText(i, state.config.numberOfRegularPeriods);
         playedPeriods.add(periodText);
     }
     
-    const sortedPeriods = Array.from(playedPeriods).filter(p => !['Warm-up', 'Break', 'Pre-OT Break', 'Time Out', 'End of Game'].includes(p));
+    // Add OT periods if any exist in logs, in case game ends abruptly
+    [...allHomeGoals, ...allAwayGoals, ...allHomePenalties, ...allAwayPenalties].forEach(event => {
+        const period = event.periodText || event.addPeriodText;
+        if (period && period.startsWith('OT')) {
+            playedPeriods.add(period);
+        }
+    });
+
+    const sortedPeriods = Array.from(playedPeriods);
 
     return sortedPeriods.sort((a, b) => {
         const getPeriodNumber = (text: string) => {
-            if (text.startsWith('OT')) return state.config.numberOfRegularPeriods + parseInt(text.replace('OT', ''), 10);
+            if (text.startsWith('OT')) return (state.config?.numberOfRegularPeriods || 2) + parseInt(text.replace('OT', ''), 10);
             return parseInt(text.replace(/\D/g, ''), 10);
         };
         return getPeriodNumber(a) - getPeriodNumber(b);
@@ -424,21 +446,24 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
                             const stats: Record<string, { name: string; goals: number; assists: number; shots: number }> = {};
                             
                             attendance.forEach(p => {
-                                stats[p.number] = { name: p.name, goals: 0, assists: 0, shots: 0 };
+                                stats[p.number || p.name] = { name: p.name, goals: 0, assists: 0, shots: 0 };
                             });
 
                             goals.forEach(g => {
-                                if (g.scorer?.playerNumber && stats[g.scorer.playerNumber]) {
-                                    stats[g.scorer.playerNumber].goals++;
+                                if (g.scorer?.playerNumber) {
+                                    const key = g.scorer.playerNumber;
+                                    if (stats[key]) stats[key].goals++;
                                 }
-                                if (g.assist?.playerNumber && stats[g.assist.playerNumber]) {
-                                    stats[g.assist.playerNumber].assists++;
+                                if (g.assist?.playerNumber) {
+                                    const key = g.assist.playerNumber;
+                                    if (stats[key]) stats[key].assists++;
                                 }
                             });
 
                             shots.forEach(s => {
-                                if (s.playerNumber && stats[s.playerNumber]) {
-                                    stats[s.playerNumber].shots++;
+                                const key = s.playerNumber;
+                                if (stats[key]) {
+                                    stats[key].shots++;
                                 }
                             });
                             return stats as PlayerStats;
@@ -450,9 +475,6 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
 
                        const homePenaltiesInPeriod = allHomePenalties.filter(p => p.addPeriodText === periodText);
                        const awayPenaltiesInPeriod = allAwayPenalties.filter(p => p.addPeriodText === periodText);
-                      
-                      const startTime = state.live.gameSummary.home.penalties.find(p => p.addPeriodText === periodText)?.addTimestamp;
-                      const endTime = state.live.gameSummary.home.penalties.findLast(p => p.addPeriodText === periodText)?.addTimestamp;
 
                       return (
                         <div key={periodText} className="space-y-4">
