@@ -920,13 +920,28 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'ADD_PENALTY_LOG': {
-      // This action is now effectively replaced by the more comprehensive ADD_PENALTY
+      const { team, log } = action.payload;
+      const existingLog = state.live.gameSummary[team].penalties.find(p => p.id === log.id);
+      if (existingLog) break;
+
+      const newGameSummary = {
+        ...state.live.gameSummary,
+        [team]: {
+          ...state.live.gameSummary[team],
+          penalties: [...state.live.gameSummary[team].penalties, log],
+        },
+      };
+
+      newState = {
+        ...state,
+        live: { ...state.live, gameSummary: newGameSummary },
+      };
       break;
     }
     case 'DELETE_PENALTY_LOG': {
       const { team, logId } = action.payload;
       
-      // Remove from active penalties
+      // Remove from active penalties if it exists there
       const newActivePenalties = state.live.penalties[team].filter(p => p.id !== logId);
 
       // Remove from summary log
@@ -1788,5 +1803,6 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 

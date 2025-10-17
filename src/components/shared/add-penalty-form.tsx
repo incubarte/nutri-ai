@@ -24,7 +24,7 @@ interface AddPenaltyFormProps {
   awayTeamName: string;
   penaltyTypes: PenaltyTypeDefinition[];
   defaultPenaltyTypeId: string | null;
-  onPenaltySent: () => void;
+  onPenaltySent: (team: Team, playerNumber: string, penaltyTypeId: string) => void;
   preselectedTeam?: Team | null;
 }
 
@@ -68,8 +68,7 @@ export function AddPenaltyForm({
 
     setIsSending(true);
     
-    // This is a placeholder for the actual dispatch logic which will be handled where this form is used.
-    // The form itself doesn't have access to dispatch. We'll pass the data up.
+    // Pass the data up to the parent component for dispatching.
     onPenaltySent(
       selectedTeam,
       playerNumber.trim(),

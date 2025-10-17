@@ -337,7 +337,7 @@ export type GameAction =
   | { type: 'ADD_PLAYER_SHOT'; payload: { team: Team; playerNumber: string } }
   | { type: 'SET_PLAYER_SHOTS', payload: { team: Team; playerId: string; playerNumber: string; periodText: string; shotCount: number } }
   | { type: 'FINISH_GAME_WITH_OT_GOAL'; payload: Omit<GoalLog, 'id'> }
-  | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; penaltyTypeId: string; } } }
+  | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; penaltyTypeId: string; }, addGameTime?: number, addPeriodText?: string } }
   | { type: 'ADD_PENALTY_LOG', payload: { team: Team, log: PenaltyLog } }
   | { type: 'DELETE_PENALTY_LOG', payload: { team: Team, logId: string } }
   | { type: 'REMOVE_PENALTY'; payload: { team: Team; penaltyId: string } }
@@ -394,3 +394,11 @@ export type GameAction =
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
+
+export interface GameState {
+  config: ConfigState;
+  live: LiveState;
+  _initialConfigLoadComplete: boolean;
+  _lastActionOriginator?: string;
+  _lastUpdatedTimestamp?: number;
+}

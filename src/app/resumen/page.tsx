@@ -1,14 +1,15 @@
+
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useGameState, formatTime, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo, getPeriodText } from "@/contexts/game-state-context";
-import type { PlayerStats, PlayerData } from "@/types";
+import type { PlayerStats, PlayerData, PenaltyTypeDefinition } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter as UiTableFooter } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Goal, Siren, FileText, FileDown, BarChart3, Edit3, Check, XCircle } from "lucide-react";
+import { Goal, Siren, FileText, FileDown, BarChart3, Edit3, Check, XCircle, Trash2, PlusCircle, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { exportGameSummaryPDF } from "@/lib/pdf-generator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -16,6 +17,9 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
+import { AddPenaltyForm } from "@/components/shared/add-penalty-form";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle as AlertTitle } from "@/components/ui/alert-dialog";
 
 const GoalsSection = ({ team, teamName, goals }: { team: Team; teamName: string; goals: GoalLog[] }) => {
     return (
@@ -67,11 +71,14 @@ const GoalsSection = ({ team, teamName, goals }: { team: Team; teamName: string;
     );
 };
 
-const PenaltiesSection = ({ team, teamName, penalties }: { team: Team; teamName: string; penalties: PenaltyLog[] }) => {
+const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }: { team: Team; teamName: string; penalties: PenaltyLog[]; onAdd: () => void; onDelete: (logId: string) => void; }) => {
     return (
         <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-xl"><Siren className="h-5 w-5" />Penalidades</CardTitle>
+                 <Button variant="ghost" size="icon" onClick={onAdd} className="h-8 w-8 text-primary hover:text-primary/80">
+                    <PlusCircle className="h-5 w-5" />
+                </Button>
             </CardHeader>
             <CardContent>
                 {penalties.length > 0 ? (
@@ -83,6 +90,7 @@ const PenaltiesSection = ({ team, teamName, penalties }: { team: Team; teamName:
                         <TableHead>Tipo</TableHead>
                         <TableHead>Duración</TableHead>
                         <TableHead>Estado</TableHead>
+                        <TableHead className="text-right">Acción</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -102,12 +110,17 @@ const PenaltiesSection = ({ team, teamName, penalties }: { team: Team; teamName:
                             <div className="text-sm">{getEndReasonText(p.endReason)}</div>
                             {p.timeServed !== undefined && <div className="text-xs text-muted-foreground font-mono">({formatTime(p.timeServed * 100)})</div>}
                         </TableCell>
+                        <TableCell className="text-right">
+                           <Button variant="ghost" size="icon" onClick={() => onDelete(p.id)} className="h-8 w-8 text-destructive hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                           </Button>
+                        </TableCell>
                         </TableRow>
                     ))}
                     </TableBody>
                      <UiTableFooter>
                         <TableRow>
-                            <TableCell colSpan={5} className="text-right font-bold">Total Penalidades: {penalties.length}</TableCell>
+                            <TableCell colSpan={6} className="text-right font-bold">Total Penalidades: {penalties.length}</TableCell>
                         </TableRow>
                     </UiTableFooter>
                 </Table>
@@ -123,7 +136,7 @@ const EditableShotCell = ({ team, periodText, player, onSave }: { team: Team, pe
     const [shotValue, setShotValue] = useState(String(player.shots));
     const { toast } = useToast();
 
-    React.useEffect(() => {
+    useEffect(() => {
         setShotValue(String(player.shots));
     }, [player.shots]);
 
@@ -296,10 +309,15 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
 
 
 export default function ResumenPage() {
-  const { state, isLoading } = useGameState();
+  const { state, dispatch, isLoading } = useGameState();
   const { toast } = useToast();
   
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
+  const [penaltyContext, setPenaltyContext] = useState<{ team: Team, periodText: string } | null>(null);
+
+  const [penaltyToDelete, setPenaltyToDelete] = useState<{ team: Team, logId: string } | null>(null);
 
   const allHomeGoals = useMemo(() => {
     if (!state.live.score) return [];
@@ -387,6 +405,42 @@ export default function ResumenPage() {
     });
   };
 
+  const handleOpenAddPenalty = (team: Team, periodText: string) => {
+    setPenaltyContext({ team, periodText });
+    setIsAddPenaltyDialogOpen(true);
+  };
+  
+  const handleConfirmAddPenalty = (team: Team, playerNumber: string, penaltyTypeId: string) => {
+    if (!penaltyContext) return;
+    
+    dispatch({
+      type: 'ADD_PENALTY',
+      payload: { 
+        team: penaltyContext.team, 
+        penalty: { playerNumber, penaltyTypeId },
+        addGameTime: 0, // Set to 0 as it's a post-game addition
+        addPeriodText: penaltyContext.periodText,
+      }
+    });
+    
+    toast({ title: "Penalidad Añadida", description: "La penalidad se ha agregado al registro del partido."});
+    setIsAddPenaltyDialogOpen(false);
+    setPenaltyContext(null);
+  };
+
+  const handlePrepareDeletePenalty = (team: Team, logId: string) => {
+      setPenaltyToDelete({ team, logId });
+  };
+  
+  const handleConfirmDeletePenalty = () => {
+      if (penaltyToDelete) {
+        dispatch({ type: 'DELETE_PENALTY_LOG', payload: penaltyToDelete });
+        toast({ title: "Penalidad Eliminada", variant: "destructive" });
+        setPenaltyToDelete(null);
+      }
+  };
+
+
   if (isLoading || !state.live || !state.config) {
     return (
         <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
@@ -424,8 +478,8 @@ export default function ResumenPage() {
                         </div>
                         <Separator />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={allHomePenalties} />
-                            <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={allAwayPenalties} />
+                             <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={allHomePenalties} onAdd={() => {}} onDelete={() => {}} />
+                             <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={allAwayPenalties} onAdd={() => {}} onDelete={() => {}} />
                         </div>
                         <Separator />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -501,8 +555,8 @@ export default function ResumenPage() {
                                             <GoalsSection team="away" teamName={state.live.awayTeamName} goals={awayGoalsInPeriod} />
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={homePenaltiesInPeriod} />
-                                            <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={awayPenaltiesInPeriod} />
+                                            <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={homePenaltiesInPeriod} onAdd={() => handleOpenAddPenalty('home', periodText)} onDelete={(logId) => handlePrepareDeletePenalty('home', logId)} />
+                                            <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={awayPenaltiesInPeriod} onAdd={() => handleOpenAddPenalty('away', periodText)} onDelete={(logId) => handlePrepareDeletePenalty('away', logId)} />
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <PlayerStatsSection team="home" teamName={state.live.homeTeamName} playerStats={homePlayerStatsInPeriod} attendance={homeAttendance} editable={true} periodText={periodText} onEdit={() => setRefreshKey(k => k + 1)} />
@@ -517,6 +571,46 @@ export default function ResumenPage() {
                 </ScrollArea>
             </TabsContent>
         </Tabs>
+
+        {isAddPenaltyDialogOpen && penaltyContext && (
+            <Dialog open={isAddPenaltyDialogOpen} onOpenChange={setIsAddPenaltyDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Añadir Penalidad a {penaltyContext.periodText}</DialogTitle>
+                        <DialogDescription>
+                            Registra una nueva penalidad para el {penaltyContext.team === 'home' ? state.live.homeTeamName : state.live.awayTeamName} en el período {penaltyContext.periodText}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <AddPenaltyForm
+                        homeTeamName={state.live.homeTeamName}
+                        awayTeamName={state.live.awayTeamName}
+                        penaltyTypes={state.config.penaltyTypes || []}
+                        defaultPenaltyTypeId={state.config.defaultPenaltyTypeId || null}
+                        onPenaltySent={(team, playerNumber, penaltyTypeId) => handleConfirmAddPenalty(team, playerNumber, penaltyTypeId)}
+                        preselectedTeam={penaltyContext.team}
+                    />
+                </DialogContent>
+            </Dialog>
+        )}
+
+        {penaltyToDelete && (
+            <AlertDialog open={!!penaltyToDelete} onOpenChange={() => setPenaltyToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertTitle>Confirmar Eliminación</AlertTitle>
+                        <AlertDialogDescription>
+                            ¿Estás seguro de que quieres eliminar esta penalidad? Esta acción no se puede deshacer.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setPenaltyToDelete(null)}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmDeletePenalty} className="bg-destructive hover:bg-destructive/90">
+                            Eliminar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        )}
     </div>
   );
 }
