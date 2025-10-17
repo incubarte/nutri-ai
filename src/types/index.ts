@@ -338,6 +338,8 @@ export type GameAction =
   | { type: 'SET_PLAYER_SHOTS', payload: { team: Team; playerId: string; playerNumber: string; periodText: string; shotCount: number } }
   | { type: 'FINISH_GAME_WITH_OT_GOAL'; payload: Omit<GoalLog, 'id'> }
   | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; penaltyTypeId: string; } } }
+  | { type: 'ADD_PENALTY_LOG', payload: { team: Team, log: PenaltyLog } }
+  | { type: 'DELETE_PENALTY_LOG', payload: { team: Team, logId: string } }
   | { type: 'REMOVE_PENALTY'; payload: { team: Team; penaltyId: string } }
   | { type: 'END_PENALTY_FOR_GOAL'; payload: { team: Team; penaltyId: string } }
   | { type: 'CLEAR_PENDING_POWER_PLAY_GOAL' }

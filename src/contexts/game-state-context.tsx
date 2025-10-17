@@ -372,13 +372,70 @@ const applyScoreboardLayoutProfileToState = (state: GameState, profileId: string
   };
 };
 
+// New helper function to centralize stat calculation
+const recalculateAllStatsFromLogs = (gameSummary: GameSummary): { homePlayerStats: Record<string, PlayerStats>, awayPlayerStats: Record<string, PlayerStats>, homeTotalShots: number, awayTotalShots: number } => {
+    const homePlayerStats: Record<string, PlayerStats> = {};
+    const awayPlayerStats: Record<string, PlayerStats> = {};
+
+    // Initialize with all attended players to ensure everyone is in the list
+    gameSummary.attendance.home.forEach(p => {
+        homePlayerStats[p.id] = { name: p.name, shots: 0, goals: 0, assists: 0 };
+    });
+    gameSummary.attendance.away.forEach(p => {
+        awayPlayerStats[p.id] = { name: p.name, shots: 0, goals: 0, assists: 0 };
+    });
+
+    // Process goals and assists
+    [...gameSummary.home.goals, ...gameSummary.away.goals].forEach(goal => {
+        const stats = goal.team === 'home' ? homePlayerStats : awayPlayerStats;
+        const scorerId = gameSummary.attendance[goal.team].find(p => p.number === goal.scorer?.playerNumber)?.id;
+        if (scorerId && stats[scorerId]) {
+            stats[scorerId].goals += 1;
+        }
+        const assistId = gameSummary.attendance[goal.team].find(p => p.number === goal.assist?.playerNumber)?.id;
+        if (assistId && stats[assistId]) {
+            stats[assistId].assists += 1;
+        }
+    });
+    
+    // Process shots
+    [...(gameSummary.home.homeShotsLog || []), ...(gameSummary.away.awayShotsLog || [])].forEach(shot => {
+        const stats = shot.team === 'home' ? homePlayerStats : awayPlayerStats;
+        if (shot.playerId && stats[shot.playerId]) {
+            stats[shot.playerId].shots += 1;
+        }
+    });
+
+    // Convert stats from ID-based to number-based for consistency with the rest of the app
+    const convertToNumberBased = (stats: Record<string, PlayerStats>, attendance: AttendedPlayerInfo[]): Record<string, PlayerStats> => {
+        const numberBasedStats: Record<string, PlayerStats> = {};
+        attendance.forEach(p => {
+            if(stats[p.id]) {
+                numberBasedStats[p.number] = stats[p.id];
+            }
+        });
+        return numberBasedStats;
+    };
+
+    const finalHomePlayerStats = convertToNumberBased(homePlayerStats, gameSummary.attendance.home);
+    const finalAwayPlayerStats = convertToNumberBased(awayPlayerStats, gameSummary.attendance.away);
+    
+    const homeTotalShots = (gameSummary.home.homeShotsLog || []).length;
+    const awayTotalShots = (gameSummary.away.awayShotsLog || []).length;
+
+    return { homePlayerStats: finalHomePlayerStats, awayPlayerStats: finalAwayPlayerStats, homeTotalShots, awayTotalShots };
+};
+
+
+
 const gameReducer = (state: GameState, action: GameAction): GameState => {
   let newState: GameState = { ...state };
   let newTimestamp = Date.now();
 
   // Clear pending power play goal confirmation on almost any penalty change
   if (action.type !== 'ADD_GOAL' && action.type !== 'CLEAR_PENDING_POWER_PLAY_GOAL' && action.type !== 'TICK' && state.live.pendingPowerPlayGoal) {
-      if ('team' in action.payload && action.payload.team === state.live.pendingPowerPlayGoal.team) {
+      // @ts-ignore
+      if (action.payload?.team === state.live.pendingPowerPlayGoal.team) {
           newState.live.pendingPowerPlayGoal = null;
       }
   }
@@ -530,54 +587,38 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'ADD_GOAL': {
-      const { clock } = state.live;
-      let periodTextForLog = getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods || 2);
+      const { clock, config } = state;
+      let periodTextForLog = getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, config.numberOfRegularPeriods || 2);
       if (clock.periodDisplayOverride === 'Break' || clock.periodDisplayOverride === 'Pre-OT Break') {
-        periodTextForLog = getPeriodText(clock.currentPeriod, state.config.numberOfRegularPeriods || 2);
+        periodTextForLog = getPeriodText(clock.currentPeriod, config.numberOfRegularPeriods || 2);
       }
 
       const newGoal: GoalLog = { ...action.payload, id: safeUUID(), periodText: periodTextForLog };
+      
+      const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      newGameSummary[action.payload.team].goals.push(newGoal);
+
       const teamScored = action.payload.team;
       const teamConceded = teamScored === 'home' ? 'away' : 'home';
       
-      const score = { ...state.live.score };
-      const gameSummary = { ...state.live.gameSummary };
-      const playerStatsScored = { ...gameSummary[teamScored].playerStats };
+      const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
 
-      // Update Scorer Stats
-      if (newGoal.scorer?.playerNumber) {
-        const scorerNumber = newGoal.scorer.playerNumber;
-        const currentScorerStats = playerStatsScored[scorerNumber] || { name: newGoal.scorer.playerName || '', shots: 0, goals: 0, assists: 0 };
-        playerStatsScored[scorerNumber] = { 
-          ...currentScorerStats, 
-          name: newGoal.scorer.playerName || currentScorerStats.name, 
-          goals: currentScorerStats.goals + 1,
-          shots: currentScorerStats.shots + 1,
-        };
-        // Increment total team shots
-        if (teamScored === 'home') score.homeShots = (score.homeShots || 0) + 1;
-        if (teamScored === 'away') score.awayShots = (score.awayShots || 0) + 1;
-      }
-      
-      // Update Assist Stats
-      if (newGoal.assist?.playerNumber) {
-        const assistNumber = newGoal.assist.playerNumber;
-        const currentAssistStats = playerStatsScored[assistNumber] || { name: newGoal.assist.playerName || '', shots: 0, goals: 0, assists: 0 };
-        playerStatsScored[assistNumber] = { ...currentAssistStats, name: newGoal.assist.playerName || currentAssistStats.name, assists: currentAssistStats.assists + 1 };
-      }
-      
-      const homeGoals = (teamScored === 'home' ? [...(score.homeGoals || []), newGoal] : (score.homeGoals || []));
-      const awayGoals = (teamScored === 'away' ? [...(score.awayGoals || []), newGoal] : (score.awayGoals || []));
-      
-      score.home = homeGoals.length;
-      score.away = awayGoals.length;
-      score.homeGoals = homeGoals;
-      score.awayGoals = awayGoals;
-      
+      const homeGoals = newGameSummary.home.goals;
+      const awayGoals = newGameSummary.away.goals;
+
+      const score = {
+          home: homeGoals.length,
+          away: awayGoals.length,
+          homeGoals,
+          awayGoals,
+          homeShots: homeTotalShots,
+          awayShots: awayTotalShots,
+      };
+
       let pendingPPGoal: LiveState['pendingPowerPlayGoal'] = null;
       // Check for power play goal condition
-      const scoringTeamOnIce = state.config.playersPerTeamOnIce - state.live.penalties[teamScored].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
-      const concedingTeamOnIce = state.config.playersPerTeamOnIce - state.live.penalties[teamConceded].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
+      const scoringTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamScored].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
+      const concedingTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamConceded].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
 
       if (scoringTeamOnIce > concedingTeamOnIce) {
           const firstEligiblePenalty = state.live.penalties[teamConceded].find(p => p._status === 'running' && p.clearsOnGoal);
@@ -587,42 +628,78 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
       
       newState = { ...state, live: { ...state.live, 
-        score: score,
-        pendingPowerPlayGoal: pendingPPGoal,
+        score,
+        pendingPowerPlayGoal,
         gameSummary: {
-          ...gameSummary,
-          [teamScored]: {
-            ...gameSummary[teamScored],
-            playerStats: playerStatsScored,
-            goals: [...gameSummary[teamScored].goals, newGoal]
-          }
-        }
+          ...newGameSummary,
+          home: { ...newGameSummary.home, playerStats: homePlayerStats },
+          away: { ...newGameSummary.away, playerStats: awayPlayerStats },
+        },
       }};
       break;
     }
      case 'EDIT_GOAL': {
       const { goalId, updates } = action.payload;
-      newState = { ...state, live: { ...state.live, score: {
-        ...state.live.score,
-        homeGoals: (state.live.score.homeGoals || []).map(g => g.id === goalId ? { ...g, ...updates } : g),
-        awayGoals: (state.live.score.awayGoals || []).map(g => g.id === goalId ? { ...g, ...updates } : g),
-      }}};
-      // Note: This does not automatically re-calculate player stats.
-      // A more robust implementation would re-calculate all player stats from the updated goal logs.
-      // For now, we accept this limitation for simplicity.
+      const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      let goalFound = false;
+
+      newGameSummary.home.goals = newGameSummary.home.goals.map((g: GoalLog) => {
+        if (g.id === goalId) {
+            goalFound = true;
+            return { ...g, ...updates };
+        }
+        return g;
+      });
+      if (!goalFound) {
+        newGameSummary.away.goals = newGameSummary.away.goals.map((g: GoalLog) => {
+          if (g.id === goalId) {
+              goalFound = true;
+              return { ...g, ...updates };
+          }
+          return g;
+        });
+      }
+
+      if (goalFound) {
+        const { homePlayerStats, awayPlayerStats } = recalculateAllStatsFromLogs(newGameSummary);
+        const homeGoals = newGameSummary.home.goals;
+        const awayGoals = newGameSummary.away.goals;
+        const newScore = { ...state.live.score, home: homeGoals.length, away: awayGoals.length, homeGoals, awayGoals };
+
+        newState = { ...state, live: { ...state.live, 
+          score: newScore,
+          gameSummary: {
+            ...newGameSummary,
+            home: { ...newGameSummary.home, playerStats: homePlayerStats },
+            away: { ...newGameSummary.away, playerStats: awayPlayerStats },
+          }
+        }};
+      }
       break;
     }
     case 'DELETE_GOAL': {
-      const homeGoals = (state.live.score.homeGoals || []).filter(g => g.id !== action.payload.goalId);
-      const awayGoals = (state.live.score.awayGoals || []).filter(g => g.id !== action.payload.goalId);
-      newState = { ...state, live: { ...state.live, score: {
-          ...state.live.score,
-          home: homeGoals.length,
-          away: awayGoals.length,
-          homeGoals: homeGoals,
-          awayGoals: awayGoals,
-      }}};
-      // Note: This does not automatically re-calculate player stats.
+      const { goalId } = action.payload;
+      const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      const initialHomeGoalsCount = newGameSummary.home.goals.length;
+      
+      newGameSummary.home.goals = newGameSummary.home.goals.filter((g: GoalLog) => g.id !== goalId);
+      if (newGameSummary.home.goals.length === initialHomeGoalsCount) {
+        newGameSummary.away.goals = newGameSummary.away.goals.filter((g: GoalLog) => g.id !== goalId);
+      }
+
+      const { homePlayerStats, awayPlayerStats } = recalculateAllStatsFromLogs(newGameSummary);
+      const homeGoals = newGameSummary.home.goals;
+      const awayGoals = newGameSummary.away.goals;
+      const newScore = { ...state.live.score, home: homeGoals.length, away: awayGoals.length, homeGoals, awayGoals };
+
+      newState = { ...state, live: { ...state.live,
+        score: newScore,
+        gameSummary: {
+          ...newGameSummary,
+          home: { ...newGameSummary.home, playerStats: homePlayerStats },
+          away: { ...newGameSummary.away, playerStats: awayPlayerStats },
+        }
+      }};
       break;
     }
     case 'ADD_PLAYER_SHOT': {
@@ -640,31 +717,20 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         playerName: attendedPlayer?.name,
       };
 
-      const score = { ...state.live.score };
-      const playerStats = { ...(state.live.gameSummary[team]?.playerStats || {}) };
-      const currentStats = playerStats[playerNumber] || { name: attendedPlayer?.name || '', shots: 0, goals: 0, assists: 0 };
+      const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      const shotsLogKey = `${team}ShotsLog` as const;
+      newGameSummary[team][shotsLogKey] = [...(newGameSummary[team][shotsLogKey] || []), newShotLog];
       
-      playerStats[playerNumber] = {
-        ...currentStats,
-        name: attendedPlayer?.name || currentStats.name,
-        shots: currentStats.shots + 1,
-      };
-
-      const teamShotsLogKey: 'homeShotsLog' | 'awayShotsLog' = `${team}ShotsLog`;
-      const updatedShotsLog = [...(state.live.gameSummary[team]?.[teamShotsLogKey] || []), newShotLog];
+      const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
       
-      if (team === 'home') score.homeShots = (score.homeShots || 0) + 1;
-      if (team === 'away') score.awayShots = (score.awayShots || 0) + 1;
+      const newScore = { ...state.live.score, homeShots: homeTotalShots, awayShots: awayTotalShots };
 
       newState = { ...state, live: { ...state.live,
-        score: score,
+        score: newScore,
         gameSummary: {
-          ...state.live.gameSummary,
-          [team]: {
-            ...state.live.gameSummary[team],
-            playerStats,
-            [teamShotsLogKey]: updatedShotsLog,
-          }
+          ...newGameSummary,
+          home: { ...newGameSummary.home, playerStats: homePlayerStats },
+          away: { ...newGameSummary.away, playerStats: awayPlayerStats },
         }
       }};
       break;
@@ -678,105 +744,64 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         if (!attendedPlayer) break;
 
         const shotsLogKey = `${team}ShotsLog` as const;
+        // Correctly filter to keep shots from other players OR other periods
         const otherShots = (gameSummary[team]?.[shotsLogKey] || []).filter(shot => shot.playerId !== playerId || shot.periodText !== periodText);
         
         const newShotsForPeriod: ShotLog[] = Array.from({ length: shotCount }, (_, i) => ({
             id: safeUUID(),
             team,
-            timestamp: Date.now() + i, // Add slight offset to ensure unique timestamps if needed
-            gameTime: 0, // gameTime is less important for manual adjustments
+            timestamp: Date.now() + i,
+            gameTime: 0,
             periodText,
             playerId: attendedPlayer.id,
             playerNumber: attendedPlayer.number,
             playerName: attendedPlayer.name
         }));
 
-        const newShotsLog = [...otherShots, ...newShotsForPeriod];
+        const newGameSummary = JSON.parse(JSON.stringify(gameSummary));
+        newGameSummary[team][shotsLogKey] = [...otherShots, ...newShotsForPeriod];
         
-        // Recalculate total player stats from the new log
-        const newPlayerStats = { ...gameSummary[team].playerStats };
-        const allPlayerNumbers = new Set(Object.keys(newPlayerStats).concat(newShotsLog.map(s => s.playerNumber)));
-        
-        allPlayerNumbers.forEach(num => {
-            const playerInAttendance = gameSummary.attendance[team].find(p => p.number === num);
-            if(playerInAttendance) {
-                const goalsForPlayer = gameSummary[team].goals.filter(g => g.scorer?.playerNumber === num).length;
-                const assistsForPlayer = gameSummary[team].goals.filter(g => g.assist?.playerNumber === num).length;
-                const shotsForPlayer = newShotsLog.filter(s => s.playerNumber === num).length;
-                 newPlayerStats[num] = {
-                    name: playerInAttendance.name,
-                    goals: goalsForPlayer,
-                    assists: assistsForPlayer,
-                    shots: shotsForPlayer
-                };
-            }
-        });
-
-        // Recalculate total team shots
-        const newTeamShotCount = newShotsLog.length;
-        const newScoreState = {
-            ...live.score,
-            [`${team}Shots`]: newTeamShotCount
-        };
+        const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
 
         newState = {
             ...state,
             live: {
                 ...live,
-                score: newScoreState,
+                score: {
+                    ...live.score,
+                    homeShots: homeTotalShots,
+                    awayShots: awayTotalShots
+                },
                 gameSummary: {
-                    ...gameSummary,
-                    [team]: {
-                        ...gameSummary[team],
-                        playerStats: newPlayerStats,
-                        [shotsLogKey]: newShotsLog
-                    }
+                    ...newGameSummary,
+                    home: { ...newGameSummary.home, playerStats: homePlayerStats },
+                    away: { ...newGameSummary.away, playerStats: awayPlayerStats },
                 }
             }
         };
-
         break;
     }
     case 'FINISH_GAME_WITH_OT_GOAL': {
       const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
       const team = action.payload.team;
-      const score = { ...state.live.score };
-      const gameSummary = { ...state.live.gameSummary };
-      const playerStats = { ...gameSummary[team].playerStats };
+      const gameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      gameSummary[team].goals.push(newGoal);
 
-      // Update Scorer Stats (including the shot)
-      if (newGoal.scorer?.playerNumber) {
-        const scorerNumber = newGoal.scorer.playerNumber;
-        const currentScorerStats = playerStats[scorerNumber] || { name: newGoal.scorer.playerName || '', shots: 0, goals: 0, assists: 0 };
-        playerStats[scorerNumber] = { 
-          ...currentScorerStats, 
-          name: newGoal.scorer.playerName || currentScorerStats.name, 
-          goals: currentScorerStats.goals + 1,
-          shots: currentScorerStats.shots + 1,
-        };
-        // Increment total team shots
-        if (team === 'home') score.homeShots = (score.homeShots || 0) + 1;
-        if (team === 'away') score.awayShots = (score.awayShots || 0) + 1;
-      }
+      const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(gameSummary);
       
-      // Update Assist Stats
-      if (newGoal.assist?.playerNumber) {
-        const assistNumber = newGoal.assist.playerNumber;
-        const currentAssistStats = playerStats[assistNumber] || { name: newGoal.assist.playerName || '', shots: 0, goals: 0, assists: 0 };
-        playerStats[assistNumber] = { ...currentAssistStats, name: newGoal.assist.playerName || currentAssistStats.name, assists: currentAssistStats.assists + 1 };
-      }
-
-      const homeGoals = (team === 'home' ? [...(score.homeGoals || []), newGoal] : (score.homeGoals || []));
-      const awayGoals = (team === 'away' ? [...(score.awayGoals || []), newGoal] : (score.awayGoals || []));
-      score.home = homeGoals.length;
-      score.away = awayGoals.length;
-      score.homeGoals = homeGoals;
-      score.awayGoals = awayGoals;
+      const newScore = {
+          home: gameSummary.home.goals.length,
+          away: gameSummary.away.goals.length,
+          homeGoals: gameSummary.home.goals,
+          awayGoals: gameSummary.away.goals,
+          homeShots: homeTotalShots,
+          awayShots: awayTotalShots,
+      };
       
       const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
       
       newState = { ...state, live: { ...state.live, 
-        score: score,
+        score: newScore,
         clock: {
           ...state.live.clock,
           currentTime: 0,
@@ -790,7 +815,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         },
         gameSummary: {
           ...gameSummary,
-          [team]: { ...gameSummary[team], playerStats, goals: [...gameSummary[team].goals, newGoal] }
+          home: { ...gameSummary.home, playerStats: homePlayerStats },
+          away: { ...gameSummary.away, playerStats: awayPlayerStats },
         },
         playHornTrigger: state.live.playHornTrigger + 1,
       }};
@@ -886,6 +912,20 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods), endReason: 'deleted', timeServed } : p
         )}}
       }};
+      break;
+    }
+    case 'ADD_PENALTY_LOG': {
+      const { team, log } = action.payload;
+      const gameSummary = { ...state.live.gameSummary };
+      gameSummary[team].penalties = [...gameSummary[team].penalties, log];
+      newState = { ...state, live: { ...state.live, gameSummary } };
+      break;
+    }
+    case 'DELETE_PENALTY_LOG': {
+      const { team, logId } = action.payload;
+      const gameSummary = { ...state.live.gameSummary };
+      gameSummary[team].penalties = gameSummary[team].penalties.filter(p => p.id !== logId);
+      newState = { ...state, live: { ...state.live, gameSummary } };
       break;
     }
      case 'END_PENALTY_FOR_GOAL': {
@@ -1737,3 +1777,4 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
