@@ -588,9 +588,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_GOAL': {
       const { clock, config } = state;
-      let periodTextForLog = getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, config.numberOfRegularPeriods || 2);
-      if (clock.periodDisplayOverride === 'Break' || clock.periodDisplayOverride === 'Pre-OT Break') {
-        periodTextForLog = getPeriodText(clock.currentPeriod, config.numberOfRegularPeriods || 2);
+      let periodTextForLog: string;
+      
+      if (action.payload.periodText) {
+          periodTextForLog = action.payload.periodText;
+      } else {
+          periodTextForLog = getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, config.numberOfRegularPeriods || 2);
+          if (clock.periodDisplayOverride === 'Break' || clock.periodDisplayOverride === 'Pre-OT Break') {
+            periodTextForLog = getPeriodText(clock.currentPeriod, config.numberOfRegularPeriods || 2);
+          }
       }
 
       const newGoal: GoalLog = { ...action.payload, id: safeUUID(), periodText: periodTextForLog };
@@ -599,7 +605,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newGameSummary[action.payload.team].goals.push(newGoal);
 
       const teamScored = action.payload.team;
-      const teamConceded = teamScored === 'home' ? 'away' : 'home';
       
       const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
 
@@ -618,12 +623,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       let pendingPPGoal: LiveState['pendingPowerPlayGoal'] = null;
       // Check for power play goal condition
       const scoringTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamScored].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
-      const concedingTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamConceded].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
+      const concedingTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamScored === 'home' ? 'away' : 'home'].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
 
       if (scoringTeamOnIce > concedingTeamOnIce) {
-          const firstEligiblePenalty = state.live.penalties[teamConceded].find(p => p._status === 'running' && p.clearsOnGoal);
+          const firstEligiblePenalty = state.live.penalties[teamScored === 'home' ? 'away' : 'home'].find(p => p._status === 'running' && p.clearsOnGoal);
           if (firstEligiblePenalty) {
-              pendingPPGoal = { team: teamConceded, penaltyId: firstEligiblePenalty.id };
+              pendingPPGoal = { team: teamScored === 'home' ? 'away' : 'home', penaltyId: firstEligiblePenalty.id };
           }
       }
       
@@ -823,7 +828,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'ADD_PENALTY': {
-      const { team, penalty } = action.payload;
+      const { team, penalty, addGameTime, addPeriodText } = action.payload;
       const { penaltyTypeId, playerNumber } = penalty;
       const { clock, config } = state;
       const penaltyDef = config.penaltyTypes.find(p => p.id === penaltyTypeId);
@@ -876,8 +881,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const teamDetails = config.teams.find(t => t.name === state.live[`${team}TeamName`] && (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) && t.category === config.selectedMatchCategory);
       const playerDetails = teamDetails?.players.find(p => p.number === newPenalty.playerNumber);
 
-      let periodTextForLog = getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, config.numberOfRegularPeriods || 2);
-      if (clock.periodDisplayOverride === 'Break' || clock.periodDisplayOverride === 'Pre-OT Break') {
+      let periodTextForLog = addPeriodText || getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, config.numberOfRegularPeriods || 2);
+      if (addPeriodText === undefined && (clock.periodDisplayOverride === 'Break' || clock.periodDisplayOverride === 'Pre-OT Break')) {
         periodTextForLog = getPeriodText(clock.currentPeriod, config.numberOfRegularPeriods || 2);
       }
       
@@ -888,7 +893,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         reducesPlayerCount: newPenalty.reducesPlayerCount,
         clearsOnGoal: newPenalty.clearsOnGoal,
         isBenchPenalty: newPenalty.isBenchPenalty,
-        addTimestamp: Date.now(), addGameTime: clock.currentTime,
+        addTimestamp: Date.now(), addGameTime: addGameTime ?? clock.currentTime,
         addPeriodText: periodTextForLog,
       };
 
@@ -915,17 +920,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'ADD_PENALTY_LOG': {
-      const { team, log } = action.payload;
-      const gameSummary = { ...state.live.gameSummary };
-      gameSummary[team].penalties = [...gameSummary[team].penalties, log];
-      newState = { ...state, live: { ...state.live, gameSummary } };
+      // This action is now effectively replaced by the more comprehensive ADD_PENALTY
       break;
     }
     case 'DELETE_PENALTY_LOG': {
       const { team, logId } = action.payload;
-      const gameSummary = { ...state.live.gameSummary };
-      gameSummary[team].penalties = gameSummary[team].penalties.filter(p => p.id !== logId);
-      newState = { ...state, live: { ...state.live, gameSummary } };
+      
+      // Remove from active penalties
+      const newActivePenalties = state.live.penalties[team].filter(p => p.id !== logId);
+
+      // Remove from summary log
+      const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      newGameSummary[team].penalties = newGameSummary[team].penalties.filter((p: PenaltyLog) => p.id !== logId);
+      
+      newState = { ...state, live: { ...state.live, 
+        penalties: { ...state.live.penalties, [team]: newActivePenalties },
+        gameSummary: newGameSummary
+      }};
       break;
     }
      case 'END_PENALTY_FOR_GOAL': {
@@ -1777,4 +1788,5 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
