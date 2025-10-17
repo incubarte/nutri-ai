@@ -410,7 +410,7 @@ export default function ResumenPage() {
     setIsAddPenaltyDialogOpen(true);
   };
   
-  const handleConfirmAddPenalty = (team: Team, playerNumber: string, penaltyTypeId: string) => {
+  const handleConfirmAddPenalty = (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs?: number) => {
     if (!penaltyContext) return;
     
     dispatch({
@@ -418,7 +418,7 @@ export default function ResumenPage() {
       payload: { 
         team: penaltyContext.team, 
         penalty: { playerNumber, penaltyTypeId },
-        addGameTime: 0, // Set to 0 as it's a post-game addition
+        addGameTime: gameTimeCs, // Pass the manually entered time
         addPeriodText: penaltyContext.periodText,
       }
     });
@@ -586,8 +586,9 @@ export default function ResumenPage() {
                         awayTeamName={state.live.awayTeamName}
                         penaltyTypes={state.config.penaltyTypes || []}
                         defaultPenaltyTypeId={state.config.defaultPenaltyTypeId || null}
-                        onPenaltySent={(team, playerNumber, penaltyTypeId) => handleConfirmAddPenalty(team, playerNumber, penaltyTypeId)}
+                        onPenaltySent={(team, playerNumber, penaltyTypeId, gameTimeCs) => handleConfirmAddPenalty(team, playerNumber, penaltyTypeId, gameTimeCs)}
                         preselectedTeam={penaltyContext.team}
+                        showTimeInput={true}
                     />
                 </DialogContent>
             </Dialog>

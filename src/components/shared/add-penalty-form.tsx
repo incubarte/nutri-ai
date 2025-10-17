@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -24,8 +23,9 @@ interface AddPenaltyFormProps {
   awayTeamName: string;
   penaltyTypes: PenaltyTypeDefinition[];
   defaultPenaltyTypeId: string | null;
-  onPenaltySent: (team: Team, playerNumber: string, penaltyTypeId: string) => void;
+  onPenaltySent: (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs?: number) => void;
   preselectedTeam?: Team | null;
+  showTimeInput?: boolean;
 }
 
 export function AddPenaltyForm({
@@ -35,10 +35,13 @@ export function AddPenaltyForm({
   defaultPenaltyTypeId,
   onPenaltySent,
   preselectedTeam = null,
+  showTimeInput = false,
 }: AddPenaltyFormProps) {
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(preselectedTeam);
   const [playerNumber, setPlayerNumber] = useState('');
   const [penaltyTypeId, setPenaltyTypeId] = useState<string | null>(defaultPenaltyTypeId);
+  const [minutes, setMinutes] = useState('');
+  const [seconds, setSeconds] = useState('');
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
 
@@ -65,6 +68,17 @@ export function AddPenaltyForm({
       toast({ title: "Error", description: "Debes seleccionar un tipo de falta.", variant: "destructive" });
       return;
     }
+    
+    let gameTimeCs: number | undefined = undefined;
+    if (showTimeInput) {
+        const mins = parseInt(minutes, 10) || 0;
+        const secs = parseInt(seconds, 10) || 0;
+        if (mins < 0 || secs < 0 || secs >= 60) {
+            toast({ title: "Tiempo Inválido", description: "Los minutos deben ser positivos y los segundos entre 0 y 59.", variant: "destructive"});
+            return;
+        }
+        gameTimeCs = (mins * 60 + secs) * 100;
+    }
 
     setIsSending(true);
     
@@ -72,7 +86,8 @@ export function AddPenaltyForm({
     onPenaltySent(
       selectedTeam,
       playerNumber.trim(),
-      penaltyTypeId
+      penaltyTypeId,
+      gameTimeCs
     );
     
     setIsSending(false);
@@ -107,7 +122,7 @@ export function AddPenaltyForm({
         </div>
       </div>
       
-      <div className="grid grid-cols-2 gap-4">
+       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="penalty-player-number"># Jugador</Label>
           <Input
@@ -121,7 +136,7 @@ export function AddPenaltyForm({
             required
           />
         </div>
-        <div>
+         <div>
           <Label htmlFor="penalty-type">Tipo de Falta</Label>
           <Select value={penaltyTypeId || ""} onValueChange={setPenaltyTypeId}>
               <SelectTrigger id="penalty-type" className="h-12 text-base">
@@ -136,6 +151,34 @@ export function AddPenaltyForm({
           </Select>
         </div>
       </div>
+
+       {showTimeInput && (
+        <div className="grid grid-cols-2 gap-4 items-end">
+            <div>
+                <Label>Tiempo de Juego (Ocurrido)</Label>
+                 <div className="flex items-center gap-2 mt-1">
+                    <Input
+                        type="number"
+                        inputMode="numeric"
+                        value={minutes}
+                        onChange={(e) => setMinutes(e.target.value)}
+                        placeholder="MM"
+                        className="w-16 h-12 text-lg text-center"
+                    />
+                    <span className="text-lg font-bold">:</span>
+                    <Input
+                        type="number"
+                        inputMode="numeric"
+                        value={seconds}
+                        onChange={(e) => setSeconds(e.target.value)}
+                        placeholder="SS"
+                        className="w-16 h-12 text-lg text-center"
+                    />
+                </div>
+            </div>
+        </div>
+      )}
+
 
       <DialogFooter className="pt-6">
         <DialogClose asChild>
