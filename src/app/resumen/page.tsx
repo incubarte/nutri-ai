@@ -1,27 +1,21 @@
-
-
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { useGameState, formatTime, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo, getPeriodText } from "@/contexts/game-state-context";
-import type { PlayerStats, PlayerData } from '@/types';
+import type { PlayerStats, PlayerData } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter as UiTableFooter } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Goal, Siren, X, FileText, FileDown, BarChart3, Edit3, Check, XCircle } from "lucide-react";
+import { Goal, Siren, FileText, FileDown, BarChart3, Edit3, Check, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { exportGameSummaryPDF } from "@/lib/pdf-generator";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
-import { Input } from "../ui/input";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-
-interface GameSummaryDialogProps {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
 
 const GoalsSection = ({ team, teamName, goals }: { team: Team; teamName: string; goals: GoalLog[] }) => {
     return (
@@ -129,7 +123,7 @@ const EditableShotCell = ({ team, periodText, player, onSave }: { team: Team, pe
     const [shotValue, setShotValue] = useState(String(player.shots));
     const { toast } = useToast();
 
-    useEffect(() => {
+    React.useEffect(() => {
         setShotValue(String(player.shots));
     }, [player.shots]);
 
@@ -190,25 +184,22 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
 
         const playerMap = new Map<string, PlayerData & { shots: number, goals: number, assists: number }>();
 
-        // Initialize map with all attended players
         attendanceToUse.forEach(attendedPlayer => {
             playerMap.set(attendedPlayer.id, {
                 id: attendedPlayer.id,
                 number: attendedPlayer.number,
                 name: attendedPlayer.name,
-                type: 'player', // type is not critical here, can be placeholder
+                type: 'player', 
                 shots: 0,
                 goals: 0,
                 assists: 0,
             });
         });
         
-        // Populate with stats
         Object.entries(statsToUse).forEach(([playerNumber, stats]) => {
-            // Find player by number, but could be more robust if IDs were used
-            const playerInMap = Array.from(playerMap.values()).find(p => p.number === playerNumber);
-            if(playerInMap) {
-                const existingPlayer = playerMap.get(playerInMap.id);
+            const playerInAttendance = attendanceToUse.find(p => p.number === playerNumber);
+            if (playerInAttendance) {
+                const existingPlayer = playerMap.get(playerInAttendance.id);
                 if (existingPlayer) {
                     playerMap.set(existingPlayer.id, {
                         ...existingPlayer,
@@ -217,14 +208,29 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                         assists: stats.assists || 0,
                     });
                 }
+            } else if (playerNumber === "S/N") { // Handle "S/N" case
+                const playerWithoutNumber = attendanceToUse.find(p => !p.number);
+                 if (playerWithoutNumber && playerMap.has(playerWithoutNumber.id)) {
+                    const existingPlayer = playerMap.get(playerWithoutNumber.id)!;
+                     playerMap.set(existingPlayer.id, {
+                        ...existingPlayer,
+                        shots: stats.shots || 0,
+                        goals: stats.goals || 0,
+                        assists: stats.assists || 0,
+                    });
+                 }
             }
         });
 
 
         return Array.from(playerMap.values()).sort((a, b) => {
-            const nameComparison = a.name.localeCompare(b.name);
-            if (nameComparison !== 0) return nameComparison;
-            return (parseInt(a.number) || 999) - (parseInt(b.number) || 999);
+            const numA = parseInt(a.number, 10);
+            const numB = parseInt(b.number, 10);
+
+            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+            if (isNaN(numA) && !isNaN(numB)) return 1;
+            if (!isNaN(numA) && isNaN(numB)) return -1;
+            return a.name.localeCompare(b.name);
         });
     }, [attendance, playerStats]);
 
@@ -289,11 +295,10 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
 };
 
 
-export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogProps) {
-  const { state } = useGameState();
+export default function ResumenPage() {
+  const { state, isLoading } = useGameState();
   const { toast } = useToast();
   
-  // This state is to force a re-render of the general stats when per-period stats are edited.
   const [refreshKey, setRefreshKey] = useState(0);
 
   const allHomeGoals = useMemo(() => {
@@ -321,16 +326,14 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     const playedPeriods = new Set<string>();
     
     const lastPlayedPeriodNumber = state.live.clock.currentPeriod;
-    // Iterate up to the last period that was actually played
     for (let i = 1; i <= lastPlayedPeriodNumber; i++) {
         const periodText = getPeriodText(i, state.config.numberOfRegularPeriods);
         playedPeriods.add(periodText);
     }
     
-    // Add OT periods if any exist in logs, in case game ends abruptly
     [...allHomeGoals, ...allAwayGoals, ...allHomePenalties, ...allAwayPenalties].forEach(event => {
         const period = event.periodText || event.addPeriodText;
-        if (period && period.startsWith('OT')) {
+        if (period && !period.toLowerCase().includes('warm-up') && !period.toLowerCase().includes('break')) {
             playedPeriods.add(period);
         }
     });
@@ -384,79 +387,86 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     });
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-3xl">Resumen del Partido</DialogTitle>
-          <DialogDescription>
-            Un resumen completo de los goles y penalidades del partido actual.
-          </DialogDescription>
-        </DialogHeader>
+  if (isLoading || !state.live || !state.config) {
+    return (
+        <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
+            <HockeyPuckSpinner className="h-24 w-24 text-primary mb-4" />
+            <p className="text-xl text-foreground">Cargando Resumen...</p>
+        </div>
+    );
+  }
 
-        <div className="grid grid-cols-2 text-center my-2">
-            <h3 className="text-2xl font-bold text-primary">{state.live.homeTeamName} - <span className="text-accent">{state.live.score.home}</span></h3>
-            <h3 className="text-2xl font-bold text-primary">{state.live.awayTeamName} - <span className="text-accent">{state.live.score.away}</span></h3>
+  return (
+    <div className="w-full max-w-6xl mx-auto space-y-6">
+        <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-primary-foreground">Resumen del Partido</h1>
+            <div className="grid grid-cols-2 text-center my-2">
+                <h3 className="text-2xl font-bold text-primary">{state.live.homeTeamName} - <span className="text-accent">{state.live.score.home}</span></h3>
+                <h3 className="text-2xl font-bold text-primary">{state.live.awayTeamName} - <span className="text-accent">{state.live.score.away}</span></h3>
+            </div>
+             <div className="flex justify-start gap-2">
+                <Button type="button" variant="outline" onClick={handleExportCSV}><FileText className="mr-2 h-4 w-4" />Exportar a CSV</Button>
+                <Button type="button" variant="outline" onClick={handleExportPDF}><FileDown className="mr-2 h-4 w-4" />Exportar a PDF</Button>
+            </div>
         </div>
 
-        <ScrollArea className="flex-grow my-4 border-y py-4 pr-6 -mr-6">
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <GoalsSection team="home" teamName={state.live.homeTeamName} goals={allHomeGoals} />
-              <GoalsSection team="away" teamName={state.live.awayTeamName} goals={allAwayGoals} />
-            </div>
-
-            <Separator />
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={allHomePenalties} />
-              <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={allAwayPenalties} />
-            </div>
-
-            <Separator />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <PlayerStatsSection key={`home-total-${refreshKey}`} team="home" teamName={state.live.homeTeamName} playerStats={state.live.gameSummary.home.playerStats} attendance={state.live.gameSummary.attendance.home} />
-                <PlayerStatsSection key={`away-total-${refreshKey}`} team="away" teamName={state.live.awayTeamName} playerStats={state.live.gameSummary.away.playerStats} attendance={state.live.gameSummary.attendance.away} />
-            </div>
-
-            <Separator />
-
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="item-1">
-                <AccordionTrigger className="text-xl text-primary-foreground hover:no-underline">
-                  Estadísticas por Periodo
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-8 pl-2">
-                    {allPeriodTexts.map(periodText => {
-                       const homeGoalsInPeriod = allHomeGoals.filter(g => g.periodText === periodText);
-                       const awayGoalsInPeriod = allAwayGoals.filter(g => g.periodText === periodText);
-                       const homeShotsInPeriod = (state.live.gameSummary.home.homeShotsLog || []).filter(s => s.periodText === periodText);
-                       const awayShotsInPeriod = (state.live.gameSummary.away.awayShotsLog || []).filter(s => s.periodText === periodText);
-                       
-                       const homeAttendance = state.live.gameSummary.attendance.home || [];
-                       const awayAttendance = state.live.gameSummary.attendance.away || [];
+        <Tabs defaultValue="general">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="general">Estadísticas Generales</TabsTrigger>
+                <TabsTrigger value="periods">Detalle por Periodo</TabsTrigger>
+            </TabsList>
+            <TabsContent value="general" className="mt-6">
+                <ScrollArea className="h-[calc(100vh-22rem)]">
+                    <div className="space-y-6 pr-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <GoalsSection team="home" teamName={state.live.homeTeamName} goals={allHomeGoals} />
+                            <GoalsSection team="away" teamName={state.live.awayTeamName} goals={allAwayGoals} />
+                        </div>
+                        <Separator />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={allHomePenalties} />
+                            <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={allAwayPenalties} />
+                        </div>
+                        <Separator />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <PlayerStatsSection key={`home-total-${refreshKey}`} team="home" teamName={state.live.homeTeamName} playerStats={state.live.gameSummary.home.playerStats} attendance={state.live.gameSummary.attendance.home} />
+                            <PlayerStatsSection key={`away-total-${refreshKey}`} team="away" teamName={state.live.awayTeamName} playerStats={state.live.gameSummary.away.playerStats} attendance={state.live.gameSummary.attendance.away} />
+                        </div>
+                    </div>
+                </ScrollArea>
+            </TabsContent>
+            <TabsContent value="periods" className="mt-6">
+                <ScrollArea className="h-[calc(100vh-22rem)]">
+                    <Accordion type="single" collapsible className="w-full pr-4">
+                        {allPeriodTexts.map(periodText => {
+                        const homeGoalsInPeriod = allHomeGoals.filter(g => g.periodText === periodText);
+                        const awayGoalsInPeriod = allAwayGoals.filter(g => g.periodText === periodText);
+                        const homeShotsInPeriod = (state.live.gameSummary.home.homeShotsLog || []).filter(s => s.periodText === periodText);
+                        const awayShotsInPeriod = (state.live.gameSummary.away.awayShotsLog || []).filter(s => s.periodText === periodText);
+                        
+                        const homeAttendance = state.live.gameSummary.attendance.home || [];
+                        const awayAttendance = state.live.gameSummary.attendance.away || [];
 
                         const getPlayerStatsForPeriod = (
                             goals: GoalLog[],
                             shots: ShotLog[],
                             attendance: AttendedPlayerInfo[],
                         ): PlayerStats => {
-                            const stats: Record<string, { name: string; goals: number; assists: number; shots: number }> = {};
-                            
+                            const stats: Record<string, PlayerStats> = {};
                             attendance.forEach(p => {
-                                stats[p.number || p.name] = { name: p.name, goals: 0, assists: 0, shots: 0 };
+                                stats[p.number] = { name: p.name, shots: 0, goals: 0, assists: 0 };
                             });
-
+                            
                             goals.forEach(g => {
                                 if (g.scorer?.playerNumber) {
                                     const key = g.scorer.playerNumber;
-                                    if (stats[key]) stats[key].goals++;
+                                    if (!stats[key]) stats[key] = { name: g.scorer.playerName || '', goals: 0, assists: 0, shots: 0 };
+                                    stats[key].goals++;
                                 }
                                 if (g.assist?.playerNumber) {
                                     const key = g.assist.playerNumber;
-                                    if (stats[key]) stats[key].assists++;
+                                    if (!stats[key]) stats[key] = { name: g.assist.playerName || '', goals: 0, assists: 0, shots: 0 };
+                                    stats[key].assists++;
                                 }
                             });
 
@@ -464,54 +474,49 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
                                 const key = s.playerNumber;
                                 if (stats[key]) {
                                     stats[key].shots++;
+                                } else { // Player might exist but not in stats yet
+                                    const player = attendance.find(p => p.number === key);
+                                    if (player) {
+                                        stats[key] = { name: player.name, shots: 1, goals: 0, assists: 0 };
+                                    }
                                 }
                             });
-                            return stats as PlayerStats;
+                            return stats;
                         };
 
 
-                       const homePlayerStatsInPeriod = getPlayerStatsForPeriod(homeGoalsInPeriod, homeShotsInPeriod, homeAttendance);
-                       const awayPlayerStatsInPeriod = getPlayerStatsForPeriod(awayGoalsInPeriod, awayShotsInPeriod, awayAttendance);
+                        const homePlayerStatsInPeriod = getPlayerStatsForPeriod(homeGoalsInPeriod, homeShotsInPeriod, homeAttendance);
+                        const awayPlayerStatsInPeriod = getPlayerStatsForPeriod(awayGoalsInPeriod, awayShotsInPeriod, awayAttendance);
 
-                       const homePenaltiesInPeriod = allHomePenalties.filter(p => p.addPeriodText === periodText);
-                       const awayPenaltiesInPeriod = allAwayPenalties.filter(p => p.addPeriodText === periodText);
+                        const homePenaltiesInPeriod = allHomePenalties.filter(p => p.addPeriodText === periodText);
+                        const awayPenaltiesInPeriod = allAwayPenalties.filter(p => p.addPeriodText === periodText);
 
-                      return (
-                        <div key={periodText} className="space-y-4">
-                          <h3 className="text-xl font-semibold text-center text-primary-foreground border-b pb-2 mb-4">
-                            {periodText}
-                          </h3>
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <GoalsSection team="home" teamName={state.live.homeTeamName} goals={homeGoalsInPeriod} />
-                              <GoalsSection team="away" teamName={state.live.awayTeamName} goals={awayGoalsInPeriod} />
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={homePenaltiesInPeriod} />
-                              <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={awayPenaltiesInPeriod} />
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <PlayerStatsSection team="home" teamName={state.live.homeTeamName} playerStats={homePlayerStatsInPeriod} attendance={homeAttendance} editable={true} periodText={periodText} onEdit={() => setRefreshKey(k => k + 1)} />
-                              <PlayerStatsSection team="away" teamName={state.live.awayTeamName} playerStats={awayPlayerStatsInPeriod} attendance={awayAttendance} editable={true} periodText={periodText} onEdit={() => setRefreshKey(k => k + 1)} />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
-        </ScrollArea>
-        <DialogFooter className="flex-wrap">
-          <div className="flex-grow flex justify-start gap-2">
-            <Button type="button" variant="outline" onClick={handleExportCSV}><FileText className="mr-2 h-4 w-4" />Exportar a CSV</Button>
-            <Button type="button" variant="outline" onClick={handleExportPDF}><FileDown className="mr-2 h-4 w-4" />Exportar a PDF</Button>
-          </div>
-          <DialogClose asChild>
-            <Button type="button" variant="outline"><X className="mr-2 h-4 w-4" />Cerrar</Button>
-          </DialogClose>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+                        return (
+                            <AccordionItem value={periodText} key={periodText}>
+                                <AccordionTrigger className="text-xl hover:no-underline">{periodText}</AccordionTrigger>
+                                <AccordionContent>
+                                    <div className="space-y-8 pl-2">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <GoalsSection team="home" teamName={state.live.homeTeamName} goals={homeGoalsInPeriod} />
+                                            <GoalsSection team="away" teamName={state.live.awayTeamName} goals={awayGoalsInPeriod} />
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <PenaltiesSection team="home" teamName={state.live.homeTeamName} penalties={homePenaltiesInPeriod} />
+                                            <PenaltiesSection team="away" teamName={state.live.awayTeamName} penalties={awayPenaltiesInPeriod} />
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <PlayerStatsSection team="home" teamName={state.live.homeTeamName} playerStats={homePlayerStatsInPeriod} attendance={homeAttendance} editable={true} periodText={periodText} onEdit={() => setRefreshKey(k => k + 1)} />
+                                            <PlayerStatsSection team="away" teamName={state.live.awayTeamName} playerStats={awayPlayerStatsInPeriod} attendance={awayAttendance} editable={true} periodText={periodText} onEdit={() => setRefreshKey(k => k + 1)} />
+                                        </div>
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        )
+                        })}
+                    </Accordion>
+                </ScrollArea>
+            </TabsContent>
+        </Tabs>
+    </div>
   );
 }

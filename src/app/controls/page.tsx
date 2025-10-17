@@ -5,7 +5,6 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { MiniScoreboard } from '@/components/controls/mini-scoreboard';
 import { PenaltyControlCard } from '@/components/controls/penalty-control-card';
 import { GoalManagementDialog } from '@/components/controls/goal-management-dialog';
-import { GameSummaryDialog } from '@/components/controls/game-summary-dialog';
 import { GoldenGoalDialog } from '@/components/controls/golden-goal-dialog';
 import { GameSetupDialog } from '@/components/controls/game-setup-dialog';
 import { ShootoutControl } from '@/components/controls/shootout-control';
@@ -14,7 +13,7 @@ import type { PlayerData, RemoteCommand, AccessRequest, TunnelState } from '@/ty
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, FileText, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X, Fingerprint } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X, Fingerprint } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { saveGameSummary } from '@/ai/flows/file-operations';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
@@ -289,7 +288,6 @@ export default function ControlsPage() {
   
   const [isGoalManagementOpen, setIsGoalManagementOpen] = useState(false);
   const [editingTeamForGoals, setEditingTeamForGoals] = useState<Team | null>(null);
-  const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
   const [isGoldenGoalDialogOpen, setIsGoldenGoalDialogOpen] = useState(false);
   const [isGameSetupDialogOpen, setIsGameSetupDialogOpen] = useState(false);
   
@@ -915,9 +913,6 @@ export default function ControlsPage() {
             <Button variant="outline" className="flex-shrink-0" onClick={() => setIsGameSetupDialogOpen(true)}>
               <RefreshCw className="mr-2 h-4 w-4" /> Iniciar Nuevo Partido
             </Button>
-            <Button variant="outline" className="flex-shrink-0" onClick={() => setIsSummaryDialogOpen(true)}>
-              <FileText className="mr-2 h-4 w-4" /> Ver Resumen del Partido
-            </Button>
         </div>
          <p className="text-xs text-muted-foreground mt-2">
           La acción "Iniciar Nuevo Partido" restablecerá los marcadores, el reloj, el período actual, las penalidades y el registro de eventos del partido.
@@ -996,19 +991,6 @@ export default function ControlsPage() {
                 }
               }}
           />
-      )}
-
-      {isSummaryDialogOpen && (
-        <GameSummaryDialog 
-          isOpen={isSummaryDialogOpen}
-          onOpenChange={(isOpen) => {
-            if (isOpen) {
-              setIsSummaryDialogOpen(true);
-            } else {
-              setTimeout(() => setIsSummaryDialogOpen(false), 150);
-            }
-          }}
-        />
       )}
 
       {isGameSetupDialogOpen && (
