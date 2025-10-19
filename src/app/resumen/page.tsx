@@ -300,7 +300,7 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                                                             <div className="w-full h-full flex items-center justify-center">
                                                                 <Input
                                                                     type="number"
-                                                                    value={shotValue}
+                                                                    value={editedShots[player.id] || '0'}
                                                                     className="h-7 w-16 mx-auto text-center cursor-not-allowed"
                                                                     disabled
                                                                 />
@@ -652,7 +652,6 @@ export default function ResumenPage() {
     </div>
   );
 }
-
     
 
     
