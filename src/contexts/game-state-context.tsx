@@ -411,7 +411,9 @@ const recalculateAllStatsFromLogs = (gameSummary: GameSummary): { homePlayerStat
         const numberBasedStats: Record<string, PlayerStats> = {};
         attendance.forEach(p => {
             if(stats[p.id]) {
-                numberBasedStats[p.number] = stats[p.id];
+                if (p.number) { // Only add if player has a number
+                    numberBasedStats[p.number] = stats[p.id];
+                }
             }
         });
         return numberBasedStats;
@@ -724,7 +726,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
       const shotsLogKey = `${team}ShotsLog` as const;
-      newGameSummary[team][shotsLogKey] = [...(newGameSummary[team][shotsLogKey] || []), newShotLog];
+      newGameSummary[team][shotsLogKey].push(newShotLog);
       
       const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
       
@@ -748,14 +750,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const attendedPlayer = gameSummary.attendance[team].find(p => p.id === playerId);
         if (!attendedPlayer) break;
 
-        const shotsLogKey = `${team}ShotsLog` as 'homeShotsLog' | 'awayShotsLog';
-        // Correctly filter to keep shots from other players OR other periods
+        const shotsLogKey = `${team}ShotsLog` as const;
+        // Keep shots from other players OR from the same player in different periods.
         const otherShots = (gameSummary[team]?.[shotsLogKey] || []).filter((shot: ShotLog) => shot.playerId !== playerId || shot.periodText !== periodText);
         
         const newShotsForPeriod: ShotLog[] = Array.from({ length: shotCount }, (_, i) => ({
             id: safeUUID(),
             team,
-            timestamp: Date.now() + i,
+            timestamp: Date.now() + i, // Offset timestamp to ensure unique values if needed
             gameTime: 0, // Game time is not relevant for post-game edits
             periodText,
             playerId: attendedPlayer.id,
@@ -917,25 +919,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods), endReason: 'deleted', timeServed } : p
         )}}
       }};
-      break;
-    }
-    case 'ADD_PENALTY_LOG': {
-      const { team, log } = action.payload;
-      const existingLog = state.live.gameSummary[team].penalties.find(p => p.id === log.id);
-      if (existingLog) break;
-
-      const newGameSummary = {
-        ...state.live.gameSummary,
-        [team]: {
-          ...state.live.gameSummary[team],
-          penalties: [...state.live.gameSummary[team].penalties, log],
-        },
-      };
-
-      newState = {
-        ...state,
-        live: { ...state.live, gameSummary: newGameSummary },
-      };
       break;
     }
     case 'DELETE_PENALTY_LOG': {

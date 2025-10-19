@@ -402,5 +402,3 @@ export interface GameState {
   _lastActionOriginator?: string;
   _lastUpdatedTimestamp?: number;
 }
-
-    
