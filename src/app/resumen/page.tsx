@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
@@ -76,9 +75,11 @@ const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }: { team
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-xl"><Siren className="h-5 w-5" />Penalidades</CardTitle>
-                 <Button variant="ghost" size="icon" onClick={onAdd} className="h-8 w-8 text-primary hover:text-primary/80">
-                    <PlusCircle className="h-5 w-5" />
-                </Button>
+                {onAdd && (
+                    <Button variant="ghost" size="icon" onClick={onAdd} className="h-8 w-8 text-primary hover:text-primary/80">
+                        <PlusCircle className="h-5 w-5" />
+                    </Button>
+                )}
             </CardHeader>
             <CardContent>
                 {penalties.length > 0 ? (
@@ -130,67 +131,13 @@ const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }: { team
     );
 };
 
-const EditableShotCell = ({ team, periodText, player, onSave }: { team: Team, periodText: string, player: PlayerData & { shots: number }, onSave: () => void }) => {
-    const { dispatch } = useGameState();
-    const [isEditing, setIsEditing] = useState(false);
-    const [shotValue, setShotValue] = useState(String(player.shots));
-    const { toast } = useToast();
-
-    useEffect(() => {
-        setShotValue(String(player.shots));
-    }, [player.shots]);
-
-    const handleSave = () => {
-        const newShotCount = parseInt(shotValue, 10);
-        if (isNaN(newShotCount) || newShotCount < 0) {
-            toast({ title: "Valor inválido", description: "El número de tiros debe ser un número positivo.", variant: "destructive" });
-            return;
-        }
-
-        dispatch({
-            type: 'SET_PLAYER_SHOTS',
-            payload: {
-                team,
-                playerId: player.id,
-                playerNumber: player.number,
-                periodText,
-                shotCount: newShotCount
-            }
-        });
-        toast({ title: "Tiros actualizados", description: `Tiros para #${player.number} en ${periodText} establecidos a ${newShotCount}.` });
-        setIsEditing(false);
-        onSave();
-    };
-
-    if (isEditing) {
-        return (
-            <div className="flex items-center gap-1 justify-center">
-                <Input
-                    type="number"
-                    value={shotValue}
-                    onChange={(e) => setShotValue(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSave() }}
-                    className="h-7 w-14 text-center"
-                    autoFocus
-                />
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-green-500" onClick={handleSave}><Check className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setIsEditing(false)}><XCircle className="h-4 w-4" /></Button>
-            </div>
-        );
-    }
-
-    return (
-        <div className="flex items-center justify-center gap-1">
-            <span className="font-mono">{player.shots || 0}</span>
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground opacity-50 hover:opacity-100" onClick={() => setIsEditing(true)}>
-                <Edit3 className="h-3 w-3" />
-            </Button>
-        </div>
-    );
-};
 
 const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable, periodText, onEdit }: { team: Team; teamName: string; playerStats?: PlayerStats; attendance?: AttendedPlayerInfo[]; editable?: boolean; periodText?: string, onEdit?: () => void }) => {
-    
+    const { dispatch } = useGameState();
+    const { toast } = useToast();
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedShots, setEditedShots] = useState<Record<string, string>>({});
+
     const attendedPlayersWithStats = useMemo(() => {
         const statsToUse = playerStats || {};
         const attendanceToUse = attendance || [];
@@ -211,27 +158,14 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
         
         Object.entries(statsToUse).forEach(([playerNumber, stats]) => {
             const playerInAttendance = attendanceToUse.find(p => p.number === playerNumber);
-            if (playerInAttendance) {
-                const existingPlayer = playerMap.get(playerInAttendance.id);
-                if (existingPlayer) {
-                    playerMap.set(existingPlayer.id, {
-                        ...existingPlayer,
-                        shots: stats.shots || 0,
-                        goals: stats.goals || 0,
-                        assists: stats.assists || 0,
-                    });
-                }
-            } else if (playerNumber === "S/N") { // Handle "S/N" case
-                const playerWithoutNumber = attendanceToUse.find(p => !p.number);
-                 if (playerWithoutNumber && playerMap.has(playerWithoutNumber.id)) {
-                    const existingPlayer = playerMap.get(playerWithoutNumber.id)!;
-                     playerMap.set(existingPlayer.id, {
-                        ...existingPlayer,
-                        shots: stats.shots || 0,
-                        goals: stats.goals || 0,
-                        assists: stats.assists || 0,
-                    });
-                 }
+            if (playerInAttendance && playerMap.has(playerInAttendance.id)) {
+                const existingPlayer = playerMap.get(playerInAttendance.id)!;
+                playerMap.set(existingPlayer.id, {
+                    ...existingPlayer,
+                    shots: stats.shots || 0,
+                    goals: stats.goals || 0,
+                    assists: stats.assists || 0,
+                });
             }
         });
 
@@ -255,11 +189,82 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
             return acc;
         }, { goals: 0, assists: 0, shots: 0 });
     }, [attendedPlayersWithStats]);
+
+    const handleEditClick = () => {
+        const initialShots = attendedPlayersWithStats.reduce((acc, player) => {
+            acc[player.id] = String(player.shots || 0);
+            return acc;
+        }, {} as Record<string, string>);
+        setEditedShots(initialShots);
+        setIsEditing(true);
+    };
+
+    const handleCancelClick = () => {
+        setIsEditing(false);
+        setEditedShots({});
+    };
+
+    const handleSaveClick = () => {
+        if (!periodText) return;
+        let changesCount = 0;
+        
+        for (const player of attendedPlayersWithStats) {
+            const originalShotCount = player.shots || 0;
+            const newShotCountStr = editedShots[player.id];
+
+            if (newShotCountStr === undefined || String(originalShotCount) === newShotCountStr) {
+                continue;
+            }
+
+            const newShotCount = parseInt(newShotCountStr, 10);
+            if (isNaN(newShotCount) || newShotCount < 0) {
+                toast({ title: "Valor inválido", description: `El número de tiros para #${player.number} debe ser un número positivo.`, variant: "destructive" });
+                return;
+            }
+            
+            changesCount++;
+            dispatch({
+                type: 'SET_PLAYER_SHOTS',
+                payload: {
+                    team,
+                    playerId: player.id,
+                    playerNumber: player.number,
+                    periodText,
+                    shotCount: newShotCount
+                }
+            });
+        }
+
+        if (changesCount > 0) {
+            toast({ title: "Tiros actualizados", description: `Se guardaron los cambios para ${changesCount} jugador(es).` });
+            if(onEdit) onEdit();
+        }
+        
+        setIsEditing(false);
+    };
+
+    const handleShotChange = (playerId: string, value: string) => {
+        if (/^\d*$/.test(value)) {
+            setEditedShots(prev => ({ ...prev, [playerId]: value }));
+        }
+    };
     
     return (
         <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas - {teamName}</CardTitle>
+                {editable && (
+                    <div className="flex gap-2">
+                        {isEditing ? (
+                            <>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveClick}><Check className="h-5 w-5" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><X className="h-5 w-5" /></Button>
+                            </>
+                        ) : (
+                            <Button variant="outline" size="sm" onClick={handleEditClick}><Edit3 className="mr-2 h-4 w-4"/>Editar Tiros</Button>
+                        )}
+                    </div>
+                )}
             </CardHeader>
             <CardContent>
                 {attendedPlayersWithStats.length > 0 ? (
@@ -281,8 +286,13 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                                     <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
                                     <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
                                     <TableCell className="text-center">
-                                       {editable && periodText ? (
-                                           <EditableShotCell team={team} player={player} periodText={periodText} onSave={onEdit || (() => {})} />
+                                       {isEditing && editable ? (
+                                           <Input
+                                                type="number"
+                                                value={editedShots[player.id] || '0'}
+                                                onChange={(e) => handleShotChange(player.id, e.target.value)}
+                                                className="h-7 w-16 mx-auto text-center"
+                                           />
                                        ) : (
                                            <span className="font-mono">{player.shots || 0}</span>
                                        )}
