@@ -625,3 +625,5 @@ export default function ResumenPage() {
     </div>
   );
 }
+
+    

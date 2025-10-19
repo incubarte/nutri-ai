@@ -377,7 +377,7 @@ const recalculateAllStatsFromLogs = (gameSummary: GameSummary): { homePlayerStat
     const homePlayerStats: Record<string, PlayerStats> = {};
     const awayPlayerStats: Record<string, PlayerStats> = {};
 
-    // Initialize with all attended players to ensure everyone is in the list
+    // Initialize with all attended players to ensure they are on the list
     gameSummary.attendance.home.forEach(p => {
         homePlayerStats[p.id] = { name: p.name, shots: 0, goals: 0, assists: 0 };
     });
@@ -741,22 +741,22 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'SET_PLAYER_SHOTS': {
-        const { team, playerId, playerNumber, periodText, shotCount } = action.payload;
+        const { team, playerId, periodText, shotCount } = action.payload;
         const { live } = state;
         const { gameSummary } = live;
 
         const attendedPlayer = gameSummary.attendance[team].find(p => p.id === playerId);
         if (!attendedPlayer) break;
 
-        const shotsLogKey = `${team}ShotsLog` as const;
+        const shotsLogKey = `${team}ShotsLog` as 'homeShotsLog' | 'awayShotsLog';
         // Correctly filter to keep shots from other players OR other periods
-        const otherShots = (gameSummary[team]?.[shotsLogKey] || []).filter(shot => shot.playerId !== playerId || shot.periodText !== periodText);
+        const otherShots = (gameSummary[team]?.[shotsLogKey] || []).filter((shot: ShotLog) => shot.playerId !== playerId || shot.periodText !== periodText);
         
         const newShotsForPeriod: ShotLog[] = Array.from({ length: shotCount }, (_, i) => ({
             id: safeUUID(),
             team,
             timestamp: Date.now() + i,
-            gameTime: 0,
+            gameTime: 0, // Game time is not relevant for post-game edits
             periodText,
             playerId: attendedPlayer.id,
             playerNumber: attendedPlayer.number,
@@ -1421,7 +1421,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'DELETE_FORMAT_AND_TIMINGS_PROFILE': {
         let newProfiles = state.config.formatAndTimingsProfiles.filter(p => p.id !== action.payload.profileId);
         if (newProfiles.length === 0) newProfiles = [createDefaultFormatAndTimingsProfile()];
-        const newSelectedId = action.payload.profileId === state.config.selectedFormatAndTimingsProfileId ? newProfiles[0].id : state.config.selectedFormatAndTimingsProfileId;
+        const newSelectedId = action.payload.profileId === state.config.selectedFormatAndTimingsProfileId ? newProfiles[0].id : state.config.selectedScoreboardLayoutProfileId;
         newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: newProfiles, selectedFormatAndTimingsProfileId: newSelectedId }};
         newState = applyFormatAndTimingsProfileToState(newState, newSelectedId);
         break;
@@ -1801,9 +1801,3 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
 
     
-
-    
-
-
-
-
