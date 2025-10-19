@@ -20,6 +20,8 @@ import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
 import { AddPenaltyForm } from "@/components/shared/add-penalty-form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle as AlertTitle } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 const GoalsSection = ({ team, teamName, goals }: { team: Team; teamName: string; goals: GoalLog[] }) => {
     return (
@@ -212,10 +214,12 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
         for (const player of attendedPlayersWithStats) {
             const originalShotCount = player.shots || 0;
             const newShotCountStr = editedShots[player.id];
-
+            
             if (newShotCountStr === undefined || String(originalShotCount) === newShotCountStr) {
                 continue;
             }
+
+            if (!player.number) continue;
 
             const newShotCount = parseInt(newShotCountStr, 10);
             if (isNaN(newShotCount) || newShotCount < 0) {
@@ -229,7 +233,6 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                 payload: {
                     team,
                     playerId: player.id,
-                    playerNumber: player.number,
                     periodText,
                     shotCount: newShotCount
                 }
@@ -268,51 +271,74 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                 )}
             </CardHeader>
             <CardContent>
-                {attendedPlayersWithStats.length > 0 ? (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>#</TableHead>
-                                <TableHead>Nombre</TableHead>
-                                <TableHead className="text-center">G</TableHead>
-                                <TableHead className="text-center">A</TableHead>
-                                <TableHead className="text-center">Tiros</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {attendedPlayersWithStats.map(player => (
-                                <TableRow key={player.id}>
-                                    <TableCell className="font-semibold">{player.number || 'S/N'}</TableCell>
-                                    <TableCell className="text-xs text-muted-foreground">{player.name}</TableCell>
-                                    <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
-                                    <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
-                                    <TableCell className="text-center">
-                                       {isEditing && editable ? (
-                                           <Input
-                                                type="number"
-                                                value={editedShots[player.id] || '0'}
-                                                onChange={(e) => handleShotChange(player.id, e.target.value)}
-                                                className="h-7 w-16 mx-auto text-center"
-                                           />
-                                       ) : (
-                                           <span className="font-mono">{player.shots || 0}</span>
-                                       )}
-                                    </TableCell>
+                <TooltipProvider>
+                    {attendedPlayersWithStats.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>#</TableHead>
+                                    <TableHead>Nombre</TableHead>
+                                    <TableHead className="text-center">G</TableHead>
+                                    <TableHead className="text-center">A</TableHead>
+                                    <TableHead className="text-center">Tiros</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                        <UiTableFooter>
-                            <TableRow>
-                                <TableCell colSpan={2} className="text-right font-bold">TOTAL</TableCell>
-                                <TableCell className="text-center font-bold font-mono">{totals.goals}</TableCell>
-                                <TableCell className="text-center font-bold font-mono">{totals.assists}</TableCell>
-                                <TableCell className="text-center font-bold font-mono">{totals.shots}</TableCell>
-                            </TableRow>
-                        </UiTableFooter>
-                    </Table>
-                ) : (
-                    <p className="text-sm text-muted-foreground">No hay jugadores con asistencia registrada.</p>
-                )}
+                            </TableHeader>
+                            <TableBody>
+                                {attendedPlayersWithStats.map(player => {
+                                    const isDisabled = isEditing && !player.number;
+                                    return (
+                                        <TableRow key={player.id} className={cn(isDisabled && "opacity-50")}>
+                                            <TableCell className="font-semibold">{player.number || 'S/N'}</TableCell>
+                                            <TableCell className="text-xs text-muted-foreground">{player.name}</TableCell>
+                                            <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
+                                            <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
+                                            <TableCell className="text-center">
+                                            {isEditing && editable ? (
+                                                isDisabled ? (
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div className="w-full h-full flex items-center justify-center">
+                                                                <Input
+                                                                    type="number"
+                                                                    value={shotValue}
+                                                                    className="h-7 w-16 mx-auto text-center cursor-not-allowed"
+                                                                    disabled
+                                                                />
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>No se pueden editar los tiros de un jugador sin número asignado.</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                ) : (
+                                                    <Input
+                                                        type="number"
+                                                        value={editedShots[player.id] || '0'}
+                                                        onChange={(e) => handleShotChange(player.id, e.target.value)}
+                                                        className="h-7 w-16 mx-auto text-center"
+                                                    />
+                                                )
+                                            ) : (
+                                                <span className="font-mono">{player.shots || 0}</span>
+                                            )}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                            <UiTableFooter>
+                                <TableRow>
+                                    <TableCell colSpan={2} className="text-right font-bold">TOTAL</TableCell>
+                                    <TableCell className="text-center font-bold font-mono">{totals.goals}</TableCell>
+                                    <TableCell className="text-center font-bold font-mono">{totals.assists}</TableCell>
+                                    <TableCell className="text-center font-bold font-mono">{totals.shots}</TableCell>
+                                </TableRow>
+                            </UiTableFooter>
+                        </Table>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">No hay jugadores con asistencia registrada.</p>
+                    )}
+                </TooltipProvider>
             </CardContent>
         </Card>
     );
@@ -626,5 +652,7 @@ export default function ResumenPage() {
     </div>
   );
 }
+
+    
 
     
