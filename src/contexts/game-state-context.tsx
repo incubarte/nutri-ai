@@ -434,8 +434,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
   // Clear pending power play goal confirmation on almost any penalty change
   if (action.type !== 'ADD_GOAL' && action.type !== 'CLEAR_PENDING_POWER_PLAY_GOAL' && action.type !== 'TICK' && state.live.pendingPowerPlayGoal) {
-      // @ts-ignore
-      if (action.payload?.team === state.live.pendingPowerPlayGoal.team) {
+      if ('team' in action.payload && action.payload.team === state.live.pendingPowerPlayGoal.team) {
           newState.live.pendingPowerPlayGoal = null;
       }
   }
@@ -830,7 +829,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'ADD_PENALTY': {
       const { team, penalty, addGameTime, addPeriodText } = action.payload;
       const { penaltyTypeId, playerNumber } = penalty;
-      const { config } = state;
+      const { config, live } = state;
       const penaltyDef = config.penaltyTypes.find(p => p.id === penaltyTypeId);
 
       if (!penaltyDef) {
@@ -839,9 +838,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
       
       const newPenaltyId = safeUUID();
-      const teamDetails = config.teams.find(t => t.name === state.live[`${team}TeamName`] && (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) && t.category === config.selectedMatchCategory);
+      const teamDetails = config.teams.find(t => t.name === live[`${team}TeamName`] && (t.subName || undefined) === (live[`${team}TeamSubName`] || undefined) && t.category === config.selectedMatchCategory);
       const playerDetails = teamDetails?.players.find(p => p.number === playerNumber);
-
+      
       const newPenaltyLog: PenaltyLog = {
         id: newPenaltyId, team, playerNumber: playerNumber.toUpperCase(), playerName: playerDetails?.name,
         penaltyName: penaltyDef.name,
@@ -850,19 +849,21 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         clearsOnGoal: penaltyDef.clearsOnGoal,
         isBenchPenalty: penaltyDef.isBenchPenalty,
         addTimestamp: Date.now(),
-        addGameTime: addGameTime ?? state.live.clock.currentTime,
-        addPeriodText: addPeriodText ?? getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods || 2),
+        addGameTime: addGameTime ?? live.clock.currentTime,
+        addPeriodText: addPeriodText ?? getActualPeriodText(live.clock.currentPeriod, live.clock.periodDisplayOverride, config.numberOfRegularPeriods || 2),
       };
 
-      const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      const newGameSummary = JSON.parse(JSON.stringify(live.gameSummary));
       newGameSummary[team].penalties.push(newPenaltyLog);
-      newState = { ...state, live: { ...state.live, gameSummary: newGameSummary }};
-
-      // Only add to active penalties if not adding from summary
-      if (addGameTime === undefined) {
-        const { _liveAbsoluteElapsedTimeCs } = state.live.clock;
+      
+      // If adding from summary, only update the log.
+      if (addGameTime !== undefined && addPeriodText !== undefined) {
+        newState = { ...state, live: { ...state.live, gameSummary: newGameSummary }};
+      } else {
+        // If adding from live controls, create active penalty.
+        const { _liveAbsoluteElapsedTimeCs } = live.clock;
         const limitReachedReasons: ('quantity')[] = [];
-        const playerPenalties = state.live.gameSummary[team].penalties.filter(
+        const playerPenalties = live.gameSummary[team].penalties.filter(
           p => p.playerNumber === playerNumber && p.endReason !== 'deleted' && !p.isBenchPenalty
         );
         
@@ -886,19 +887,16 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         }
         
         const newPenalty: Penalty = { 
-          id: newPenaltyId, 
-          playerNumber: playerNumber.toUpperCase(),
-          initialDuration: penaltyDef.duration,
-          reducesPlayerCount: penaltyDef.reducesPlayerCount,
-          clearsOnGoal: penaltyDef.clearsOnGoal,
-          isBenchPenalty: penaltyDef.isBenchPenalty,
-          _status: newStatus,
-          startTime,
-          expirationTime,
+          id: newPenaltyId, playerNumber: playerNumber.toUpperCase(), initialDuration: penaltyDef.duration,
+          reducesPlayerCount: penaltyDef.reducesPlayerCount, clearsOnGoal: penaltyDef.clearsOnGoal,
+          isBenchPenalty: penaltyDef.isBenchPenalty, _status: newStatus, startTime, expirationTime,
           _limitReached: limitReachedReasons.length > 0 ? limitReachedReasons : undefined,
         };
 
-        newState.live.penalties[team] = sortPenaltiesByStatus([...state.live.penalties[team], newPenalty]);
+        newState = { ...state, live: { ...live,
+          penalties: { ...live.penalties, [team]: sortPenaltiesByStatus([...live.penalties[team], newPenalty]) },
+          gameSummary: newGameSummary
+        }};
       }
       break;
     }
@@ -921,10 +919,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'DELETE_PENALTY_LOG': {
       const { team, logId } = action.payload;
       
-      // Remove from active penalties if it exists there
       const newActivePenalties = state.live.penalties[team].filter(p => p.id !== logId);
 
-      // Remove from summary log
       const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
       newGameSummary[team].penalties = newGameSummary[team].penalties.filter((p: PenaltyLog) => p.id !== logId);
       
