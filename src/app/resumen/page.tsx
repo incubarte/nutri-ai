@@ -24,6 +24,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { safeUUID } from "@/lib/utils";
 
+const SUMMARY_DATA_STORAGE_KEY = 'icevision-summary-data';
+
 
 // --- Modelos de Datos para la Página de Resumen ---
 interface SummaryPlayerStats {
@@ -329,7 +331,7 @@ const PlayerStatsSection = ({ team, teamName, playerStats, onStatsChange, editab
 
 
 export default function ResumenPage() {
-  const { state: liveGameState, dispatch, isLoading } = useGameState();
+  const { state: liveGameState, isLoading } = useGameState();
   const { toast } = useToast();
   
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
@@ -339,17 +341,43 @@ export default function ResumenPage() {
   const [overwriteConfirm, setOverwriteConfirm] = useState<{ onConfirm: () => void } | null>(null);
   const [unassignedPlayerWarning, setUnassignedPlayerWarning] = useState<{ players: string[]; onConfirm: () => void } | null>(null);
   
+  // On component mount, try to load summary data from localStorage
+  useEffect(() => {
+    try {
+      const savedSummaryRaw = localStorage.getItem(SUMMARY_DATA_STORAGE_KEY);
+      if (savedSummaryRaw) {
+        setSummaryData(JSON.parse(savedSummaryRaw));
+      }
+    } catch (error) {
+      console.error("Error loading summary from localStorage:", error);
+      localStorage.removeItem(SUMMARY_DATA_STORAGE_KEY); // Clear invalid data
+    }
+  }, []);
+
+  // Whenever summaryData changes, save it to localStorage
+  useEffect(() => {
+    if (summaryData) {
+      localStorage.setItem(SUMMARY_DATA_STORAGE_KEY, JSON.stringify(summaryData));
+    } else {
+      localStorage.removeItem(SUMMARY_DATA_STORAGE_KEY);
+    }
+  }, [summaryData]);
+
   const generateSummaryData = useCallback(() => {
+    setSummaryData(null); // Clear first to ensure a clean state
+    
     const { live, config } = liveGameState;
     const { gameSummary } = live;
 
     const statsByPeriod: Record<string, PeriodStats> = {};
-    const allPeriodTexts = Array.from(new Set(
-        [...gameSummary.home.goals, ...gameSummary.away.goals, ...(gameSummary.home.homeShotsLog || []), ...(gameSummary.away.awayShotsLog || [])]
-        .map(e => e.periodText)
-    ));
+    const allPeriodTextsSet = new Set<string>(
+        [
+            ...gameSummary.home.goals, ...gameSummary.away.goals, 
+            ...(gameSummary.home.homeShotsLog || []), ...(gameSummary.away.awayShotsLog || [])
+        ].map(e => e.periodText).filter(Boolean)
+    );
 
-    allPeriodTexts.forEach(period => {
+    allPeriodTextsSet.forEach(period => {
         if (!period) return;
         statsByPeriod[period] = {
             home: { goals: [], playerStats: [] },
@@ -367,14 +395,20 @@ export default function ResumenPage() {
             });
 
             teamGoals.forEach(g => {
-                const scorer = attendance.find(p => p.number === g.scorer?.playerNumber);
-                if(scorer && playerStatsMap.has(scorer.id)) playerStatsMap.get(scorer.id)!.goals++;
-                const assist = attendance.find(p => p.number === g.assist?.playerNumber);
-                if(assist && playerStatsMap.has(assist.id)) playerStatsMap.get(assist.id)!.assists++;
+                const scorerInAttendance = attendance.find(p => p.number === g.scorer?.playerNumber);
+                if (scorerInAttendance && playerStatsMap.has(scorerInAttendance.id)) {
+                  playerStatsMap.get(scorerInAttendance.id)!.goals++;
+                }
+                const assistInAttendance = attendance.find(p => p.number === g.assist?.playerNumber);
+                if (assistInAttendance && playerStatsMap.has(assistInAttendance.id)) {
+                  playerStatsMap.get(assistInAttendance.id)!.assists++;
+                }
             });
 
             teamShots.forEach(s => {
-                if(s.playerId && playerStatsMap.has(s.playerId)) playerStatsMap.get(s.playerId)!.shots++;
+                if (s.playerId && playerStatsMap.has(s.playerId)) {
+                  playerStatsMap.get(s.playerId)!.shots++;
+                }
             });
 
             statsByPeriod[period][team] = {
@@ -430,16 +464,6 @@ export default function ResumenPage() {
 
   }, [liveGameState]);
 
-  useEffect(() => {
-    // Only generate summary on initial load if the live summary has data.
-    const { gameSummary } = liveGameState.live;
-    if (!summaryData && (gameSummary.home.goals.length > 0 || gameSummary.away.goals.length > 0 || gameSummary.home.penalties.length > 0 || gameSummary.away.penalties.length > 0)) {
-      generateSummaryData();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
-
-  
   const handleGenerateSummaryClick = () => {
     const unassignedHome = liveGameState.live.gameSummary.attendance.home.filter(p => !p.number).map(p => p.name);
     const unassignedAway = liveGameState.live.gameSummary.attendance.away.filter(p => !p.number).map(p => p.name);
@@ -448,12 +472,10 @@ export default function ResumenPage() {
     const confirmAndGenerate = () => {
       if (allUnassigned.length > 0) {
         setUnassignedPlayerWarning({ players: allUnassigned, onConfirm: () => { 
-          setSummaryData(null); // Clear first
           generateSummaryData(); 
           toast({ title: "Resumen Generado" }); 
         } });
       } else {
-        setSummaryData(null); // Clear first
         generateSummaryData();
         toast({ title: "Resumen Generado", description: "Se han cargado los datos del partido actual." });
       }
@@ -561,7 +583,7 @@ export default function ResumenPage() {
 
     setSummaryData(prev => {
         if (!prev) return null;
-        const newSummary = JSON.parse(JSON.stringify(prev));
+        const newSummary: SummaryData = JSON.parse(JSON.stringify(prev)); // Deep copy
         newSummary[team].penalties.push(newPenaltyLog);
         newSummary[team].penalties.sort((a: PenaltyLog, b: PenaltyLog) => a.addTimestamp - b.addTimestamp);
         return newSummary;
@@ -580,7 +602,7 @@ export default function ResumenPage() {
       if (penaltyToDelete && summaryData) {
         setSummaryData(prev => {
             if (!prev) return null;
-            const newSummary = JSON.parse(JSON.stringify(prev));
+            const newSummary: SummaryData = JSON.parse(JSON.stringify(prev));
             newSummary[penaltyToDelete.team].penalties = newSummary[penaltyToDelete.team].penalties.filter((p: PenaltyLog) => p.id !== penaltyToDelete.logId);
             return newSummary;
         });
@@ -828,17 +850,19 @@ export default function ResumenPage() {
             <AlertDialog open={!!unassignedPlayerWarning} onOpenChange={() => setUnassignedPlayerWarning(null)}>
                 <AlertDialogContent>
                     <AlertTitle className="flex items-center gap-2"><AlertTriangle className="text-amber-500" /> Jugadores sin Número Asignado</AlertTitle>
-                    <AlertDialogDesc>
-                        Los siguientes jugadores tienen asistencia registrada pero no tienen un número asignado. Si continúas, no podrás editar sus estadísticas de tiros más adelante.
-                    </AlertDialogDesc>
-                    <ScrollArea className="max-h-32 mt-4 border bg-muted/50 p-2 rounded-md">
-                       <ul className="list-disc pl-5">
-                            {unassignedPlayerWarning.players.map((name, i) => <li key={i}>{name}</li>)}
-                       </ul>
-                    </ScrollArea>
-                    <AlertDialogDesc className="mt-2">
-                        ¿Deseas generar el resumen de todas formas?
-                    </AlertDialogDesc>
+                    <div>
+                        <p className="text-sm text-muted-foreground">
+                            Los siguientes jugadores tienen asistencia registrada pero no tienen un número asignado. Si continúas, no podrás editar sus estadísticas de tiros más adelante.
+                        </p>
+                        <ScrollArea className="max-h-32 mt-4 border bg-muted/50 p-2 rounded-md">
+                           <ul className="list-disc pl-5">
+                                {unassignedPlayerWarning.players.map((name, i) => <li key={i}>{name}</li>)}
+                           </ul>
+                        </ScrollArea>
+                        <p className="text-sm text-muted-foreground mt-2">
+                            ¿Deseas generar el resumen de todas formas?
+                        </p>
+                    </div>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setUnassignedPlayerWarning(null)}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={() => { unassignedPlayerWarning.onConfirm(); setUnassignedPlayerWarning(null); }}>
@@ -854,6 +878,7 @@ export default function ResumenPage() {
     
 
     
+
 
 
 
