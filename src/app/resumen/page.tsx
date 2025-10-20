@@ -620,8 +620,17 @@ export default function ResumenPage() {
             };
         } else if (!newSummary.statsByPeriod[periodText][team]) {
              newSummary.statsByPeriod[periodText][team] = { goals: [], penalties: [], playerStats: [] };
-        } else if (!newSummary.statsByPeriod[periodText][team].penalties) {
+        }
+        
+        // Ensure all arrays exist before pushing
+        if (!newSummary.statsByPeriod[periodText][team].penalties) {
             newSummary.statsByPeriod[periodText][team].penalties = [];
+        }
+        if (!newSummary.statsByPeriod[periodText][team].goals) {
+            newSummary.statsByPeriod[periodText][team].goals = [];
+        }
+        if (!newSummary.statsByPeriod[periodText][team].playerStats) {
+            newSummary.statsByPeriod[periodText][team].playerStats = [];
         }
 
 
