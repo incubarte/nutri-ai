@@ -638,7 +638,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       newState = { ...state, live: { ...state.live, 
         score,
-        pendingPowerPlayGoal,
+        pendingPowerPlayGoal: pendingPPGoal,
         gameSummary: {
           ...newGameSummary,
           home: { ...newGameSummary.home, playerStats: homePlayerStats },
@@ -1790,5 +1790,6 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
