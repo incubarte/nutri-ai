@@ -16,6 +16,7 @@ import defaultSettings from '@/config/defaults.json';
 export const BROADCAST_CHANNEL_NAME = 'icevision-game-state-channel';
 export const GAME_STATE_STORAGE_KEY = 'icevision-game-state';
 export const TEAMS_STORAGE_KEY = 'icevision-teams-data';
+export const SUMMARY_DATA_STORAGE_KEY = 'icevision-summary-data';
 
 const CENTISECONDS_PER_SECOND = 100;
 const TICK_INTERVAL_MS = 200;
@@ -1529,6 +1530,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'RESET_GAME_STATE': {
       const { defaultWarmUpDuration, autoStartWarmUp } = state.config;
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(SUMMARY_DATA_STORAGE_KEY);
+      }
       newState = { ...state, live: {
         score: { home: 0, away: 0, homeShots: 0, awayShots: 0, homeGoals: [], awayGoals: [], },
         penalties: { home: [], away: [], },
@@ -1779,3 +1783,4 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+

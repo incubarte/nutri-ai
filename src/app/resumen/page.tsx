@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import { useGameState, formatTime, type Team, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo } from "@/contexts/game-state-context";
+import { useGameState, formatTime, type Team, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo, SUMMARY_DATA_STORAGE_KEY } from "@/contexts/game-state-context";
 import type { PlayerData, PenaltyLog, GoalLog, PlayerStats as LivePlayerStats } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,8 +23,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription as AlertDialogDesc, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle as AlertTitle } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { safeUUID } from "@/lib/utils";
-
-const SUMMARY_DATA_STORAGE_KEY = 'icevision-summary-data';
 
 
 // --- Modelos de Datos para la Página de Resumen ---
@@ -254,9 +252,19 @@ const PlayerStatsSection = ({ team, teamName, playerStats, onStatsChange, editab
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><X className="h-5 w-5" /></Button>
                           </>
                       ) : (
-                          <Button variant="outline" size="sm" onClick={handleEditClick}>
-                              <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
-                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="sm" onClick={handleEditClick}>
+                                        <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>La edición de tiros solo tiene sentido dentro de cada período.</p>
+                                    <p>Edita en la pestaña "Detalle por Periodo".</p>
+                                </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                       )}
                   </div>
                 )}
@@ -341,7 +349,6 @@ export default function ResumenPage() {
   const [overwriteConfirm, setOverwriteConfirm] = useState<{ onConfirm: () => void } | null>(null);
   const [unassignedPlayerWarning, setUnassignedPlayerWarning] = useState<{ players: string[]; onConfirm: () => void } | null>(null);
   
-  // On component mount, try to load summary data from localStorage
   useEffect(() => {
     try {
       const savedSummaryRaw = localStorage.getItem(SUMMARY_DATA_STORAGE_KEY);
@@ -350,32 +357,36 @@ export default function ResumenPage() {
       }
     } catch (error) {
       console.error("Error loading summary from localStorage:", error);
-      localStorage.removeItem(SUMMARY_DATA_STORAGE_KEY); // Clear invalid data
+      localStorage.removeItem(SUMMARY_DATA_STORAGE_KEY);
     }
   }, []);
 
-  // Whenever summaryData changes, save it to localStorage
   useEffect(() => {
     if (summaryData) {
       localStorage.setItem(SUMMARY_DATA_STORAGE_KEY, JSON.stringify(summaryData));
-    } else {
-      localStorage.removeItem(SUMMARY_DATA_STORAGE_KEY);
     }
   }, [summaryData]);
 
   const generateSummaryData = useCallback(() => {
-    setSummaryData(null); // Clear first to ensure a clean state
-    
+    setSummaryData(null); 
     const { live, config } = liveGameState;
+    if (!live || !config) return;
+    
     const { gameSummary } = live;
 
     const statsByPeriod: Record<string, PeriodStats> = {};
-    const allPeriodTextsSet = new Set<string>(
-        [
-            ...gameSummary.home.goals, ...gameSummary.away.goals, 
-            ...(gameSummary.home.homeShotsLog || []), ...(gameSummary.away.awayShotsLog || [])
-        ].map(e => e.periodText).filter(Boolean)
-    );
+    
+    const allEvents = [
+        ...gameSummary.home.goals, ...gameSummary.away.goals, 
+        ...(gameSummary.home.homeShotsLog || []), ...(gameSummary.away.awayShotsLog || []),
+        ...gameSummary.home.penalties, ...gameSummary.away.penalties,
+    ];
+    
+    const allPeriodTextsSet = new Set<string>();
+    allEvents.forEach(e => {
+        const periodText = (e as any).addPeriodText || e.periodText;
+        if (periodText) allPeriodTextsSet.add(periodText);
+    });
 
     allPeriodTextsSet.forEach(period => {
         if (!period) return;
@@ -461,6 +472,7 @@ export default function ResumenPage() {
         statsByPeriod
     };
     setSummaryData(newSummaryData);
+    toast({ title: "Resumen Generado", description: "Se han cargado los datos del partido actual." });
 
   }, [liveGameState]);
 
@@ -471,13 +483,9 @@ export default function ResumenPage() {
 
     const confirmAndGenerate = () => {
       if (allUnassigned.length > 0) {
-        setUnassignedPlayerWarning({ players: allUnassigned, onConfirm: () => { 
-          generateSummaryData(); 
-          toast({ title: "Resumen Generado" }); 
-        } });
+        setUnassignedPlayerWarning({ players: allUnassigned, onConfirm: generateSummaryData });
       } else {
         generateSummaryData();
-        toast({ title: "Resumen Generado", description: "Se han cargado los datos del partido actual." });
       }
     };
     
@@ -523,7 +531,6 @@ export default function ResumenPage() {
   const handleExportPDF = () => {
      if (!summaryData) return;
 
-     // Create a temporary GameState-like object for the PDF generator using the summaryData
      const tempStateForPDF = {
         ...liveGameState,
         live: {
@@ -552,7 +559,6 @@ export default function ResumenPage() {
             }
         }
     };
-    // The cast is needed because our temporary object doesn't perfectly match GameState, but is sufficient for the PDF function
     const filename = exportGameSummaryPDF(tempStateForPDF as any);
     toast({
         title: "Resumen Descargado",
@@ -617,13 +623,11 @@ export default function ResumenPage() {
         const newSummary: SummaryData = JSON.parse(JSON.stringify(prev));
         
         if (period) {
-            // Update per-period stats
             if (newSummary.statsByPeriod[period]) {
                 newSummary.statsByPeriod[period][team].playerStats = newStats;
             }
         }
         
-        // Recalculate total stats from all period stats
         const calculateTotalStats = (t: Team): SummaryPlayerStats[] => {
             const attendance = newSummary.attendance[t];
             const playerStatsMap = new Map<string, SummaryPlayerStats>();
@@ -656,7 +660,6 @@ export default function ResumenPage() {
     if (!summaryData) return [];
     const playedPeriods = new Set<string>(Object.keys(summaryData.statsByPeriod));
     
-    // Add periods from penalties as well
     [...summaryData.home.penalties, ...summaryData.away.penalties].forEach(event => {
         const period = event.addPeriodText;
         if (period && !period.toLowerCase().includes('warm-up') && !period.toLowerCase().includes('break')) {
@@ -851,9 +854,9 @@ export default function ResumenPage() {
                 <AlertDialogContent>
                     <AlertTitle className="flex items-center gap-2"><AlertTriangle className="text-amber-500" /> Jugadores sin Número Asignado</AlertTitle>
                     <div>
-                        <p className="text-sm text-muted-foreground">
+                        <AlertDialogDesc>
                             Los siguientes jugadores tienen asistencia registrada pero no tienen un número asignado. Si continúas, no podrás editar sus estadísticas de tiros más adelante.
-                        </p>
+                        </AlertDialogDesc>
                         <ScrollArea className="max-h-32 mt-4 border bg-muted/50 p-2 rounded-md">
                            <ul className="list-disc pl-5">
                                 {unassignedPlayerWarning.players.map((name, i) => <li key={i}>{name}</li>)}
@@ -878,6 +881,7 @@ export default function ResumenPage() {
     
 
     
+
 
 
 
