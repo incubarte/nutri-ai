@@ -410,10 +410,8 @@ const recalculateAllStatsFromLogs = (gameSummary: GameSummary): { homePlayerStat
     const convertToNumberBased = (stats: Record<string, PlayerStats>, attendance: AttendedPlayerInfo[]): Record<string, PlayerStats> => {
         const numberBasedStats: Record<string, PlayerStats> = {};
         attendance.forEach(p => {
-            if(stats[p.id]) {
-                if (p.number) { // Only add if player has a number
-                    numberBasedStats[p.number] = stats[p.id];
-                }
+            if(stats[p.id] && p.number) { // Only add if player has a number
+                numberBasedStats[p.number] = stats[p.id];
             }
         });
         return numberBasedStats;
@@ -832,7 +830,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'ADD_PENALTY': {
       const { team, penalty, addGameTime, addPeriodText } = action.payload;
       const { penaltyTypeId, playerNumber } = penalty;
-      const { clock, config } = state;
+      const { config } = state;
       const penaltyDef = config.penaltyTypes.find(p => p.id === penaltyTypeId);
 
       if (!penaltyDef) {
@@ -840,69 +838,68 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
       }
       
-      const limitReachedReasons: ('quantity')[] = [];
-      const playerPenalties = state.live.gameSummary[team].penalties.filter(
-        p => p.playerNumber === playerNumber && p.endReason !== 'deleted' && !p.isBenchPenalty
-      );
-      
-      if (config.enableMaxPenaltiesLimit && !penaltyDef.isBenchPenalty) {
-        if (playerPenalties.length + 1 >= config.maxPenaltiesPerPlayer) {
-          limitReachedReasons.push('quantity');
-        }
-      }
-
-      const { _liveAbsoluteElapsedTimeCs } = clock;
       const newPenaltyId = safeUUID();
-      
-      let newStatus: Penalty['_status'];
-      let startTime, expirationTime;
-      
-      if (penaltyDef.reducesPlayerCount) {
-        newStatus = 'pending_puck';
-        startTime = undefined;
-        expirationTime = undefined;
-      } else {
-        newStatus = 'running';
-        startTime = _liveAbsoluteElapsedTimeCs;
-        expirationTime = _liveAbsoluteElapsedTimeCs + penaltyDef.duration * CENTISECONDS_PER_SECOND;
-      }
-      
-      const newPenalty: Penalty = { 
-        id: newPenaltyId, 
-        playerNumber: playerNumber,
+      const teamDetails = config.teams.find(t => t.name === state.live[`${team}TeamName`] && (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) && t.category === config.selectedMatchCategory);
+      const playerDetails = teamDetails?.players.find(p => p.number === playerNumber);
+
+      const newPenaltyLog: PenaltyLog = {
+        id: newPenaltyId, team, playerNumber: playerNumber.toUpperCase(), playerName: playerDetails?.name,
+        penaltyName: penaltyDef.name,
         initialDuration: penaltyDef.duration,
         reducesPlayerCount: penaltyDef.reducesPlayerCount,
         clearsOnGoal: penaltyDef.clearsOnGoal,
         isBenchPenalty: penaltyDef.isBenchPenalty,
-        _status: newStatus,
-        startTime,
-        expirationTime,
-        _limitReached: limitReachedReasons.length > 0 ? limitReachedReasons : undefined,
+        addTimestamp: Date.now(),
+        addGameTime: addGameTime ?? state.live.clock.currentTime,
+        addPeriodText: addPeriodText ?? getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods || 2),
       };
 
-      const teamDetails = config.teams.find(t => t.name === state.live[`${team}TeamName`] && (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) && t.category === config.selectedMatchCategory);
-      const playerDetails = teamDetails?.players.find(p => p.number === newPenalty.playerNumber);
+      const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      newGameSummary[team].penalties.push(newPenaltyLog);
+      newState = { ...state, live: { ...state.live, gameSummary: newGameSummary }};
 
-      let periodTextForLog = addPeriodText || getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, config.numberOfRegularPeriods || 2);
-      if (addPeriodText === undefined && (clock.periodDisplayOverride === 'Break' || clock.periodDisplayOverride === 'Pre-OT Break')) {
-        periodTextForLog = getPeriodText(clock.currentPeriod, config.numberOfRegularPeriods || 2);
+      // Only add to active penalties if not adding from summary
+      if (addGameTime === undefined) {
+        const { _liveAbsoluteElapsedTimeCs } = state.live.clock;
+        const limitReachedReasons: ('quantity')[] = [];
+        const playerPenalties = state.live.gameSummary[team].penalties.filter(
+          p => p.playerNumber === playerNumber && p.endReason !== 'deleted' && !p.isBenchPenalty
+        );
+        
+        if (config.enableMaxPenaltiesLimit && !penaltyDef.isBenchPenalty) {
+          if (playerPenalties.length + 1 >= config.maxPenaltiesPerPlayer) {
+            limitReachedReasons.push('quantity');
+          }
+        }
+        
+        let newStatus: Penalty['_status'];
+        let startTime, expirationTime;
+        
+        if (penaltyDef.reducesPlayerCount) {
+          newStatus = 'pending_puck';
+          startTime = undefined;
+          expirationTime = undefined;
+        } else {
+          newStatus = 'running';
+          startTime = _liveAbsoluteElapsedTimeCs;
+          expirationTime = _liveAbsoluteElapsedTimeCs + penaltyDef.duration * CENTISECONDS_PER_SECOND;
+        }
+        
+        const newPenalty: Penalty = { 
+          id: newPenaltyId, 
+          playerNumber: playerNumber.toUpperCase(),
+          initialDuration: penaltyDef.duration,
+          reducesPlayerCount: penaltyDef.reducesPlayerCount,
+          clearsOnGoal: penaltyDef.clearsOnGoal,
+          isBenchPenalty: penaltyDef.isBenchPenalty,
+          _status: newStatus,
+          startTime,
+          expirationTime,
+          _limitReached: limitReachedReasons.length > 0 ? limitReachedReasons : undefined,
+        };
+
+        newState.live.penalties[team] = sortPenaltiesByStatus([...state.live.penalties[team], newPenalty]);
       }
-      
-      const newPenaltyLog: PenaltyLog = {
-        id: newPenaltyId, team, playerNumber: newPenalty.playerNumber, playerName: playerDetails?.name,
-        penaltyName: penaltyDef.name,
-        initialDuration: newPenalty.initialDuration,
-        reducesPlayerCount: newPenalty.reducesPlayerCount,
-        clearsOnGoal: newPenalty.clearsOnGoal,
-        isBenchPenalty: newPenalty.isBenchPenalty,
-        addTimestamp: Date.now(), addGameTime: addGameTime ?? clock.currentTime,
-        addPeriodText: periodTextForLog,
-      };
-
-      newState = { ...state, live: { ...state.live,
-          penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus([...state.live.penalties[team], newPenalty]) },
-          gameSummary: { ...state.live.gameSummary, [team]: { ...state.live.gameSummary[team], penalties: [...state.live.gameSummary[team].penalties, newPenaltyLog]}}
-      }};
       break;
     }
     case 'REMOVE_PENALTY': {
@@ -1782,5 +1779,7 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
+    
 
     
