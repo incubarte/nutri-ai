@@ -735,7 +735,7 @@ export default function ControlsPage() {
     toast({ title: "Partido Finalizado", description: "El juego ha sido finalizado como empate." });
   }
 
-  const isTiedAndFinished = state.live.clock.periodDisplayOverride === 'Shootout' && !state.live.shootout.isActive;
+  const isAwaitingDecision = state.live.clock.periodDisplayOverride === 'AwaitingDecision';
 
   const performStartShootout = () => {
     dispatch({ type: 'START_SHOOTOUT' });
@@ -858,9 +858,9 @@ export default function ControlsPage() {
         </div>
       )}
       
-      {isTiedAndFinished && (
+      {isAwaitingDecision && (
           <div className="flex flex-col items-center gap-2 mt-4 p-4 border-2 border-dashed rounded-lg">
-            <h3 className="text-lg font-bold text-center mb-2">Partido Finalizado en Empate</h3>
+            <h3 className="text-lg font-bold text-center mb-2">Definición de Partido</h3>
             <div className="flex flex-wrap justify-center gap-3">
               <Button
                 onClick={handleAddExtraOvertime}
