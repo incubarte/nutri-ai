@@ -109,7 +109,7 @@ export const createDefaultFormatAndTimingsProfile = (id?: string, name?: string)
   name: name || IN_CODE_INITIAL_PROFILE_NAME,
   ...defaultSettings.formatAndTimings,
   gameTimeMode: 'stopped',
-  autoActivatePuckPenalties: true,
+  autoActivatePuckPenalties: false, // Default changed as per user request
   enableStoppedTimeAlert: false, // Default for new profiles
   stoppedTimeAlertGoalDiff: 1,
   stoppedTimeAlertTimeRemaining: 2,
@@ -136,7 +136,7 @@ const getInitialState = (): GameState => {
     config: {
       ...defaultSettings.formatAndTimings,
       gameTimeMode: 'stopped',
-      autoActivatePuckPenalties: true,
+      autoActivatePuckPenalties: false,
       enableStoppedTimeAlert: false,
       stoppedTimeAlertGoalDiff: 1,
       stoppedTimeAlertTimeRemaining: 2,
@@ -429,7 +429,7 @@ const recalculateAllStatsFromLogs = (gameSummary: GameSummary): { homePlayerStat
 const gameReducer = (state: GameState, action: GameAction): GameState => {
   let newState: GameState = { ...state };
   let newTimestamp = Date.now();
-  let toastMessage: { title: string, description?: string, variant?: "default" | "destructive" } | null = null;
+  let toastMessage: GameState['_lastToastMessage'] = null;
 
   // Clear pending power play goal confirmation on almost any penalty change
   if (action.type !== 'ADD_GOAL' && action.type !== 'CLEAR_PENDING_POWER_PLAY_GOAL' && action.type !== 'TICK' && state.live.pendingPowerPlayGoal) {
@@ -520,7 +520,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       const updatedLiveState = {
         ...state.live,
-        penalties: newState.live?.penalties || state.live.penalties,
         clock: { ...state.live.clock, ...newClockState },
       };
       
@@ -993,6 +992,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           penaltyToToggle._status = 'pending_concurrent';
           penaltyToToggle.startTime = undefined;
           penaltyToToggle.expirationTime = undefined;
+          penaltyToToggle._doesNotReducePlayerCountOverride = false; // Set intention
           toastMessage = { title: "Sin Slots Disponibles", description: `La penalidad para #${penaltyToToggle.playerNumber} está ahora en "Esperando Slot".` };
         } else {
           penaltyToToggle._doesNotReducePlayerCountOverride = false;
@@ -1863,6 +1863,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 
