@@ -290,39 +290,33 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                             </TableHeader>
                             <TableBody>
                                 {attendedPlayersWithStats.map(player => {
-                                    const isDisabled = isEditing && !player.number;
+                                    const isEditDisabledForThisRow = isEditing && (!player.number || (editable && !periodText));
                                     return (
-                                        <TableRow key={player.id} className={cn(isDisabled && "opacity-50")}>
+                                        <TableRow key={player.id} className={cn(isEditDisabledForThisRow && "opacity-50")}>
                                             <TableCell className="font-semibold">{player.number || 'S/N'}</TableCell>
                                             <TableCell className="text-xs text-muted-foreground">{player.name}</TableCell>
                                             <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
                                             <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
                                             <TableCell className="text-center">
                                             {isEditing && editable ? (
-                                                isDisabled ? (
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <div className="w-full h-full flex items-center justify-center">
-                                                                <Input
-                                                                    type="number"
-                                                                    value={player.shots || '0'}
-                                                                    className="h-7 w-16 mx-auto text-center cursor-not-allowed"
-                                                                    disabled
-                                                                />
-                                                            </div>
-                                                        </TooltipTrigger>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <Input
+                                                                type="number"
+                                                                value={editedShots[player.id] || '0'}
+                                                                onChange={(e) => handleShotChange(player.id, e.target.value)}
+                                                                className={cn("h-7 w-16 mx-auto text-center", isEditDisabledForThisRow && "cursor-not-allowed")}
+                                                                disabled={isEditDisabledForThisRow}
+                                                            />
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    {isEditDisabledForThisRow && (
                                                         <TooltipContent>
-                                                            <p>No se pueden editar los tiros de un jugador sin número asignado.</p>
+                                                          <p>{!periodText ? "La edición de tiros debe hacerse por período." : "No se pueden editar tiros de un jugador sin número."}</p>
                                                         </TooltipContent>
-                                                    </Tooltip>
-                                                ) : (
-                                                    <Input
-                                                        type="number"
-                                                        value={editedShots[player.id] || '0'}
-                                                        onChange={(e) => handleShotChange(player.id, e.target.value)}
-                                                        className="h-7 w-16 mx-auto text-center"
-                                                    />
-                                                )
+                                                    )}
+                                                </Tooltip>
                                             ) : (
                                                 <span className="font-mono">{player.shots || 0}</span>
                                             )}
@@ -357,7 +351,7 @@ export default function ResumenPage() {
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
   
   const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
-  const [penaltyContext, setPenaltyContext] = useState<{ team: Team, periodText: string } | null>(null);
+  const [penaltyContext, setPenaltyContext] = useState<{ team: Team, periodText?: string } | null>(null);
 
   const [penaltyToDelete, setPenaltyToDelete] = useState<{ team: Team, logId: string } | null>(null);
   
@@ -497,43 +491,24 @@ export default function ResumenPage() {
     });
   };
 
-  const handleOpenAddPenalty = (team: Team, periodText: string) => {
+  const handleOpenAddPenalty = (team: Team, periodText?: string) => {
     setPenaltyContext({ team, periodText });
     setIsAddPenaltyDialogOpen(true);
   };
   
-  const handleConfirmAddPenalty = (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs?: number) => {
+  const handleConfirmAddPenalty = (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs: number, periodText: string) => {
     if (!summaryData || !penaltyContext) return;
     
-    const penaltyDef = liveGameState.config.penaltyTypes.find(p => p.id === penaltyTypeId);
-    if (!penaltyDef) return;
-
-    const teamData = summaryData[team];
-    const playerDetails = teamData.playerStats.find(p => p.number === playerNumber);
-
-    const newPenaltyLog: PenaltyLog = {
-      id: safeUUID(),
-      team,
-      playerNumber,
-      playerName: playerDetails?.name,
-      penaltyName: penaltyDef.name,
-      initialDuration: penaltyDef.duration,
-      reducesPlayerCount: penaltyDef.reducesPlayerCount,
-      clearsOnGoal: penaltyDef.clearsOnGoal,
-      isBenchPenalty: penaltyDef.isBenchPenalty,
-      addTimestamp: Date.now(),
-      addGameTime: gameTimeCs || 0,
-      addPeriodText: penaltyContext.periodText,
-      endReason: 'completed',
-      endTimestamp: Date.now(),
-      timeServed: penaltyDef.duration,
-    };
-
-    setSummaryData(prev => {
-        if (!prev) return null;
-        const newTeamData = { ...prev[team], penalties: [...prev[team].penalties, newPenaltyLog].sort((a,b) => a.addTimestamp - b.addTimestamp) };
-        return { ...prev, [team]: newTeamData };
-    });
+    dispatch({ type: 'ADD_PENALTY', payload: {
+        team,
+        penalty: { playerNumber, penaltyTypeId },
+        addGameTime: gameTimeCs,
+        addPeriodText: periodText,
+    }});
+    
+    // We call generateSummaryData to get the newly added penalty log and update our local state
+    // This is a bit inefficient but ensures consistency with the main state's logic
+    generateSummaryData();
     
     toast({ title: "Penalidad Añadida", description: "La penalidad se ha agregado al resumen."});
     setIsAddPenaltyDialogOpen(false);
@@ -546,11 +521,9 @@ export default function ResumenPage() {
   
   const handleConfirmDeletePenalty = () => {
       if (penaltyToDelete && summaryData) {
-        setSummaryData(prev => {
-            if (!prev) return null;
-            const newTeamData = { ...prev[penaltyToDelete.team], penalties: prev[penaltyToDelete.team].penalties.filter(p => p.id !== penaltyToDelete.logId) };
-            return { ...prev, [penaltyToDelete.team]: newTeamData };
-        });
+        dispatch({ type: 'DELETE_PENALTY_LOG', payload: { team: penaltyToDelete.team, logId: penaltyToDelete.logId }});
+        // Regenerate summary to reflect the deletion
+        generateSummaryData();
         toast({ title: "Penalidad Eliminada", variant: "destructive" });
         setPenaltyToDelete(null);
       }
@@ -606,13 +579,13 @@ export default function ResumenPage() {
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} onAdd={() => {}} onDelete={(logId) => handlePrepareDeletePenalty('home', logId)} />
-                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} onAdd={() => {}} onDelete={(logId) => handlePrepareDeletePenalty('away', logId)} />
+                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} onAdd={() => handleOpenAddPenalty('home')} onDelete={(logId) => handlePrepareDeletePenalty('home', logId)} />
+                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} onAdd={() => handleOpenAddPenalty('away')} onDelete={(logId) => handlePrepareDeletePenalty('away', logId)} />
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <PlayerStatsSection key={`home-total-${refreshKey}`} team="home" teamName={summaryData.homeTeamName} playerStats={liveGameState.live.gameSummary.home.playerStats} attendance={liveGameState.live.gameSummary.attendance.home} />
-                                    <PlayerStatsSection key={`away-total-${refreshKey}`} team="away" teamName={summaryData.awayTeamName} playerStats={liveGameState.live.gameSummary.away.playerStats} attendance={liveGameState.live.gameSummary.attendance.away} />
+                                    <PlayerStatsSection key={`home-total-${refreshKey}`} team="home" teamName={summaryData.homeTeamName} playerStats={liveGameState.live.gameSummary.home.playerStats} attendance={liveGameState.live.gameSummary.attendance.home} editable={true} onEdit={() => setRefreshKey(k => k + 1)} />
+                                    <PlayerStatsSection key={`away-total-${refreshKey}`} team="away" teamName={summaryData.awayTeamName} playerStats={liveGameState.live.gameSummary.away.playerStats} attendance={liveGameState.live.gameSummary.attendance.away} editable={true} onEdit={() => setRefreshKey(k => k + 1)} />
                                 </div>
                             </div>
                         </ScrollArea>
@@ -663,9 +636,10 @@ export default function ResumenPage() {
             <Dialog open={isAddPenaltyDialogOpen} onOpenChange={setIsAddPenaltyDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Añadir Penalidad a {penaltyContext.periodText}</DialogTitle>
+                        <DialogTitle>Añadir Penalidad</DialogTitle>
                         <DialogDescription>
-                            Registra una nueva penalidad para el {penaltyContext.team === 'home' ? summaryData?.homeTeamName : summaryData?.awayTeamName} en el período {penaltyContext.periodText}.
+                            Registra una nueva penalidad para el {penaltyContext.team === 'home' ? summaryData?.homeTeamName : summaryData?.awayTeamName}
+                            {penaltyContext.periodText ? ` en el período ${penaltyContext.periodText}` : ''}.
                         </DialogDescription>
                     </DialogHeader>
                     <AddPenaltyForm
@@ -673,9 +647,11 @@ export default function ResumenPage() {
                         awayTeamName={summaryData?.awayTeamName || 'Visitante'}
                         penaltyTypes={liveGameState.config.penaltyTypes || []}
                         defaultPenaltyTypeId={liveGameState.config.defaultPenaltyTypeId || null}
-                        onPenaltySent={(team, playerNumber, penaltyTypeId, gameTimeCs) => handleConfirmAddPenalty(team, playerNumber, penaltyTypeId, gameTimeCs)}
+                        onPenaltySent={(team, playerNumber, penaltyTypeId, gameTimeCs, periodText) => handleConfirmAddPenalty(team, playerNumber, penaltyTypeId, gameTimeCs!, periodText!)}
                         preselectedTeam={penaltyContext.team}
                         showTimeInput={true}
+                        availablePeriods={allPeriodTexts}
+                        preselectedPeriod={penaltyContext.periodText}
                     />
                 </DialogContent>
             </Dialog>

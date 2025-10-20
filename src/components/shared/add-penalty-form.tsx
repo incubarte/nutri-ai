@@ -23,9 +23,11 @@ interface AddPenaltyFormProps {
   awayTeamName: string;
   penaltyTypes: PenaltyTypeDefinition[];
   defaultPenaltyTypeId: string | null;
-  onPenaltySent: (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs?: number) => void;
+  onPenaltySent: (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs?: number, periodText?: string) => void;
   preselectedTeam?: Team | null;
   showTimeInput?: boolean;
+  availablePeriods?: string[];
+  preselectedPeriod?: string;
 }
 
 export function AddPenaltyForm({
@@ -36,12 +38,15 @@ export function AddPenaltyForm({
   onPenaltySent,
   preselectedTeam = null,
   showTimeInput = false,
+  availablePeriods = [],
+  preselectedPeriod,
 }: AddPenaltyFormProps) {
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(preselectedTeam);
   const [playerNumber, setPlayerNumber] = useState('');
   const [penaltyTypeId, setPenaltyTypeId] = useState<string | null>(defaultPenaltyTypeId);
   const [minutes, setMinutes] = useState('');
   const [seconds, setSeconds] = useState('');
+  const [period, setPeriod] = useState<string | undefined>(preselectedPeriod);
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
 
@@ -52,6 +57,10 @@ export function AddPenaltyForm({
   useEffect(() => {
     setSelectedTeam(preselectedTeam);
   }, [preselectedTeam]);
+  
+  useEffect(() => {
+    setPeriod(preselectedPeriod);
+  }, [preselectedPeriod]);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,6 +80,10 @@ export function AddPenaltyForm({
     
     let gameTimeCs: number | undefined = undefined;
     if (showTimeInput) {
+        if (!period) {
+            toast({ title: "Error", description: "Debes seleccionar un período.", variant: "destructive"});
+            return;
+        }
         const mins = parseInt(minutes, 10) || 0;
         const secs = parseInt(seconds, 10) || 0;
         if (mins < 0 || secs < 0 || secs >= 60) {
@@ -82,16 +95,15 @@ export function AddPenaltyForm({
 
     setIsSending(true);
     
-    // Pass the data up to the parent component for dispatching.
     onPenaltySent(
       selectedTeam,
       playerNumber.trim(),
       penaltyTypeId,
-      gameTimeCs
+      gameTimeCs,
+      period
     );
     
     setIsSending(false);
-    // The parent component will be responsible for closing the dialog
   };
 
   return (
@@ -175,6 +187,20 @@ export function AddPenaltyForm({
                         className="w-16 h-12 text-lg text-center"
                     />
                 </div>
+            </div>
+             <div>
+              <Label htmlFor="penalty-period">Período</Label>
+              <Select value={period || ""} onValueChange={setPeriod} disabled={!!preselectedPeriod}>
+                  <SelectTrigger id="penalty-period" className="h-12 text-base">
+                      <SelectValue placeholder="Seleccionar período..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {availablePeriods.map(p => (
+                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                      {availablePeriods.length === 0 && <SelectItem value="no-periods" disabled>No hay períodos</SelectItem>}
+                  </SelectContent>
+              </Select>
             </div>
         </div>
       )}
