@@ -1,0 +1,564 @@
+{
+  "date": "2025-10-20T02:26:57.449Z",
+  "category": "A",
+  "homeTeam": "ACEMHH",
+  "awayTeam": "Fantasy Skate",
+  "finalScore": "1 - 0",
+  "summary": {
+    "home": {
+      "goals": [
+        {
+          "team": "home",
+          "timestamp": 1760631507645,
+          "gameTime": 119578,
+          "periodText": "1ST",
+          "scorer": {
+            "playerNumber": "4",
+            "playerName": "DEL GESSO"
+          },
+          "id": "cbc363fc-8964-48ed-8b97-70068296efd9"
+        }
+      ],
+      "penalties": [
+        {
+          "id": "17116144-891c-4a34-ba7d-335f6009037a",
+          "team": "home",
+          "playerNumber": "4",
+          "playerName": "DEL GESSO",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1760631496365,
+          "addGameTime": 120000,
+          "addPeriodText": "1ST",
+          "endTimestamp": 1760631504687,
+          "endGameTime": 119878,
+          "endPeriodText": "1ST",
+          "endReason": "goal_on_pp",
+          "timeServed": 1
+        },
+        {
+          "id": "10ac386c-33ba-4de5-be4c-fabff2f95a34",
+          "team": "home",
+          "playerNumber": "3",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1760920558224,
+          "addGameTime": 18300,
+          "addPeriodText": "1ST"
+        },
+        {
+          "id": "65a9cce3-167c-4a4c-ba4c-e1ca6ab6083c",
+          "team": "home",
+          "playerNumber": "5",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1760920566847,
+          "addGameTime": 12200,
+          "addPeriodText": "1ST"
+        },
+        {
+          "id": "639d2d00-78b9-4a95-8641-becf2c4317bb",
+          "team": "home",
+          "playerNumber": "7",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1760920577813,
+          "addGameTime": 12000,
+          "addPeriodText": "1ST"
+        },
+        {
+          "id": "6f84a803-1f19-482c-8a7f-be97d9fd467d",
+          "team": "home",
+          "playerNumber": "3",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1760920587042,
+          "addGameTime": 6000,
+          "addPeriodText": "1ST"
+        },
+        {
+          "id": "1239c9f9-c1a2-43cf-a5ef-76fd964f969c",
+          "team": "home",
+          "playerNumber": "7",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1760920601376,
+          "addGameTime": 6000,
+          "addPeriodText": "1ST"
+        },
+        {
+          "id": "0f5d90b9-f000-4aba-b383-b83f941fc40c",
+          "team": "home",
+          "playerNumber": "12",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1760920619280,
+          "addGameTime": 60000,
+          "addPeriodText": "1ST"
+        },
+        {
+          "id": "9180e51a-12db-44e7-818c-efc3c34fe62c",
+          "team": "home",
+          "playerNumber": "4",
+          "playerName": "DEL GESSO",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1760925726598,
+          "addGameTime": 120000,
+          "addPeriodText": "2ND",
+          "endTimestamp": 1760925741070,
+          "endGameTime": 119318,
+          "endPeriodText": "2ND",
+          "endReason": "goal_on_pp",
+          "timeServed": 6
+        },
+        {
+          "id": "3a73ae15-8c40-44ca-82d7-72e60e64b9e5",
+          "team": "home",
+          "playerNumber": "4",
+          "playerName": "DEL GESSO",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1760925731905,
+          "addGameTime": 120000,
+          "addPeriodText": "2ND",
+          "endTimestamp": 1760925746641,
+          "endGameTime": 118758,
+          "endPeriodText": "2ND",
+          "endReason": "goal_on_pp",
+          "timeServed": 5
+        }
+      ],
+      "playerStats": {},
+      "homeShotsLog": [
+        {
+          "id": "39c427de-0eb3-4488-9a3e-41a119b9daa6",
+          "team": "home",
+          "timestamp": 1760631522252,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerNumber": "",
+          "playerName": "SAVCHUK"
+        },
+        {
+          "id": "ce807018-88ef-4742-b704-438e4adcbb07",
+          "team": "home",
+          "timestamp": 1760631522253,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerNumber": "",
+          "playerName": "SAVCHUK"
+        },
+        {
+          "id": "a15b3ec4-26ba-41dc-9bb2-bdb0a95ef822",
+          "team": "home",
+          "timestamp": 1760631958140,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "58fa83b3-f33c-490a-8711-bf76349c3d2b",
+          "playerNumber": "",
+          "playerName": "SAN MILLAN"
+        },
+        {
+          "id": "8a70b8aa-3547-44aa-bd90-c5a59d8af02c",
+          "team": "home",
+          "timestamp": 1760631958141,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "58fa83b3-f33c-490a-8711-bf76349c3d2b",
+          "playerNumber": "",
+          "playerName": "SAN MILLAN"
+        },
+        {
+          "id": "018e5a63-cff1-491c-8fb2-dd8159e59cbe",
+          "team": "home",
+          "timestamp": 1760631958142,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "58fa83b3-f33c-490a-8711-bf76349c3d2b",
+          "playerNumber": "",
+          "playerName": "SAN MILLAN"
+        },
+        {
+          "id": "f906b059-5ed8-447f-add9-4da778789d18",
+          "team": "home",
+          "timestamp": 1760631958143,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "58fa83b3-f33c-490a-8711-bf76349c3d2b",
+          "playerNumber": "",
+          "playerName": "SAN MILLAN"
+        },
+        {
+          "id": "6c12bdf5-450e-4ecc-8f63-9696f3371dc7",
+          "team": "home",
+          "timestamp": 1760631958144,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "58fa83b3-f33c-490a-8711-bf76349c3d2b",
+          "playerNumber": "",
+          "playerName": "SAN MILLAN"
+        },
+        {
+          "id": "a922bbeb-402b-439b-bc21-cc7e0222692d",
+          "team": "home",
+          "timestamp": 1760634540302,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "a2b71cad-e94e-4180-87b9-70b755653816",
+          "playerNumber": "",
+          "playerName": "RENZO"
+        },
+        {
+          "id": "2982d46d-b40a-4a1a-8b48-57a801ec2df4",
+          "team": "home",
+          "timestamp": 1760634540303,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "a2b71cad-e94e-4180-87b9-70b755653816",
+          "playerNumber": "",
+          "playerName": "RENZO"
+        },
+        {
+          "id": "ab83eab5-1ed8-4974-a4fc-ebec824bd882",
+          "team": "home",
+          "timestamp": 1760634540304,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "a2b71cad-e94e-4180-87b9-70b755653816",
+          "playerNumber": "",
+          "playerName": "RENZO"
+        },
+        {
+          "id": "cb9b1bb2-d6f2-4331-ae3f-41d300cc56d1",
+          "team": "home",
+          "timestamp": 1760634559548,
+          "gameTime": 0,
+          "periodText": "2ND",
+          "playerId": "df170379-dc03-4785-a135-d1764c56c7d1",
+          "playerNumber": "",
+          "playerName": "ESEISA"
+        },
+        {
+          "id": "a07ec704-0ab1-4938-8b8d-db7547eaa836",
+          "team": "home",
+          "timestamp": 1760634559549,
+          "gameTime": 0,
+          "periodText": "2ND",
+          "playerId": "df170379-dc03-4785-a135-d1764c56c7d1",
+          "playerNumber": "",
+          "playerName": "ESEISA"
+        },
+        {
+          "id": "0900dbd4-72c6-4d07-8919-0599f7a4e748",
+          "team": "home",
+          "timestamp": 1760635029196,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "b542289a-8845-4d38-9c1a-2ec1cd7235d8",
+          "playerNumber": "",
+          "playerName": "CLARET"
+        },
+        {
+          "id": "5ebaeb98-3dfe-4b7e-b82c-58257559d9ab",
+          "team": "home",
+          "timestamp": 1760635029197,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "b542289a-8845-4d38-9c1a-2ec1cd7235d8",
+          "playerNumber": "",
+          "playerName": "CLARET"
+        },
+        {
+          "id": "d34bc274-49b8-4a5e-a24d-e867e28125d7",
+          "team": "home",
+          "timestamp": 1760635029198,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "b542289a-8845-4d38-9c1a-2ec1cd7235d8",
+          "playerNumber": "",
+          "playerName": "CLARET"
+        },
+        {
+          "id": "116134f2-ef06-4944-bddd-2209aa7f6ee5",
+          "team": "home",
+          "timestamp": 1760635029199,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "b542289a-8845-4d38-9c1a-2ec1cd7235d8",
+          "playerNumber": "",
+          "playerName": "CLARET"
+        },
+        {
+          "id": "6c8c43f9-b834-4717-9085-de963bf4918c",
+          "team": "home",
+          "timestamp": 1760635029200,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "b542289a-8845-4d38-9c1a-2ec1cd7235d8",
+          "playerNumber": "",
+          "playerName": "CLARET"
+        },
+        {
+          "id": "bfaadab3-95bb-4bf3-9de0-68e61a8c2201",
+          "team": "home",
+          "timestamp": 1760729200365,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "10af0a71-b342-4141-9d5d-24878daf2d55",
+          "playerNumber": "",
+          "playerName": "BARVINOK"
+        }
+      ]
+    },
+    "away": {
+      "goals": [],
+      "penalties": [
+        {
+          "id": "19396882-3ad6-47d1-8fd3-c48bcd19e4a2",
+          "team": "away",
+          "playerNumber": "3",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1760925466846,
+          "addGameTime": 12300,
+          "addPeriodText": "1ST"
+        },
+        {
+          "id": "3dc076c9-bfda-4615-ab89-bbef53152ac5",
+          "team": "away",
+          "playerNumber": "13",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1760925484106,
+          "addGameTime": 6200,
+          "addPeriodText": "1ST"
+        }
+      ],
+      "playerStats": {
+        "6": {
+          "name": "Haroshka",
+          "shots": 3,
+          "goals": 0,
+          "assists": 0
+        }
+      },
+      "awayShotsLog": [
+        {
+          "id": "c63b0f2a-0824-423b-94f8-776c92f6ed77",
+          "team": "away",
+          "timestamp": 1760631548250,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerNumber": "6",
+          "playerName": "Haroshka"
+        },
+        {
+          "id": "08bb1402-5f10-4b96-9304-f25f001d629f",
+          "team": "away",
+          "timestamp": 1760631548251,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerNumber": "6",
+          "playerName": "Haroshka"
+        },
+        {
+          "id": "cb9b0a9e-d12b-4339-bc04-b761c2d57dec",
+          "team": "away",
+          "timestamp": 1760631548252,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerNumber": "6",
+          "playerName": "Haroshka"
+        },
+        {
+          "id": "20a3ede9-4b77-41d7-80e6-604ddf12c8f2",
+          "team": "away",
+          "timestamp": 1760631548253,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerNumber": "6",
+          "playerName": "Haroshka"
+        },
+        {
+          "id": "ca1dc733-69f8-4cc0-9eaf-25b9b68be22b",
+          "team": "away",
+          "timestamp": 1760631548254,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerNumber": "6",
+          "playerName": "Haroshka"
+        },
+        {
+          "id": "5ab5b0b3-f2e5-4201-ba3e-257f485382bc",
+          "team": "away",
+          "timestamp": 1760635082144,
+          "gameTime": 0,
+          "periodText": "2ND",
+          "playerId": "374c2ec5-5aa8-4d1f-a06a-bf218a463047",
+          "playerNumber": "6",
+          "playerName": "Haroshka"
+        },
+        {
+          "id": "aa65f70a-aaf4-4040-962e-82562fe128fb",
+          "team": "away",
+          "timestamp": 1760635082145,
+          "gameTime": 0,
+          "periodText": "2ND",
+          "playerId": "374c2ec5-5aa8-4d1f-a06a-bf218a463047",
+          "playerNumber": "6",
+          "playerName": "Haroshka"
+        },
+        {
+          "id": "6490a238-756c-4b6f-a969-a7d2e0d9eaae",
+          "team": "away",
+          "timestamp": 1760635082146,
+          "gameTime": 0,
+          "periodText": "2ND",
+          "playerId": "374c2ec5-5aa8-4d1f-a06a-bf218a463047",
+          "playerNumber": "6",
+          "playerName": "Haroshka"
+        },
+        {
+          "id": "5f8f717b-06b0-4299-9b22-798d05a2eb60",
+          "team": "away",
+          "timestamp": 1760838119899,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "ee772641-ba04-4e14-95f3-1f595b5558aa",
+          "playerNumber": "",
+          "playerName": "Lee"
+        },
+        {
+          "id": "bed6843d-03cc-4132-be31-d7a558c0898f",
+          "team": "away",
+          "timestamp": 1760838119900,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "ee772641-ba04-4e14-95f3-1f595b5558aa",
+          "playerNumber": "",
+          "playerName": "Lee"
+        },
+        {
+          "id": "03d327f2-3f33-48bb-9c45-1448ff1c4187",
+          "team": "away",
+          "timestamp": 1760838119901,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "ee772641-ba04-4e14-95f3-1f595b5558aa",
+          "playerNumber": "",
+          "playerName": "Lee"
+        },
+        {
+          "id": "65670792-76a2-4098-8fc0-b03e28f4d9be",
+          "team": "away",
+          "timestamp": 1760838119902,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "ee772641-ba04-4e14-95f3-1f595b5558aa",
+          "playerNumber": "",
+          "playerName": "Lee"
+        }
+      ]
+    },
+    "attendance": {
+      "home": [
+        {
+          "id": "32125be7-b4b4-4e37-b2d7-e6fc53be4ecc",
+          "number": "",
+          "name": "SAVCHUK"
+        },
+        {
+          "id": "a2b71cad-e94e-4180-87b9-70b755653816",
+          "number": "",
+          "name": "RENZO"
+        },
+        {
+          "id": "58fa83b3-f33c-490a-8711-bf76349c3d2b",
+          "number": "",
+          "name": "SAN MILLAN"
+        },
+        {
+          "id": "4ec77017-020f-4b0f-8076-65a7c576346a",
+          "number": "",
+          "name": "DEL GESSO"
+        },
+        {
+          "id": "10af0a71-b342-4141-9d5d-24878daf2d55",
+          "number": "",
+          "name": "BARVINOK"
+        },
+        {
+          "id": "df170379-dc03-4785-a135-d1764c56c7d1",
+          "number": "",
+          "name": "ESEISA"
+        },
+        {
+          "id": "b542289a-8845-4d38-9c1a-2ec1cd7235d8",
+          "number": "",
+          "name": "CLARET"
+        }
+      ],
+      "away": [
+        {
+          "id": "48796a98-1d1a-4b17-9778-ad86f29cec30",
+          "number": "",
+          "name": "Sedran"
+        },
+        {
+          "id": "5a72375d-aa60-4c93-ae39-8b3c506a43ed",
+          "number": "",
+          "name": "Seryy"
+        },
+        {
+          "id": "374c2ec5-5aa8-4d1f-a06a-bf218a463047",
+          "number": "6",
+          "name": "Haroshka"
+        },
+        {
+          "id": "ee772641-ba04-4e14-95f3-1f595b5558aa",
+          "number": "",
+          "name": "Lee"
+        },
+        {
+          "id": "4027bf1d-0b55-43d3-b03a-26196c79a5e8",
+          "number": "",
+          "name": "Perez Bello"
+        }
+      ]
+    }
+  }
+}
