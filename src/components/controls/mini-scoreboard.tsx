@@ -208,6 +208,10 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
         dispatch({ type: 'MANUAL_END_GAME' }); // This will check for a tie and go to AwaitingDecision
         return;
     }
+     if (state.live.clock.periodDisplayOverride === "AwaitingDecision") {
+        dispatch({ type: 'SET_PERIOD', payload: state.live.clock.currentPeriod });
+        return;
+    }
 
     if (state.live.clock.periodDisplayOverride === "Break" || state.live.clock.periodDisplayOverride === "Pre-OT Break") {
       const actionToConfirm = () => {
@@ -292,23 +296,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                  dispatch({ type: 'MANUAL_END_GAME' });
             }
         } else if (state.live.clock.periodDisplayOverride === null) { // During a regular or OT period
-            if (state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS) {
-                 dispatch({ type: 'MANUAL_END_GAME' });
-            } else {
-                 const isPreOT = state.live.clock.currentPeriod >= state.config.numberOfRegularPeriods;
-                if (isPreOT) {
-                    dispatch({ type: 'START_PRE_OT_BREAK' });
-                } else {
-                    dispatch({ type: 'START_BREAK' });
-                }
-                const breakType = isPreOT ? "Pre-OT Break" : "Break";
-                const durationCs = isPreOT ? state.config.defaultPreOTBreakDuration : state.config.defaultBreakDuration;
-                const autoStart = isPreOT ? state.config.autoStartPreOTBreaks : state.config.autoStartBreaks;
-                toast({
-                    title: `${breakType} Iniciado`,
-                    description: `${breakType} iniciado después de ${getPeriodText(state.live.clock.currentPeriod, state.config.numberOfRegularPeriods)} (${centisecondsToDisplayMinutes(durationCs)} min). Reloj ${autoStart ? 'corriendo' : 'pausado'}.`
-                });
-            }
+            dispatch({ type: 'MANUAL_END_GAME' });
         }
     };
     
@@ -330,7 +318,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
         if (state.live.clock.currentTime < currentPeriodExpectedDurationCs) {
             shouldConfirm = true;
             if (state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS) {
-                // No confirmation needed to end the game
+                // Game ending, no confirmation needed.
             } else {
                confirmDescription = "El reloj del período actual ha corrido. ¿Estás seguro de que quieres iniciar el descanso?";
             }
@@ -364,10 +352,10 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     } else {
         nextActionButtonText = "Finalizar Partido"; 
     }
-  } else if (state.live.clock.periodDisplayOverride === null && state.live.clock.currentTime <= 0 && state.live.clock.currentPeriod < MAX_TOTAL_GAME_PERIODS) {
-    nextActionButtonText = "Iniciar Descanso";
   } else if (state.live.clock.periodDisplayOverride === null && state.live.clock.currentTime <= 0 && state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS) {
      nextActionButtonText = "Finalizar Partido";
+  } else if (state.live.clock.periodDisplayOverride === null && state.live.clock.currentTime <= 0 && state.live.clock.currentPeriod < MAX_TOTAL_GAME_PERIODS) {
+    nextActionButtonText = "Iniciar Descanso";
   } else if ((state.live.clock.periodDisplayOverride === "Break" || state.live.clock.periodDisplayOverride === "Pre-OT Break") && state.live.clock.currentTime <= 0) {
      if (state.live.clock.currentPeriod + 1 <= MAX_TOTAL_GAME_PERIODS) {
         nextActionButtonText = `Iniciar ${getPeriodText(state.live.clock.currentPeriod + 1, state.config.numberOfRegularPeriods)}`;
@@ -564,7 +552,8 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const formattedTime = state.live.clock.isFlashingZero ? "00:00" : formatTime(state.live.clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
 
   const isShootout = state.live.clock.periodDisplayOverride === 'Shootout';
-  const showClock = !isShootout && state.live.clock.periodDisplayOverride !== 'AwaitingDecision' && state.live.clock.periodDisplayOverride !== 'End of Game';
+  const isFinalState = state.live.clock.periodDisplayOverride === 'AwaitingDecision' || state.live.clock.periodDisplayOverride === 'End of Game';
+  const showClock = !isShootout && !isFinalState;
 
   return (
     <div className="relative">
@@ -712,13 +701,11 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 )}
             </div>
             <p className="text-sm text-muted-foreground text-center my-1">(Local)</p>
-            {!isShootout && (
-                <div className="flex items-center justify-center gap-1 mt-1">
-                <Button variant="link" className="p-0 h-auto text-4xl font-bold text-accent w-24 text-center tabular-nums hover:no-underline hover:text-accent/80" onClick={() => onScoreClick('home')}>
-                    {state.live.score.home}
-                </Button>
-                </div>
-            )}
+            <div className={cn("flex items-center justify-center gap-1 mt-1", isShootout && "invisible")}>
+              <Button variant="link" className="p-0 h-auto text-4xl font-bold text-accent w-24 text-center tabular-nums hover:no-underline hover:text-accent/80" onClick={() => onScoreClick('home')}>
+                  {state.live.score.home}
+              </Button>
+            </div>
             {matchedHomeTeamId && isHomePlayersDialogOpen && (
               <EditTeamPlayersDialog
                 isOpen={isHomePlayersDialogOpen}
@@ -732,51 +719,92 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
           {/* Clock & Period Section */}
           <div className="flex-1 space-y-2 text-center">
-            {showNextActionButton ? (
-              <Button
-                onClick={handleNextAction}
-                className="w-full max-w-[200px] mx-auto mb-2"
-                variant="default"
-                aria-label={nextActionButtonText}
-                disabled={isNextActionDisabled || state.live.clock.isFlashingZero}
-              >
-                <ChevronsRight className="mr-2 h-5 w-5" /> {nextActionButtonText}
-              </Button>
-            ) : (
-                showClock && (
+            <div className={cn("w-full max-w-[200px] mx-auto mb-2 h-9", !showNextActionButton && "invisible")}>
+                {showNextActionButton && (
                     <Button
-                        onClick={handleToggleClock}
-                        className="w-full max-w-[180px] mx-auto mb-2"
-                        variant={state.live.clock.isClockRunning ? "destructive" : "default"}
-                        aria-label={state.live.clock.isClockRunning ? "Pausar Reloj" : "Iniciar Reloj"}
-                        disabled={(state.live.clock.currentTime <= 0 && !state.live.clock.isClockRunning && state.live.clock.periodDisplayOverride !== "Time Out") || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero}
+                        onClick={handleNextAction}
+                        className="w-full"
+                        variant="default"
+                        aria-label={nextActionButtonText}
+                        disabled={isNextActionDisabled || state.live.clock.isFlashingZero}
                     >
-                        {state.live.clock.isClockRunning ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
-                        {state.live.clock.isClockRunning ? 'Pausar' : 'Iniciar'} Reloj
+                        <ChevronsRight className="mr-2 h-5 w-5" /> {nextActionButtonText}
                     </Button>
-                )
-            )}
+                )}
+            </div>
 
-            {showClock && (
-                <div className={cn(
-                  "text-5xl font-bold tabular-nums flex items-baseline justify-center gap-0.5", 
-                  isMainClockLastMinute ? "text-orange-500" : "text-accent",
-                  state.live.clock.isFlashingZero && "animate-flashing-clock"
-                )}>
-                  {!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout" || state.live.clock.isFlashingZero) && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-accent self-center mr-1"
-                      onClick={() => handleTimeAdjust(-1)}
-                      aria-label="Restar 1 segundo al reloj"
-                      disabled={editingSegment !== null || state.live.clock.isFlashingZero}
-                    >
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                  )}
+            <div className={cn(
+              "text-5xl font-bold tabular-nums flex items-baseline justify-center gap-0.5",
+              isMainClockLastMinute ? "text-orange-500" : "text-accent",
+              state.live.clock.isFlashingZero && "animate-flashing-clock",
+              !showClock && "invisible"
+            )}>
+              {!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout" || state.live.clock.isFlashingZero) && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground hover:text-accent self-center mr-1"
+                  onClick={() => handleTimeAdjust(-1)}
+                  aria-label="Restar 1 segundo al reloj"
+                  disabled={editingSegment !== null || state.live.clock.isFlashingZero}
+                >
+                  <Minus className="h-3 w-3" />
+                </Button>
+              )}
 
-                  {editingSegment === 'minutes' ? (
+              {editingSegment === 'minutes' ? (
+                <Input
+                  ref={inputRef}
+                  type="text"
+                  inputMode="numeric"
+                  value={editValue}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^\d*$/.test(val) && val.length <= 2) setEditValue(val);
+                  }}
+                  onBlur={handleTimeEditConfirm}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleTimeEditConfirm();
+                    if (e.key === 'Escape') setEditingSegment(null);
+                  }}
+                  className={cn(commonInputClass, "w-[60px] px-0")}
+                  maxLength={2}
+                  autoComplete="off"
+                />
+              ) : (
+                <span onClick={() => handleSegmentClick('minutes')} className={commonSpanClass}>
+                  {String(displayTimeParts.minutes).padStart(2, '0')}
+                </span>
+              )}
+              <span className={isMainClockLastMinute ? "text-orange-500" : "text-accent"}>:</span>
+              {editingSegment === 'seconds' ? (
+                <Input
+                  ref={inputRef}
+                  type="text"
+                  inputMode="numeric"
+                  value={editValue}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^\d*$/.test(val) && val.length <= 2) setEditValue(val);
+                  }}
+                  onBlur={handleTimeEditConfirm}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleTimeEditConfirm();
+                    if (e.key === 'Escape') setEditingSegment(null);
+                  }}
+                  className={cn(commonInputClass, "w-[60px] px-0")}
+                  maxLength={2}
+                  autoComplete="off"
+                />
+              ) : (
+                <span onClick={() => handleSegmentClick('seconds')} className={commonSpanClass}>
+                  {String(displayTimeParts.seconds).padStart(2, '0')}
+                </span>
+              )}
+              {isMainClockLastMinute && (
+                <>
+                  <span className="text-orange-500">.</span>
+                  {editingSegment === 'tenths' ? (
                     <Input
                       ref={inputRef}
                       type="text"
@@ -784,92 +812,50 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                       value={editValue}
                       onChange={(e) => {
                         const val = e.target.value;
-                        if (/^\d*$/.test(val) && val.length <= 2) setEditValue(val);
+                        if (/^\d*$/.test(val) && val.length <= 1) setEditValue(val);
                       }}
                       onBlur={handleTimeEditConfirm}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleTimeEditConfirm();
                         if (e.key === 'Escape') setEditingSegment(null);
                       }}
-                      className={cn(commonInputClass, "w-[60px] px-0")}
-                      maxLength={2}
+                      className={cn(commonInputClass, "w-[30px] text-orange-500 px-0")}
+                      maxLength={1}
                       autoComplete="off"
                     />
                   ) : (
-                    <span onClick={() => handleSegmentClick('minutes')} className={commonSpanClass}>
-                      {String(displayTimeParts.minutes).padStart(2, '0')}
+                    <span onClick={() => handleSegmentClick('tenths')} className={cn(commonSpanClass, "text-orange-500")}>
+                      {String(displayTimeParts.tenths)}
                     </span>
                   )}
-                  <span className={isMainClockLastMinute ? "text-orange-500" : "text-accent"}>:</span>
-                  {editingSegment === 'seconds' ? (
-                    <Input
-                      ref={inputRef}
-                      type="text"
-                      inputMode="numeric"
-                      value={editValue}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (/^\d*$/.test(val) && val.length <= 2) setEditValue(val);
-                      }}
-                      onBlur={handleTimeEditConfirm}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleTimeEditConfirm();
-                        if (e.key === 'Escape') setEditingSegment(null);
-                      }}
-                      className={cn(commonInputClass, "w-[60px] px-0")}
-                      maxLength={2}
-                      autoComplete="off"
-                    />
-                  ) : (
-                    <span onClick={() => handleSegmentClick('seconds')} className={commonSpanClass}>
-                      {String(displayTimeParts.seconds).padStart(2, '0')}
-                    </span>
-                  )}
-                  {isMainClockLastMinute && (
-                    <>
-                      <span className="text-orange-500">.</span>
-                      {editingSegment === 'tenths' ? (
-                        <Input
-                          ref={inputRef}
-                          type="text"
-                          inputMode="numeric"
-                          value={editValue}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (/^\d*$/.test(val) && val.length <= 1) setEditValue(val);
-                          }}
-                          onBlur={handleTimeEditConfirm}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleTimeEditConfirm();
-                            if (e.key === 'Escape') setEditingSegment(null);
-                          }}
-                          className={cn(commonInputClass, "w-[30px] text-orange-500 px-0")}
-                          maxLength={1}
-                          autoComplete="off"
-                        />
-                      ) : (
-                        <span onClick={() => handleSegmentClick('tenths')} className={cn(commonSpanClass, "text-orange-500")}>
-                          {String(displayTimeParts.tenths)}
-                        </span>
-                      )}
-                    </>
-                  )}
-                  {!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout" || state.live.clock.isFlashingZero) && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-accent self-center ml-1"
-                      onClick={() => handleTimeAdjust(1)}
-                      aria-label="Sumar 1 segundo al reloj"
-                      disabled={editingSegment !== null || state.live.clock.isFlashingZero}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-            )}
+                </>
+              )}
+              {!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout" || state.live.clock.isFlashingZero) && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground hover:text-accent self-center ml-1"
+                  onClick={() => handleTimeAdjust(1)}
+                  aria-label="Sumar 1 segundo al reloj"
+                  disabled={editingSegment !== null || state.live.clock.isFlashingZero}
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+            <div className={cn("w-full max-w-[180px] mx-auto mt-2 h-9", showNextActionButton && "invisible")}>
+                <Button
+                    onClick={handleToggleClock}
+                    className="w-full"
+                    variant={state.live.clock.isClockRunning ? "destructive" : "default"}
+                    aria-label={state.live.clock.isClockRunning ? "Pausar Reloj" : "Iniciar Reloj"}
+                    disabled={(state.live.clock.currentTime <= 0 && !state.live.clock.isClockRunning && state.live.clock.periodDisplayOverride !== "Time Out") || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero}
+                >
+                    {state.live.clock.isClockRunning ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
+                    {state.live.clock.isClockRunning ? 'Pausar' : 'Iniciar'} Reloj
+                </Button>
+            </div>
             
-
             <div className="relative mt-1 flex items-center justify-center gap-2">
                <Button
                 onClick={handlePreviousPeriod}
@@ -987,13 +973,11 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 )}
             </div>
             <p className="text-sm text-muted-foreground text-center my-1">(Visitante)</p>
-            {!isShootout && (
-                <div className="flex items-center justify-center gap-1 mt-1">
-                <Button variant="link" className="p-0 h-auto text-4xl font-bold text-accent w-24 text-center tabular-nums hover:no-underline hover:text-accent/80" onClick={() => onScoreClick('away')}>
-                    {state.live.score.away}
-                </Button>
-                </div>
-            )}
+            <div className={cn("flex items-center justify-center gap-1 mt-1", isShootout && "invisible")}>
+              <Button variant="link" className="p-0 h-auto text-4xl font-bold text-accent w-24 text-center tabular-nums hover:no-underline hover:text-accent/80" onClick={() => onScoreClick('away')}>
+                  {state.live.score.away}
+              </Button>
+            </div>
              {matchedAwayTeamId && isAwayPlayersDialogOpen && (
               <EditTeamPlayersDialog
                 isOpen={isAwayPlayersDialogOpen}

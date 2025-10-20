@@ -37,51 +37,40 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
 
   const formattedTime = clock.isFlashingZero ? "00:00" : formatTime(clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
 
+  const showClock = clock.periodDisplayOverride !== 'AwaitingDecision' && clock.periodDisplayOverride !== "End of Game";
+
   return (
     <div className={cn("text-center", className)}>
-      {clock.periodDisplayOverride === "End of Game" ? (
-        <div className={cn(
-          "font-bold font-headline text-accent tracking-tight py-4 md:py-6 lg:py-8 flex flex-col items-center justify-center",
-          className
-        )}>
-          <span style={{ fontSize: `${scoreboardLayout.periodSize}rem`}} className="mt-1 md:mt-2">
+      <div 
+        className={cn(
+          "font-bold font-headline tabular-nums tracking-tighter transition-opacity duration-300",
+          isMainClockLastMinute ? "text-orange-500" : "text-accent",
+          clock.isFlashingZero && "animate-flashing-clock",
+          !showClock && "opacity-0"
+        )}
+        style={{ fontSize: `${scoreboardLayout.clockSize}rem`, lineHeight: 1 }}
+        >
+        {formattedTime}
+      </div>
+      
+      <div 
+        className="mt-1 font-semibold text-primary-foreground uppercase tracking-wider relative"
+        style={{ fontSize: `${scoreboardLayout.periodSize}rem`, lineHeight: 1.1 }}
+      >
+        <div className="inline-block relative">
+          <span>
             {getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout)}
           </span>
-        </div>
-      ) : (
-         clock.periodDisplayOverride !== 'AwaitingDecision' && (
-            <div 
-              className={cn(
-                "font-bold font-headline tabular-nums tracking-tighter",
-                isMainClockLastMinute ? "text-orange-500" : "text-accent",
-                clock.isFlashingZero && "animate-flashing-clock"
-              )}
-              style={{ fontSize: `${scoreboardLayout.clockSize}rem`, lineHeight: 1 }}
-              >
-              {formattedTime}
-            </div>
-         )
-      )}
-      {clock.periodDisplayOverride !== "End of Game" && (
-        <div 
-          className="mt-1 font-semibold text-primary-foreground uppercase tracking-wider relative"
-          style={{ fontSize: `${scoreboardLayout.periodSize}rem`, lineHeight: 1.1 }}
-        >
-          <div className="inline-block relative">
-            <span>
-              {getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout)}
+          {!clock.isClockRunning && clock.currentTime > 0 && clock.periodDisplayOverride !== "End of Game" && clock.periodDisplayOverride !== 'AwaitingDecision' && !clock.isFlashingZero && (
+            <span
+              className="absolute left-full top-1/2 transform -translate-y-1/2 ml-3 font-normal text-muted-foreground normal-case tracking-normal px-2 py-1 bg-background/50 rounded-md whitespace-nowrap"
+              style={{ fontSize: '0.4em', lineHeight: 'normal' }}
+            >
+              Paused
             </span>
-            {!clock.isClockRunning && clock.currentTime > 0 && clock.periodDisplayOverride !== "End of Game" && clock.periodDisplayOverride !== 'AwaitingDecision' && !clock.isFlashingZero && (
-              <span
-                className="absolute left-full top-1/2 transform -translate-y-1/2 ml-3 font-normal text-muted-foreground normal-case tracking-normal px-2 py-1 bg-background/50 rounded-md whitespace-nowrap"
-                style={{ fontSize: '0.4em', lineHeight: 'normal' }}
-              >
-                Paused
-              </span>
-            )}
-          </div>
+          )}
         </div>
-      )}
+      </div>
       {clock.preTimeoutState && clock.periodDisplayOverride !== "End of Game" && (
         <div className={cn(
             "mt-2 normal-case tracking-normal",
