@@ -110,6 +110,8 @@ export const createDefaultFormatAndTimingsProfile = (id?: string, name?: string)
   enableStoppedTimeAlert: false, // Default for new profiles
   stoppedTimeAlertGoalDiff: 1,
   stoppedTimeAlertTimeRemaining: 2,
+  gameTimeMode: 'stopped',
+  autoActivatePuckPenalties: true,
   penaltyTypes: defaultSettings.penaltyTypes.map(p => ({
     ...p,
     reducesPlayerCount: p.reducesPlayerCount,
@@ -135,6 +137,8 @@ const getInitialState = (): GameState => {
       enableStoppedTimeAlert: false,
       stoppedTimeAlertGoalDiff: 1,
       stoppedTimeAlertTimeRemaining: 2,
+      gameTimeMode: 'stopped',
+      autoActivatePuckPenalties: true,
       penaltyTypes: defaultSettings.penaltyTypes.map(p => ({...p, isBenchPenalty: p.isBenchPenalty || false })) as PenaltyTypeDefinition[],
       defaultPenaltyTypeId: defaultSettings.defaultPenaltyTypeId,
       formatAndTimingsProfiles: [defaultInitialProfile],
@@ -486,8 +490,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       let newClockState: Partial<ClockState> = {};
       let newAbsoluteElapsedTimeCs = absoluteElapsedTimeCs;
+      let newPenalties: PenaltiesState | undefined;
 
-      if (isClockRunning) {
+      if (isClockRunning) { // Stopping the clock
         let preciseCurrentTimeCs = currentTime;
         if (clockStartTimeMs && remainingTimeAtStartCs !== null) {
           const elapsedCs = Math.floor((Date.now() - clockStartTimeMs) / 10);
@@ -502,16 +507,43 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             absoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
             _liveAbsoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
         };
-      } else {
+      } else { // Starting the clock
         if (currentTime > 0) {
             newClockState = {
                 isClockRunning: true,
                 clockStartTimeMs: Date.now(),
                 remainingTimeAtStartCs: currentTime,
             };
+
+            // Conditionally activate penalties
+            if (state.config.autoActivatePuckPenalties) {
+                const activate = (penalties: Penalty[]) => penalties.map(p => {
+                    if (p._status === 'pending_puck') {
+                        let updatedPenalty = { ...p, _status: 'pending_concurrent' };
+                        if (!p.reducesPlayerCount) {
+                            updatedPenalty._status = 'running';
+                            updatedPenalty.startTime = state.live.clock._liveAbsoluteElapsedTimeCs;
+                            updatedPenalty.expirationTime = state.live.clock._liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND);
+                        }
+                        return updatedPenalty;
+                    }
+                    return p;
+                });
+                newPenalties = {
+                    home: activate(state.live.penalties.home),
+                    away: activate(state.live.penalties.away)
+                };
+            }
         }
       }
-      newState = { ...state, live: { ...state.live, clock: { ...state.live.clock, ...newClockState } } };
+      
+      const updatedLiveState = {
+        ...state.live,
+        clock: { ...state.live.clock, ...newClockState },
+        ...(newPenalties && { penalties: newPenalties })
+      };
+      
+      newState = { ...state, live: updatedLiveState };
       break;
     }
     case 'SET_TIME': {

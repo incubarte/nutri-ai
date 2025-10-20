@@ -597,11 +597,12 @@ export default function ControlsPage() {
     dispatch({ type: 'ACTIVATE_PENDING_PUCK_PENALTIES' });
   };
   
-  const hasPendingPuckPenalties = useMemo(() => {
-    if (!state.live || !state.live.penalties) return false;
-    return state.live.penalties.home.some(p => p._status === 'pending_puck') ||
-           state.live.penalties.away.some(p => p._status === 'pending_puck');
-  }, [state.live]);
+  const shouldShowPendingPuckButton = useMemo(() => {
+    const hasPending = state.live.penalties.home.some(p => p._status === 'pending_puck') ||
+                       state.live.penalties.away.some(p => p._status === 'pending_puck');
+    return hasPending && !state.config.autoActivatePuckPenalties;
+  }, [state.live.penalties, state.config.autoActivatePuckPenalties]);
+
 
   const handleScoreClick = (team: Team) => {
     setEditingTeamForGoals(team);
@@ -831,7 +832,7 @@ export default function ControlsPage() {
       
       {isShootoutActive && <ShootoutControl />}
 
-      {hasPendingPuckPenalties && (
+      {shouldShowPendingPuckButton && (
         <div className="my-6 flex justify-center">
           <Button
             variant="destructive"
