@@ -2,7 +2,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatTime, getCategoryNameById, getEndReasonText, type GameState, getPeriodText } from '@/contexts/game-state-context';
-import type { GoalLog, PenaltyLog, PlayerData, PlayerStats } from '@/types';
+import type { GoalLog, PenaltyLog, PlayerData, PlayerStats, SummaryPlayerStats } from '@/types';
 
 // Helper to add a section with a title
 const addSectionTitle = (doc: jsPDF, title: string, y: number): number => {
@@ -42,7 +42,7 @@ const addTable = (doc: jsPDF, title: string, y: number, head: any[], body: any[]
     }
 };
 
-const addPlayerStatsTable = (doc: jsPDF, title: string, y: number, playerStats: PlayerStats | undefined): number => {
+const addPlayerStatsTable = (doc: jsPDF, title: string, y: number, summaryPlayerStats: SummaryPlayerStats[]): number => {
     let currentY = y;
      if (title) {
         doc.setFontSize(12);
@@ -51,10 +51,7 @@ const addPlayerStatsTable = (doc: jsPDF, title: string, y: number, playerStats: 
         currentY += 6;
     }
 
-    const attendedPlayers = playerStats ? Object.entries(playerStats)
-        .map(([playerNumber, stats]) => ({ number: playerNumber, ...stats }))
-        .sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999))
-        : [];
+    const attendedPlayers = [...summaryPlayerStats].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
 
     if (attendedPlayers.length > 0) {
         const totalGoals = attendedPlayers.reduce((sum, p) => sum + p.goals, 0);
@@ -149,28 +146,65 @@ export const exportGameSummaryPDF = (state: GameState) => {
     // --- Estadísticas Generales por Jugador ---
     doc.addPage();
     currentY = 20;
-    currentY = addPlayerStatsTable(doc, `${live.homeTeamName} - Estadísticas de Jugador`, currentY, live.gameSummary.home.playerStats);
+
+    const getAggregatePlayerStats = (team: 'home' | 'away'): SummaryPlayerStats[] => {
+        const playerStatsMap = new Map<string, SummaryPlayerStats>();
+        const attendance = live.gameSummary.attendance[team];
+
+        attendance.forEach(p => {
+            playerStatsMap.set(p.id, {
+                id: p.id,
+                name: p.name,
+                number: p.number,
+                shots: 0,
+                goals: 0,
+                assists: 0
+            });
+        });
+        
+        live.gameSummary[team].goals.forEach(goal => {
+            const scorerInAttendance = attendance.find(p => p.number === goal.scorer?.playerNumber);
+            if (scorerInAttendance && playerStatsMap.has(scorerInAttendance.id)) {
+                playerStatsMap.get(scorerInAttendance.id)!.goals++;
+            }
+            const assistInAttendance = attendance.find(p => p.number === goal.assist?.playerNumber);
+            if(assistInAttendance && playerStatsMap.has(assistInAttendance.id)) {
+                playerStatsMap.get(assistInAttendance.id)!.assists++;
+            }
+        });
+
+        (live.gameSummary[team][`${team}ShotsLog` as const] || []).forEach(shot => {
+             if (shot.playerId && playerStatsMap.has(shot.playerId)) {
+                playerStatsMap.get(shot.playerId)!.shots++;
+            }
+        });
+        
+        return Array.from(playerStatsMap.values());
+    };
+    
+    const homeAggregatedStats = getAggregatePlayerStats('home');
+    const awayAggregatedStats = getAggregatePlayerStats('away');
+
+    currentY = addPlayerStatsTable(doc, `${live.homeTeamName} - Estadísticas de Jugador`, currentY, homeAggregatedStats);
     currentY = checkPageBreak(doc, currentY);
-    currentY = addPlayerStatsTable(doc, `${live.awayTeamName} - Estadísticas de Jugador`, currentY, live.gameSummary.away.playerStats);
+    currentY = addPlayerStatsTable(doc, `${live.awayTeamName} - Estadísticas de Jugador`, currentY, awayAggregatedStats);
+
 
     // --- Desglose por Período ---
     doc.addPage();
     currentY = addSectionTitle(doc, 'Detalle de Estadísticas por Periodo', 20);
 
-    const totalPeriods = Math.max(
-        ...[...allHomeGoals, ...allAwayGoals, ...allHomePenalties, ...allAwayPenalties].map(e => e.periodText),
-        '0' 
-    );
-    
     const getPeriodNumber = (periodText: string): number => {
         if (periodText.startsWith('OT')) return config.numberOfRegularPeriods + parseInt(periodText.replace('OT', '') || '1', 10);
-        if (periodText === 'WARM-UP') return 0;
-        return parseInt(periodText.replace(/ST|ND|RD|TH/,''), 10);
+        if (periodText.toLowerCase().includes('warm-up')) return -1;
+        return parseInt(periodText.replace(/\D/g, ''), 10);
     }
     
     const allPeriodTexts = Array.from(new Set([...allHomeGoals, ...allAwayGoals, ...allHomePenalties, ...allAwayPenalties].map(e => e.addPeriodText || e.periodText))).sort((a, b) => getPeriodNumber(a) - getPeriodNumber(b));
 
     for (const periodText of allPeriodTexts) {
+        if (periodText.toLowerCase().includes('warm-up')) continue;
+        
         currentY = checkPageBreak(doc, currentY);
         doc.setFontSize(14);
         doc.text(`Estadísticas para: ${periodText}`, 14, currentY);
@@ -180,25 +214,6 @@ export const exportGameSummaryPDF = (state: GameState) => {
         const awayGoalsInPeriod = allAwayGoals.filter(g => g.periodText === periodText);
         const homePenaltiesInPeriod = allHomePenalties.filter(p => p.addPeriodText === periodText);
         const awayPenaltiesInPeriod = allAwayPenalties.filter(p => p.addPeriodText === periodText);
-
-        const getPlayerStatsForPeriod = (teamGoals: GoalLog[], teamPenalties: PenaltyLog[]): PlayerStats | undefined => {
-            const stats: Record<string, PlayerStats> = {};
-            teamGoals.forEach(g => {
-                if (g.scorer?.playerNumber) {
-                    if (!stats[g.scorer.playerNumber]) stats[g.scorer.playerNumber] = { name: g.scorer.playerName || '', goals: 0, assists: 0, shots: 0 };
-                    stats[g.scorer.playerNumber].goals++;
-                }
-                if (g.assist?.playerNumber) {
-                    if (!stats[g.assist.playerNumber]) stats[g.assist.playerNumber] = { name: g.assist.playerName || '', goals: 0, assists: 0, shots: 0 };
-                    stats[g.assist.playerNumber].assists++;
-                }
-            });
-            // Note: Per-period shot counts are not available in the current data model.
-            return stats as PlayerStats;
-        };
-
-        const homePlayerStatsInPeriod = getPlayerStatsForPeriod(homeGoalsInPeriod, homePenaltiesInPeriod);
-        const awayPlayerStatsInPeriod = getPlayerStatsForPeriod(awayGoalsInPeriod, awayPenaltiesInPeriod);
         
         currentY = addTable(doc, `${live.homeTeamName} - Goles`, currentY, ['Tiempo', 'Gol', 'Asistencia'], homeGoalsInPeriod.map(g => [formatTime(g.gameTime), `#${g.scorer?.playerNumber || 'S/N'} ${g.scorer?.playerName || ''}`.trim(), g.assist ? `#${g.assist.playerNumber} ${g.assist.playerName || ''}`.trim() : '---']), { showTotal: true });
         currentY = checkPageBreak(doc, currentY);
