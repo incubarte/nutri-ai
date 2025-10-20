@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
@@ -19,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
 import { AddPenaltyForm } from "@/components/shared/add-penalty-form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle as AlertTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription as AlertDialogDesc, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle as AlertTitle } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Simplified model for the summary page
@@ -161,12 +162,45 @@ const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }: { team
     );
 };
 
-const PlayerStatsSection = ({ teamName, playerStats, onShotChange }: { teamName: string; playerStats: SummaryPlayerStats[]; onShotChange?: (playerId: string, newShotCount: number) => void; }) => {
+const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable, periodText, onEdit }: { team: Team; teamName: string; playerStats?: LivePlayerStats; attendance?: AttendedPlayerInfo[]; editable?: boolean; periodText?: string, onEdit?: () => void }) => {
+    
     const [isEditing, setIsEditing] = useState(false);
     const [editedShots, setEditedShots] = useState<Record<string, string>>({});
 
-    const sortedPlayers = useMemo(() => {
-        return [...playerStats].sort((a, b) => {
+    const attendedPlayersWithStats = useMemo(() => {
+        const statsToUse = playerStats || {};
+        const attendanceToUse = attendance || [];
+
+        const playerMap = new Map<string, PlayerData & { shots: number, goals: number, assists: number }>();
+
+        attendanceToUse.forEach(attendedPlayer => {
+            playerMap.set(attendedPlayer.id, {
+                id: attendedPlayer.id,
+                number: attendedPlayer.number,
+                name: attendedPlayer.name,
+                type: 'player', 
+                shots: 0,
+                goals: 0,
+                assists: 0,
+            });
+        });
+        
+        Object.entries(statsToUse).forEach(([playerNumber, stats]) => {
+            const playerInAttendance = attendanceToUse.find(p => p.number === playerNumber);
+            if(playerInAttendance) {
+                const existingPlayer = playerMap.get(playerInAttendance.id);
+                if (existingPlayer) {
+                    playerMap.set(existingPlayer.id, {
+                        ...existingPlayer,
+                        shots: stats.shots || 0,
+                        goals: stats.goals || 0,
+                        assists: stats.assists || 0,
+                    });
+                }
+            }
+        });
+
+        return Array.from(playerMap.values()).sort((a, b) => {
             const numA = parseInt(a.number, 10);
             const numB = parseInt(b.number, 10);
 
@@ -175,19 +209,20 @@ const PlayerStatsSection = ({ teamName, playerStats, onShotChange }: { teamName:
             if (!isNaN(numA) && isNaN(numB)) return -1;
             return a.name.localeCompare(b.name);
         });
-    }, [playerStats]);
+    }, [attendance, playerStats]);
+
 
     const totals = useMemo(() => {
-        return sortedPlayers.reduce((acc, player) => {
+        return attendedPlayersWithStats.reduce((acc, player) => {
             acc.goals += player.goals || 0;
             acc.assists += player.assists || 0;
             acc.shots += player.shots || 0;
             return acc;
         }, { goals: 0, assists: 0, shots: 0 });
-    }, [sortedPlayers]);
+    }, [attendedPlayersWithStats]);
 
     const handleEditClick = () => {
-        const initialShots = sortedPlayers.reduce((acc, player) => {
+        const initialShots = attendedPlayersWithStats.reduce((acc, player) => {
             acc[player.id] = String(player.shots || 0);
             return acc;
         }, {} as Record<string, string>);
@@ -197,18 +232,24 @@ const PlayerStatsSection = ({ teamName, playerStats, onShotChange }: { teamName:
 
     const handleCancelClick = () => setIsEditing(false);
 
+    const { dispatch } = useGameState();
     const handleSaveClick = () => {
-        if (!onShotChange) return;
+        if (!editable || !periodText || !onEdit) return;
+
         Object.entries(editedShots).forEach(([playerId, newShotCountStr]) => {
-            const originalPlayer = sortedPlayers.find(p => p.id === playerId);
+            const originalPlayer = attendedPlayersWithStats.find(p => p.id === playerId);
             if (originalPlayer && String(originalPlayer.shots) !== newShotCountStr) {
                 const newShotCount = parseInt(newShotCountStr, 10);
                 if (!isNaN(newShotCount)) {
-                    onShotChange(playerId, newShotCount);
+                    dispatch({
+                        type: 'SET_PLAYER_SHOTS',
+                        payload: { team, playerId, periodText, shotCount: newShotCount }
+                    });
                 }
             }
         });
         setIsEditing(false);
+        onEdit(); // Callback to trigger refresh
     };
 
     const handleShotChange = (playerId: string, value: string) => {
@@ -221,7 +262,7 @@ const PlayerStatsSection = ({ teamName, playerStats, onShotChange }: { teamName:
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas - {teamName}</CardTitle>
-                {onShotChange && (
+                {editable && (
                     <div className="flex gap-2">
                         {isEditing ? (
                             <>
@@ -236,7 +277,7 @@ const PlayerStatsSection = ({ teamName, playerStats, onShotChange }: { teamName:
             </CardHeader>
             <CardContent>
                 <TooltipProvider>
-                    {sortedPlayers.length > 0 ? (
+                    {attendedPlayersWithStats.length > 0 ? (
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -248,7 +289,7 @@ const PlayerStatsSection = ({ teamName, playerStats, onShotChange }: { teamName:
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {sortedPlayers.map(player => {
+                                {attendedPlayersWithStats.map(player => {
                                     const isDisabled = isEditing && !player.number;
                                     return (
                                         <TableRow key={player.id} className={cn(isDisabled && "opacity-50")}>
@@ -257,14 +298,14 @@ const PlayerStatsSection = ({ teamName, playerStats, onShotChange }: { teamName:
                                             <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
                                             <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
                                             <TableCell className="text-center">
-                                            {isEditing && onShotChange ? (
+                                            {isEditing && editable ? (
                                                 isDisabled ? (
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
                                                             <div className="w-full h-full flex items-center justify-center">
                                                                 <Input
                                                                     type="number"
-                                                                    value={editedShots[player.id] || '0'}
+                                                                    value={player.shots || '0'}
                                                                     className="h-7 w-16 mx-auto text-center cursor-not-allowed"
                                                                     disabled
                                                                 />
@@ -310,7 +351,7 @@ const PlayerStatsSection = ({ teamName, playerStats, onShotChange }: { teamName:
 
 
 export default function ResumenPage() {
-  const { state: liveGameState, isLoading } = useGameState();
+  const { state: liveGameState, dispatch, isLoading } = useGameState();
   const { toast } = useToast();
   
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
@@ -322,6 +363,8 @@ export default function ResumenPage() {
   
   const [overwriteConfirm, setOverwriteConfirm] = useState<{ onConfirm: () => void } | null>(null);
   const [unassignedPlayerWarning, setUnassignedPlayerWarning] = useState<{ players: string[]; onConfirm: () => void } | null>(null);
+  
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const allPeriodTexts = useMemo(() => {
     if (!summaryData) return [];
@@ -349,15 +392,18 @@ export default function ResumenPage() {
   const generateSummaryData = useCallback(() => {
     const { live, config } = liveGameState;
 
-    const convertPlayerStats = (stats: Record<string, LivePlayerStats>, attendance: { id: string, number: string, name: string }[]): SummaryPlayerStats[] => {
-        return attendance.map(p => ({
+    const convertPlayerStats = (stats: Record<string, LivePlayerStats>, attendance: AttendedPlayerInfo[]): SummaryPlayerStats[] => {
+        return attendance.map(p => {
+          const playerStat = stats[p.number] || { goals: 0, assists: 0, shots: 0 };
+          return {
             id: p.id,
             number: p.number,
             name: p.name,
-            goals: stats[p.number]?.goals || 0,
-            assists: stats[p.number]?.assists || 0,
-            shots: stats[p.number]?.shots || 0,
-        }));
+            goals: playerStat.goals,
+            assists: playerStat.assists,
+            shots: playerStat.shots,
+          };
+        });
     };
     
     const newSummary: SummaryData = {
@@ -378,6 +424,7 @@ export default function ResumenPage() {
         },
     };
     setSummaryData(newSummary);
+    setRefreshKey(k => k + 1); // Force re-render of children
     toast({ title: "Resumen Generado", description: "Se han cargado los datos del partido actual." });
   }, [liveGameState, toast]);
   
@@ -437,9 +484,9 @@ export default function ResumenPage() {
      if (!summaryData) return;
     // This function needs to be adapted to accept SummaryData instead of the full GameState
     // For now, we will create a temporary GameState-like object for it.
-    const tempStateForPDF = { ...liveGameState, live: { ...liveGameState.live, gameSummary: {
-        home: { ...liveGameState.live.gameSummary.home, goals: summaryData.home.goals, penalties: summaryData.home.penalties },
-        away: { ...liveGameState.live.gameSummary.away, goals: summaryData.away.goals, penalties: summaryData.away.penalties },
+    const tempStateForPDF = { ...liveGameState, live: { ...liveGameState.live, score: { ...liveGameState.live.score, home: summaryData.homeScore, away: summaryData.awayScore, homeGoals: summaryData.home.goals, awayGoals: summaryData.away.goals }, gameSummary: {
+        home: { ...liveGameState.live.gameSummary.home, goals: summaryData.home.goals, penalties: summaryData.home.penalties, playerStats: summaryData.home.playerStats.reduce((acc, p) => ({...acc, [p.number]: p}), {}) },
+        away: { ...liveGameState.live.gameSummary.away, goals: summaryData.away.goals, penalties: summaryData.away.penalties, playerStats: summaryData.away.playerStats.reduce((acc, p) => ({...acc, [p.number]: p}), {}) },
         attendance: liveGameState.live.gameSummary.attendance
     }}};
     // @ts-ignore - This is a temporary solution for the PDF generator
@@ -477,7 +524,6 @@ export default function ResumenPage() {
       addTimestamp: Date.now(),
       addGameTime: gameTimeCs || 0,
       addPeriodText: penaltyContext.periodText,
-      // Manual entries are considered completed by default for simplicity
       endReason: 'completed',
       endTimestamp: Date.now(),
       timeServed: penaltyDef.duration,
@@ -509,21 +555,6 @@ export default function ResumenPage() {
         setPenaltyToDelete(null);
       }
   };
-
-  const handleShotCountChange = useCallback((team: Team, periodText: string, playerId: string, newShotCount: number) => {
-    setSummaryData(prev => {
-        if (!prev) return null;
-        
-        const newTeamStats = prev[team].playerStats.map(p => {
-            if (p.id === playerId) {
-                return { ...p, shots: newShotCount };
-            }
-            return p;
-        });
-
-        return { ...prev, [team]: { ...prev[team], playerStats: newTeamStats }};
-    });
-  }, []);
 
 
   if (isLoading) {
@@ -575,13 +606,13 @@ export default function ResumenPage() {
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} onAdd={() => {}} onDelete={() => {}} />
-                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} onAdd={() => {}} onDelete={() => {}} />
+                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} onAdd={() => {}} onDelete={(logId) => handlePrepareDeletePenalty('home', logId)} />
+                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} onAdd={() => {}} onDelete={(logId) => handlePrepareDeletePenalty('away', logId)} />
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={summaryData.home.playerStats} />
-                                    <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={summaryData.away.playerStats} />
+                                    <PlayerStatsSection key={`home-total-${refreshKey}`} team="home" teamName={summaryData.homeTeamName} playerStats={liveGameState.live.gameSummary.home.playerStats} attendance={liveGameState.live.gameSummary.attendance.home} />
+                                    <PlayerStatsSection key={`away-total-${refreshKey}`} team="away" teamName={summaryData.awayTeamName} playerStats={liveGameState.live.gameSummary.away.playerStats} attendance={liveGameState.live.gameSummary.attendance.away} />
                                 </div>
                             </div>
                         </ScrollArea>
@@ -593,18 +624,8 @@ export default function ResumenPage() {
                                 const homeGoalsInPeriod = summaryData.home.goals.filter(g => g.periodText === periodText);
                                 const awayGoalsInPeriod = summaryData.away.goals.filter(g => g.periodText === periodText);
                                 
-                                const homePlayerStatsInPeriod = summaryData.home.playerStats.map(p => ({
-                                    ...p,
-                                    goals: homeGoalsInPeriod.filter(g => g.scorer?.playerNumber === p.number).length,
-                                    assists: homeGoalsInPeriod.filter(g => g.assist?.playerNumber === p.number).length,
-                                    shots: p.shots, // shots are total, not per period in this model
-                                }));
-                                const awayPlayerStatsInPeriod = summaryData.away.playerStats.map(p => ({
-                                    ...p,
-                                    goals: awayGoalsInPeriod.filter(g => g.scorer?.playerNumber === p.number).length,
-                                    assists: awayGoalsInPeriod.filter(g => g.assist?.playerNumber === p.number).length,
-                                    shots: p.shots,
-                                }));
+                                const homePlayerStatsInPeriod = liveGameState.live.gameSummary.home.playerStats;
+                                const awayPlayerStatsInPeriod = liveGameState.live.gameSummary.away.playerStats;
 
                                 const homePenaltiesInPeriod = summaryData.home.penalties.filter(p => p.addPeriodText === periodText);
                                 const awayPenaltiesInPeriod = summaryData.away.penalties.filter(p => p.addPeriodText === periodText);
@@ -623,8 +644,8 @@ export default function ResumenPage() {
                                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={awayPenaltiesInPeriod} onAdd={() => handleOpenAddPenalty('away', periodText)} onDelete={(logId) => handlePrepareDeletePenalty('away', logId)} />
                                                 </div>
                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={homePlayerStatsInPeriod} onShotChange={(playerId, newCount) => handleShotCountChange('home', periodText, playerId, newCount)} />
-                                                    <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={awayPlayerStatsInPeriod} onShotChange={(playerId, newCount) => handleShotCountChange('away', periodText, playerId, newCount)} />
+                                                    <PlayerStatsSection team="home" teamName={summaryData.homeTeamName} playerStats={homePlayerStatsInPeriod} attendance={liveGameState.live.gameSummary.attendance.home} editable={true} periodText={periodText} onEdit={() => setRefreshKey(k => k + 1)} />
+                                                    <PlayerStatsSection team="away" teamName={summaryData.awayTeamName} playerStats={awayPlayerStatsInPeriod} attendance={liveGameState.live.gameSummary.attendance.away} editable={true} periodText={periodText} onEdit={() => setRefreshKey(k => k + 1)} />
                                                 </div>
                                             </div>
                                         </AccordionContent>
@@ -664,9 +685,9 @@ export default function ResumenPage() {
             <AlertDialog open={!!penaltyToDelete} onOpenChange={() => setPenaltyToDelete(null)}>
                 <AlertDialogContent>
                     <AlertTitle>Confirmar Eliminación</AlertTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogDesc>
                         ¿Estás seguro de que quieres eliminar esta penalidad? Esta acción no se puede deshacer.
-                    </AlertDialogDescription>
+                    </AlertDialogDesc>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setPenaltyToDelete(null)}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={handleConfirmDeletePenalty} className="bg-destructive hover:bg-destructive/90">
@@ -681,9 +702,9 @@ export default function ResumenPage() {
             <AlertDialog open={!!overwriteConfirm} onOpenChange={() => setOverwriteConfirm(null)}>
                 <AlertDialogContent>
                     <AlertTitle className="flex items-center gap-2"><AlertTriangle className="text-amber-500" /> Confirmar Generación de Resumen</AlertTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogDesc>
                         Ya existe un resumen generado. Si continúas, se perderán todos los cambios manuales que hayas hecho en este resumen. ¿Deseas continuar y reemplazar los datos?
-                    </AlertDialogDescription>
+                    </AlertDialogDesc>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setOverwriteConfirm(null)}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={() => { overwriteConfirm.onConfirm(); setOverwriteConfirm(null); }}>
@@ -698,15 +719,17 @@ export default function ResumenPage() {
             <AlertDialog open={!!unassignedPlayerWarning} onOpenChange={() => setUnassignedPlayerWarning(null)}>
                 <AlertDialogContent>
                     <AlertTitle className="flex items-center gap-2"><AlertTriangle className="text-amber-500" /> Jugadores sin Número Asignado</AlertTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogDesc>
                         Los siguientes jugadores tienen asistencia registrada pero no tienen un número asignado. Si continúas, no podrás editar sus estadísticas de tiros más adelante.
-                        <ScrollArea className="max-h-32 mt-4 border bg-muted/50 p-2 rounded-md">
-                           <ul className="list-disc pl-5">
-                                {unassignedPlayerWarning.players.map((name, i) => <li key={i}>{name}</li>)}
-                           </ul>
-                        </ScrollArea>
-                         ¿Deseas generar el resumen de todas formas?
-                    </AlertDialogDescription>
+                    </AlertDialogDesc>
+                    <ScrollArea className="max-h-32 mt-4 border bg-muted/50 p-2 rounded-md">
+                       <ul className="list-disc pl-5">
+                            {unassignedPlayerWarning.players.map((name, i) => <li key={i}>{name}</li>)}
+                       </ul>
+                    </ScrollArea>
+                    <AlertDialogDesc className="mt-2">
+                        ¿Deseas generar el resumen de todas formas?
+                    </AlertDialogDesc>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setUnassignedPlayerWarning(null)}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={() => { unassignedPlayerWarning.onConfirm(); setUnassignedPlayerWarning(null); }}>
