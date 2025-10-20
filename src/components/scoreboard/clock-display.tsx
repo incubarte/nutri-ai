@@ -3,6 +3,7 @@
 
 import { useGameState, formatTime, getActualPeriodText, getPeriodText } from '@/contexts/game-state-context';
 import { cn } from '@/lib/utils';
+import { Trophy } from 'lucide-react';
 
 interface ClockDisplayProps {
   className?: string;
@@ -30,10 +31,29 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
       return getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout);
     }
     
+    const iconStyle = {
+        display: 'inline-block',
+        width: `${scoreboardLayout.periodSize * 0.8}rem`,
+        height: `${scoreboardLayout.periodSize * 0.8}rem`,
+        margin: `0 ${scoreboardLayout.periodSize * 0.2}rem`
+    };
+
     if (score.home > score.away) {
-      return `GANADOR: ${homeTeamName || 'Local'}`;
+      return (
+        <span className="flex items-center justify-center">
+            <Trophy style={iconStyle} />
+            <span className="truncate">{homeTeamName || 'Local'}</span>
+            <Trophy style={iconStyle} />
+        </span>
+      );
     } else if (score.away > score.home) {
-      return `GANADOR: ${awayTeamName || 'Visitante'}`;
+      return (
+        <span className="flex items-center justify-center">
+            <Trophy style={iconStyle} />
+            <span className="truncate">{awayTeamName || 'Visitante'}</span>
+            <Trophy style={iconStyle} />
+        </span>
+      );
     } else {
       return "EMPATE";
     }
