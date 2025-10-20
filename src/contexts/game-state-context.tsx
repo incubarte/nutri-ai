@@ -435,7 +435,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
   // Clear pending power play goal confirmation on almost any penalty change
   if (action.type !== 'ADD_GOAL' && action.type !== 'CLEAR_PENDING_POWER_PLAY_GOAL' && action.type !== 'TICK' && state.live.pendingPowerPlayGoal) {
-      if ('team' in action.payload && action.payload.team === state.live.pendingPowerPlayGoal.team) {
+      if ('payload' in action && typeof action.payload === 'object' && action.payload && 'team' in action.payload && action.payload.team === state.live.pendingPowerPlayGoal.team) {
           newState.live.pendingPowerPlayGoal = null;
       }
   }
@@ -623,12 +623,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       let pendingPPGoal: LiveState['pendingPowerPlayGoal'] = null;
       // Check for power play goal condition
       const scoringTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamScored].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
-      const concedingTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamScored === 'home' ? 'away' : 'home'].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
+      const concedingTeam = teamScored === 'home' ? 'away' : 'home';
+      const concedingTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[concedingTeam].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
 
       if (scoringTeamOnIce > concedingTeamOnIce) {
-          const firstEligiblePenalty = state.live.penalties[teamScored === 'home' ? 'away' : 'home'].find(p => p._status === 'running' && p.clearsOnGoal);
+          const firstEligiblePenalty = state.live.penalties[concedingTeam].find(p => p._status === 'running' && p.clearsOnGoal);
           if (firstEligiblePenalty) {
-              pendingPPGoal = { team: teamScored === 'home' ? 'away' : 'home', penaltyId: firstEligiblePenalty.id };
+              pendingPPGoal = { team: concedingTeam, penaltyId: firstEligiblePenalty.id };
           }
       }
       
@@ -1783,4 +1784,5 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
