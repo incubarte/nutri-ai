@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -10,15 +11,100 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ShieldAlert, LogIn } from 'lucide-react';
+import { Trash2, ShieldAlert, LogIn, SlidersHorizontal, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from "@/hooks/use-auth";
 import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
 import { useRouter } from "next/navigation";
-import { GAME_STATE_STORAGE_KEY, TEAMS_STORAGE_KEY } from "@/contexts/game-state-context";
+import { GAME_STATE_STORAGE_KEY, TEAMS_STORAGE_KEY, useGameState } from "@/contexts/game-state-context";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+
+function PerformanceSettingsCard() {
+    const { state, dispatch, isLoading } = useGameState();
+    const { toast } = useToast();
+    const [tickInterval, setTickInterval] = useState(String(state.config.tickIntervalMs || 200));
+
+    const handleIntervalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setTickInterval(e.target.value);
+    };
+
+    const handleIntervalBlur = () => {
+        let value = parseInt(tickInterval, 10);
+        if (isNaN(value) || value < 100) {
+            value = 100;
+            toast({
+                title: "Valor Inválido",
+                description: "El intervalo mínimo es 100ms. Se ha establecido a 100ms.",
+                variant: "destructive",
+            });
+        }
+        setTickInterval(String(value));
+        dispatch({ type: 'UPDATE_CONFIG_FIELDS', payload: { tickIntervalMs: value } });
+        toast({
+            title: "Configuración Actualizada",
+            description: `El intervalo del reloj se ha establecido a ${value}ms.`
+        });
+    };
+
+    if (isLoading) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Configuración de Rendimiento</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p>Cargando...</p>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <SlidersHorizontal className="h-5 w-5" /> Configuración de Rendimiento
+                </CardTitle>
+                <CardDescription>
+                    Ajustes que pueden afectar la performance y la precisión de la aplicación.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="tickInterval" className="text-base">Intervalo de Actualización del Reloj (ms)</Label>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p className="max-w-xs">Define cada cuántos milisegundos se actualiza el reloj principal. Un valor más bajo es más preciso pero consume más recursos. Un valor más alto es menos preciso pero más ligero. Mínimo: 100ms.</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                   <Input
+                        id="tickInterval"
+                        type="number"
+                        value={tickInterval}
+                        onChange={handleIntervalChange}
+                        onBlur={handleIntervalBlur}
+                        placeholder="ej. 200"
+                        min="100"
+                        className="w-40 mt-2"
+                    />
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
 
 export default function AdminPage() {
   const { toast } = useToast();
@@ -79,6 +165,9 @@ export default function AdminPage() {
             <h1 className="text-3xl font-bold mt-4">Panel de Administración</h1>
             <p className="text-muted-foreground mt-2">Herramientas para la gestión avanzada de la aplicación.</p>
         </div>
+        
+        <PerformanceSettingsCard />
+
         <Card className="bg-destructive/10 border-destructive/30">
             <CardHeader>
                 <CardTitle className="text-destructive">Zona de Peligro</CardTitle>

@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -19,7 +18,6 @@ export const TEAMS_STORAGE_KEY = 'icevision-teams-data';
 export const SUMMARY_DATA_STORAGE_KEY = 'icevision-summary-data';
 
 const CENTISECONDS_PER_SECOND = 100;
-const TICK_INTERVAL_MS = 200;
 const FLASHING_ZERO_DURATION_MS = 5000;
 export const DEFAULT_HORN_SOUND_PATH = '/audio/default-horn.wav';
 export const DEFAULT_PENALTY_BEEP_PATH = '/audio/penalty_beep.wav';
@@ -152,6 +150,7 @@ const getInitialState = (): GameState => {
       penaltyCountdownStartTime: IN_CODE_INITIAL_PENALTY_COUNTDOWN_START_TIME,
       customPenaltyBeepSoundDataUrl: IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL,
       enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
+      tickIntervalMs: 200,
       scoreboardLayout: INITIAL_LAYOUT_SETTINGS,
       scoreboardLayoutProfiles: [defaultInitialLayoutProfile],
       selectedScoreboardLayoutProfileId: defaultInitialLayoutProfile.id,
@@ -1220,7 +1219,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       if (state.live.clock.periodDisplayOverride !== 'AwaitingDecision') break;
       const { config, live } = state;
       const newNumberOfOTs = config.numberOfOvertimePeriods + 1;
-      const newTotalPeriods = config.numberOfRegularPeriods + newNumberOfOTs;
       
       const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
       const autoStart = config.autoStartPreOTBreaks && config.defaultPreOTBreakDuration > 0;
@@ -1649,11 +1647,12 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
+    const tickInterval = state.config.tickIntervalMs || 200;
     if ((state.live.clock.isClockRunning || state.live.clock.isFlashingZero) && isPageVisible && !isLoading) {
-        timerId = setInterval(() => dispatch({ type: 'TICK' }), TICK_INTERVAL_MS);
+        timerId = setInterval(() => dispatch({ type: 'TICK' }), tickInterval);
     }
     return () => clearInterval(timerId);
-  }, [state.live.clock.isClockRunning, state.live.clock.isFlashingZero, isPageVisible, isLoading]);
+  }, [state.live.clock.isClockRunning, state.live.clock.isFlashingZero, isPageVisible, isLoading, state.config.tickIntervalMs]);
   
 
   return (
@@ -1776,16 +1775,3 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
-    
-
-    
-
-
-
-
-
-
-
-
-
-    

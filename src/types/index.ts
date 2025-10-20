@@ -1,6 +1,4 @@
 
-
-
 export interface PlayerStats {
   name: string;
   shots: number;
@@ -202,6 +200,7 @@ export interface ConfigFields { // Interface for easier picking of fields
   customPenaltyBeepSoundDataUrl: string | null;
   scoreboardLayoutProfiles: ScoreboardLayoutProfile[];
   enableDebugMode: boolean;
+  tickIntervalMs: number;
   tunnel: TunnelState;
 }
 
@@ -414,5 +413,3 @@ export interface SummaryPlayerStats {
   assists: number;
   shots: number;
 }
-
-    
