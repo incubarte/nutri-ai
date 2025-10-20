@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
@@ -453,17 +452,19 @@ export default function ResumenPage() {
     });
 
     Object.values(summaryData.statsByPeriod).forEach(periodStats => {
-        allGoals.push(...periodStats[team].goals);
-        allPenalties.push(...periodStats[team].penalties);
+        if (periodStats[team].goals) allGoals.push(...periodStats[team].goals);
+        if (periodStats[team].penalties) allPenalties.push(...periodStats[team].penalties);
         
-        periodStats[team].playerStats.forEach(pStat => {
-            if (playerStatsMap.has(pStat.id)) {
-                const totalStat = playerStatsMap.get(pStat.id)!;
-                totalStat.goals += pStat.goals;
-                totalStat.assists += pStat.assists;
-                totalStat.shots += pStat.shots;
-            }
-        });
+        if (periodStats[team].playerStats) {
+            periodStats[team].playerStats.forEach(pStat => {
+                if (playerStatsMap.has(pStat.id)) {
+                    const totalStat = playerStatsMap.get(pStat.id)!;
+                    totalStat.goals += pStat.goals;
+                    totalStat.assists += pStat.assists;
+                    totalStat.shots += pStat.shots;
+                }
+            });
+        }
     });
 
     return {
@@ -521,22 +522,16 @@ export default function ResumenPage() {
     tempStateForPDF.live.gameSummary.away.penalties = awayAggregatedStats.penalties;
     tempStateForPDF.live.gameSummary.attendance = summaryData.attendance;
     
-    // The PDF generator will aggregate stats itself.
-    // We just need to provide the raw logs.
-    tempStateForPDF.live.gameSummary.home.homeShotsLog = [];
-    tempStateForPDF.live.gameSummary.away.awayShotsLog = [];
-    Object.values(summaryData.statsByPeriod).forEach(periodStats => {
-        periodStats.home.playerStats.forEach(pStat => {
-            for(let i = 0; i < pStat.shots; i++) {
-                tempStateForPDF.live.gameSummary.home.homeShotsLog.push({ id: `shot-${i}`, team: 'home', timestamp: 0, gameTime: 0, periodText: '', playerId: pStat.id, playerNumber: pStat.number, playerName: pStat.name });
-            }
-        });
-        periodStats.away.playerStats.forEach(pStat => {
-            for(let i = 0; i < pStat.shots; i++) {
-                tempStateForPDF.live.gameSummary.away.awayShotsLog.push({ id: `shot-${i}`, team: 'away', timestamp: 0, gameTime: 0, periodText: '', playerId: pStat.id, playerNumber: pStat.number, playerName: pStat.name });
-            }
-        });
-    });
+    // Pass the already aggregated player stats for the PDF generator to use directly
+    tempStateForPDF.live.gameSummary.home.playerStats = homeAggregatedStats.playerStats.reduce((acc, p) => {
+        acc[p.number] = p;
+        return acc;
+    }, {} as Record<string, SummaryPlayerStats>);
+    tempStateForPDF.live.gameSummary.away.playerStats = awayAggregatedStats.playerStats.reduce((acc, p) => {
+        acc[p.number] = p;
+        return acc;
+    }, {} as Record<string, SummaryPlayerStats>);
+
 
     const filename = exportGameSummaryPDF(tempStateForPDF);
     toast({
@@ -571,7 +566,18 @@ export default function ResumenPage() {
         const newSummary: SummaryData = JSON.parse(JSON.stringify(prev)); // Deep copy
         
         if (!newSummary.statsByPeriod[periodText]) {
-            newSummary.statsByPeriod[periodText] = { home: { goals: [], penalties: [], playerStats: [] }, away: { goals: [], penalties: [], playerStats: [] } };
+            newSummary.statsByPeriod[periodText] = { 
+                home: { goals: [], penalties: [], playerStats: [] }, 
+                away: { goals: [], penalties: [], playerStats: [] } 
+            };
+        }
+        
+        if (!newSummary.statsByPeriod[periodText][team]) {
+            newSummary.statsByPeriod[periodText][team] = { goals: [], penalties: [], playerStats: [] };
+        } else {
+             if (!newSummary.statsByPeriod[periodText][team].penalties) {
+                newSummary.statsByPeriod[periodText][team].penalties = [];
+             }
         }
 
         newSummary.statsByPeriod[periodText][team].penalties.push(newPenaltyLog);
@@ -833,6 +839,9 @@ export default function ResumenPage() {
 
 
 
+
+
+    
 
 
     
