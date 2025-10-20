@@ -101,7 +101,7 @@ const GoalsSection = ({ teamName, goals }: { teamName: string; goals: GoalLog[] 
     );
 };
 
-const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }: { team: Team; teamName: string; penalties: PenaltyLog[]; onAdd: () => void; onDelete: (logId: string) => void; }) => {
+const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }: { team: Team; teamName: string; penalties: PenaltyLog[]; onAdd?: () => void; onDelete?: (logId: string) => void; }) => {
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -122,7 +122,7 @@ const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }: { team
                         <TableHead>Tipo</TableHead>
                         <TableHead>Duración</TableHead>
                         <TableHead>Estado</TableHead>
-                        <TableHead className="text-right">Acción</TableHead>
+                         {onDelete && <TableHead className="text-right">Acción</TableHead>}
                     </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -142,17 +142,19 @@ const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }: { team
                             <div className="text-sm">{getEndReasonText(p.endReason)}</div>
                             {p.timeServed !== undefined && <div className="text-xs text-muted-foreground font-mono">({formatTime(p.timeServed * 100)})</div>}
                         </TableCell>
-                        <TableCell className="text-right">
-                           <Button variant="ghost" size="icon" onClick={() => onDelete(p.id)} className="h-8 w-8 text-destructive hover:text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                           </Button>
-                        </TableCell>
+                         {onDelete && (
+                            <TableCell className="text-right">
+                               <Button variant="ghost" size="icon" onClick={() => onDelete(p.id)} className="h-8 w-8 text-destructive hover:text-destructive">
+                                    <Trash2 className="h-4 w-4" />
+                               </Button>
+                            </TableCell>
+                         )}
                         </TableRow>
                     ))}
                     </TableBody>
                      <UiTableFooter>
                         <TableRow>
-                            <TableCell colSpan={6} className="text-right font-bold">Total Penalidades: {penalties.length}</TableCell>
+                            <TableCell colSpan={onDelete ? 6 : 5} className="text-right font-bold">Total Penalidades: {penalties.length}</TableCell>
                         </TableRow>
                     </UiTableFooter>
                 </Table>
@@ -270,7 +272,20 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><X className="h-5 w-5" /></Button>
                             </>
                         ) : (
-                            <Button variant="outline" size="sm" onClick={handleEditClick}><Edit3 className="mr-2 h-4 w-4"/>Editar Tiros</Button>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="outline" size="sm" onClick={handleEditClick} disabled={!periodText}>
+                                            <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
+                                        </Button>
+                                    </TooltipTrigger>
+                                    {!periodText && (
+                                        <TooltipContent>
+                                            <p>La edición de tiros debe hacerse por período en la pestaña "Detalle por Periodo".</p>
+                                        </TooltipContent>
+                                    )}
+                                </Tooltip>
+                            </TooltipProvider>
                         )}
                     </div>
                 )}
@@ -298,13 +313,13 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                                             <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
                                             <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
                                             <TableCell className="text-center">
-                                            {isEditing && editable ? (
+                                            {isEditing && editable && periodText ? (
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
                                                         <div className="w-full h-full flex items-center justify-center">
                                                             <Input
                                                                 type="number"
-                                                                value={editedShots[player.id] || '0'}
+                                                                value={isEditDisabledForThisRow ? String(player.shots || 0) : editedShots[player.id]}
                                                                 onChange={(e) => handleShotChange(player.id, e.target.value)}
                                                                 className={cn("h-7 w-16 mx-auto text-center", isEditDisabledForThisRow && "cursor-not-allowed")}
                                                                 disabled={isEditDisabledForThisRow}
@@ -313,7 +328,7 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                                                     </TooltipTrigger>
                                                     {isEditDisabledForThisRow && (
                                                         <TooltipContent>
-                                                          <p>{!periodText ? "La edición de tiros debe hacerse por período." : "No se pueden editar tiros de un jugador sin número."}</p>
+                                                          <p>No se pueden editar los tiros de un jugador sin número asignado.</p>
                                                         </TooltipContent>
                                                     )}
                                                 </Tooltip>
@@ -579,13 +594,13 @@ export default function ResumenPage() {
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} onAdd={() => handleOpenAddPenalty('home')} onDelete={(logId) => handlePrepareDeletePenalty('home', logId)} />
-                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} onAdd={() => handleOpenAddPenalty('away')} onDelete={(logId) => handlePrepareDeletePenalty('away', logId)} />
+                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} />
+                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} />
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <PlayerStatsSection key={`home-total-${refreshKey}`} team="home" teamName={summaryData.homeTeamName} playerStats={liveGameState.live.gameSummary.home.playerStats} attendance={liveGameState.live.gameSummary.attendance.home} editable={true} onEdit={() => setRefreshKey(k => k + 1)} />
-                                    <PlayerStatsSection key={`away-total-${refreshKey}`} team="away" teamName={summaryData.awayTeamName} playerStats={liveGameState.live.gameSummary.away.playerStats} attendance={liveGameState.live.gameSummary.attendance.away} editable={true} onEdit={() => setRefreshKey(k => k + 1)} />
+                                    <PlayerStatsSection key={`home-total-${refreshKey}`} team="home" teamName={summaryData.homeTeamName} playerStats={liveGameState.live.gameSummary.home.playerStats} attendance={liveGameState.live.gameSummary.attendance.home} />
+                                    <PlayerStatsSection key={`away-total-${refreshKey}`} team="away" teamName={summaryData.awayTeamName} playerStats={liveGameState.live.gameSummary.away.playerStats} attendance={liveGameState.live.gameSummary.attendance.away} />
                                 </div>
                             </div>
                         </ScrollArea>
