@@ -335,11 +335,16 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
         );
       }
     } else if (state.live.clock.periodDisplayOverride === null) { // Active game period
-      if (state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS && MAX_TOTAL_GAME_PERIODS > 0) { 
+      if (state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS && MAX_TOTAL_GAME_PERIODS > 0) {
         const actionToConfirm = () => {
-          dispatch({ type: 'MANUAL_END_GAME' });
-          toast({ title: "Partido Finalizado", description: "El juego ha terminado." });
+            if (state.live.score.home === state.live.score.away) {
+                dispatch({ type: 'MANUAL_END_GAME' });
+            } else {
+                dispatch({ type: 'MANUAL_END_GAME' });
+                toast({ title: "Partido Finalizado", description: "El juego ha terminado." });
+            }
         };
+
         const shouldConfirm = state.live.clock.currentTime > 0;
         checkAndConfirm(
           shouldConfirm,
@@ -803,13 +808,13 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 )
             )}
 
-            {state.live.clock.periodDisplayOverride === "End of Game" ? (
+            {(state.live.clock.periodDisplayOverride === "End of Game" || isShootout) ? (
                 <div className={cn(
                     "text-3xl font-bold tabular-nums flex items-baseline justify-center gap-0.5 text-accent py-4"
                   )}>
-                    FIN
+                    {isShootout ? "" : "FIN"}
                 </div>
-            ) : !isShootout && (
+            ) : (
                 <div className={cn(
                   "text-5xl font-bold tabular-nums flex items-baseline justify-center gap-0.5", 
                   isMainClockLastMinute ? "text-orange-500" : "text-accent",
@@ -934,7 +939,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 <ChevronLeft className="h-5 w-5" />
               </Button>
               <p className="text-lg text-primary-foreground uppercase w-36 truncate text-center">
-                {getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods)}
+                {getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout)}
               </p>
               <Button
                 onClick={handleNextAction}

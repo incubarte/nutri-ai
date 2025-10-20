@@ -270,8 +270,8 @@ const handleAutoTransition = (currentState: GameState): GameState => {
               newGameStateAfterTransition.live.clock.periodDisplayOverride = "End of Game";
           } else {
               // Tie game, go to pre-end decision state
-              newGameStateAfterTransition.live.clock.periodDisplayOverride = "Shootout"; // Re-using this to show tie-breaker options
-              newGameStateAfterTransition.live.shootout.isActive = false; // But shootout is not active yet
+              newGameStateAfterTransition.live.clock.periodDisplayOverride = "Shootout";
+              newGameStateAfterTransition.live.shootout.isActive = false; 
           }
       } else if (currentPeriod >= numberOfRegularPeriods) {
           // It's a regular OT period that ended (but not the last one)
@@ -580,13 +580,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'ADD_GOAL': {
-      const { clock, config } = state;
+      const { clock, config, live } = state;
       let periodTextForLog: string;
       
       if (action.payload.periodText) {
           periodTextForLog = action.payload.periodText;
       } else {
-          periodTextForLog = getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, config.numberOfRegularPeriods || 2);
+          periodTextForLog = getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, config.numberOfRegularPeriods || 2, live.shootout);
           if (clock.periodDisplayOverride === 'Break' || clock.periodDisplayOverride === 'Pre-OT Break') {
             periodTextForLog = getPeriodText(clock.currentPeriod, config.numberOfRegularPeriods || 2);
           }
@@ -628,7 +628,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       newState = { ...state, live: { ...state.live, 
         score,
-        pendingPowerPlayGoal,
+        pendingPowerPlayGoal: pendingPPGoal,
         gameSummary: {
           ...newGameSummary,
           home: { ...newGameSummary.home, playerStats: homePlayerStats },
@@ -710,7 +710,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         team,
         timestamp: Date.now(),
         gameTime: state.live.clock.currentTime,
-        periodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
+        periodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout),
         playerId: attendedPlayer?.id || `unknown-${playerNumber}`,
         playerNumber,
         playerName: attendedPlayer?.name,
@@ -848,7 +848,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         isBenchPenalty: penaltyDef.isBenchPenalty,
         addTimestamp: Date.now(),
         addGameTime: addGameTime ?? live.clock.currentTime,
-        addPeriodText: addPeriodText ?? getActualPeriodText(live.clock.currentPeriod, live.clock.periodDisplayOverride, config.numberOfRegularPeriods || 2),
+        addPeriodText: addPeriodText ?? getActualPeriodText(live.clock.currentPeriod, live.clock.periodDisplayOverride, config.numberOfRegularPeriods || 2, live.shootout),
       };
 
       const newGameSummary = JSON.parse(JSON.stringify(live.gameSummary));
@@ -909,7 +909,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newState = { ...state, live: { ...state.live,
         penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId))},
         gameSummary: { ...state.live.gameSummary, [team]: { ...state.live.gameSummary[team], penalties: state.live.gameSummary[team].penalties.map(p =>
-          p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods), endReason: 'deleted', timeServed } : p
+          p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'deleted', timeServed } : p
         )}}
       }};
       break;
@@ -940,7 +940,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId))},
         pendingPowerPlayGoal: null, // Clear the pending goal confirmation
         gameSummary: { ...state.live.gameSummary, [team]: { ...state.live.gameSummary[team], penalties: state.live.gameSummary[team].penalties.map(p =>
-          p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods), endReason: 'goal_on_pp', timeServed } : p
+          p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'goal_on_pp', timeServed } : p
         )}}
       }};
       break;
@@ -1329,35 +1329,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         
         if (homeGoals > awayGoals) {
             newScore.home += 1;
-            const lastScorer = homeAttempts.filter(a => a.isGoal).pop() || homeAttempts.pop();
-            if (lastScorer) {
-              const newGoal: GoalLog = {
-                id: safeUUID(), team: 'home', timestamp: Date.now(), gameTime: 0, periodText: 'SO',
-                scorer: { playerNumber: lastScorer.playerNumber, playerName: lastScorer.playerName },
-              };
-              newScore.homeGoals = [...newScore.homeGoals, newGoal];
-            }
         } else if (awayGoals > homeGoals) {
             newScore.away += 1;
-            const lastScorer = awayAttempts.filter(a => a.isGoal).pop() || awayAttempts.pop();
-            if (lastScorer) {
-              const newGoal: GoalLog = {
-                id: safeUUID(), team: 'away', timestamp: Date.now(), gameTime: 0, periodText: 'SO',
-                scorer: { playerNumber: lastScorer.playerNumber, playerName: lastScorer.playerName },
-              };
-              newScore.awayGoals = [...newScore.awayGoals, newGoal];
-            }
         }
         
-        const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-        newGameSummary.home.goals = newScore.homeGoals;
-        newGameSummary.away.goals = newScore.awayGoals;
-
         newState = {
             ...state,
             live: { ...state.live,
                 score: newScore,
-                gameSummary: newGameSummary,
                 shootout: { ...state.live.shootout, isActive: false },
                 clock: {
                     ...state.live.clock,
@@ -1719,12 +1698,11 @@ export const formatTime = (
 };
 
 
-export const getActualPeriodText = (period: number, override: PeriodDisplayOverrideType, numberOfRegularPeriods: number): string => {
+export const getActualPeriodText = (period: number, override: PeriodDisplayOverrideType, numberOfRegularPeriods: number, shootoutState?: ShootoutState): string => {
   if (override === "Time Out") return "TIME OUT";
   if (override === "End of Game") return "END OF GAME";
   if (override === "Shootout" ) {
-      const { state } = useGameState();
-      if (!state.live.shootout.isActive) {
+      if (shootoutState && !shootoutState.isActive) {
         return "FINAL - EMPATE";
       }
       return "SHOOTOUT"
@@ -1796,6 +1774,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 
