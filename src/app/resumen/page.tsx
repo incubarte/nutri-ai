@@ -522,51 +522,30 @@ export default function ResumenPage() {
   };
   
   const handleExportPDF = () => {
-     if (!summaryData) return;
-
-    // Create a deep copy of the game summary to avoid direct state mutation
-    const summaryForPdf: GameSummary = JSON.parse(JSON.stringify(liveGameState.live.gameSummary));
-
-    // Consolidate player stats from the edited summaryData into the PDF-bound object
-    const playerStatsReducer = (team: 'home' | 'away') => {
-        const stats: Record<string, LivePlayerStats> = {};
-        summaryData[team].playerStats.forEach(p => {
-            if (p.number) {
-                stats[p.number] = { name: p.name, goals: p.goals, assists: p.assists, shots: p.shots };
-            }
-        });
-        return stats;
-    };
-    summaryForPdf.home.playerStats = playerStatsReducer('home');
-    summaryForPdf.away.playerStats = playerStatsReducer('away');
+    if (!summaryData) return;
     
-     const tempStateForPDF = {
-        ...liveGameState,
-        live: {
-            ...liveGameState.live,
-            score: {
-                ...liveGameState.live.score,
-                home: summaryData.homeScore,
-                away: summaryData.awayScore,
-                homeGoals: summaryData.home.goals,
-                awayGoals: summaryData.away.goals,
-            },
-            gameSummary: {
-                ...summaryForPdf,
-                home: {
-                    ...summaryForPdf.home,
-                    goals: summaryData.home.goals,
-                    penalties: summaryData.home.penalties,
-                },
-                away: {
-                    ...summaryForPdf.away,
-                    goals: summaryData.away.goals,
-                    penalties: summaryData.away.penalties,
-                },
-                attendance: summaryData.attendance,
+    // Create a temporary state object for the PDF generator, merging edited summary data.
+    const tempStateForPDF: GameState = JSON.parse(JSON.stringify(liveGameState));
+
+    tempStateForPDF.live.score.home = summaryData.homeScore;
+    tempStateForPDF.live.score.away = summaryData.awayScore;
+    tempStateForPDF.live.gameSummary.home.goals = summaryData.home.goals;
+    tempStateForPDF.live.gameSummary.away.goals = summaryData.away.goals;
+    tempStateForPDF.live.gameSummary.home.penalties = summaryData.home.penalties;
+    tempStateForPDF.live.gameSummary.away.penalties = summaryData.away.penalties;
+    tempStateForPDF.live.gameSummary.attendance = summaryData.attendance;
+
+    const convertSummaryToLiveStats = (summaryStats: SummaryPlayerStats[]): Record<string, LivePlayerStats> => {
+        return summaryStats.reduce((acc, p) => {
+            if (p.number) {
+                acc[p.number] = { name: p.name, goals: p.goals, assists: p.assists, shots: p.shots };
             }
-        }
+            return acc;
+        }, {} as Record<string, LivePlayerStats>);
     };
+
+    tempStateForPDF.live.gameSummary.home.playerStats = convertSummaryToLiveStats(summaryData.home.playerStats);
+    tempStateForPDF.live.gameSummary.away.playerStats = convertSummaryToLiveStats(summaryData.away.playerStats);
 
     const filename = exportGameSummaryPDF(tempStateForPDF as any);
     toast({
@@ -862,19 +841,17 @@ export default function ResumenPage() {
             <AlertDialog open={!!unassignedPlayerWarning} onOpenChange={() => setUnassignedPlayerWarning(null)}>
                 <AlertDialogContent>
                     <AlertTitle className="flex items-center gap-2"><AlertTriangle className="text-amber-500" /> Jugadores sin Número Asignado</AlertTitle>
-                    <div>
-                        <AlertDialogDesc>
-                            Los siguientes jugadores tienen asistencia registrada pero no tienen un número asignado. Si continúas, no podrás editar sus estadísticas de tiros más adelante.
-                        </AlertDialogDesc>
-                        <ScrollArea className="max-h-32 mt-4 border bg-muted/50 p-2 rounded-md">
-                           <ul className="list-disc pl-5">
-                                {unassignedPlayerWarning.players.map((name, i) => <li key={i}>{name}</li>)}
-                           </ul>
-                        </ScrollArea>
-                        <p className="text-sm text-muted-foreground mt-2">
-                            ¿Deseas generar el resumen de todas formas?
-                        </p>
-                    </div>
+                    <AlertDialogDesc>
+                        Los siguientes jugadores tienen asistencia registrada pero no tienen un número asignado. Si continúas, no podrás editar sus estadísticas de tiros más adelante.
+                    </AlertDialogDesc>
+                    <ScrollArea className="max-h-32 mt-4 border bg-muted/50 p-2 rounded-md">
+                        <ul className="list-disc pl-5">
+                            {unassignedPlayerWarning.players.map((name, i) => <li key={i}>{name}</li>)}
+                        </ul>
+                    </ScrollArea>
+                    <p className="text-sm text-muted-foreground mt-2">
+                        ¿Deseas generar el resumen de todas formas?
+                    </p>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setUnassignedPlayerWarning(null)}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={() => { unassignedPlayerWarning.onConfirm(); setUnassignedPlayerWarning(null); }}>
@@ -900,3 +877,6 @@ export default function ResumenPage() {
 
 
 
+
+
+    

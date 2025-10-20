@@ -13,9 +13,8 @@ import type { PlayerData, RemoteCommand, AccessRequest, TunnelState } from '@/ty
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X, Fingerprint } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X, Fingerprint, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { saveGameSummary } from '@/ai/flows/file-operations';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
 import { safeUUID } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -298,6 +297,7 @@ export default function ControlsPage() {
   const [localPort, setLocalPort] = useState<string>('');
   const [isConnectingTunnel, setIsConnectingTunnel] = useState(false);
   const [isShootoutConfirmOpen, setIsShootoutConfirmOpen] = useState(false);
+  const [isEndGameSummaryDialogOpen, setIsEndGameSummaryDialogOpen] = useState(false);
 
 
   const prevPeriodDisplayOverrideRef = useRef<string | null>();
@@ -324,39 +324,7 @@ export default function ControlsPage() {
     }
 
     if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && state.live.clock.periodDisplayOverride === 'End of Game') {
-        const categoryName = getCategoryNameById(state.config.selectedMatchCategory, state.config.availableCategories) || 'N/A';
-        
-        (async () => {
-            try {
-                const result = await saveGameSummary({
-                    homeTeamName: state.live.homeTeamName,
-                    awayTeamName: state.live.awayTeamName,
-                    homeScore: state.live.score.home,
-                    awayScore: state.live.score.away,
-                    categoryName: categoryName,
-                    gameSummary: state.live.gameSummary
-                });
-                if (result.success) {
-                    toast({
-                        title: "Resumen Guardado",
-                        description: `El resumen del partido se ha guardado en el servidor.`,
-                    });
-                } else {
-                    toast({
-                        title: "Error al Guardar",
-                        description: result.message,
-                        variant: "destructive",
-                    });
-                }
-            } catch (e) {
-                console.error('Failed to save game summary from controls page:', e);
-                toast({
-                    title: "Error al Guardar Resumen",
-                    description: "No se pudo guardar el resumen del partido en el servidor.",
-                    variant: "destructive",
-                });
-            }
-        })();
+        setIsEndGameSummaryDialogOpen(true);
     }
 
     prevPeriodDisplayOverrideRef.current = state.live.clock.periodDisplayOverride;
@@ -1026,7 +994,34 @@ export default function ControlsPage() {
         </AlertDialog>
       )}
 
+      {isEndGameSummaryDialogOpen && (
+        <AlertDialog open={isEndGameSummaryDialogOpen} onOpenChange={setIsEndGameSummaryDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <Trophy className="h-6 w-6 text-amber-500" />
+                Partido Finalizado
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                El partido ha concluido. ¿Deseas generar el resumen ahora?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setIsEndGameSummaryDialogOpen(false)}>Cerrar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => {
+                setIsEndGameSummaryDialogOpen(false);
+                router.push('/resumen');
+              }}>
+                <FileText className="mr-2 h-4 w-4" />
+                Sí, generar resumen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
 
     </div>
   );
 }
+
+    
