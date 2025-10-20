@@ -605,6 +605,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newGameSummary[action.payload.team].goals.push(newGoal);
 
       const teamScored = action.payload.team;
+      const teamConceded = teamScored === 'home' ? 'away' : 'home';
       
       const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
 
@@ -623,13 +624,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       let pendingPPGoal: LiveState['pendingPowerPlayGoal'] = null;
       // Check for power play goal condition
       const scoringTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamScored].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
-      const concedingTeam = teamScored === 'home' ? 'away' : 'home';
-      const concedingTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[concedingTeam].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
+      const concedingTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamConceded].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
 
       if (scoringTeamOnIce > concedingTeamOnIce) {
-          const firstEligiblePenalty = state.live.penalties[concedingTeam].find(p => p._status === 'running' && p.clearsOnGoal);
+          const firstEligiblePenalty = state.live.penalties[teamConceded].find(p => p._status === 'running' && p.clearsOnGoal);
           if (firstEligiblePenalty) {
-              pendingPPGoal = { team: concedingTeam, penaltyId: firstEligiblePenalty.id };
+              pendingPPGoal = { team: teamConceded, penaltyId: firstEligiblePenalty.id };
           }
       }
       
