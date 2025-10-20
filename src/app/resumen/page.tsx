@@ -387,14 +387,13 @@ export default function ResumenPage() {
     
     const playedPeriodNumbers = new Set<number>();
     
-    // Determine played periods from the clock state
-    if (live.clock.currentPeriod > 0) {
-      for (let i = 1; i <= live.clock.currentPeriod; i++) {
+    const lastPlayedPeriodNumber = live.clock.currentPeriod;
+    if (lastPlayedPeriodNumber > 0) {
+      for (let i = 1; i <= lastPlayedPeriodNumber; i++) {
         playedPeriodNumbers.add(i);
       }
     }
     
-    // Also add periods from events just in case
     const allEvents = [...gameSummary.home.goals, ...gameSummary.away.goals, ...gameSummary.home.penalties, ...gameSummary.away.penalties];
     allEvents.forEach(event => {
         const periodText = (event as GoalLog).periodText || (event as PenaltyLog).addPeriodText;
@@ -559,8 +558,6 @@ export default function ResumenPage() {
   const handleExportPDF = () => {
     if (!summaryData) return;
     
-    // Create a temporary state that mirrors the structure needed by the PDF generator
-    // but populated with data from summaryData.
     const stateForPDF: GameState = JSON.parse(JSON.stringify(liveGameState));
 
     stateForPDF.live.homeTeamName = summaryData.homeTeamName;
@@ -568,33 +565,18 @@ export default function ResumenPage() {
     stateForPDF.live.score.home = summaryData.homeScore;
     stateForPDF.live.score.away = summaryData.awayScore;
     
-    const allHomeShotsLogs: ShotLog[] = [];
-    const allAwayShotsLogs: ShotLog[] = [];
-    Object.values(summaryData.statsByPeriod).forEach(periodStats => {
-        periodStats.home.playerStats.forEach(pStat => {
-            for (let i = 0; i < (pStat.shots || 0); i++) {
-                allHomeShotsLogs.push({ id: `hs-${pStat.id}-${i}`, team: 'home', timestamp: 0, gameTime: 0, periodText: '', playerId: pStat.id, playerNumber: pStat.number, playerName: pStat.name });
-            }
-        });
-        periodStats.away.playerStats.forEach(pStat => {
-            for (let i = 0; i < (pStat.shots || 0); i++) {
-                allAwayShotsLogs.push({ id: `as-${pStat.id}-${i}`, team: 'away', timestamp: 0, gameTime: 0, periodText: '', playerId: pStat.id, playerNumber: pStat.number, playerName: pStat.name });
-            }
-        });
-    });
-
     stateForPDF.live.gameSummary = {
         home: {
             goals: homeAggregatedStats.goals,
             penalties: homeAggregatedStats.penalties,
-            playerStats: homeAggregatedStats.playerStats.reduce((acc, p) => { acc[p.number] = p; return acc; }, {} as Record<string, SummaryPlayerStats>),
-            homeShotsLog: allHomeShotsLogs,
+            playerStats: homeAggregatedStats.playerStats.reduce((acc, p) => { if(p.number) acc[p.number] = p; return acc; }, {} as Record<string, SummaryPlayerStats>),
+            homeShotsLog: [],
         },
         away: {
             goals: awayAggregatedStats.goals,
             penalties: awayAggregatedStats.penalties,
-            playerStats: awayAggregatedStats.playerStats.reduce((acc, p) => { acc[p.number] = p; return acc; }, {} as Record<string, SummaryPlayerStats>),
-            awayShotsLog: allAwayShotsLogs,
+            playerStats: awayAggregatedStats.playerStats.reduce((acc, p) => { if(p.number) acc[p.number] = p; return acc; }, {} as Record<string, SummaryPlayerStats>),
+            awayShotsLog: [],
         },
         attendance: summaryData.attendance,
     };
