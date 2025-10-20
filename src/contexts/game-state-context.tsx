@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -1330,31 +1331,28 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'FINISH_SHOOTOUT': {
-        let newScore = { ...state.live.score };
-        const { shootout } = state.live;
-        if (shootout && shootout.isActive) {
-            const homeGoals = shootout.homeAttempts.filter(a => a.isGoal).length;
-            const awayGoals = shootout.awayAttempts.filter(a => a.isGoal).length;
-            
-            if (homeGoals > awayGoals) {
-                newScore.home += 1;
-            } else if (awayGoals > homeGoals) {
-                newScore.away += 1;
-            }
-        }
+      let finalScore = { ...state.live.score };
+      if (state.live.shootout.isActive) {
+        const homeGoals = state.live.shootout.homeAttempts.filter(a => a.isGoal).length;
+        const awayGoals = state.live.shootout.awayAttempts.filter(a => a.isGoal).length;
 
-        newState = {
-            ...state,
-            live: { ...state.live,
-                score: newScore,
-                shootout: { ...state.live.shootout, isActive: false },
-                clock: {
-                    ...state.live.clock,
-                    periodDisplayOverride: 'End of Game',
-                }
-            }
-        };
-        break;
+        if (homeGoals > awayGoals) {
+          finalScore.home += 1;
+        } else if (awayGoals > homeGoals) {
+          finalScore.away += 1;
+        }
+      }
+
+      newState = {
+        ...state,
+        live: {
+          ...state.live,
+          score: finalScore,
+          shootout: { ...state.live.shootout, isActive: false },
+          clock: { ...state.live.clock, periodDisplayOverride: 'End of Game' },
+        },
+      };
+      break;
     }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
       const { selectedFormatAndTimingsProfileId, formatAndTimingsProfiles } = state.config;

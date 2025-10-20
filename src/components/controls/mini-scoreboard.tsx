@@ -189,35 +189,24 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
   const handlePreviousPeriod = () => {
     setEditingSegment(null);
-
-    const actionToGoToLastPeriod = () => {
-      const lastGamePeriod = MAX_TOTAL_GAME_PERIODS;
-      if (lastGamePeriod >= 1) {
-        dispatch({ type: 'SET_PERIOD', payload: lastGamePeriod });
-      } else {
-        dispatch({ type: 'SET_PERIOD', payload: 0 });
-      }
-      if (lastGamePeriod >= 1) {
-        toast({
-          title: "Regreso al Último Período",
-          description: `Se ha vuelto a ${getPeriodText(lastGamePeriod, state.config.numberOfRegularPeriods)}. El reloj está pausado.`,
-        });
-      } else {
-        toast({
-          title: "Regreso a Entrada en Calor",
-          description: `Se ha vuelto a la Entrada en Calor. El reloj está pausado (a menos que autoStartWarmUp esté activo).`,
-        });
-      }
-    };
-
-    if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout") {
-      actionToGoToLastPeriod();
-      return;
-    }
-
+    
     if (state.live.clock.periodDisplayOverride === "Time Out") {
       toast({ title: "Time Out Activo", description: "Finaliza el Time Out para cambiar de período.", variant: "destructive" });
       return;
+    }
+    
+    if (state.live.clock.periodDisplayOverride === "End of Game") {
+       if (state.live.score.home === state.live.score.away) {
+         dispatch({ type: 'MANUAL_END_GAME' });
+       } else {
+         dispatch({ type: 'SET_PERIOD', payload: MAX_TOTAL_GAME_PERIODS });
+       }
+       return;
+    }
+    
+    if (state.live.clock.periodDisplayOverride === "Shootout") {
+        dispatch({ type: 'MANUAL_END_GAME' }); // This will check for a tie and go to AwaitingDecision
+        return;
     }
 
     if (state.live.clock.periodDisplayOverride === "Break" || state.live.clock.periodDisplayOverride === "Pre-OT Break") {
@@ -279,8 +268,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
   const handleNextAction = () => {
     setEditingSegment(null);
-    if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout") return;
-
+    
     if (state.live.clock.periodDisplayOverride === "Time Out") {
       if (state.live.clock.currentTime <= 0) {
         dispatch({ type: 'END_TIMEOUT' });
@@ -301,13 +289,13 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 dispatch({ type: 'SET_PERIOD', payload: nextNumericPeriod });
                 toast({ title: "Período Cambiado", description: `Período establecido a ${getPeriodText(nextNumericPeriod, state.config.numberOfRegularPeriods)}. Reloj reiniciado y pausado.` });
             } else {
-                dispatch({ type: 'MANUAL_END_GAME' });
+                 dispatch({ type: 'MANUAL_END_GAME' });
             }
-        } else if (state.live.clock.periodDisplayOverride === null) {
-            if ((state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS && MAX_TOTAL_GAME_PERIODS > 0) || (MAX_TOTAL_GAME_PERIODS === 0 && state.live.clock.currentPeriod === 0)) {
-                dispatch({ type: 'MANUAL_END_GAME' });
+        } else if (state.live.clock.periodDisplayOverride === null) { // During a regular or OT period
+            if (state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS) {
+                 dispatch({ type: 'MANUAL_END_GAME' });
             } else {
-                const isPreOT = state.live.clock.currentPeriod >= state.config.numberOfRegularPeriods;
+                 const isPreOT = state.live.clock.currentPeriod >= state.config.numberOfRegularPeriods;
                 if (isPreOT) {
                     dispatch({ type: 'START_PRE_OT_BREAK' });
                 } else {
@@ -323,9 +311,8 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
             }
         }
     };
-
+    
     let shouldConfirm = false;
-    let confirmTitle = "Confirmar Acción";
     let confirmDescription = "";
 
     if (state.live.clock.periodDisplayOverride === "Warm-up" && state.live.clock.currentTime > 0 && state.live.clock.currentTime < state.config.defaultWarmUpDuration) {
@@ -342,11 +329,15 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
         const currentPeriodExpectedDurationCs = isCurrentPeriodOT ? state.config.defaultOTPeriodDuration : state.config.defaultPeriodDuration;
         if (state.live.clock.currentTime < currentPeriodExpectedDurationCs) {
             shouldConfirm = true;
-            confirmDescription = "El reloj del período actual ha corrido. ¿Estás seguro de que quieres iniciar el descanso?";
+            if (state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS) {
+                // No confirmation needed to end the game
+            } else {
+               confirmDescription = "El reloj del período actual ha corrido. ¿Estás seguro de que quieres iniciar el descanso?";
+            }
         }
     }
 
-    checkAndConfirm(shouldConfirm, confirmTitle, confirmDescription, performAction);
+    checkAndConfirm(shouldConfirm, "Confirmar Acción", confirmDescription, performAction);
 };
 
 
@@ -375,7 +366,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     }
   } else if (state.live.clock.periodDisplayOverride === null && state.live.clock.currentTime <= 0 && state.live.clock.currentPeriod < MAX_TOTAL_GAME_PERIODS) {
     nextActionButtonText = "Iniciar Descanso";
-  } else if (state.live.clock.periodDisplayOverride === null && state.live.clock.currentTime <= 0 && ((state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS && MAX_TOTAL_GAME_PERIODS > 0) || (MAX_TOTAL_GAME_PERIODS === 0 && state.live.clock.currentPeriod === 0))) {
+  } else if (state.live.clock.periodDisplayOverride === null && state.live.clock.currentTime <= 0 && state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS) {
      nextActionButtonText = "Finalizar Partido";
   } else if ((state.live.clock.periodDisplayOverride === "Break" || state.live.clock.periodDisplayOverride === "Pre-OT Break") && state.live.clock.currentTime <= 0) {
      if (state.live.clock.currentPeriod + 1 <= MAX_TOTAL_GAME_PERIODS) {
@@ -573,7 +564,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const formattedTime = state.live.clock.isFlashingZero ? "00:00" : formatTime(state.live.clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
 
   const isShootout = state.live.clock.periodDisplayOverride === 'Shootout';
-  const showClock = !isShootout && state.live.clock.periodDisplayOverride !== 'AwaitingDecision';
+  const showClock = !isShootout && state.live.clock.periodDisplayOverride !== 'AwaitingDecision' && state.live.clock.periodDisplayOverride !== 'End of Game';
 
   return (
     <div className="relative">
