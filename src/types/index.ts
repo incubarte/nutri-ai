@@ -1,5 +1,4 @@
 
-
 export interface PlayerStats {
   name: string;
   shots: number;
@@ -177,6 +176,7 @@ export interface GameSummary {
     home: AttendedPlayerInfo[]; 
     away: AttendedPlayerInfo[]; 
   };
+  shootout?: ShootoutState;
 }
 
 export interface TunnelState {
@@ -213,7 +213,7 @@ export interface ConfigState extends Omit<FormatAndTimingsProfileData, 'id' | 'n
   teams: TeamData[];
 }
 
-export type PeriodDisplayOverrideType = 'Warm-up' | 'Break' | 'Pre-OT Break' | 'Time Out' | 'End of Game' | null;
+export type PeriodDisplayOverrideType = 'Warm-up' | 'Break' | 'Pre-OT Break' | 'Time Out' | 'End of Game' | 'Shootout' | null;
 
 export interface PreTimeoutState {
   period: number;
@@ -412,3 +412,5 @@ export interface SummaryPlayerStats {
   assists: number;
   shots: number;
 }
+
+    

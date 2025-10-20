@@ -813,9 +813,7 @@ export default function ControlsPage() {
     );
   }
   
-  if (state.live.shootout?.isActive) {
-    return <ShootoutControl />;
-  }
+  const isShootoutActive = state.live.shootout.isActive;
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-8">
@@ -825,6 +823,8 @@ export default function ControlsPage() {
           </div>
       )}
       <MiniScoreboard onScoreClick={handleScoreClick} />
+      
+      {isShootoutActive && <ShootoutControl />}
 
       {hasPendingPuckPenalties && (
         <div className="my-6 flex justify-center">
@@ -872,10 +872,13 @@ export default function ControlsPage() {
           </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PenaltyControlCard team="home" teamName={state.live.homeTeamName} />
-        <PenaltyControlCard team="away" teamName={state.live.awayTeamName} />
-      </div>
+      {!isShootoutActive && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <PenaltyControlCard team="home" teamName={state.live.homeTeamName} />
+            <PenaltyControlCard team="away" teamName={state.live.awayTeamName} />
+        </div>
+      )}
+
       <div className="mt-12 pt-8 border-t border-border">
          <div className="flex flex-wrap gap-4 items-start">
             <Button variant="outline" className="flex-shrink-0" onClick={() => setIsGameSetupDialogOpen(true)}>
