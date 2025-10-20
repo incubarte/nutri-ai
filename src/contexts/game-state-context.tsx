@@ -1332,7 +1332,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const awayGoals = awayAttempts.filter(a => a.isGoal).length;
         
         let newScore = { ...state.live.score };
-        let gameSummaryWithShootoutGoal = { ...state.live.gameSummary };
 
         if (homeGoals > awayGoals) {
             newScore.home += 1;
@@ -1343,7 +1342,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 scorer: { playerNumber: lastScorer.playerNumber, playerName: lastScorer.playerName },
               };
               newScore.homeGoals = [...newScore.homeGoals, newGoal];
-              gameSummaryWithShootoutGoal.home.goals = [...gameSummaryWithShootoutGoal.home.goals, newGoal];
             }
         } else if (awayGoals > homeGoals) {
             newScore.away += 1;
@@ -1354,15 +1352,18 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 scorer: { playerNumber: lastScorer.playerNumber, playerName: lastScorer.playerName },
               };
               newScore.awayGoals = [...newScore.awayGoals, newGoal];
-              gameSummaryWithShootoutGoal.away.goals = [...gameSummaryWithShootoutGoal.away.goals, newGoal];
             }
         }
+
+        const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+        newGameSummary.home.goals = newScore.homeGoals;
+        newGameSummary.away.goals = newScore.awayGoals;
 
         newState = {
             ...state,
             live: { ...state.live,
                 score: newScore,
-                gameSummary: gameSummaryWithShootoutGoal,
+                gameSummary: newGameSummary,
                 shootout: { ...state.live.shootout, isActive: false },
             }
         };
@@ -1790,6 +1791,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 
