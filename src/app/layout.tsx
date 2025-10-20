@@ -25,7 +25,6 @@ export default function RootLayout({
       </head>
       <body className={cn("min-h-screen bg-background font-body antialiased")}>
         <GameStateProvider>
-          {/* SoundPlayer moved to PageShell to be conditional */}
           <PageShell>{children}</PageShell>
           <Toaster />
         </GameStateProvider>

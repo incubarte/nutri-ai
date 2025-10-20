@@ -406,6 +406,11 @@ export interface GameState {
   _initialConfigLoadComplete: boolean;
   _lastActionOriginator?: string;
   _lastUpdatedTimestamp?: number;
+  _lastToastMessage?: {
+    title: string;
+    description?: string;
+    variant?: "default" | "destructive";
+  } | null;
 }
 
 

@@ -108,11 +108,11 @@ export const createDefaultFormatAndTimingsProfile = (id?: string, name?: string)
   id: id || safeUUID(),
   name: name || IN_CODE_INITIAL_PROFILE_NAME,
   ...defaultSettings.formatAndTimings,
+  gameTimeMode: 'stopped',
+  autoActivatePuckPenalties: true,
   enableStoppedTimeAlert: false, // Default for new profiles
   stoppedTimeAlertGoalDiff: 1,
   stoppedTimeAlertTimeRemaining: 2,
-  gameTimeMode: 'stopped',
-  autoActivatePuckPenalties: true,
   penaltyTypes: defaultSettings.penaltyTypes.map(p => ({
     ...p,
     reducesPlayerCount: p.reducesPlayerCount,
@@ -135,11 +135,11 @@ const getInitialState = (): GameState => {
   return {
     config: {
       ...defaultSettings.formatAndTimings,
+      gameTimeMode: 'stopped',
+      autoActivatePuckPenalties: true,
       enableStoppedTimeAlert: false,
       stoppedTimeAlertGoalDiff: 1,
       stoppedTimeAlertTimeRemaining: 2,
-      gameTimeMode: 'stopped',
-      autoActivatePuckPenalties: true,
       penaltyTypes: defaultSettings.penaltyTypes.map(p => ({...p, isBenchPenalty: p.isBenchPenalty || false })) as PenaltyTypeDefinition[],
       defaultPenaltyTypeId: defaultSettings.defaultPenaltyTypeId,
       formatAndTimingsProfiles: [defaultInitialProfile],
@@ -429,6 +429,7 @@ const recalculateAllStatsFromLogs = (gameSummary: GameSummary): { homePlayerStat
 const gameReducer = (state: GameState, action: GameAction): GameState => {
   let newState: GameState = { ...state };
   let newTimestamp = Date.now();
+  let toastMessage: { title: string, description?: string, variant?: "default" | "destructive" } | null = null;
 
   // Clear pending power play goal confirmation on almost any penalty change
   if (action.type !== 'ADD_GOAL' && action.type !== 'CLEAR_PENDING_POWER_PLAY_GOAL' && action.type !== 'TICK' && state.live.pendingPowerPlayGoal) {
@@ -543,6 +544,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             absoluteElapsedTimeCs: newAbsoluteTime,
             _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
         }}};
+        toastMessage = { title: "Reloj Actualizado", description: `Tiempo establecido a ${formatTime(newTimeCs, { showTenths: newTimeCs < 6000, includeMinutesForTenths: true })}` };
         break;
     }
     case 'ADJUST_TIME': {
@@ -567,6 +569,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             absoluteElapsedTimeCs: newAbsoluteTime,
             _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
         }}};
+        toastMessage = { title: "Reloj Ajustado", description: `Tiempo ajustado en ${action.payload / 100 > 0 ? '+' : ''}${action.payload / 100} segundo(s).` };
         break;
     }
     case 'SET_PERIOD': {
@@ -631,7 +634,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const concedingTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamConceded].filter(p => p._status === 'running' && (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).length;
 
       if (scoringTeamOnIce > concedingTeamOnIce) {
-          // Find the first penalty that IS reducing player count and can be cleared by a goal.
           const firstEligiblePenalty = state.live.penalties[teamConceded].find(p => 
               p._status === 'running' && 
               p.clearsOnGoal &&
@@ -651,6 +653,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           away: { ...newGameSummary.away, playerStats: awayPlayerStats },
         },
       }};
+      toastMessage = { title: "Gol Añadido", description: `Gol para el jugador #${action.payload.scorer?.playerNumber} registrado.` };
       break;
     }
      case 'EDIT_GOAL': {
@@ -689,6 +692,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             away: { ...newGameSummary.away, playerStats: awayPlayerStats },
           }
         }};
+        toastMessage = { title: "Gol Actualizado", description: "Los cambios en el gol han sido guardados." };
       }
       break;
     }
@@ -715,6 +719,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           away: { ...newGameSummary.away, playerStats: awayPlayerStats },
         }
       }};
+      toastMessage = { title: "Gol Eliminado", description: "El gol ha sido eliminado del registro." };
       break;
     }
     case 'ADD_PLAYER_SHOT': {
@@ -762,14 +767,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         if (!attendedPlayer) break;
 
         const shotsLogKey = `${team}ShotsLog` as const;
-        // Keep shots from other players OR from the same player in different periods.
         const otherShots = (gameSummary[team]?.[shotsLogKey] || []).filter((shot: ShotLog) => shot.playerId !== playerId || shot.periodText !== periodText);
         
         const newShotsForPeriod: ShotLog[] = Array.from({ length: shotCount }, (_, i) => ({
             id: safeUUID(),
             team,
-            timestamp: Date.now() + i, // Offset timestamp to ensure unique values if needed
-            gameTime: 0, // Game time is not relevant for post-game edits
+            timestamp: Date.now() + i,
+            gameTime: 0,
             periodText,
             playerId: attendedPlayer.id,
             playerNumber: attendedPlayer.number,
@@ -838,6 +842,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         },
         playHornTrigger: state.live.playHornTrigger + 1,
       }};
+      toastMessage = { title: "¡Partido Finalizado!", description: "Gol de oro registrado exitosamente." };
       break;
     }
     case 'ADD_PENALTY': {
@@ -872,6 +877,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       if (addGameTime !== undefined && addPeriodText !== undefined) {
         newState = { ...state, live: { ...state.live, gameSummary: newGameSummary }};
+        toastMessage = { title: "Penalidad Añadida", description: "La penalidad se ha agregado al resumen."};
       } else {
         const { _liveAbsoluteElapsedTimeCs } = live.clock;
         const limitReachedReasons: ('quantity')[] = [];
@@ -909,6 +915,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           penalties: { ...live.penalties, [team]: sortPenaltiesByStatus([...live.penalties[team], newPenalty]) },
           gameSummary: newGameSummary
         }};
+        const teamName = team === 'home' ? live.homeTeamName : live.awayTeamName;
+        toastMessage = { title: "Penalidad Agregada", description: `Jugador ${playerNumber.toUpperCase()}${playerDetails ? ` (${playerDetails.name})` : ''} de ${teamName} recibió una penalidad de ${penaltyDef.name}.` };
       }
       break;
     }
@@ -940,6 +948,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         penalties: { ...state.live.penalties, [team]: newActivePenalties },
         gameSummary: newGameSummary
       }};
+      toastMessage = { title: "Penalidad Eliminada", variant: "destructive" };
       break;
     }
      case 'END_PENALTY_FOR_GOAL': {
@@ -957,6 +966,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'goal_on_pp', timeServed } : p
         )}}
       }};
+      toastMessage = { title: "Penalidad Finalizada", description: "La penalidad se eliminó por el gol en Power Play." };
       break;
     }
     case 'CLEAR_PENDING_POWER_PLAY_GOAL': {
@@ -973,22 +983,18 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const isCurrentlyReducing = penaltyToToggle.reducesPlayerCount && !penaltyToToggle._doesNotReducePlayerCountOverride;
 
       if (isCurrentlyReducing) {
-        // Disabling reduction is simple
         penaltyToToggle._doesNotReducePlayerCountOverride = true;
       } else {
-        // Re-enabling reduction requires a slot check
         const runningAndReducingPenalties = penaltiesForTeam.filter(
           p => p.id !== penaltyId && p._status === 'running' && p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride
         ).length;
 
         if (runningAndReducingPenalties >= state.config.maxConcurrentPenalties) {
-          // No slots available, put it in pending
           penaltyToToggle._status = 'pending_concurrent';
           penaltyToToggle.startTime = undefined;
           penaltyToToggle.expirationTime = undefined;
-          showToast({ title: "Sin Slots Disponibles", description: `La penalidad para #${penaltyToToggle.playerNumber} está ahora en "Esperando Slot".` });
+          toastMessage = { title: "Sin Slots Disponibles", description: `La penalidad para #${penaltyToToggle.playerNumber} está ahora en "Esperando Slot".` };
         } else {
-          // Slot available, re-enable it
           penaltyToToggle._doesNotReducePlayerCountOverride = false;
         }
       }
@@ -1012,6 +1018,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         p.id === penaltyId ? { ...p, expirationTime: state.live.clock._liveAbsoluteElapsedTimeCs + newRemainingTimeCs } : p
       );
       newState = { ...state, live: { ...state.live, penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(updatedPenalties) }}};
+      toastMessage = { title: "Tiempo de Penalidad Establecido", description: `Tiempo actualizado a ${formatTime(newRemainingTimeCs)}.` };
       break;
     }
     case 'REORDER_PENALTIES': {
@@ -1020,6 +1027,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const [removed] = currentPenalties.splice(startIndex, 1);
       if (removed) currentPenalties.splice(endIndex, 0, removed);
       newState = { ...state, live: { ...state.live, penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(currentPenalties) }}};
+      toastMessage = { title: "Penalidades Reordenadas", description: `Orden de penalidades para ${team === 'home' ? state.live.homeTeamName : state.live.awayTeamName} actualizado.` };
       break;
     }
     case 'ACTIVATE_PENDING_PUCK_PENALTIES': {
@@ -1226,6 +1234,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             clockStartTimeMs: autoStart ? Date.now() : null, remainingTimeAtStartCs: autoStart ? state.config.defaultTimeoutDuration : null,
             absoluteElapsedTimeCs: absoluteElapsedTimeCs,
         }}};
+        toastMessage = { title: "Time Out Iniciado", description: `Time Out de ${state.config.defaultTimeoutDuration / 100} segundos. Reloj ${autoStart ? 'corriendo' : 'pausado'}.` };
         break;
     }
      case 'END_TIMEOUT': {
@@ -1236,13 +1245,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             periodDisplayOverride: override, clockStartTimeMs: null, remainingTimeAtStartCs: null,
             preTimeoutState: null, absoluteElapsedTimeCs: absoluteElapsedTimeCs, _liveAbsoluteElapsedTimeCs: absoluteElapsedTimeCs,
         }}};
+        toastMessage = { title: "Time Out Finalizado", description: "Juego reanudado al estado anterior." };
       }
       break;
     }
     case 'MANUAL_END_GAME': {
         const { live } = state;
         if (live.score.home !== live.score.away) {
-            // Not a tie, end the game directly
             const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
             newState = { ...state, live: { ...state.live,
                 clock: { ...state.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
@@ -1252,7 +1261,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 playHornTrigger: state.live.playHornTrigger + 1
             }};
         } else {
-            // It's a tie, go to the pre-end decision state
              newState = { ...state, live: { ...state.live,
                 clock: { ...state.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
                 shootout: { ...state.live.shootout, isActive: false }
@@ -1289,6 +1297,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           }
         }
       };
+      toastMessage = { title: "Overtime Extra Añadido", description: "Se ha añadido un período de OT y se ha iniciado un descanso." };
       break;
     }
     case 'START_SHOOTOUT': {
@@ -1303,6 +1312,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             periodDisplayOverride: 'Shootout'
         }
       }};
+      toastMessage = { title: "Tanda de Penales Iniciada" };
       break;
     }
     case 'UPDATE_SHOOTOUT_ROUNDS':
@@ -1358,7 +1368,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const newAttempts = currentAttempts.slice(0, -1);
       
       let newInitiator = shootout.initiator;
-      // If we are undoing the very first shot, reset the initiator
       if (shootout.homeAttempts.length + shootout.awayAttempts.length === 1) {
           newInitiator = null;
       }
@@ -1395,6 +1404,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           clock: { ...state.live.clock, periodDisplayOverride: 'End of Game' },
         },
       };
+      toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
       break;
     }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
@@ -1429,14 +1439,21 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         };
         break;
     }
-    case 'ADD_FORMAT_AND_TIMINGS_PROFILE': newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: [...state.config.formatAndTimingsProfiles, createDefaultFormatAndTimingsProfile(undefined, action.payload.name)] } }; break;
-    case 'UPDATE_FORMAT_AND_TIMINGS_PROFILE_NAME': newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: state.config.formatAndTimingsProfiles.map(p => p.id === action.payload.profileId ? {...p, name: action.payload.newName} : p) } }; break;
+    case 'ADD_FORMAT_AND_TIMINGS_PROFILE': 
+      newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: [...state.config.formatAndTimingsProfiles, createDefaultFormatAndTimingsProfile(undefined, action.payload.name)] } }; 
+      toastMessage = { title: "Perfil Creado", description: `Perfil "${action.payload.name.trim()}" añadido.` };
+      break;
+    case 'UPDATE_FORMAT_AND_TIMINGS_PROFILE_NAME': 
+      newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: state.config.formatAndTimingsProfiles.map(p => p.id === action.payload.profileId ? {...p, name: action.payload.newName} : p) } }; 
+      toastMessage = { title: "Nombre de Perfil Actualizado" };
+      break;
     case 'DELETE_FORMAT_AND_TIMINGS_PROFILE': {
         let newProfiles = state.config.formatAndTimingsProfiles.filter(p => p.id !== action.payload.profileId);
         if (newProfiles.length === 0) newProfiles = [createDefaultFormatAndTimingsProfile()];
         const newSelectedId = action.payload.profileId === state.config.selectedFormatAndTimingsProfileId ? newProfiles[0].id : state.config.selectedScoreboardLayoutProfileId;
         newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: newProfiles, selectedFormatAndTimingsProfileId: newSelectedId }};
         newState = applyFormatAndTimingsProfileToState(newState, newSelectedId);
+        toastMessage = { title: "Perfil Eliminado", variant: "destructive" };
         break;
     }
     case 'SELECT_FORMAT_AND_TIMINGS_PROFILE': {
@@ -1473,14 +1490,21 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: state.config.scoreboardLayoutProfiles.map(p => p.id === state.config.selectedScoreboardLayoutProfileId ? { ...p, ...state.config.scoreboardLayout } : p) }};
         break;
     }
-    case 'ADD_SCOREBOARD_LAYOUT_PROFILE': newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: [...state.config.scoreboardLayoutProfiles, createDefaultScoreboardLayoutProfile(undefined, action.payload.name)] }}; break;
-    case 'UPDATE_SCOREBOARD_LAYOUT_PROFILE_NAME': newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: state.config.scoreboardLayoutProfiles.map(p => p.id === action.payload.profileId ? {...p, name: action.payload.newName} : p) }}; break;
+    case 'ADD_SCOREBOARD_LAYOUT_PROFILE': 
+      newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: [...state.config.scoreboardLayoutProfiles, createDefaultScoreboardLayoutProfile(undefined, action.payload.name)] }}; 
+      toastMessage = { title: "Perfil de Diseño Creado", description: `Perfil "${action.payload.name.trim()}" añadido.` };
+      break;
+    case 'UPDATE_SCOREBOARD_LAYOUT_PROFILE_NAME': 
+      newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: state.config.scoreboardLayoutProfiles.map(p => p.id === action.payload.profileId ? {...p, name: action.payload.newName} : p) }}; 
+      toastMessage = { title: "Nombre de Perfil de Diseño Actualizado" };
+      break;
     case 'DELETE_SCOREBOARD_LAYOUT_PROFILE': {
         let newProfiles = state.config.scoreboardLayoutProfiles.filter(p => p.id !== action.payload.profileId);
         if (newProfiles.length === 0) newProfiles = [createDefaultScoreboardLayoutProfile()];
         const newSelectedId = action.payload.profileId === state.config.selectedScoreboardLayoutProfileId ? newProfiles[0].id : state.config.selectedScoreboardLayoutProfileId;
         newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: newProfiles, selectedScoreboardLayoutProfileId: newSelectedId }};
         newState = applyScoreboardLayoutProfileToState(newState, newSelectedId);
+        toastMessage = { title: "Perfil de Diseño Eliminado", variant: "destructive" };
         break;
     }
     case 'SELECT_SCOREBOARD_LAYOUT_PROFILE': {
@@ -1495,12 +1519,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'SET_AVAILABLE_CATEGORIES': newState = { ...state, config: { ...state.config, availableCategories: action.payload, selectedMatchCategory: (action.payload.find(c => c.id === state.config.selectedMatchCategory) ? state.config.selectedMatchCategory : (action.payload[0]?.id || '')) } }; break;
-    case 'SET_SELECTED_MATCH_CATEGORY': newState = { ...state, config: { ...state.config, selectedMatchCategory: action.payload } }; break;
+    case 'SET_SELECTED_MATCH_CATEGORY': newState = { ...state, config: { ...state.config, selectedMatchCategory: action.payload } }; toastMessage = { title: "Categoría del Partido Actualizada" }; break;
     case 'UPDATE_TUNNEL_STATE': newState = { ...state, config: { ...state.config, tunnel: { ...state.config.tunnel, ...action.payload } }}; break;
-    case 'ADD_TEAM': newState = { ...state, config: { ...state.config, teams: [...state.config.teams, { ...action.payload, id: action.payload.id || safeUUID() }] } }; break;
-    case 'UPDATE_TEAM_DETAILS': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, ...action.payload } : t) } }; break;
+    case 'ADD_TEAM': newState = { ...state, config: { ...state.config, teams: [...state.config.teams, { ...action.payload, id: action.payload.id || safeUUID() }] } }; toastMessage = { title: "Equipo Creado", description: `El equipo "${action.payload.name}" ha sido creado.` }; break;
+    case 'UPDATE_TEAM_DETAILS': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, ...action.payload } : t) } }; toastMessage = { title: "Equipo Actualizado", description: `El equipo "${action.payload.name}" ha sido actualizado.` }; break;
     case 'DELETE_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.filter(t => t.id !== action.payload.teamId) } }; break;
-    case 'ADD_PLAYER_TO_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, players: [...t.players, { ...action.payload.player, id: safeUUID() }] } : t) } }; break;
+    case 'ADD_PLAYER_TO_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, players: [...t.players, { ...action.payload.player, id: safeUUID() }] } : t) } }; toastMessage = { title: "Jugador Añadido", description: `Jugador ${action.payload.player.number ? `#${action.payload.player.number} ` : ''}${action.payload.player.name} añadido.` }; break;
     case 'UPDATE_PLAYER_IN_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, players: t.players.map(p => p.id === action.payload.playerId ? { ...p, ...action.payload.updates } : p) } : t) } }; break;
     case 'REMOVE_PLAYER_FROM_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, players: t.players.filter(p => p.id !== action.payload.playerId) } : t) } }; break;
     case 'LOAD_TEAMS_FROM_FILE': newState = { ...state, config: { ...state.config, teams: action.payload } }; break;
@@ -1562,6 +1586,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
         }
       };
+      toastMessage = { title: "Configuración Restablecida", description: "Todas las configuraciones han vuelto a sus valores predeterminados." };
       break;
     }
     case 'RESET_GAME_STATE': {
@@ -1593,8 +1618,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
   if (action.type === 'TICK') return newState;
   if (nonOriginatingActionTypes.includes(action.type)) return { ...newState, _lastActionOriginator: undefined };
   
-  return { ...newState, _lastActionOriginator: TAB_ID, _lastUpdatedTimestamp: newTimestamp };
+  return { ...newState, _lastActionOriginator: TAB_ID, _lastUpdatedTimestamp: newTimestamp, _lastToastMessage: toastMessage };
 };
+
+const GameStateObserver = () => {
+    const { state } = useGameState();
+    const { toast } = showToast();
+    const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
+
+    useEffect(() => {
+        if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
+            toast(state._lastToastMessage);
+            lastToastRef.current = state._lastToastMessage;
+        }
+    }, [state._lastToastMessage, toast]);
+
+    return null;
+}
 
 
 export const GameStateProvider = ({ children }: { children: ReactNode }) => {
@@ -1604,7 +1644,6 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const channelRef = useRef<BroadcastChannel | null>(null);
 
   const syncToServer = useCallback(async (stateToSync: GameState) => {
-    // Separate teams from the rest of the config for server sync
     const { teams, ...configToSync } = stateToSync.config;
     try {
       await Promise.all([
@@ -1671,7 +1710,6 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
     if (isLoading || typeof window === 'undefined') return;
 
     if (state._lastActionOriginator === TAB_ID) {
-      // Separate teams from the rest of the config
       const { teams, ...restOfConfig } = state.config;
       const stateToSave = {
         ...state,
@@ -1682,7 +1720,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(stateToSave));
         localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(teams));
         
-        channelRef.current?.postMessage(state); // Broadcast the full state
+        channelRef.current?.postMessage(state);
         syncToServer(state);
       } catch (error) {
         console.error("Error saving/broadcasting state:", error);
@@ -1703,6 +1741,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   return (
     <GameStateContext.Provider value={{ state, dispatch, isLoading }}>
       {children}
+      <GameStateObserver />
     </GameStateContext.Provider>
   );
 };
@@ -1824,6 +1863,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 
