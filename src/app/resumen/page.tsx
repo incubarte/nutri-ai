@@ -340,13 +340,12 @@ export default function ResumenPage() {
   const [unassignedPlayerWarning, setUnassignedPlayerWarning] = useState<{ players: string[]; onConfirm: () => void } | null>(null);
   
   const generateSummaryData = useCallback(() => {
-    setSummaryData(null); // Limpia el modelo antes de generarlo de nuevo
     const { live, config } = liveGameState;
     const { gameSummary } = live;
 
     const statsByPeriod: Record<string, PeriodStats> = {};
     const allPeriodTexts = Array.from(new Set(
-        [...gameSummary.home.goals, ...gameSummary.away.goals, ...gameSummary.home.homeShotsLog, ...gameSummary.away.awayShotsLog]
+        [...gameSummary.home.goals, ...gameSummary.away.goals, ...(gameSummary.home.homeShotsLog || []), ...(gameSummary.away.awayShotsLog || [])]
         .map(e => e.periodText)
     ));
 
@@ -359,7 +358,7 @@ export default function ResumenPage() {
 
         const processTeamPeriod = (team: Team) => {
             const teamGoals = gameSummary[team].goals.filter(g => g.periodText === period);
-            const teamShots = gameSummary[team][`${team}ShotsLog`].filter(s => s.periodText === period);
+            const teamShots = (gameSummary[team][`${team}ShotsLog` as const] || []).filter(s => s.periodText === period);
             const attendance = gameSummary.attendance[team];
             
             const playerStatsMap = new Map<string, SummaryPlayerStats>();
@@ -431,6 +430,15 @@ export default function ResumenPage() {
 
   }, [liveGameState]);
 
+  useEffect(() => {
+    // Only generate summary on initial load if the live summary has data.
+    const { gameSummary } = liveGameState.live;
+    if (!summaryData && (gameSummary.home.goals.length > 0 || gameSummary.away.goals.length > 0 || gameSummary.home.penalties.length > 0 || gameSummary.away.penalties.length > 0)) {
+      generateSummaryData();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
+
   
   const handleGenerateSummaryClick = () => {
     const unassignedHome = liveGameState.live.gameSummary.attendance.home.filter(p => !p.number).map(p => p.name);
@@ -439,8 +447,13 @@ export default function ResumenPage() {
 
     const confirmAndGenerate = () => {
       if (allUnassigned.length > 0) {
-        setUnassignedPlayerWarning({ players: allUnassigned, onConfirm: () => { generateSummaryData(); toast({ title: "Resumen Generado" }); } });
+        setUnassignedPlayerWarning({ players: allUnassigned, onConfirm: () => { 
+          setSummaryData(null); // Clear first
+          generateSummaryData(); 
+          toast({ title: "Resumen Generado" }); 
+        } });
       } else {
+        setSummaryData(null); // Clear first
         generateSummaryData();
         toast({ title: "Resumen Generado", description: "Se han cargado los datos del partido actual." });
       }
@@ -690,8 +703,8 @@ export default function ResumenPage() {
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} onAdd={() => handleOpenAddPenalty('home')} onDelete={(logId) => handlePrepareDeletePenalty('home', logId)} />
-                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} onAdd={() => handleOpenAddPenalty('away')} onDelete={(logId) => handlePrepareDeletePenalty('away', logId)} />
+                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} />
+                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} />
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -841,6 +854,7 @@ export default function ResumenPage() {
     
 
     
+
 
 
 
