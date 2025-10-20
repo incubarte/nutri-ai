@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
@@ -55,7 +54,7 @@ export const StoppedTimeAlertCard = forwardRef<StoppedTimeAlertCardRef, StoppedT
   const handleGameTimeModeChange = (value: 'running' | 'stopped') => {
     setLocalGameTimeMode(value);
     // Set default for auto-activation based on mode
-    setLocalAutoActivatePuck(value === 'running');
+    setLocalAutoActivatePuck(value === 'stopped');
     markDirty();
   }
 
@@ -172,3 +171,5 @@ export const StoppedTimeAlertCard = forwardRef<StoppedTimeAlertCardRef, StoppedT
 });
 
 StoppedTimeAlertCard.displayName = "StoppedTimeAlertCard";
+
+    
