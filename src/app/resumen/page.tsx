@@ -3,7 +3,7 @@
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useGameState, formatTime, type Team, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo, SUMMARY_DATA_STORAGE_KEY } from "@/contexts/game-state-context";
-import type { PlayerData, GoalLog, PlayerStats as LivePlayerStats, GameSummary, SummaryPlayerStats } from "@/types";
+import type { PlayerData, GoalLog, PlayerStats as LivePlayerStats, GameSummary, SummaryPlayerStats, GameState } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,8 +27,8 @@ import type { PenaltyLog } from "@/types";
 
 // --- Modelos de Datos para la Página de Resumen ---
 interface PeriodStats {
-  home: { goals: GoalLog[]; playerStats: SummaryPlayerStats[]; penalties: PenaltyLog[]; };
-  away: { goals: GoalLog[]; playerStats: SummaryPlayerStats[]; penalties: PenaltyLog[]; };
+  home: { goals: GoalLog[]; penalties: PenaltyLog[]; playerStats: SummaryPlayerStats[]; };
+  away: { goals: GoalLog[]; penalties: PenaltyLog[]; playerStats: SummaryPlayerStats[]; };
 }
 
 interface SummaryData {
@@ -511,7 +511,7 @@ export default function ResumenPage() {
   const handleExportPDF = () => {
     if (!summaryData) return;
     
-    // Create a temporary state object for the PDF generator, merging edited summary data.
+    // Create a temporary state object for the PDF generator, merging the edited summary data.
     const tempStateForPDF: GameState = JSON.parse(JSON.stringify(liveGameState));
 
     tempStateForPDF.live.score.home = summaryData.homeScore;
@@ -522,15 +522,36 @@ export default function ResumenPage() {
     tempStateForPDF.live.gameSummary.away.penalties = awayAggregatedStats.penalties;
     tempStateForPDF.live.gameSummary.attendance = summaryData.attendance;
     
-    // Pass the already aggregated player stats for the PDF generator to use directly
-    tempStateForPDF.live.gameSummary.home.playerStats = homeAggregatedStats.playerStats.reduce((acc, p) => {
-        acc[p.number] = p;
+    // Aggregate player stats from summaryData for the PDF.
+    const homeStats = homeAggregatedStats.playerStats.reduce((acc, p) => {
+        if(p.number) acc[p.number] = { name: p.name, shots: p.shots, goals: p.goals, assists: p.assists };
         return acc;
-    }, {} as Record<string, SummaryPlayerStats>);
-    tempStateForPDF.live.gameSummary.away.playerStats = awayAggregatedStats.playerStats.reduce((acc, p) => {
-        acc[p.number] = p;
+    }, {} as Record<string, LivePlayerStats>);
+    
+    const awayStats = awayAggregatedStats.playerStats.reduce((acc, p) => {
+        if(p.number) acc[p.number] = { name: p.name, shots: p.shots, goals: p.goals, assists: p.assists };
         return acc;
-    }, {} as Record<string, SummaryPlayerStats>);
+    }, {} as Record<string, LivePlayerStats>);
+
+    // Reconstruct the `gameSummary`'s `playerStats` to match the expected format for the PDF generator.
+    tempStateForPDF.live.gameSummary.home.playerStats = homeStats;
+    tempStateForPDF.live.gameSummary.away.playerStats = awayStats;
+
+    // The shots logs are not directly used by the PDF for totals, but we'll assemble them for consistency.
+    tempStateForPDF.live.gameSummary.home.homeShotsLog = [];
+    tempStateForPDF.live.gameSummary.away.awayShotsLog = [];
+    Object.values(summaryData.statsByPeriod).forEach(periodStats => {
+        periodStats.home.playerStats.forEach(pStat => {
+            for (let i = 0; i < pStat.shots; i++) {
+                tempStateForPDF.live.gameSummary.home.homeShotsLog.push({ id: `shot-${pStat.id}-${i}`, team: 'home', gameTime: 0, periodText: '', playerId: pStat.id, playerNumber: pStat.number, timestamp: 0 });
+            }
+        });
+        periodStats.away.playerStats.forEach(pStat => {
+            for (let i = 0; i < pStat.shots; i++) {
+                tempStateForPDF.live.gameSummary.away.awayShotsLog.push({ id: `shot-${pStat.id}-${i}`, team: 'away', gameTime: 0, periodText: '', playerId: pStat.id, playerNumber: pStat.number, timestamp: 0 });
+            }
+        });
+    });
 
 
     const filename = exportGameSummaryPDF(tempStateForPDF);
@@ -563,17 +584,13 @@ export default function ResumenPage() {
 
     setSummaryData(prev => {
         if (!prev) return null;
-        const newSummary: SummaryData = JSON.parse(JSON.stringify(prev)); // Deep copy
+        const newSummary: SummaryData = JSON.parse(JSON.stringify(prev));
         
         if (!newSummary.statsByPeriod[periodText]) {
             newSummary.statsByPeriod[periodText] = { 
                 home: { goals: [], penalties: [], playerStats: [] }, 
                 away: { goals: [], penalties: [], playerStats: [] } 
             };
-        }
-        
-        if (!newSummary.statsByPeriod[periodText][team]) {
-            newSummary.statsByPeriod[periodText][team] = { goals: [], penalties: [], playerStats: [] };
         } else {
              if (!newSummary.statsByPeriod[periodText][team].penalties) {
                 newSummary.statsByPeriod[periodText][team].penalties = [];
@@ -843,5 +860,7 @@ export default function ResumenPage() {
 
     
 
+
+    
 
     
