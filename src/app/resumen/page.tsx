@@ -44,14 +44,16 @@ interface SummaryData {
   home: {
     goals: GoalLog[];
     penalties: PenaltyLog[];
-    playerStats: SummaryPlayerStats[];
     shotsLog: ShotLog[];
   };
   away: {
     goals: GoalLog[];
     penalties: PenaltyLog[];
-    playerStats: SummaryPlayerStats[];
     shotsLog: ShotLog[];
+  };
+  attendance: {
+      home: AttendedPlayerInfo[];
+      away: AttendedPlayerInfo[];
   };
 }
 
@@ -236,7 +238,7 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas - {teamName}</CardTitle>
-                 {editable && periodText ? (
+                 {editable && (
                     <div className="flex gap-2">
                         {isEditing ? (
                             <>
@@ -244,25 +246,23 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><X className="h-5 w-5" /></Button>
                             </>
                         ) : (
-                            <Button variant="outline" size="sm" onClick={handleEditClick}>
-                                <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
-                            </Button>
+                             <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="outline" size="sm" onClick={handleEditClick} disabled={!periodText}>
+                                            <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
+                                        </Button>
+                                    </TooltipTrigger>
+                                    {!periodText && (
+                                        <TooltipContent>
+                                            <p>La edición de tiros debe hacerse por período en la pestaña "Detalle por Periodo".</p>
+                                        </TooltipContent>
+                                    )}
+                                </Tooltip>
+                            </TooltipProvider>
                         )}
                     </div>
-                ) : editable && !periodText ? (
-                     <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="outline" size="sm" disabled>
-                                    <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>La edición de tiros debe hacerse por período en la pestaña "Detalle por Periodo".</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                ) : null}
+                )}
             </CardHeader>
             <CardContent>
                 <TooltipProvider>
@@ -279,7 +279,7 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                             </TableHeader>
                             <TableBody>
                                 {sortedPlayerStats.map(player => {
-                                    const isEditDisabledForThisRow = isEditing && (!player.number || (editable && !periodText));
+                                    const isEditDisabledForThisRow = isEditing && (!player.number);
                                     return (
                                         <TableRow key={player.id} className={cn(isEditDisabledForThisRow && "opacity-50")}>
                                             <TableCell className="font-semibold">{player.number || 'S/N'}</TableCell>
@@ -287,28 +287,24 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                                             <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
                                             <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
                                             <TableCell className="text-center">
-                                            {isEditing && editable && periodText && player.number ? (
-                                                <Input
-                                                    type="number"
-                                                    value={editedShots[player.id]}
-                                                    onChange={(e) => handleShotChange(player.id, e.target.value)}
-                                                    className={cn("h-7 w-16 mx-auto text-center")}
-                                                />
-                                            ) : isEditing && editable && periodText && !player.number ? (
+                                            {isEditing && editable && periodText ? (
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
                                                         <div className="w-full h-full flex items-center justify-center">
                                                             <Input
                                                                 type="number"
-                                                                value={String(player.shots || 0)}
-                                                                className="h-7 w-16 mx-auto text-center cursor-not-allowed"
-                                                                disabled
+                                                                value={isEditDisabledForThisRow ? String(player.shots || 0) : editedShots[player.id]}
+                                                                onChange={(e) => !isEditDisabledForThisRow && handleShotChange(player.id, e.target.value)}
+                                                                className={cn("h-7 w-16 mx-auto text-center", isEditDisabledForThisRow && "cursor-not-allowed")}
+                                                                disabled={isEditDisabledForThisRow}
                                                             />
                                                         </div>
                                                     </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>No se pueden editar los tiros de un jugador sin número asignado.</p>
-                                                    </TooltipContent>
+                                                    {isEditDisabledForThisRow && (
+                                                        <TooltipContent>
+                                                            <p>No se pueden editar los tiros de un jugador sin número asignado.</p>
+                                                        </TooltipContent>
+                                                    )}
                                                 </Tooltip>
                                             ) : (
                                                 <span className="font-mono">{player.shots || 0}</span>
@@ -350,19 +346,16 @@ export default function ResumenPage() {
   
   const generateSummaryData = useCallback(() => {
     const { live, config } = liveGameState;
-    
-    // Always clear old data first
-    setSummaryData(null);
-    
-    const calculatePlayerStats = (team: Team): SummaryPlayerStats[] => {
-      const attendance = live.gameSummary.attendance[team] || [];
+
+    const calculatePlayerStats = (team: Team, forSummary: GameSummary): SummaryPlayerStats[] => {
+      const attendance = forSummary.attendance[team] || [];
       const statsMap = new Map<string, SummaryPlayerStats>();
 
       attendance.forEach(p => {
         statsMap.set(p.id, { id: p.id, number: p.number, name: p.name, goals: 0, assists: 0, shots: 0 });
       });
 
-      (live.gameSummary[team]?.goals || []).forEach(goal => {
+      (forSummary[team]?.goals || []).forEach(goal => {
         const scorer = attendance.find(p => p.number === goal.scorer?.playerNumber);
         if (scorer) {
           const stat = statsMap.get(scorer.id);
@@ -376,7 +369,7 @@ export default function ResumenPage() {
       });
       
       const shotsLogKey = `${team}ShotsLog` as const;
-      (live.gameSummary[team]?.[shotsLogKey] || []).forEach(shot => {
+      (forSummary[team]?.[shotsLogKey] || []).forEach(shot => {
         const shooter = attendance.find(p => p.id === shot.playerId);
         if (shooter) {
            const stat = statsMap.get(shooter.id);
@@ -393,58 +386,27 @@ export default function ResumenPage() {
         homeScore: live.score.home,
         awayScore: live.score.away,
         categoryName: getCategoryNameById(config.selectedMatchCategory, config.availableCategories) || 'N/A',
+        attendance: live.gameSummary.attendance,
         home: {
             goals: [...live.gameSummary.home.goals].sort((a,b) => a.timestamp - b.timestamp),
             penalties: [...live.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp),
             shotsLog: [...(live.gameSummary.home.homeShotsLog || [])],
-            playerStats: calculatePlayerStats('home'),
         },
         away: {
             goals: [...live.gameSummary.away.goals].sort((a,b) => a.timestamp - b.timestamp),
             penalties: [...live.gameSummary.away.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp),
             shotsLog: [...(live.gameSummary.away.awayShotsLog || [])],
-            playerStats: calculatePlayerStats('away'),
         },
     };
     setSummaryData(newSummary);
   }, [liveGameState]);
 
   useEffect(() => {
-    const { goals: homeGoals, penalties: homePenalties } = liveGameState.live.gameSummary.home;
-    const { goals: awayGoals, penalties: awayPenalties } = liveGameState.live.gameSummary.away;
-    if (homeGoals.length > 0 || homePenalties.length > 0 || awayGoals.length > 0 || awayPenalties.length > 0) {
+    // Only auto-generate if there's something to show and no summary exists yet
+    if (!summaryData && (liveGameState.live.gameSummary.home.goals.length > 0 || liveGameState.live.gameSummary.home.penalties.length > 0 || liveGameState.live.gameSummary.away.goals.length > 0 || liveGameState.live.gameSummary.away.penalties.length > 0)) {
       generateSummaryData();
     }
-  }, []); 
-
-   // Effect to refresh summary data whenever live game summary changes
-  useEffect(() => {
-    if (summaryData) { // Only refresh if a summary is already being displayed
-      generateSummaryData();
-    }
-  }, [liveGameState.live.gameSummary, generateSummaryData, summaryData]);
-  
-  const allPeriodTexts = useMemo(() => {
-    if (!summaryData) return [];
-    const playedPeriods = new Set<string>();
-    
-    [...summaryData.home.goals, ...summaryData.away.goals, ...summaryData.home.penalties, ...summaryData.away.penalties].forEach(event => {
-        const period = event.periodText || event.addPeriodText;
-        if (period && !period.toLowerCase().includes('warm-up') && !period.toLowerCase().includes('break')) {
-            playedPeriods.add(period);
-        }
-    });
-
-    const sortedPeriods = Array.from(playedPeriods);
-
-    return sortedPeriods.sort((a, b) => {
-        const getPeriodNumber = (text: string) => {
-            if (text.startsWith('OT')) return (liveGameState.config?.numberOfRegularPeriods || 2) + parseInt(text.replace('OT', ''), 10);
-            return parseInt(text.replace(/\D/g, ''), 10);
-        };
-        return getPeriodNumber(a) - getPeriodNumber(b);
-    });
-  }, [summaryData, liveGameState.config]);
+  }, [liveGameState.live.gameSummary, summaryData, generateSummaryData]);
   
   const handleGenerateSummaryClick = () => {
     const unassignedHome = liveGameState.live.gameSummary.attendance.home.filter(p => !p.number).map(p => p.name);
@@ -502,12 +464,35 @@ export default function ResumenPage() {
   
   const handleExportPDF = () => {
      if (!summaryData) return;
-    const tempStateForPDF = { ...liveGameState, live: { ...liveGameState.live, score: { ...liveGameState.live.score, home: summaryData.homeScore, away: summaryData.awayScore, homeGoals: summaryData.home.goals, awayGoals: summaryData.away.goals }, gameSummary: {
-        home: { ...liveGameState.live.gameSummary.home, goals: summaryData.home.goals, penalties: summaryData.home.penalties, playerStats: summaryData.home.playerStats.reduce((acc, p) => ({...acc, [p.number]: p}), {}) },
-        away: { ...liveGameState.live.gameSummary.away, goals: summaryData.away.goals, penalties: summaryData.away.penalties, playerStats: summaryData.away.playerStats.reduce((acc, p) => ({...acc, [p.number]: p}), {}) },
-        attendance: liveGameState.live.gameSummary.attendance
-    }}};
-    // @ts-ignore - This is a temporary solution for the PDF generator
+     // Create a temporary GameState object with the summary data for the PDF generator
+    const tempStateForPDF: GameState = {
+        ...liveGameState,
+        live: {
+            ...liveGameState.live,
+            score: {
+                ...liveGameState.live.score,
+                home: summaryData.homeScore,
+                away: summaryData.awayScore,
+                homeGoals: summaryData.home.goals,
+                awayGoals: summaryData.away.goals,
+            },
+            gameSummary: {
+                home: {
+                    ...liveGameState.live.gameSummary.home,
+                    goals: summaryData.home.goals,
+                    penalties: summaryData.home.penalties,
+                    homeShotsLog: summaryData.home.shotsLog,
+                },
+                away: {
+                    ...liveGameState.live.gameSummary.away,
+                    goals: summaryData.away.goals,
+                    penalties: summaryData.away.penalties,
+                    awayShotsLog: summaryData.away.shotsLog,
+                },
+                attendance: summaryData.attendance,
+            }
+        }
+    };
     const filename = exportGameSummaryPDF(tempStateForPDF);
     toast({
         title: "Resumen Descargado",
@@ -521,14 +506,28 @@ export default function ResumenPage() {
   };
   
   const handleConfirmAddPenalty = (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs: number, periodText: string) => {
-    if (!summaryData || !penaltyContext) return;
+    if (!summaryData) return;
     
-    dispatch({ type: 'ADD_PENALTY', payload: {
-        team,
-        penalty: { playerNumber, penaltyTypeId },
-        addGameTime: gameTimeCs,
-        addPeriodText: periodText,
-    }});
+    const penaltyDef = liveGameState.config.penaltyTypes.find(p => p.id === penaltyTypeId);
+    if (!penaltyDef) return;
+
+    const teamData = liveGameState.config.teams.find(t => t.name === summaryData[`${team}TeamName`] && t.category === summaryData.categoryName);
+    const playerDetails = teamData?.players.find(p => p.number === playerNumber);
+
+    const newPenaltyLog: PenaltyLog = {
+        id: safeUUID(), team, playerNumber, playerName: playerDetails?.name, penaltyName: penaltyDef.name,
+        initialDuration: penaltyDef.duration, reducesPlayerCount: penaltyDef.reducesPlayerCount,
+        clearsOnGoal: penaltyDef.clearsOnGoal, isBenchPenalty: penaltyDef.isBenchPenalty,
+        addTimestamp: Date.now(), addGameTime: gameTimeCs, addPeriodText: periodText,
+    };
+
+    setSummaryData(prev => {
+        if (!prev) return null;
+        const newSummary = JSON.parse(JSON.stringify(prev));
+        newSummary[team].penalties.push(newPenaltyLog);
+        newSummary[team].penalties.sort((a: PenaltyLog, b: PenaltyLog) => a.addTimestamp - b.addTimestamp);
+        return newSummary;
+    });
     
     toast({ title: "Penalidad Añadida", description: "La penalidad se ha agregado al resumen."});
     setIsAddPenaltyDialogOpen(false);
@@ -541,11 +540,38 @@ export default function ResumenPage() {
   
   const handleConfirmDeletePenalty = () => {
       if (penaltyToDelete && summaryData) {
-        dispatch({ type: 'DELETE_PENALTY_LOG', payload: { team: penaltyToDelete.team, logId: penaltyToDelete.logId }});
+        setSummaryData(prev => {
+            if (!prev) return null;
+            const newSummary = JSON.parse(JSON.stringify(prev));
+            newSummary[penaltyToDelete.team].penalties = newSummary[penaltyToDelete.team].penalties.filter((p: PenaltyLog) => p.id !== penaltyToDelete.logId);
+            return newSummary;
+        });
         toast({ title: "Penalidad Eliminada", variant: "destructive" });
         setPenaltyToDelete(null);
       }
   };
+
+  const allPeriodTexts = useMemo(() => {
+    if (!summaryData) return [];
+    const playedPeriods = new Set<string>();
+    
+    [...summaryData.home.goals, ...summaryData.away.goals, ...summaryData.home.penalties, ...summaryData.away.penalties].forEach(event => {
+        const period = event.periodText || event.addPeriodText;
+        if (period && !period.toLowerCase().includes('warm-up') && !period.toLowerCase().includes('break')) {
+            playedPeriods.add(period);
+        }
+    });
+
+    const sortedPeriods = Array.from(playedPeriods);
+
+    return sortedPeriods.sort((a, b) => {
+        const getPeriodNumber = (text: string) => {
+            if (text.startsWith('OT')) return (liveGameState.config?.numberOfRegularPeriods || 2) + parseInt(text.replace('OT', ''), 10);
+            return parseInt(text.replace(/\D/g, ''), 10);
+        };
+        return getPeriodNumber(a) - getPeriodNumber(b);
+    });
+  }, [summaryData, liveGameState.config]);
 
 
   if (isLoading) {
@@ -556,6 +582,42 @@ export default function ResumenPage() {
         </div>
     );
   }
+
+  const getPlayerStatsForSummary = (team: Team, summary: SummaryData | null): SummaryPlayerStats[] => {
+    if (!summary) return [];
+    const attendance = summary.attendance[team] || [];
+    const statsMap = new Map<string, SummaryPlayerStats>();
+
+    attendance.forEach(p => {
+        statsMap.set(p.id, { id: p.id, number: p.number, name: p.name, goals: 0, assists: 0, shots: 0 });
+    });
+
+    (summary[team]?.goals || []).forEach(goal => {
+        const scorer = attendance.find(p => p.number === goal.scorer?.playerNumber);
+        if (scorer) {
+            const stat = statsMap.get(scorer.id);
+            if (stat) stat.goals++;
+        }
+        const assist = attendance.find(p => p.number === goal.assist?.playerNumber);
+        if (assist) {
+            const stat = statsMap.get(assist.id);
+            if (stat) stat.assists++;
+        }
+    });
+    
+    (summary[team]?.shotsLog || []).forEach(shot => {
+        const shooter = attendance.find(p => p.id === shot.playerId);
+        if (shooter) {
+            const stat = statsMap.get(shooter.id);
+            if (stat) stat.shots++;
+        }
+    });
+
+    return Array.from(statsMap.values());
+};
+
+  const homePlayerStats = getPlayerStatsForSummary('home', summaryData);
+  const awayPlayerStats = getPlayerStatsForSummary('away', summaryData);
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6">
@@ -597,13 +659,13 @@ export default function ResumenPage() {
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} />
-                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} />
+                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} onAdd={() => handleOpenAddPenalty('home')} onDelete={(logId) => handlePrepareDeletePenalty('home', logId)} />
+                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} onAdd={() => handleOpenAddPenalty('away')} onDelete={(logId) => handlePrepareDeletePenalty('away', logId)} />
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <PlayerStatsSection team="home" teamName={summaryData.homeTeamName} playerStats={summaryData.home.playerStats} attendance={liveGameState.live.gameSummary.attendance.home} editable={false} />
-                                    <PlayerStatsSection team="away" teamName={summaryData.awayTeamName} playerStats={summaryData.away.playerStats} attendance={liveGameState.live.gameSummary.attendance.away} editable={false} />
+                                    <PlayerStatsSection team="home" teamName={summaryData.homeTeamName} playerStats={homePlayerStats} attendance={summaryData.attendance.home} editable={true} onEdit={generateSummaryData} />
+                                    <PlayerStatsSection team="away" teamName={summaryData.awayTeamName} playerStats={awayPlayerStats} attendance={summaryData.attendance.away} editable={true} onEdit={generateSummaryData} />
                                 </div>
                             </div>
                         </ScrollArea>
@@ -615,22 +677,24 @@ export default function ResumenPage() {
                                 const homeGoalsInPeriod = summaryData.home.goals.filter(g => g.periodText === periodText);
                                 const awayGoalsInPeriod = summaryData.away.goals.filter(g => g.periodText === periodText);
                                 
-                                const getPlayerStatsForPeriod = (team: Team, period: string) => {
-                                  const goalsInPeriod = summaryData[team].goals.filter(g => g.periodText === period);
-                                  const shotsInPeriod = (summaryData[team].shotsLog || []).filter(s => s.periodText === period);
+                                const getPlayerStatsForPeriod = (team: Team, period: string, summary: SummaryData | null): SummaryPlayerStats[] => {
+                                  if (!summary) return [];
+                                  const goalsInPeriod = summary[team].goals.filter(g => g.periodText === period);
+                                  const shotsInPeriod = (summary[team].shotsLog || []).filter(s => s.periodText === period);
+                                  const attendance = summary.attendance[team];
                                   
                                   const playerStatsMap = new Map<string, SummaryPlayerStats>();
-                                  liveGameState.live.gameSummary.attendance[team].forEach(p => {
+                                  attendance.forEach(p => {
                                       playerStatsMap.set(p.id, { id: p.id, number: p.number, name: p.name, shots: 0, goals: 0, assists: 0 });
                                   });
 
                                   goalsInPeriod.forEach(g => {
-                                      const scorer = liveGameState.live.gameSummary.attendance[team].find(p => p.number === g.scorer?.playerNumber);
+                                      const scorer = attendance.find(p => p.number === g.scorer?.playerNumber);
                                       if (scorer) {
                                           const stat = playerStatsMap.get(scorer.id);
                                           if(stat) stat.goals++;
                                       }
-                                      const assist = liveGameState.live.gameSummary.attendance[team].find(p => p.number === g.assist?.playerNumber);
+                                      const assist = attendance.find(p => p.number === g.assist?.playerNumber);
                                       if (assist) {
                                           const stat = playerStatsMap.get(assist.id);
                                           if(stat) stat.assists++;
@@ -638,7 +702,7 @@ export default function ResumenPage() {
                                   });
 
                                   shotsInPeriod.forEach(s => {
-                                      const shooter = liveGameState.live.gameSummary.attendance[team].find(p => p.id === s.playerId);
+                                      const shooter = attendance.find(p => p.id === s.playerId);
                                       if(shooter) {
                                           const stat = playerStatsMap.get(shooter.id);
                                           if (stat) stat.shots++;
@@ -648,8 +712,8 @@ export default function ResumenPage() {
                                   return Array.from(playerStatsMap.values());
                                 };
 
-                                const homePlayerStatsInPeriod = getPlayerStatsForPeriod('home', periodText);
-                                const awayPlayerStatsInPeriod = getPlayerStatsForPeriod('away', periodText);
+                                const homePlayerStatsInPeriod = getPlayerStatsForPeriod('home', periodText, summaryData);
+                                const awayPlayerStatsInPeriod = getPlayerStatsForPeriod('away', periodText, summaryData);
 
 
                                 const homePenaltiesInPeriod = summaryData.home.penalties.filter(p => p.addPeriodText === periodText);
@@ -669,8 +733,8 @@ export default function ResumenPage() {
                                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={awayPenaltiesInPeriod} onAdd={() => handleOpenAddPenalty('away', periodText)} onDelete={(logId) => handlePrepareDeletePenalty('away', logId)} />
                                                 </div>
                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <PlayerStatsSection team="home" teamName={summaryData.homeTeamName} playerStats={homePlayerStatsInPeriod} attendance={liveGameState.live.gameSummary.attendance.home} editable={true} periodText={periodText} onEdit={() => generateSummaryData()} />
-                                                    <PlayerStatsSection team="away" teamName={summaryData.awayTeamName} playerStats={awayPlayerStatsInPeriod} attendance={liveGameState.live.gameSummary.attendance.away} editable={true} periodText={periodText} onEdit={() => generateSummaryData()} />
+                                                    <PlayerStatsSection team="home" teamName={summaryData.homeTeamName} playerStats={homePlayerStatsInPeriod} attendance={summaryData.attendance.home} editable={true} periodText={periodText} onEdit={generateSummaryData} />
+                                                    <PlayerStatsSection team="away" teamName={summaryData.awayTeamName} playerStats={awayPlayerStatsInPeriod} attendance={summaryData.attendance.away} editable={true} periodText={periodText} onEdit={generateSummaryData} />
                                                 </div>
                                             </div>
                                         </AccordionContent>
@@ -773,6 +837,7 @@ export default function ResumenPage() {
     
 
     
+
 
 
 
