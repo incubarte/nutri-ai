@@ -432,11 +432,12 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   );
   const commonSpanClass = cn(!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout" || state.live.clock.isFlashingZero) && "cursor-pointer hover:underline");
 
-  const activeHomePenaltiesCount = state.live.penalties.home.filter(p => p._status === 'running' && p.reducesPlayerCount).length;
+  const activeHomePenaltiesCount = state.live.penalties.home.filter(p => p._status === 'running' && (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).length;
   const playersOnIceForHome = Math.max(0, state.config.playersPerTeamOnIce - activeHomePenaltiesCount);
 
-  const activeAwayPenaltiesCount = state.live.penalties.away.filter(p => p._status === 'running' && p.reducesPlayerCount).length;
+  const activeAwayPenaltiesCount = state.live.penalties.away.filter(p => p._status === 'running' && (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).length;
   const playersOnIceForAway = Math.max(0, state.config.playersPerTeamOnIce - activeAwayPenaltiesCount);
+
 
   const handleMatchCategoryChange = (categoryId: string) => {
     dispatch({ type: 'SET_SELECTED_MATCH_CATEGORY', payload: categoryId });
