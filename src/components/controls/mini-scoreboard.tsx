@@ -210,7 +210,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
       }
     };
 
-    if (state.live.clock.periodDisplayOverride === "End of Game") {
+    if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout") {
       actionToGoToLastPeriod();
       return;
     }
@@ -279,7 +279,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
   const handleNextAction = () => {
     setEditingSegment(null);
-    if (state.live.clock.periodDisplayOverride === "End of Game") return;
+    if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout") return;
 
     if (state.live.clock.periodDisplayOverride === "Time Out") {
       if (state.live.clock.currentTime <= 0) {
@@ -394,12 +394,12 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   let isNextActionDisabled = false;
   if (state.live.clock.periodDisplayOverride === "Time Out" && state.live.clock.currentTime > 0) {
       isNextActionDisabled = true;
-  } else if (state.live.clock.periodDisplayOverride === "End of Game") {
+  } else if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout") {
       isNextActionDisabled = true;
   }
 
 
-  const showNextActionButton = state.live.clock.currentTime <= 0 && !state.live.clock.isClockRunning && state.live.clock.periodDisplayOverride !== "End of Game";
+  const showNextActionButton = state.live.clock.currentTime <= 0 && !state.live.clock.isClockRunning && state.live.clock.periodDisplayOverride !== "End of Game" && state.live.clock.periodDisplayOverride !== "Shootout";
 
 
   let nextActionButtonText = "Siguiente";
@@ -426,13 +426,13 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
   const isMainClockLastMinute = state.live.clock.currentTime < 6000 && state.live.clock.currentTime >= 0 &&
                                (state.live.clock.periodDisplayOverride !== null || state.live.clock.currentPeriod >= 0) &&
-                               state.live.clock.periodDisplayOverride !== "End of Game";
+                               state.live.clock.periodDisplayOverride !== "End of Game" && state.live.clock.periodDisplayOverride !== "Shootout";
 
   const preTimeoutTimeCs = state.live.clock.preTimeoutState?.time;
   const isPreTimeoutLastMinute = typeof preTimeoutTimeCs === 'number' && preTimeoutTimeCs < 6000 && preTimeoutTimeCs >= 0;
 
   const handleSegmentClick = (segment: EditingSegment) => {
-    if (state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero) return;
+    if (state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout" || state.live.clock.isFlashingZero) return;
     setEditingSegment(segment);
     switch (segment) {
       case 'minutes': setEditValue(String(timeParts.minutes).padStart(2, '0')); break;
@@ -442,7 +442,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   };
 
   const handleTimeEditConfirm = () => {
-    if (!editingSegment || state.live.clock.periodDisplayOverride === "End of Game") return;
+    if (!editingSegment || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout") return;
 
     const { minutes: currentMins, seconds: currentSecs, tenths: currentTenths } = timeParts;
     let newTimeCs = state.live.clock.currentTime;
@@ -489,7 +489,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     "text-5xl font-bold",
     isMainClockLastMinute ? "text-orange-500" : "text-accent"
   );
-  const commonSpanClass = cn(!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero) && "cursor-pointer hover:underline");
+  const commonSpanClass = cn(!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout" || state.live.clock.isFlashingZero) && "cursor-pointer hover:underline");
 
   const activeHomePenaltiesCount = state.live.penalties.home.filter(p => p._status === 'running' && p.reducesPlayerCount).length;
   const playersOnIceForHome = Math.max(0, state.config.playersPerTeamOnIce - activeHomePenaltiesCount);
@@ -602,12 +602,15 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const isTimeOutButtonDisabled = 
     state.live.clock.periodDisplayOverride === "Break" ||
     state.live.clock.periodDisplayOverride === "Pre-OT Break" ||
-    state.live.clock.periodDisplayOverride === "Time Out";
+    state.live.clock.periodDisplayOverride === "Time Out" ||
+    state.live.clock.periodDisplayOverride === "Shootout";
 
   const timeoutDurationInSeconds = state.config.defaultTimeoutDuration / 100;
   const autoStartBehavior = state.config.autoStartTimeouts ? "se iniciará automáticamente" : "deberá iniciarse manually";
   
   const formattedTime = state.live.clock.isFlashingZero ? "00:00" : formatTime(state.live.clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
+
+  const isShootout = state.live.clock.periodDisplayOverride === 'Shootout';
 
   return (
     <div className="relative">
@@ -755,11 +758,13 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 )}
             </div>
             <p className="text-sm text-muted-foreground text-center my-1">(Local)</p>
-            <div className="flex items-center justify-center gap-1 mt-1">
-              <Button variant="link" className="p-0 h-auto text-4xl font-bold text-accent w-24 text-center tabular-nums hover:no-underline hover:text-accent/80" onClick={() => onScoreClick('home')}>
-                {state.live.score.home}
-              </Button>
-            </div>
+            {!isShootout && (
+                <div className="flex items-center justify-center gap-1 mt-1">
+                <Button variant="link" className="p-0 h-auto text-4xl font-bold text-accent w-24 text-center tabular-nums hover:no-underline hover:text-accent/80" onClick={() => onScoreClick('home')}>
+                    {state.live.score.home}
+                </Button>
+                </div>
+            )}
             {matchedHomeTeamId && isHomePlayersDialogOpen && (
               <EditTeamPlayersDialog
                 isOpen={isHomePlayersDialogOpen}
@@ -784,16 +789,18 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 <ChevronsRight className="mr-2 h-5 w-5" /> {nextActionButtonText}
               </Button>
             ) : (
-              <Button
-                onClick={handleToggleClock}
-                className="w-full max-w-[180px] mx-auto mb-2"
-                variant={state.live.clock.isClockRunning ? "destructive" : "default"}
-                aria-label={state.live.clock.isClockRunning ? "Pausar Reloj" : "Iniciar Reloj"}
-                disabled={(state.live.clock.currentTime <= 0 && !state.live.clock.isClockRunning && state.live.clock.periodDisplayOverride !== "Time Out") || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero}
-              >
-                {state.live.clock.isClockRunning ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
-                {state.live.clock.isClockRunning ? 'Pausar' : 'Iniciar'} Reloj
-              </Button>
+                !isShootout && (
+                    <Button
+                        onClick={handleToggleClock}
+                        className="w-full max-w-[180px] mx-auto mb-2"
+                        variant={state.live.clock.isClockRunning ? "destructive" : "default"}
+                        aria-label={state.live.clock.isClockRunning ? "Pausar Reloj" : "Iniciar Reloj"}
+                        disabled={(state.live.clock.currentTime <= 0 && !state.live.clock.isClockRunning && state.live.clock.periodDisplayOverride !== "Time Out") || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero}
+                    >
+                        {state.live.clock.isClockRunning ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
+                        {state.live.clock.isClockRunning ? 'Pausar' : 'Iniciar'} Reloj
+                    </Button>
+                )
             )}
 
             {state.live.clock.periodDisplayOverride === "End of Game" ? (
@@ -802,13 +809,13 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                   )}>
                     FIN
                 </div>
-            ) : (
+            ) : !isShootout && (
                 <div className={cn(
                   "text-5xl font-bold tabular-nums flex items-baseline justify-center gap-0.5", 
                   isMainClockLastMinute ? "text-orange-500" : "text-accent",
                   state.live.clock.isFlashingZero && "animate-flashing-clock"
                 )}>
-                  {!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero) && (
+                  {!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout" || state.live.clock.isFlashingZero) && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -899,7 +906,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                       )}
                     </>
                   )}
-                  {!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero) && (
+                  {!(state.live.clock.isClockRunning || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout" || state.live.clock.isFlashingZero) && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -939,7 +946,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
               >
                 <ChevronRight className="h-5 w-5" />
               </Button>
-              {!state.live.clock.isClockRunning && state.live.clock.currentTime > 0 && state.live.clock.periodDisplayOverride !== "End of Game" && !showNextActionButton && editingSegment === null && (
+              {!state.live.clock.isClockRunning && state.live.clock.currentTime > 0 && state.live.clock.periodDisplayOverride !== "End of Game" && !isShootout && !showNextActionButton && editingSegment === null && (
                 <span className="absolute top-[-0.25rem] right-1 text-[0.6rem] font-normal text-muted-foreground normal-case px-1 rounded-sm bg-background/30">
                   Paused
                 </span>
@@ -1032,11 +1039,13 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 )}
             </div>
             <p className="text-sm text-muted-foreground text-center my-1">(Visitante)</p>
-            <div className="flex items-center justify-center gap-1 mt-1">
-              <Button variant="link" className="p-0 h-auto text-4xl font-bold text-accent w-24 text-center tabular-nums hover:no-underline hover:text-accent/80" onClick={() => onScoreClick('away')}>
-                {state.live.score.away}
-              </Button>
-            </div>
+            {!isShootout && (
+                <div className="flex items-center justify-center gap-1 mt-1">
+                <Button variant="link" className="p-0 h-auto text-4xl font-bold text-accent w-24 text-center tabular-nums hover:no-underline hover:text-accent/80" onClick={() => onScoreClick('away')}>
+                    {state.live.score.away}
+                </Button>
+                </div>
+            )}
              {matchedAwayTeamId && isAwayPlayersDialogOpen && (
               <EditTeamPlayersDialog
                 isOpen={isAwayPlayersDialogOpen}

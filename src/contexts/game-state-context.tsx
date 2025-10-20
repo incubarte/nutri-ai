@@ -4,7 +4,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
@@ -91,8 +91,8 @@ const IN_CODE_INITIAL_AVAILABLE_CATEGORIES: CategoryData[] = IN_CODE_INITIAL_CAT
 const IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY = IN_CODE_INITIAL_AVAILABLE_CATEGORIES[0]?.id || '';
 
 const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
-  home: { goals: [], penalties: [], playerStats: {}, homeShotsLog: [] },
-  away: { goals: [], penalties: [], playerStats: {}, awayShotsLog: [] },
+  home: { goals: [], penalties: [], playerStats: [], homeShotsLog: [] },
+  away: { goals: [], penalties: [], playerStats: [], awayShotsLog: [] },
   attendance: { home: [], away: [] },
 };
 
@@ -374,28 +374,28 @@ const applyScoreboardLayoutProfileToState = (state: GameState, profileId: string
 };
 
 // New helper function to centralize stat calculation
-const recalculateAllStatsFromLogs = (gameSummary: GameSummary): { homePlayerStats: Record<string, PlayerStats>, awayPlayerStats: Record<string, PlayerStats>, homeTotalShots: number, awayTotalShots: number } => {
-    const homePlayerStats: Record<string, PlayerStats> = {};
-    const awayPlayerStats: Record<string, PlayerStats> = {};
+const recalculateAllStatsFromLogs = (gameSummary: GameSummary): { homePlayerStats: SummaryPlayerStats[], awayPlayerStats: SummaryPlayerStats[], homeTotalShots: number, awayTotalShots: number } => {
+    const homePlayerStatsMap = new Map<string, SummaryPlayerStats>();
+    const awayPlayerStatsMap = new Map<string, SummaryPlayerStats>();
 
     // Initialize with all attended players to ensure they are on the list
     gameSummary.attendance.home.forEach(p => {
-        homePlayerStats[p.id] = { name: p.name, shots: 0, goals: 0, assists: 0 };
+        homePlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 });
     });
     gameSummary.attendance.away.forEach(p => {
-        awayPlayerStats[p.id] = { name: p.name, shots: 0, goals: 0, assists: 0 };
+        awayPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 });
     });
 
     // Process goals and assists
     [...gameSummary.home.goals, ...gameSummary.away.goals].forEach(goal => {
-        const stats = goal.team === 'home' ? homePlayerStats : awayPlayerStats;
+        const statsMap = goal.team === 'home' ? homePlayerStatsMap : awayPlayerStatsMap;
         const scorerId = gameSummary.attendance[goal.team].find(p => p.number === goal.scorer?.playerNumber)?.id;
-        if (scorerId && stats[scorerId]) {
-            stats[scorerId].goals += 1;
+        if (scorerId && statsMap.has(scorerId)) {
+            statsMap.get(scorerId)!.goals++;
         }
         const assistId = gameSummary.attendance[goal.team].find(p => p.number === goal.assist?.playerNumber)?.id;
-        if (assistId && stats[assistId]) {
-            stats[assistId].assists += 1;
+        if (assistId && statsMap.has(assistId)) {
+            statsMap.get(assistId)!.assists++;
         }
     });
     
@@ -404,30 +404,21 @@ const recalculateAllStatsFromLogs = (gameSummary: GameSummary): { homePlayerStat
     const awayShotsLog = gameSummary.away.awayShotsLog || [];
 
     [...homeShotsLog, ...awayShotsLog].forEach(shot => {
-        const stats = shot.team === 'home' ? homePlayerStats : awayPlayerStats;
-        if (shot.playerId && stats[shot.playerId]) {
-            stats[shot.playerId].shots += 1;
+        const statsMap = shot.team === 'home' ? homePlayerStatsMap : awayPlayerStatsMap;
+        if (shot.playerId && statsMap.has(shot.playerId)) {
+            statsMap.get(shot.playerId)!.shots++;
         }
     });
 
-    // Convert stats from ID-based to number-based for consistency with the rest of the app
-    const convertToNumberBased = (stats: Record<string, PlayerStats>, attendance: AttendedPlayerInfo[]): Record<string, PlayerStats> => {
-        const numberBasedStats: Record<string, PlayerStats> = {};
-        attendance.forEach(p => {
-            if(stats[p.id] && p.number) { // Only add if player has a number
-                numberBasedStats[p.number] = stats[p.id];
-            }
-        });
-        return numberBasedStats;
-    };
-
-    const finalHomePlayerStats = convertToNumberBased(homePlayerStats, gameSummary.attendance.home);
-    const finalAwayPlayerStats = convertToNumberBased(awayPlayerStats, gameSummary.attendance.away);
-    
     const homeTotalShots = homeShotsLog.length;
     const awayTotalShots = awayShotsLog.length;
-
-    return { homePlayerStats: finalHomePlayerStats, awayPlayerStats: finalAwayPlayerStats, homeTotalShots, awayTotalShots };
+    
+    return { 
+        homePlayerStats: Array.from(homePlayerStatsMap.values()),
+        awayPlayerStats: Array.from(awayPlayerStatsMap.values()),
+        homeTotalShots,
+        awayTotalShots 
+    };
 };
 
 
@@ -526,7 +517,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'SET_TIME': {
-        if (state.live.clock.periodDisplayOverride === "End of Game") break;
+        if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout") break;
         const newTimeCs = Math.max(0, (action.payload.minutes * 60 + action.payload.seconds) * CENTISECONDS_PER_SECOND);
         const newIsClockRunning = newTimeCs > 0 ? state.live.clock.isClockRunning : false;
         let newAbsoluteTime = state.live.clock.absoluteElapsedTimeCs;
@@ -545,7 +536,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'ADJUST_TIME': {
-        if (state.live.clock.periodDisplayOverride === "End of Game") break;
+        if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout") break;
         const { isClockRunning, clockStartTimeMs, remainingTimeAtStartCs, currentTime, periodDisplayOverride } = state.live.clock;
         let currentTimeSnapshotCs = currentTime;
         if (isClockRunning && clockStartTimeMs && remainingTimeAtStartCs !== null) {
@@ -1249,10 +1240,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'START_SHOOTOUT': {
-      newState = { ...state, live: { ...state.live, 
+      newState = { ...state, live: { ...state.live,
         shootout: {
           ...INITIAL_SHOOTOUT_STATE,
           isActive: true,
+        },
+        clock: {
+            ...state.live.clock,
+            periodDisplayOverride: 'Shootout'
         }
       }};
       break;
@@ -1332,6 +1327,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const awayGoals = awayAttempts.filter(a => a.isGoal).length;
         
         let newScore = { ...state.live.score };
+        const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
 
         if (homeGoals > awayGoals) {
             newScore.home += 1;
@@ -1354,8 +1350,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
               newScore.awayGoals = [...newScore.awayGoals, newGoal];
             }
         }
-
-        const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+        
+        // Update gameSummary goals to reflect the shootout winner's goal
         newGameSummary.home.goals = newScore.homeGoals;
         newGameSummary.away.goals = newScore.awayGoals;
 
@@ -1365,6 +1361,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 score: newScore,
                 gameSummary: newGameSummary,
                 shootout: { ...state.live.shootout, isActive: false },
+                clock: {
+                    ...state.live.clock,
+                    periodDisplayOverride: 'End of Game',
+                }
             }
         };
         break;
@@ -1724,6 +1724,7 @@ export const formatTime = (
 export const getActualPeriodText = (period: number, override: PeriodDisplayOverrideType, numberOfRegularPeriods: number): string => {
   if (override === "Time Out") return "TIME OUT";
   if (override === "End of Game") return "END OF GAME";
+  if (override === "Shootout") return "SHOOTOUT";
   if (override) return override;
   return getPeriodText(period, numberOfRegularPeriods);
 };
@@ -1791,6 +1792,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 
