@@ -22,12 +22,13 @@ export function PenaltiesDisplay({ teamDisplayType, teamName, penalties, mode = 
   if (!state.config) {
     return null; // or a loading component
   }
-
+  
+  const penaltiesToDisplay = penalties.filter(p => (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride) || !p.reducesPlayerCount);
+  
   const titleStyle = isMobile ? { fontSize: '1.125rem' } : { fontSize: `${state.config.scoreboardLayout.penaltiesTitleSize}rem` };
   const noPenaltiesStyle = isMobile ? { fontSize: '0.875rem' } : { fontSize: `${state.config.scoreboardLayout.penaltyPlayerNumberSize * 0.5}rem` };
   const morePenaltiesStyle = isMobile ? {} : { fontSize: `${state.config.scoreboardLayout.penaltyPlayerNumberSize * 0.4}rem` };
   
-  const penaltiesToDisplay = penalties.filter(p => p.reducesPlayerCount);
   const penaltiesToShow = isMobile ? penaltiesToDisplay : penaltiesToDisplay.slice(0, 3);
 
   return (

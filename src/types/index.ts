@@ -27,6 +27,7 @@ export interface Penalty {
   clearsOnGoal: boolean;
   isBenchPenalty?: boolean;
   _limitReached?: ('quantity')[];
+  _doesNotReducePlayerCountOverride?: boolean;
 }
 
 export type Team = 'home' | 'away';
@@ -346,6 +347,7 @@ export type GameAction =
   | { type: 'DELETE_PENALTY_LOG', payload: { team: Team, logId: string } }
   | { type: 'END_PENALTY_FOR_GOAL'; payload: { team: Team; penaltyId: string } }
   | { type: 'CLEAR_PENDING_POWER_PLAY_GOAL' }
+  | { type: 'TOGGLE_PENALTY_PLAYER_REDUCTION'; payload: { team: Team; penaltyId: string } }
   | { type: 'ADJUST_PENALTY_TIME'; payload: { team: Team; penaltyId: string; delta: number } }
   | { type: 'SET_PENALTY_TIME'; payload: { team: Team; penaltyId: string; time: number } }
   | { type: 'REORDER_PENALTIES'; payload: { team: Team; startIndex: number; endIndex: number } }

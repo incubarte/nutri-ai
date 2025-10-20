@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -513,11 +514,22 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 clockStartTimeMs: Date.now(),
                 remainingTimeAtStartCs: currentTime,
             };
+            if (state.config.autoActivatePuckPenalties) {
+                const activate = (penalties: Penalty[]) => penalties.map(p => {
+                    if (p._status === 'pending_puck') {
+                        return { ...p, _status: 'pending_concurrent' };
+                    }
+                    return p;
+                });
+                const newPenalties = { home: activate(state.live.penalties.home), away: activate(state.live.penalties.away) };
+                newState = { ...state, live: { ...state.live, penalties: newPenalties } };
+            }
         }
       }
       
       const updatedLiveState = {
         ...state.live,
+        penalties: newState.live?.penalties || state.live.penalties,
         clock: { ...state.live.clock, ...newClockState },
       };
       
@@ -625,8 +637,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       let pendingPPGoal: LiveState['pendingPowerPlayGoal'] = null;
       // Check for power play goal condition
-      const scoringTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamScored].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
-      const concedingTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamConceded].filter(p => p._status === 'running' && p.reducesPlayerCount).length;
+      const scoringTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamScored].filter(p => p._status === 'running' && (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).length;
+      const concedingTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamConceded].filter(p => p._status === 'running' && (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).length;
 
       if (scoringTeamOnIce > concedingTeamOnIce) {
           const firstEligiblePenalty = state.live.penalties[teamConceded].find(p => p._status === 'running' && p.clearsOnGoal);
@@ -884,7 +896,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         let startTime, expirationTime;
         
         if (penaltyDef.reducesPlayerCount) {
-          // New logic: Check auto-activation config
           newStatus = config.autoActivatePuckPenalties ? 'pending_concurrent' : 'pending_puck';
           startTime = undefined;
           expirationTime = undefined;
@@ -959,6 +970,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newState = { ...state, live: { ...state.live, pendingPowerPlayGoal: null } };
       break;
     }
+    case 'TOGGLE_PENALTY_PLAYER_REDUCTION': {
+      const { team, penaltyId } = action.payload;
+      newState = { ...state, live: { ...state.live, penalties: { ...state.live.penalties, [team]: state.live.penalties[team].map(p =>
+        p.id === penaltyId ? { ...p, _doesNotReducePlayerCountOverride: !p._doesNotReducePlayerCountOverride } : p
+      )}}};
+      break;
+    }
     case 'ADJUST_PENALTY_TIME': {
       const { team, penaltyId, delta } = action.payload;
        newState = { ...state, live: { ...state.live, penalties: { ...state.live.penalties, [team]: state.live.penalties[team].map(p =>
@@ -986,14 +1004,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'ACTIVATE_PENDING_PUCK_PENALTIES': {
       const activate = (penalties: Penalty[]) => penalties.map(p => {
         if (p._status === 'pending_puck') {
-          let updatedPenalty = { ...p, _status: 'pending_concurrent' };
-          // For penalties that don't reduce player count, start them running immediately.
-          if (!p.reducesPlayerCount) {
-            updatedPenalty._status = 'running';
-            updatedPenalty.startTime = state.live.clock._liveAbsoluteElapsedTimeCs;
-            updatedPenalty.expirationTime = state.live.clock._liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND);
-          }
-          return updatedPenalty;
+          return { ...p, _status: 'pending_concurrent' };
         }
         return p;
       });
@@ -1054,16 +1065,18 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           });
 
           let stillRunning = runningPenalties.filter(p => !expiredPenalties.find(exp => exp.id === p.id));
-          let availableSlots = config.maxConcurrentPenalties - stillRunning.filter(p => p.reducesPlayerCount).length;
-          const playersServing = new Set(stillRunning.filter(p => p.reducesPlayerCount).map(p => p.playerNumber));
+          let availableSlots = config.maxConcurrentPenalties - stillRunning.filter(p => (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).length;
+          const playersServing = new Set(stillRunning.filter(p => (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).map(p => p.playerNumber));
           
           let pendingConcurrent = teamPenalties.filter(p => p._status === 'pending_concurrent');
           for (const p of pendingConcurrent) {
               if (availableSlots > 0 && !playersServing.has(p.playerNumber)) {
                   significantChangeOccurred = true;
                   stillRunning.push({ ...p, _status: 'running', startTime: liveAbsoluteElapsedTimeCs, expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND) });
-                  playersServing.add(p.playerNumber);
-                  if (p.reducesPlayerCount) availableSlots--;
+                  if(p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride) {
+                    playersServing.add(p.playerNumber);
+                    availableSlots--;
+                  }
               }
           }
           

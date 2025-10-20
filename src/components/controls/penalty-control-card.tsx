@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useGameState, formatTime, getPeriodText, getPeriodContextFromAbsoluteTime } from '@/contexts/game-state-context';
 import type { Penalty, Team, PlayerData, PenaltyTypeDefinition } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -49,22 +49,23 @@ interface PenaltyControlCardProps {
   teamName: string;
 }
 
-const CagedUserIcon = ({ size, className }: { size: number; className?: string }) => (
+const CagedUserIcon = ({ size, className, isReducing, ...props }: { size: number; className?: string; isReducing: boolean; [key: string]: any }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
     fill="none"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className={className}
+    className={cn(className)}
     style={{ width: `${size}rem`, height: `${size}rem` }}
+    {...props}
   >
-    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" strokeWidth="2" stroke="hsl(var(--destructive))" />
-    <circle cx="12" cy="7" r="4" strokeWidth="2" stroke="hsl(var(--destructive))" />
-    <line x1="6" y1="2" x2="6" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
-    <line x1="10" y1="2" x2="10" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
-    <line x1="14" y1="2" x2="14" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
-    <line x1="18" y1="2" x2="18" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" strokeWidth="2" stroke={isReducing ? "hsl(var(--destructive))" : "hsl(var(--muted-foreground))"} />
+    <circle cx="12" cy="7" r="4" strokeWidth="2" stroke={isReducing ? "hsl(var(--destructive))" : "hsl(var(--muted-foreground))"} />
+    <line x1="6" y1="2" x2="6" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" opacity="0.5" />
+    <line x1="10" y1="2" x2="10" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" opacity="0.5" />
+    <line x1="14" y1="2" x2="14" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" opacity="0.5" />
+    <line x1="18" y1="2" x2="18" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" opacity="0.5" />
   </svg>
 );
 
@@ -151,6 +152,17 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
         });
     };
 
+    const handleTogglePlayerReduction = () => {
+      dispatch({
+        type: 'TOGGLE_PENALTY_PLAYER_REDUCTION',
+        payload: { team, penaltyId: penalty.id },
+      });
+    };
+    
+    // The penalty effectively reduces player count if its definition says so AND there's no override.
+    const isEffectivelyReducingPlayerCount = penalty.reducesPlayerCount && !penalty._doesNotReducePlayerCountOverride;
+
+
     return (
         <Card
             draggable={!isEditing && !isDeleteSelectionMode}
@@ -169,7 +181,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                 isPendingPuck && "opacity-40 bg-yellow-500/5 border-yellow-500/30",
                 penalty._limitReached && "bg-amber-500/10 border-amber-500/40",
                 isEndingSoon && "animate-flashing-border border-2",
-                !penalty.reducesPlayerCount && "border-blue-500/30"
+                !isEffectivelyReducingPlayerCount && "border-blue-500/30"
             )}
         >
             <div className="flex justify-between items-center w-full gap-2">
@@ -185,8 +197,22 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                      <TooltipProvider delayDuration={200}>
                         <Tooltip>
                             <TooltipTrigger asChild>
+                                 <button
+                                    onClick={handleTogglePlayerReduction}
+                                    disabled={isDeleteSelectionMode || isEditing}
+                                    className="cursor-pointer rounded-full p-1 hover:bg-white/10"
+                                >
+                                    <CagedUserIcon size={1.75} isReducing={isEffectivelyReducingPlayerCount} />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Clic para alternar si esta penalidad reduce</p>
+                                <p>el número de jugadores en la cancha.</p>
+                            </TooltipContent>
+                        </Tooltip>
+                         <Tooltip>
+                            <TooltipTrigger asChild>
                                 <div className="flex-1 min-w-0 cursor-help flex items-center gap-2">
-                                     <CagedUserIcon size={1.75} />
                                     <div>
                                         <p className="font-semibold text-card-foreground truncate flex items-center">
                                             {displayPenaltyNumber}
@@ -199,7 +225,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                                         </p>
                                         <p className="text-xs text-muted-foreground">
                                             Total: {formatTime(penalty.initialDuration * 100)}
-                                            {!penalty.reducesPlayerCount && <span className="text-blue-400 font-semibold"> (No reduce)</span>}
+                                            {!isEffectivelyReducingPlayerCount && <span className="text-blue-400 font-semibold"> (No reduce)</span>}
                                         </p>
                                     </div>
                                 </div>
