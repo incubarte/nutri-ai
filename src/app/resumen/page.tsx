@@ -348,25 +348,17 @@ export default function ResumenPage() {
     
     const playedPeriodNumbers = new Set<number>();
     
-    const allEvents = [
-        ...gameSummary.home.goals, ...gameSummary.away.goals, 
-        ...(gameSummary.home.homeShotsLog || []), ...(gameSummary.away.awayShotsLog || []),
-        ...gameSummary.home.penalties, ...gameSummary.away.penalties,
-    ];
-
-    allEvents.forEach(e => {
-        const periodText = (e as any).addPeriodText || e.periodText;
-        if (periodText && !periodText.toLowerCase().includes('warm-up') && !periodText.toLowerCase().includes('break')) {
-          const periodNum = parseInt(periodText.replace(/\D/g, '')) || 0;
-          if (periodText.toUpperCase().startsWith('OT')) {
-              playedPeriodNumbers.add(config.numberOfRegularPeriods + periodNum);
-          } else {
-              playedPeriodNumbers.add(periodNum);
-          }
+    const getPeriodNumberFromText = (periodText: string): number => {
+        if (!periodText) return -1;
+        if (periodText.toUpperCase().startsWith('OT')) {
+            const numPart = periodText.replace(/\D/g, '');
+            const otNumber = numPart ? parseInt(numPart, 10) : 1;
+            return config.numberOfRegularPeriods + otNumber;
         }
-    });
+        const num = parseInt(periodText.replace(/\D/g, ''), 10);
+        return isNaN(num) ? -1 : num;
+    };
 
-    // Add all periods up to the current one, even if they had no events
     if (live.clock.currentPeriod > 0) {
       for (let i = 1; i <= live.clock.currentPeriod; i++) {
         playedPeriodNumbers.add(i);
@@ -374,7 +366,9 @@ export default function ResumenPage() {
     }
     
     const sortedPeriodNumbers = Array.from(playedPeriodNumbers).sort((a,b) => a - b);
-    const allPeriodTexts = sortedPeriodNumbers.map(num => getPeriodText(num, config.numberOfRegularPeriods));
+    const allPeriodTexts = sortedPeriodNumbers
+        .map(num => getPeriodText(num, config.numberOfRegularPeriods))
+        .filter(text => !text.toLowerCase().includes('warm-up'));
 
 
     allPeriodTexts.forEach(period => {
@@ -398,7 +392,9 @@ export default function ResumenPage() {
                 if (assistId && playerStatsMap.has(assistId)) playerStatsMap.get(assistId)!.assists++;
             });
 
-            const teamShots = (gameSummary[team][`${team}ShotsLog` as const] || []).filter(s => s.periodText === period);
+            const shotsLogKey = `${team}ShotsLog` as const;
+            const teamShots = (gameSummary[team][shotsLogKey] || []).filter(s => s.periodText === period);
+
             teamShots.forEach(s => {
                 if (s.playerId && playerStatsMap.has(s.playerId)) {
                   playerStatsMap.get(s.playerId)!.shots++;
@@ -463,10 +459,10 @@ export default function ResumenPage() {
     });
 
     Object.values(summaryData.statsByPeriod).forEach(periodStats => {
-        if (periodStats[team].goals) allGoals.push(...periodStats[team].goals);
-        if (periodStats[team].penalties) allPenalties.push(...periodStats[team].penalties);
+        if (periodStats[team]?.goals) allGoals.push(...periodStats[team].goals);
+        if (periodStats[team]?.penalties) allPenalties.push(...periodStats[team].penalties);
         
-        if (periodStats[team].playerStats) {
+        if (periodStats[team]?.playerStats) {
             periodStats[team].playerStats.forEach(pStat => {
                 if (playerStatsMap.has(pStat.id)) {
                     const totalStat = playerStatsMap.get(pStat.id)!;
@@ -522,7 +518,6 @@ export default function ResumenPage() {
   const handleExportPDF = () => {
     if (!summaryData) return;
     
-    // Create a temporary state object for the PDF generator, merging the edited summary data.
     const tempStateForPDF: GameState = JSON.parse(JSON.stringify(liveGameState));
 
     tempStateForPDF.live.score.home = summaryData.homeScore;
@@ -544,25 +539,27 @@ export default function ResumenPage() {
         return acc;
     }, {} as Record<string, LivePlayerStats>);
 
-    // Reconstruct the `gameSummary`'s `playerStats` to match the expected format for the PDF generator.
     tempStateForPDF.live.gameSummary.home.playerStats = homeStats;
     tempStateForPDF.live.gameSummary.away.playerStats = awayStats;
+    
+    const homeShotsLog: ShotLog[] = [];
+    const awayShotsLog: ShotLog[] = [];
 
-    // The shots logs are not directly used by the PDF for totals, but we'll assemble them for consistency.
-    tempStateForPDF.live.gameSummary.home.homeShotsLog = [];
-    tempStateForPDF.live.gameSummary.away.awayShotsLog = [];
-    Object.values(summaryData.statsByPeriod).forEach(periodStats => {
-        periodStats.home.playerStats.forEach(pStat => {
-            for (let i = 0; i < pStat.shots; i++) {
-                tempStateForPDF.live.gameSummary.home.homeShotsLog.push({ id: `shot-${pStat.id}-${i}`, team: 'home', gameTime: 0, periodText: '', playerId: pStat.id, playerNumber: pStat.number, timestamp: 0 });
-            }
-        });
-        periodStats.away.playerStats.forEach(pStat => {
-            for (let i = 0; i < pStat.shots; i++) {
-                tempStateForPDF.live.gameSummary.away.awayShotsLog.push({ id: `shot-${pStat.id}-${i}`, team: 'away', gameTime: 0, periodText: '', playerId: pStat.id, playerNumber: pStat.number, timestamp: 0 });
-            }
-        });
+    Object.entries(summaryData.statsByPeriod).forEach(([periodText, periodStats]) => {
+      periodStats.home.playerStats.forEach(pStat => {
+        for (let i = 0; i < pStat.shots; i++) {
+          homeShotsLog.push({ id: `shot-home-${pStat.id}-${i}`, team: 'home', gameTime: 0, periodText, playerId: pStat.id, playerNumber: pStat.number, timestamp: 0, playerName: pStat.name });
+        }
+      });
+      periodStats.away.playerStats.forEach(pStat => {
+        for (let i = 0; i < pStat.shots; i++) {
+          awayShotsLog.push({ id: `shot-away-${pStat.id}-${i}`, team: 'away', gameTime: 0, periodText, playerId: pStat.id, playerNumber: pStat.number, timestamp: 0, playerName: pStat.name });
+        }
+      });
     });
+
+    tempStateForPDF.live.gameSummary.home.homeShotsLog = homeShotsLog;
+    tempStateForPDF.live.gameSummary.away.awayShotsLog = awayShotsLog;
 
 
     const filename = exportGameSummaryPDF(tempStateForPDF);
@@ -602,11 +599,12 @@ export default function ResumenPage() {
                 home: { goals: [], penalties: [], playerStats: [] }, 
                 away: { goals: [], penalties: [], playerStats: [] } 
             };
-        } else {
-             if (!newSummary.statsByPeriod[periodText][team].penalties) {
-                newSummary.statsByPeriod[periodText][team].penalties = [];
-             }
+        } else if (!newSummary.statsByPeriod[periodText][team]) {
+             newSummary.statsByPeriod[periodText][team] = { goals: [], penalties: [], playerStats: [] };
+        } else if (!newSummary.statsByPeriod[periodText][team].penalties) {
+            newSummary.statsByPeriod[periodText][team].penalties = [];
         }
+
 
         newSummary.statsByPeriod[periodText][team].penalties.push(newPenaltyLog);
         newSummary.statsByPeriod[periodText][team].penalties.sort((a: PenaltyLog, b: PenaltyLog) => a.addTimestamp - b.addTimestamp);
@@ -651,11 +649,20 @@ export default function ResumenPage() {
 
   const allPeriodTexts = useMemo(() => {
     if (!summaryData) return [];
-    return Object.keys(summaryData.statsByPeriod).sort((a, b) => {
-        const getNum = (t: string) => parseInt(t.replace(/\D/g, '')) || 0;
-        return getNum(a) - getNum(b);
-    });
-  }, [summaryData]);
+    
+    const getPeriodSortValue = (periodText: string): number => {
+        if (!periodText) return 999;
+        if (periodText.toUpperCase().startsWith('OT')) {
+            const numPart = periodText.replace(/\D/g, '');
+            const otNumber = numPart ? parseInt(numPart, 10) : 1;
+            return (liveGameState.config?.numberOfRegularPeriods || 0) + otNumber;
+        }
+        const num = parseInt(periodText.replace(/\D/g, ''), 10);
+        return isNaN(num) ? 999 : num;
+    };
+
+    return Object.keys(summaryData.statsByPeriod).sort((a, b) => getPeriodSortValue(a) - getPeriodSortValue(b));
+  }, [summaryData, liveGameState.config?.numberOfRegularPeriods]);
 
 
   if (isLoading) {
@@ -871,6 +878,8 @@ export default function ResumenPage() {
 
     
 
+
+    
 
     
 
