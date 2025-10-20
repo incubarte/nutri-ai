@@ -514,16 +514,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 clockStartTimeMs: Date.now(),
                 remainingTimeAtStartCs: currentTime,
             };
-            if (state.config.autoActivatePuckPenalties) {
-                const activate = (penalties: Penalty[]) => penalties.map(p => {
-                    if (p._status === 'pending_puck') {
-                        return { ...p, _status: 'pending_concurrent' };
-                    }
-                    return p;
-                });
-                const newPenalties = { home: activate(state.live.penalties.home), away: activate(state.live.penalties.away) };
-                newState = { ...state, live: { ...state.live, penalties: newPenalties } };
-            }
         }
       }
       
@@ -875,11 +865,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const newGameSummary = JSON.parse(JSON.stringify(live.gameSummary));
       newGameSummary[team].penalties.push(newPenaltyLog);
       
-      // If adding from summary, only update the log.
       if (addGameTime !== undefined && addPeriodText !== undefined) {
         newState = { ...state, live: { ...state.live, gameSummary: newGameSummary }};
       } else {
-        // If adding from live controls, create active penalty.
         const { _liveAbsoluteElapsedTimeCs } = live.clock;
         const limitReachedReasons: ('quantity')[] = [];
         const playerPenalties = live.gameSummary[team].penalties.filter(
@@ -972,9 +960,37 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'TOGGLE_PENALTY_PLAYER_REDUCTION': {
       const { team, penaltyId } = action.payload;
-      newState = { ...state, live: { ...state.live, penalties: { ...state.live.penalties, [team]: state.live.penalties[team].map(p =>
-        p.id === penaltyId ? { ...p, _doesNotReducePlayerCountOverride: !p._doesNotReducePlayerCountOverride } : p
-      )}}};
+      const penaltiesForTeam = [...state.live.penalties[team]];
+      const penaltyIndex = penaltiesForTeam.findIndex(p => p.id === penaltyId);
+      if (penaltyIndex === -1) break;
+
+      const penaltyToToggle = { ...penaltiesForTeam[penaltyIndex] };
+      const isCurrentlyReducing = penaltyToToggle.reducesPlayerCount && !penaltyToToggle._doesNotReducePlayerCountOverride;
+
+      if (isCurrentlyReducing) {
+        // Disabling reduction is simple
+        penaltyToToggle._doesNotReducePlayerCountOverride = true;
+      } else {
+        // Re-enabling reduction requires a slot check
+        const runningAndReducingPenalties = penaltiesForTeam.filter(
+          p => p.id !== penaltyId && p._status === 'running' && p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride
+        ).length;
+
+        if (runningAndReducingPenalties >= state.config.maxConcurrentPenalties) {
+          // No slots available, put it in pending
+          penaltyToToggle._status = 'pending_concurrent';
+          penaltyToToggle.startTime = undefined;
+          penaltyToToggle.expirationTime = undefined;
+          showToast({ title: "Sin Slots Disponibles", description: `La penalidad para #${penaltyToToggle.playerNumber} está ahora en "Esperando Slot".` });
+        } else {
+          // Slot available, re-enable it
+          penaltyToToggle._doesNotReducePlayerCountOverride = false;
+        }
+      }
+      
+      penaltiesForTeam[penaltyIndex] = penaltyToToggle;
+      
+      newState = { ...state, live: { ...state.live, penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(penaltiesForTeam) }}};
       break;
     }
     case 'ADJUST_PENALTY_TIME': {
@@ -1801,3 +1817,11 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
 
     
+
+    
+
+
+
+
+
+
