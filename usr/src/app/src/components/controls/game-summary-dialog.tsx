@@ -4,7 +4,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { useGameState, formatTime, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo, getPeriodText } from "@/contexts/game-state-context";
-import type { PlayerStats, PlayerData } from '@/types';
+import type { PlayerData, SummaryPlayerStats } from '@/types';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -181,10 +181,10 @@ const EditableShotCell = ({ team, periodText, player, onSave }: { team: Team, pe
     );
 };
 
-const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable, periodText, onEdit }: { team: Team; teamName: string; playerStats?: PlayerStats; attendance?: AttendedPlayerInfo[]; editable?: boolean; periodText?: string, onEdit?: () => void }) => {
+const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable, periodText, onEdit }: { team: Team; teamName: string; playerStats?: SummaryPlayerStats[]; attendance?: AttendedPlayerInfo[]; editable?: boolean; periodText?: string, onEdit?: () => void }) => {
     
     const attendedPlayersWithStats = useMemo(() => {
-        const statsToUse = playerStats || {};
+        const statsToUse = playerStats || [];
         const attendanceToUse = attendance || [];
 
         const playerMap = new Map<string, PlayerData & { shots: number, goals: number, assists: number }>();
@@ -203,16 +203,16 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
         });
         
         // Populate with stats
-        Object.entries(statsToUse).forEach(([playerNumber, stats]) => {
-            const playerInAttendance = attendanceToUse.find(p => p.number === playerNumber);
+        statsToUse.forEach(pStat => {
+             const playerInAttendance = attendanceToUse.find(p => p.id === pStat.id);
             if(playerInAttendance) {
                 const existingPlayer = playerMap.get(playerInAttendance.id);
                 if (existingPlayer) {
                     playerMap.set(existingPlayer.id, {
                         ...existingPlayer,
-                        shots: stats.shots || 0,
-                        goals: stats.goals || 0,
-                        assists: stats.assists || 0,
+                        shots: pStat.shots || 0,
+                        goals: pStat.goals || 0,
+                        assists: pStat.assists || 0,
                     });
                 }
             }
@@ -442,34 +442,31 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
                             goals: GoalLog[],
                             shots: ShotLog[],
                             attendance: AttendedPlayerInfo[],
-                        ): PlayerStats => {
-                             const stats: Record<string, PlayerStats> = {};
+                        ): SummaryPlayerStats[] => {
+                             const statsMap = new Map<string, SummaryPlayerStats>();
 
                             // Initialize stats for all attended players
                             attendance.forEach(p => {
-                                stats[p.number] = { name: p.name, shots: 0, goals: 0, assists: 0 };
+                                statsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 });
                             });
                             
                             goals.forEach(g => {
-                                if (g.scorer?.playerNumber) {
-                                    const key = g.scorer.playerNumber;
-                                    if (!stats[key]) stats[key] = { name: g.scorer.playerName || '', goals: 0, assists: 0, shots: 0 };
-                                    stats[key].goals++;
+                                const scorerId = attendance.find(p => p.number === g.scorer?.playerNumber)?.id;
+                                if (scorerId && statsMap.has(scorerId)) {
+                                    statsMap.get(scorerId)!.goals++;
                                 }
-                                if (g.assist?.playerNumber) {
-                                    const key = g.assist.playerNumber;
-                                    if (!stats[key]) stats[key] = { name: g.assist.playerName || '', goals: 0, assists: 0, shots: 0 };
-                                    stats[key].assists++;
+                                const assistId = attendance.find(p => p.number === g.assist?.playerNumber)?.id;
+                                if(assistId && statsMap.has(assistId)) {
+                                    statsMap.get(assistId)!.assists++;
                                 }
                             });
 
                             shots.forEach(s => {
-                                const key = s.playerNumber;
-                                if (stats[key]) {
-                                    stats[key].shots++;
+                                if (s.playerId && statsMap.has(s.playerId)) {
+                                    statsMap.get(s.playerId)!.shots++;
                                 }
                             });
-                            return stats;
+                            return Array.from(statsMap.values());
                         };
 
 

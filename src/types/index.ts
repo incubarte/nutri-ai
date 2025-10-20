@@ -164,13 +164,13 @@ export interface GameSummary {
   home: {
     goals: GoalLog[];
     penalties: PenaltyLog[];
-    playerStats: Record<string, PlayerStats>;
+    playerStats: SummaryPlayerStats[];
     homeShotsLog: ShotLog[];
   };
   away: {
     goals: GoalLog[];
     penalties: PenaltyLog[];
-    playerStats: Record<string, PlayerStats>;
+    playerStats: SummaryPlayerStats[];
     awayShotsLog: ShotLog[];
   };
   attendance: {
