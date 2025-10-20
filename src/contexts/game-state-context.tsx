@@ -270,7 +270,7 @@ const handleAutoTransition = (currentState: GameState): GameState => {
               newGameStateAfterTransition.live.clock.periodDisplayOverride = "End of Game";
           } else {
               // Tie game, go to pre-end decision state
-              newGameStateAfterTransition.live.clock.periodDisplayOverride = "Shootout";
+              newGameStateAfterTransition.live.clock.periodDisplayOverride = "AwaitingDecision";
               newGameStateAfterTransition.live.shootout.isActive = false; 
           }
       } else if (currentPeriod >= numberOfRegularPeriods) {
@@ -628,7 +628,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       newState = { ...state, live: { ...state.live, 
         score,
-        pendingPowerPlayGoal,
+        pendingPowerPlayGoal: pendingPPGoal,
         gameSummary: {
           ...newGameSummary,
           home: { ...newGameSummary.home, playerStats: homePlayerStats },
@@ -1200,7 +1200,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         if (live.score.home === live.score.away) {
             // It's a tie, go to the pre-end decision state
              newState = { ...state, live: { ...state.live,
-                clock: { ...state.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'Shootout' },
+                clock: { ...state.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
                 shootout: { ...state.live.shootout, isActive: false }
             }};
         } else {
@@ -1359,10 +1359,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             }
         }
 
+        const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+        newGameSummary.home.goals = newScore.homeGoals;
+        newGameSummary.away.goals = newScore.awayGoals;
+
         newState = {
             ...state,
             live: { ...state.live,
                 score: newScore,
+                gameSummary: newGameSummary,
                 shootout: { ...state.live.shootout, isActive: false },
                 clock: {
                     ...state.live.clock,
@@ -1727,10 +1732,8 @@ export const formatTime = (
 export const getActualPeriodText = (period: number, override: PeriodDisplayOverrideType, numberOfRegularPeriods: number, shootoutState?: ShootoutState): string => {
   if (override === "Time Out") return "TIME OUT";
   if (override === "End of Game") return "END OF GAME";
+  if (override === "AwaitingDecision") return "Decisión";
   if (override === "Shootout" ) {
-      if (shootoutState && !shootoutState.isActive) {
-        return "FINAL - EMPATE";
-      }
       return "SHOOTOUT"
   }
   if (override) return override;
@@ -1796,3 +1799,13 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
+    
+
+    
+
+
+
+
+
+

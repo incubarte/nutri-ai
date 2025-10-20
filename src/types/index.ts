@@ -214,7 +214,7 @@ export interface ConfigState extends Omit<FormatAndTimingsProfileData, 'id' | 'n
   teams: TeamData[];
 }
 
-export type PeriodDisplayOverrideType = 'Warm-up' | 'Break' | 'Pre-OT Break' | 'Time Out' | 'End of Game' | 'Shootout' | null;
+export type PeriodDisplayOverrideType = 'Warm-up' | 'Break' | 'Pre-OT Break' | 'Time Out' | 'End of Game' | 'Shootout' | 'AwaitingDecision' | null;
 
 export interface PreTimeoutState {
   period: number;
