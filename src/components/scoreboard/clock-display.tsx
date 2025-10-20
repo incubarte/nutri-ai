@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useGameState, formatTime, getActualPeriodText, getPeriodText } from '@/contexts/game-state-context';
@@ -51,16 +50,18 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
           </span>
         </div>
       ) : (
-        <div 
-          className={cn(
-            "font-bold font-headline tabular-nums tracking-tighter",
-            isMainClockLastMinute ? "text-orange-500" : "text-accent",
-            clock.isFlashingZero && "animate-flashing-clock"
-          )}
-          style={{ fontSize: `${scoreboardLayout.clockSize}rem`, lineHeight: 1 }}
-          >
-          {formattedTime}
-        </div>
+         clock.periodDisplayOverride !== 'AwaitingDecision' && (
+            <div 
+              className={cn(
+                "font-bold font-headline tabular-nums tracking-tighter",
+                isMainClockLastMinute ? "text-orange-500" : "text-accent",
+                clock.isFlashingZero && "animate-flashing-clock"
+              )}
+              style={{ fontSize: `${scoreboardLayout.clockSize}rem`, lineHeight: 1 }}
+              >
+              {formattedTime}
+            </div>
+         )
       )}
       {clock.periodDisplayOverride !== "End of Game" && (
         <div 
@@ -69,9 +70,9 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
         >
           <div className="inline-block relative">
             <span>
-              {getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods)}
+              {getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout)}
             </span>
-            {!clock.isClockRunning && clock.currentTime > 0 && clock.periodDisplayOverride !== "End of Game" && !clock.isFlashingZero && (
+            {!clock.isClockRunning && clock.currentTime > 0 && clock.periodDisplayOverride !== "End of Game" && clock.periodDisplayOverride !== 'AwaitingDecision' && !clock.isFlashingZero && (
               <span
                 className="absolute left-full top-1/2 transform -translate-y-1/2 ml-3 font-normal text-muted-foreground normal-case tracking-normal px-2 py-1 bg-background/50 rounded-md whitespace-nowrap"
                 style={{ fontSize: '0.4em', lineHeight: 'normal' }}

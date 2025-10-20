@@ -39,7 +39,7 @@ export function FullScoreboard() {
         transform: `translateX(${scoreboardLayout.scoreboardHorizontalPosition}rem)`
       }}
     >
-      {!shootout?.isActive ? (
+      {live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision' ? (
         <>
           <CompactHeaderScoreboard />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12">
@@ -47,7 +47,7 @@ export function FullScoreboard() {
             <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
           </div>
         </>
-      ) : (
+      ) : live.clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
         <div className="flex flex-col items-center gap-4">
            <h1 
             className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
@@ -66,6 +66,8 @@ export function FullScoreboard() {
               <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
            </div>
         </div>
+      ) : (
+         <CompactHeaderScoreboard />
       )}
     </div>
   );
