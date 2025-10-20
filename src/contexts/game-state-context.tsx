@@ -628,7 +628,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       newState = { ...state, live: { ...state.live, 
         score,
-        pendingPowerPlayGoal: pendingPPGoal,
+        pendingPowerPlayGoal,
         gameSummary: {
           ...newGameSummary,
           home: { ...newGameSummary.home, playerStats: homePlayerStats },
@@ -1196,14 +1196,24 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'MANUAL_END_GAME': {
-        const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
-        newState = { ...state, live: { ...state.live,
-            clock: { ...state.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
-                absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
-                clockStartTimeMs: null, remainingTimeAtStartCs: null, preTimeoutState: null,
-            },
-            playHornTrigger: state.live.playHornTrigger + 1
-        }};
+        const { live } = state;
+        if (live.score.home === live.score.away) {
+            // It's a tie, go to the pre-end decision state
+             newState = { ...state, live: { ...state.live,
+                clock: { ...state.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'Shootout' },
+                shootout: { ...state.live.shootout, isActive: false }
+            }};
+        } else {
+            // Not a tie, end the game directly
+            const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
+            newState = { ...state, live: { ...state.live,
+                clock: { ...state.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
+                    absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
+                    clockStartTimeMs: null, remainingTimeAtStartCs: null, preTimeoutState: null,
+                },
+                playHornTrigger: state.live.playHornTrigger + 1
+            }};
+        }
         break;
     }
     case 'ADD_EXTRA_OVERTIME': {
@@ -1239,7 +1249,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'START_SHOOTOUT': {
-      newState = { ...state, live: { ...state.live,
+      newState = { ...state, live: { ...state.live, 
         shootout: {
           ...INITIAL_SHOOTOUT_STATE,
           isActive: true,
@@ -1329,8 +1339,24 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         
         if (homeGoals > awayGoals) {
             newScore.home += 1;
+            const lastScorer = homeAttempts.filter(a => a.isGoal).pop() || homeAttempts.pop();
+            if (lastScorer) {
+              const newGoal: GoalLog = {
+                id: safeUUID(), team: 'home', timestamp: Date.now(), gameTime: 0, periodText: 'SO',
+                scorer: { playerNumber: lastScorer.playerNumber, playerName: lastScorer.playerName },
+              };
+               newScore.homeGoals = [...newScore.homeGoals, newGoal];
+            }
         } else if (awayGoals > homeGoals) {
             newScore.away += 1;
+            const lastScorer = awayAttempts.filter(a => a.isGoal).pop() || awayAttempts.pop();
+             if (lastScorer) {
+              const newGoal: GoalLog = {
+                id: safeUUID(), team: 'away', timestamp: Date.now(), gameTime: 0, periodText: 'SO',
+                scorer: { playerNumber: lastScorer.playerNumber, playerName: lastScorer.playerName },
+              };
+              newScore.awayGoals = [...newScore.awayGoals, newGoal];
+            }
         }
         
         newState = {
@@ -1770,14 +1796,3 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
-
-    
-
-    
-
-
-
-
-
-
-

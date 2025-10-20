@@ -494,7 +494,7 @@ export default function ControlsPage() {
             team,
             timestamp: Date.now(),
             gameTime: currentLive.clock.currentTime,
-            periodText: getActualPeriodText(currentLive.clock.currentPeriod, currentLive.clock.periodDisplayOverride, currentConfig.numberOfRegularPeriods),
+            periodText: getActualPeriodText(currentLive.clock.currentPeriod, currentLive.clock.periodDisplayOverride, currentConfig.numberOfRegularPeriods, currentLive.shootout),
             scorer: { playerNumber: scorerNumber, playerName: scorerPlayer?.name },
             assist: assistNumber ? { playerNumber: assistNumber, playerName: assistPlayer?.name } : undefined,
           };
@@ -1040,7 +1040,3 @@ export default function ControlsPage() {
     </div>
   );
 }
-
-    
-
-    
