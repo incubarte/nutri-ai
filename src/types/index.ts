@@ -1,4 +1,5 @@
 
+
 export interface PlayerStats {
   name: string;
   shots: number;
@@ -73,6 +74,8 @@ export interface FormatAndTimingsProfileData {
   defaultPenaltyTypeId: string | null;
   enableMaxPenaltiesLimit: boolean;
   maxPenaltiesPerPlayer: number;
+  gameTimeMode: 'running' | 'stopped';
+  autoActivatePuckPenalties: boolean;
   enableStoppedTimeAlert: boolean;
   stoppedTimeAlertGoalDiff: number;
   stoppedTimeAlertTimeRemaining: number;

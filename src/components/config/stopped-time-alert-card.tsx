@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 
 export interface StoppedTimeAlertCardRef {
   handleSave: () => boolean;
@@ -26,12 +27,17 @@ export const StoppedTimeAlertCard = forwardRef<StoppedTimeAlertCardRef, StoppedT
   const { dispatch } = useGameState();
   const { onDirtyChange, initialValues } = props;
 
+  const [localGameTimeMode, setLocalGameTimeMode] = useState<'running' | 'stopped'>(initialValues.gameTimeMode || 'stopped');
+  const [localAutoActivatePuck, setLocalAutoActivatePuck] = useState(initialValues.autoActivatePuckPenalties || false);
   const [localEnableAlert, setLocalEnableAlert] = useState(initialValues.enableStoppedTimeAlert || false);
   const [localGoalDiff, setLocalGoalDiff] = useState(String(initialValues.stoppedTimeAlertGoalDiff || 1));
   const [localTimeRemaining, setLocalTimeRemaining] = useState(String(initialValues.stoppedTimeAlertTimeRemaining || 2));
+  
   const [isDirtyLocal, setIsDirtyLocal] = useState(false);
 
   const setValuesFromProfile = (values: Partial<FormatAndTimingsProfileData>) => {
+    setLocalGameTimeMode(values.gameTimeMode || 'stopped');
+    setLocalAutoActivatePuck(values.autoActivatePuckPenalties || false);
     setLocalEnableAlert(values.enableStoppedTimeAlert || false);
     setLocalGoalDiff(String(values.stoppedTimeAlertGoalDiff || 1));
     setLocalTimeRemaining(String(values.stoppedTimeAlertTimeRemaining || 2));
@@ -45,6 +51,13 @@ export const StoppedTimeAlertCard = forwardRef<StoppedTimeAlertCardRef, StoppedT
   useEffect(() => {
     onDirtyChange(isDirtyLocal);
   }, [isDirtyLocal, onDirtyChange]);
+  
+  const handleGameTimeModeChange = (value: 'running' | 'stopped') => {
+    setLocalGameTimeMode(value);
+    // Set default for auto-activation based on mode
+    setLocalAutoActivatePuck(value === 'running');
+    markDirty();
+  }
 
   const markDirty = () => setIsDirtyLocal(true);
 
@@ -55,7 +68,9 @@ export const StoppedTimeAlertCard = forwardRef<StoppedTimeAlertCardRef, StoppedT
       const goalDiff = parseInt(localGoalDiff, 10);
       const timeRemaining = parseInt(localTimeRemaining, 10);
       
-      const updates = {
+      const updates: Partial<FormatAndTimingsProfileData> = {
+        gameTimeMode: localGameTimeMode,
+        autoActivatePuckPenalties: localAutoActivatePuck,
         enableStoppedTimeAlert: localEnableAlert,
         stoppedTimeAlertGoalDiff: isNaN(goalDiff) || goalDiff < 0 ? 1 : goalDiff,
         stoppedTimeAlertTimeRemaining: isNaN(timeRemaining) || timeRemaining < 0 ? 2 : timeRemaining,
@@ -74,11 +89,46 @@ export const StoppedTimeAlertCard = forwardRef<StoppedTimeAlertCardRef, StoppedT
   }));
 
   return (
-    <ControlCardWrapper title="Alerta de Tiempo Frenado">
-      <div className="space-y-4">
+    <ControlCardWrapper title="Modo de Juego y Alertas">
+       <div className="space-y-6">
+        <div>
+          <Label className="text-base font-semibold">Modo de Tiempo de Juego</Label>
+          <RadioGroup 
+            value={localGameTimeMode}
+            onValueChange={handleGameTimeModeChange}
+            className="flex gap-4 mt-2"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="stopped" id="mode-stopped" />
+              <Label htmlFor="mode-stopped" className="font-normal cursor-pointer">Tiempo Pausado</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="running" id="mode-running" />
+              <Label htmlFor="mode-running" className="font-normal cursor-pointer">Tiempo Corrido</Label>
+            </div>
+          </RadioGroup>
+          <p className="text-xs text-muted-foreground mt-1.5">
+            Define el comportamiento por defecto de algunas configuraciones.
+          </p>
+        </div>
+        
+        <div className="flex items-center justify-between p-4 border rounded-md bg-muted/20">
+          <Label htmlFor="autoActivatePuckSwitch" className="flex flex-col space-y-1">
+            <span className="font-semibold text-base">Activar Penalidades Automáticamente al Iniciar Reloj</span>
+            <span className="font-normal leading-snug text-muted-foreground text-xs">
+              Si está activo, las faltas en "Esperando Puck" se activan solas al correr el tiempo. Si no, se requiere el botón "Puck en Juego".
+            </span>
+          </Label>
+          <Switch
+            id="autoActivatePuckSwitch"
+            checked={localAutoActivatePuck}
+            onCheckedChange={(checked) => { setLocalAutoActivatePuck(checked); markDirty(); }}
+          />
+        </div>
+
         <div className="flex items-center justify-between p-4 border rounded-md bg-muted/20">
           <Label htmlFor="enableStoppedTimeAlertSwitch" className="flex flex-col space-y-1">
-            <span className="font-semibold text-base">Activar Alerta</span>
+            <span className="font-semibold text-base">Activar Alerta de Tiempo Frenado</span>
             <span className="font-normal leading-snug text-muted-foreground text-xs">
               Muestra un aviso en Controles para frenar el reloj si la diferencia de goles y el tiempo son bajos.
             </span>
