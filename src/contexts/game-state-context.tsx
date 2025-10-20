@@ -631,7 +631,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const concedingTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamConceded].filter(p => p._status === 'running' && (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).length;
 
       if (scoringTeamOnIce > concedingTeamOnIce) {
-          const firstEligiblePenalty = state.live.penalties[teamConceded].find(p => p._status === 'running' && p.clearsOnGoal);
+          // Find the first penalty that IS reducing player count and can be cleared by a goal.
+          const firstEligiblePenalty = state.live.penalties[teamConceded].find(p => 
+              p._status === 'running' && 
+              p.clearsOnGoal &&
+              (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)
+          );
           if (firstEligiblePenalty) {
               pendingPPGoal = { team: teamConceded, penaltyId: firstEligiblePenalty.id };
           }
@@ -1819,6 +1824,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 
