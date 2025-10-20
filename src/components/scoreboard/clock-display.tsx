@@ -44,9 +44,8 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
           "font-bold font-headline text-accent tracking-tight py-4 md:py-6 lg:py-8 flex flex-col items-center justify-center",
           className
         )}>
-          <span style={{ fontSize: `${scoreboardLayout.periodSize * 0.7}rem` }}>Ganador</span>
           <span style={{ fontSize: `${scoreboardLayout.periodSize}rem`}} className="mt-1 md:mt-2">
-            {getWinnerName()}
+            {getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout)}
           </span>
         </div>
       ) : (
@@ -97,3 +96,5 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
     </div>
   );
 }
+
+    

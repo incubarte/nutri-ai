@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -1197,13 +1196,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'MANUAL_END_GAME': {
         const { live } = state;
-        if (live.score.home === live.score.away) {
-            // It's a tie, go to the pre-end decision state
-             newState = { ...state, live: { ...state.live,
-                clock: { ...state.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
-                shootout: { ...state.live.shootout, isActive: false }
-            }};
-        } else {
+        if (live.score.home !== live.score.away) {
             // Not a tie, end the game directly
             const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
             newState = { ...state, live: { ...state.live,
@@ -1213,16 +1206,22 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 },
                 playHornTrigger: state.live.playHornTrigger + 1
             }};
+        } else {
+            // It's a tie, go to the pre-end decision state
+             newState = { ...state, live: { ...state.live,
+                clock: { ...state.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
+                shootout: { ...state.live.shootout, isActive: false }
+            }};
         }
         break;
     }
     case 'ADD_EXTRA_OVERTIME': {
-      if (state.live.score.home !== state.live.score.away) break;
+      if (state.live.clock.periodDisplayOverride !== 'AwaitingDecision') break;
       const { config, live } = state;
       const newNumberOfOTs = config.numberOfOvertimePeriods + 1;
       const newTotalPeriods = config.numberOfRegularPeriods + newNumberOfOTs;
       
-      const newAbsoluteTime = calculateAbsoluteTimeForPeriod(newTotalPeriods - 1, 0, state);
+      const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
       const autoStart = config.autoStartPreOTBreaks && config.defaultPreOTBreakDuration > 0;
 
       newState = {
@@ -1235,7 +1234,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           ...live,
           clock: {
             ...live.clock,
-            currentPeriod: newTotalPeriods - 1, // The period before the new OT
+            currentPeriod: live.clock.currentPeriod,
             currentTime: config.defaultPreOTBreakDuration,
             periodDisplayOverride: 'Pre-OT Break',
             isClockRunning: autoStart,
@@ -1249,6 +1248,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'START_SHOOTOUT': {
+      if (state.live.clock.periodDisplayOverride !== 'AwaitingDecision') break;
       newState = { ...state, live: { ...state.live, 
         shootout: {
           ...INITIAL_SHOOTOUT_STATE,
@@ -1330,44 +1330,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'FINISH_SHOOTOUT': {
-        if (!state.live.shootout) break;
-        const { homeAttempts, awayAttempts } = state.live.shootout;
-        const homeGoals = homeAttempts.filter(a => a.isGoal).length;
-        const awayGoals = awayAttempts.filter(a => a.isGoal).length;
-        
         let newScore = { ...state.live.score };
-        
-        if (homeGoals > awayGoals) {
-            newScore.home += 1;
-            const lastScorer = homeAttempts.filter(a => a.isGoal).pop() || homeAttempts.pop();
-            if (lastScorer) {
-              const newGoal: GoalLog = {
-                id: safeUUID(), team: 'home', timestamp: Date.now(), gameTime: 0, periodText: 'SO',
-                scorer: { playerNumber: lastScorer.playerNumber, playerName: lastScorer.playerName },
-              };
-              newScore.homeGoals = [...newScore.homeGoals, newGoal];
-            }
-        } else if (awayGoals > homeGoals) {
-            newScore.away += 1;
-            const lastScorer = awayAttempts.filter(a => a.isGoal).pop() || awayAttempts.pop();
-             if (lastScorer) {
-              const newGoal: GoalLog = {
-                id: safeUUID(), team: 'away', timestamp: Date.now(), gameTime: 0, periodText: 'SO',
-                scorer: { playerNumber: lastScorer.playerNumber, playerName: lastScorer.playerName },
-              };
-              newScore.awayGoals = [...newScore.awayGoals, newGoal];
+        const { shootout } = state.live;
+        if (shootout && shootout.isActive) {
+            const homeGoals = shootout.homeAttempts.filter(a => a.isGoal).length;
+            const awayGoals = shootout.awayAttempts.filter(a => a.isGoal).length;
+            
+            if (homeGoals > awayGoals) {
+                newScore.home += 1;
+            } else if (awayGoals > homeGoals) {
+                newScore.away += 1;
             }
         }
-
-        const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-        newGameSummary.home.goals = newScore.homeGoals;
-        newGameSummary.away.goals = newScore.awayGoals;
 
         newState = {
             ...state,
             live: { ...state.live,
                 score: newScore,
-                gameSummary: newGameSummary,
                 shootout: { ...state.live.shootout, isActive: false },
                 clock: {
                     ...state.live.clock,
@@ -1731,7 +1710,7 @@ export const formatTime = (
 
 export const getActualPeriodText = (period: number, override: PeriodDisplayOverrideType, numberOfRegularPeriods: number, shootoutState?: ShootoutState): string => {
   if (override === "Time Out") return "TIME OUT";
-  if (override === "End of Game") return "PARTIDO FINALIZADO";
+  if (override === "End of Game") return "FINALIZADO";
   if (override === "AwaitingDecision") return "PRE-FINAL";
   if (override === "Shootout" || (shootoutState && shootoutState.isActive)) {
       return "SHOOTOUT"
@@ -1799,7 +1778,6 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
-
     
 
     
@@ -1810,3 +1788,6 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
 
 
 
+
+
+    
