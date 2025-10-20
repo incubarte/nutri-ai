@@ -1,15 +1,16 @@
 
+
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useGameState, formatTime, type Team, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo, SUMMARY_DATA_STORAGE_KEY, getPeriodText } from "@/contexts/game-state-context";
-import type { PlayerData, GoalLog, PlayerStats as LivePlayerStats, GameSummary, SummaryPlayerStats, GameState } from "@/types";
+import type { PlayerData, GoalLog, PlayerStats as LivePlayerStats, GameSummary, SummaryPlayerStats, GameState, ShootoutState, ShootoutAttempt } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter as UiTableFooter } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Goal, Siren, FileText, FileDown, BarChart3, Edit3, Check, XCircle, Trash2, PlusCircle, X, AlertTriangle, Info, RefreshCw } from "lucide-react";
+import { Goal, Siren, FileText, FileDown, BarChart3, Edit3, Check, XCircle, Trash2, PlusCircle, X, AlertTriangle, Info, RefreshCw, Swords } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { exportGameSummaryPDF } from "@/lib/pdf-generator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -42,6 +43,7 @@ interface SummaryData {
       home: AttendedPlayerInfo[];
       away: AttendedPlayerInfo[];
   };
+  shootout?: ShootoutState;
 }
 // --- Fin de Modelos de Datos ---
 
@@ -307,6 +309,43 @@ const PlayerStatsSection = ({ team, teamName, playerStats, onStatsChange, editab
     );
 };
 
+const ShootoutSection = ({ teamName, attempts }: { teamName: string; attempts: ShootoutAttempt[] }) => {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-xl"><Swords className="h-5 w-5" />Tiros de Penal (Shootout)</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {attempts.length > 0 ? (
+                <Table>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead>Ronda</TableHead>
+                        <TableHead>Jugador</TableHead>
+                        <TableHead>Resultado</TableHead>
+                    </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                    {attempts.map(attempt => (
+                        <TableRow key={attempt.id}>
+                            <TableCell className="font-mono">{attempt.round}</TableCell>
+                            <TableCell>
+                                <div className="font-semibold">#{attempt.playerNumber}</div>
+                                <div className="text-xs text-muted-foreground">{attempt.playerName || '---'}</div>
+                            </TableCell>
+                            <TableCell>
+                                {attempt.isGoal ? <span className="text-green-500 font-bold">Gol</span> : <span className="text-destructive">Atajado/Fallado</span>}
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                    </TableBody>
+                </Table>
+                ) : <p className="text-sm text-muted-foreground">Sin tiros de penal registrados.</p>}
+            </CardContent>
+        </Card>
+    );
+};
+
 
 export default function ResumenPage() {
   const { state: liveGameState, isLoading } = useGameState();
@@ -342,33 +381,34 @@ export default function ResumenPage() {
     const { live, config } = liveGameState;
     if (!live || !config) return;
     
-    const { gameSummary } = live;
+    const { gameSummary, shootout } = live;
 
     const statsByPeriod: Record<string, PeriodStats> = {};
     
     const playedPeriodNumbers = new Set<number>();
     
-    const getPeriodNumberFromText = (periodText: string): number => {
-        if (!periodText) return -1;
-        if (periodText.toUpperCase().startsWith('OT')) {
-            const numPart = periodText.replace(/\D/g, '');
-            const otNumber = numPart ? parseInt(numPart, 10) : 1;
-            return config.numberOfRegularPeriods + otNumber;
-        }
-        const num = parseInt(periodText.replace(/\D/g, ''), 10);
-        return isNaN(num) ? -1 : num;
-    };
-
+    // Determine played periods from the clock state
     if (live.clock.currentPeriod > 0) {
       for (let i = 1; i <= live.clock.currentPeriod; i++) {
         playedPeriodNumbers.add(i);
       }
     }
     
+    // Also add periods from events just in case
+    const allEvents = [...gameSummary.home.goals, ...gameSummary.away.goals, ...gameSummary.home.penalties, ...gameSummary.away.penalties];
+    allEvents.forEach(event => {
+        const periodText = (event as GoalLog).periodText || (event as PenaltyLog).addPeriodText;
+        if (periodText && !periodText.toLowerCase().includes('warm-up') && !periodText.toLowerCase().includes('break')) {
+             const periodNum = parseInt(periodText.replace(/\D/g, ''), 10);
+             if (!isNaN(periodNum) && periodNum > 0) playedPeriodNumbers.add(periodNum);
+        }
+    });
+
     const sortedPeriodNumbers = Array.from(playedPeriodNumbers).sort((a,b) => a - b);
+    
     const allPeriodTexts = sortedPeriodNumbers
         .map(num => getPeriodText(num, config.numberOfRegularPeriods))
-        .filter(text => !text.toLowerCase().includes('warm-up'));
+        .filter(text => !text.toLowerCase().includes('warm-up') && !text.toLowerCase().includes('break'));
 
 
     allPeriodTexts.forEach(period => {
@@ -420,7 +460,8 @@ export default function ResumenPage() {
         awayScore: live.score.away,
         categoryName: getCategoryNameById(config.selectedMatchCategory, config.availableCategories) || 'N/A',
         attendance: gameSummary.attendance,
-        statsByPeriod
+        statsByPeriod,
+        shootout: shootout.isActive ? shootout : undefined,
     };
     setSummaryData(newSummaryData);
     toast({ title: "Resumen Generado", description: "Se han cargado los datos del partido actual." });
@@ -518,51 +559,47 @@ export default function ResumenPage() {
   const handleExportPDF = () => {
     if (!summaryData) return;
     
-    const tempStateForPDF: GameState = JSON.parse(JSON.stringify(liveGameState));
+    // Create a temporary state that mirrors the structure needed by the PDF generator
+    // but populated with data from summaryData.
+    const stateForPDF: GameState = JSON.parse(JSON.stringify(liveGameState));
 
-    tempStateForPDF.live.score.home = summaryData.homeScore;
-    tempStateForPDF.live.score.away = summaryData.awayScore;
-    tempStateForPDF.live.gameSummary.home.goals = homeAggregatedStats.goals;
-    tempStateForPDF.live.gameSummary.away.goals = awayAggregatedStats.goals;
-    tempStateForPDF.live.gameSummary.home.penalties = homeAggregatedStats.penalties;
-    tempStateForPDF.live.gameSummary.away.penalties = awayAggregatedStats.penalties;
-    tempStateForPDF.live.gameSummary.attendance = summaryData.attendance;
+    stateForPDF.live.homeTeamName = summaryData.homeTeamName;
+    stateForPDF.live.awayTeamName = summaryData.awayTeamName;
+    stateForPDF.live.score.home = summaryData.homeScore;
+    stateForPDF.live.score.away = summaryData.awayScore;
     
-    // Aggregate player stats from summaryData for the PDF.
-    const homeStats = homeAggregatedStats.playerStats.reduce((acc, p) => {
-        if(p.number) acc[p.number] = { name: p.name, shots: p.shots, goals: p.goals, assists: p.assists };
-        return acc;
-    }, {} as Record<string, LivePlayerStats>);
-    
-    const awayStats = awayAggregatedStats.playerStats.reduce((acc, p) => {
-        if(p.number) acc[p.number] = { name: p.name, shots: p.shots, goals: p.goals, assists: p.assists };
-        return acc;
-    }, {} as Record<string, LivePlayerStats>);
-
-    tempStateForPDF.live.gameSummary.home.playerStats = homeStats;
-    tempStateForPDF.live.gameSummary.away.playerStats = awayStats;
-    
-    const homeShotsLog: ShotLog[] = [];
-    const awayShotsLog: ShotLog[] = [];
-
-    Object.entries(summaryData.statsByPeriod).forEach(([periodText, periodStats]) => {
-      periodStats.home.playerStats.forEach(pStat => {
-        for (let i = 0; i < pStat.shots; i++) {
-          homeShotsLog.push({ id: `shot-home-${pStat.id}-${i}`, team: 'home', gameTime: 0, periodText, playerId: pStat.id, playerNumber: pStat.number, timestamp: 0, playerName: pStat.name });
-        }
-      });
-      periodStats.away.playerStats.forEach(pStat => {
-        for (let i = 0; i < pStat.shots; i++) {
-          awayShotsLog.push({ id: `shot-away-${pStat.id}-${i}`, team: 'away', gameTime: 0, periodText, playerId: pStat.id, playerNumber: pStat.number, timestamp: 0, playerName: pStat.name });
-        }
-      });
+    const allHomeShotsLogs: ShotLog[] = [];
+    const allAwayShotsLogs: ShotLog[] = [];
+    Object.values(summaryData.statsByPeriod).forEach(periodStats => {
+        periodStats.home.playerStats.forEach(pStat => {
+            for (let i = 0; i < (pStat.shots || 0); i++) {
+                allHomeShotsLogs.push({ id: `hs-${pStat.id}-${i}`, team: 'home', timestamp: 0, gameTime: 0, periodText: '', playerId: pStat.id, playerNumber: pStat.number, playerName: pStat.name });
+            }
+        });
+        periodStats.away.playerStats.forEach(pStat => {
+            for (let i = 0; i < (pStat.shots || 0); i++) {
+                allAwayShotsLogs.push({ id: `as-${pStat.id}-${i}`, team: 'away', timestamp: 0, gameTime: 0, periodText: '', playerId: pStat.id, playerNumber: pStat.number, playerName: pStat.name });
+            }
+        });
     });
 
-    tempStateForPDF.live.gameSummary.home.homeShotsLog = homeShotsLog;
-    tempStateForPDF.live.gameSummary.away.awayShotsLog = awayShotsLog;
-
-
-    const filename = exportGameSummaryPDF(tempStateForPDF);
+    stateForPDF.live.gameSummary = {
+        home: {
+            goals: homeAggregatedStats.goals,
+            penalties: homeAggregatedStats.penalties,
+            playerStats: homeAggregatedStats.playerStats.reduce((acc, p) => { acc[p.number] = p; return acc; }, {} as Record<string, SummaryPlayerStats>),
+            homeShotsLog: allHomeShotsLogs,
+        },
+        away: {
+            goals: awayAggregatedStats.goals,
+            penalties: awayAggregatedStats.penalties,
+            playerStats: awayAggregatedStats.playerStats.reduce((acc, p) => { acc[p.number] = p; return acc; }, {} as Record<string, SummaryPlayerStats>),
+            awayShotsLog: allAwayShotsLogs,
+        },
+        attendance: summaryData.attendance,
+    };
+    
+    const filename = exportGameSummaryPDF(stateForPDF);
     toast({
         title: "Resumen Descargado",
         description: `El archivo ${filename} se ha guardado.`,
@@ -718,6 +755,15 @@ export default function ResumenPage() {
                                      <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={awayAggregatedStats.penalties} />
                                 </div>
                                 <Separator />
+                                {summaryData.shootout && summaryData.shootout.isActive && (
+                                    <>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <ShootoutSection teamName={summaryData.homeTeamName} attempts={summaryData.shootout.homeAttempts} />
+                                            <ShootoutSection teamName={summaryData.awayTeamName} attempts={summaryData.shootout.awayAttempts} />
+                                        </div>
+                                        <Separator />
+                                    </>
+                                )}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <PlayerStatsSection team="home" teamName={summaryData.homeTeamName} playerStats={homeAggregatedStats.playerStats} editable={false} />
                                     <PlayerStatsSection team="away" teamName={summaryData.awayTeamName} playerStats={awayAggregatedStats.playerStats} editable={false} />
@@ -878,8 +924,6 @@ export default function ResumenPage() {
 
     
 
-
-    
 
     
 

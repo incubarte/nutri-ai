@@ -401,3 +401,14 @@ export interface GameState {
   _lastActionOriginator?: string;
   _lastUpdatedTimestamp?: number;
 }
+
+
+// --- Type for player stats within the summary component ---
+export interface SummaryPlayerStats {
+  id: string;
+  number: string;
+  name: string;
+  goals: number;
+  assists: number;
+  shots: number;
+}
