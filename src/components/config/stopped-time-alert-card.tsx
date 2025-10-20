@@ -113,9 +113,9 @@ export const StoppedTimeAlertCard = forwardRef<StoppedTimeAlertCardRef, StoppedT
         
         <div className="flex items-center justify-between p-4 border rounded-md bg-muted/20">
           <Label htmlFor="autoActivatePuckSwitch" className="flex flex-col space-y-1">
-            <span className="font-semibold text-base">Activar Penalidades Automáticamente al Iniciar Reloj</span>
+            <span className="font-semibold text-base">Saltear Estado "Esperando Puck" en las penalidades</span>
             <span className="font-normal leading-snug text-muted-foreground text-xs">
-              Si está activo, las faltas en "Esperando Puck" se activan solas al correr el tiempo. Si no, se requiere el botón "Puck en Juego".
+              Si está activo, las nuevas faltas pasan directo a "Esperando Slot". Si no, se requiere el botón "Puck en Juego".
             </span>
           </Label>
           <Switch
@@ -171,5 +171,3 @@ export const StoppedTimeAlertCard = forwardRef<StoppedTimeAlertCardRef, StoppedT
 });
 
 StoppedTimeAlertCard.displayName = "StoppedTimeAlertCard";
-
-    
