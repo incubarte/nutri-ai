@@ -25,13 +25,17 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
   const preTimeoutTimeCs = clock.preTimeoutState?.time;
   const isPreTimeoutLastMinute = typeof preTimeoutTimeCs === 'number' && preTimeoutTimeCs < 6000 && preTimeoutTimeCs >= 0;
 
-  const getWinnerName = () => {
+  const getWinnerText = () => {
+    if (clock.periodDisplayOverride !== 'End of Game') {
+      return getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout);
+    }
+    
     if (score.home > score.away) {
-      return homeTeamName || 'Local';
+      return `GANADOR: ${homeTeamName || 'Local'}`;
     } else if (score.away > score.home) {
-      return awayTeamName || 'Visitante';
+      return `GANADOR: ${awayTeamName || 'Visitante'}`;
     } else {
-      return "Empate";
+      return "EMPATE";
     }
   };
 
@@ -59,7 +63,7 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
       >
         <div className="inline-block relative">
           <span>
-            {getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout)}
+            {getWinnerText()}
           </span>
           {!clock.isClockRunning && clock.currentTime > 0 && clock.periodDisplayOverride !== "End of Game" && clock.periodDisplayOverride !== 'AwaitingDecision' && !clock.isFlashingZero && (
             <span
@@ -85,5 +89,3 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
     </div>
   );
 }
-
-    
