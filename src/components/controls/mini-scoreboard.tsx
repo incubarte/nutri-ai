@@ -320,10 +320,9 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
             `El descanso no ha finalizado. ¿Estás seguro de que quieres iniciar ${getPeriodText(nextNumericPeriod, state.config.numberOfRegularPeriods)}?`,
             actionToConfirm
         );
-      } else { 
+      } else {
         const actionToConfirm = () => {
           dispatch({ type: 'MANUAL_END_GAME' });
-          toast({ title: "Partido Finalizado", description: "El juego ha terminado." });
         };
         const currentBreakDurationCs = state.live.clock.periodDisplayOverride === "Break" ? state.config.defaultBreakDuration : state.config.defaultPreOTBreakDuration;
         const shouldConfirm = state.live.clock.currentTime > 0 && state.live.clock.currentTime < currentBreakDurationCs;
@@ -335,35 +334,9 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
         );
       }
     } else if (state.live.clock.periodDisplayOverride === null) { // Active game period
-      if (state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS && MAX_TOTAL_GAME_PERIODS > 0) {
-        const actionToConfirm = () => {
-            if (state.live.score.home === state.live.score.away) {
-                dispatch({ type: 'MANUAL_END_GAME' });
-            } else {
-                dispatch({ type: 'MANUAL_END_GAME' });
-                toast({ title: "Partido Finalizado", description: "El juego ha terminado." });
-            }
-        };
-
-        const shouldConfirm = state.live.clock.currentTime > 0;
-        checkAndConfirm(
-          shouldConfirm,
-          "Confirmar Finalizar Partido",
-          "El reloj del último período aún tiene tiempo. ¿Estás seguro de que quieres finalizar el partido ahora?",
-          actionToConfirm
-        );
-      } else if (MAX_TOTAL_GAME_PERIODS === 0 && state.live.clock.currentPeriod === 0) { 
-         const actionToConfirm = () => {
-          dispatch({ type: 'MANUAL_END_GAME' });
-          toast({ title: "Partido Finalizado", description: "El juego ha terminado." });
-        };
-        const shouldConfirm = state.live.clock.currentTime > 0;
-         checkAndConfirm(
-          shouldConfirm,
-          "Confirmar Finalizar Partido",
-          "La entrada en calor aún tiene tiempo. ¿Estás seguro de que quieres finalizar el partido ahora?",
-          actionToConfirm
-        );
+      if ((state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS && MAX_TOTAL_GAME_PERIODS > 0) || (MAX_TOTAL_GAME_PERIODS === 0 && state.live.clock.currentPeriod === 0)) {
+        // Direct action, no confirmation dialog needed anymore for this case.
+        dispatch({ type: 'MANUAL_END_GAME' });
       } else { 
         const actionToConfirm = () => {
           const isPreOT = state.live.clock.currentPeriod >= state.config.numberOfRegularPeriods;
