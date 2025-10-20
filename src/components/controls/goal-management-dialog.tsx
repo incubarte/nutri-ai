@@ -21,7 +21,7 @@ interface GoalManagementDialogProps {
   team: Team | null;
 }
 
-function AddGoalForm({ team }: { team: Team }) {
+function AddGoalForm({ team, onGoalAdded }: { team: Team, onGoalAdded: () => void }) {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
   const [scorerNumber, setScorerNumber] = useState('');
@@ -85,6 +85,7 @@ function AddGoalForm({ team }: { team: Team }) {
     toast({ title: "Gol Añadido", description: `Gol para el jugador #${trimmedScorerNumber} registrado.` });
     setScorerNumber('');
     setAssistNumber('');
+    onGoalAdded();
   };
 
   return (
@@ -336,7 +337,7 @@ export function GoalManagementDialog({ isOpen, onOpenChange, team }: GoalManagem
           </DialogDescription>
         </DialogHeader>
 
-        <AddGoalForm team={team} />
+        <AddGoalForm team={team} onGoalAdded={() => onOpenChange(false)} />
 
         <Separator className="my-4" />
         
