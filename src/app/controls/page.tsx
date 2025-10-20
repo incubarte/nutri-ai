@@ -13,7 +13,7 @@ import type { PlayerData, RemoteCommand, AccessRequest, TunnelState } from '@/ty
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X, Fingerprint, FileText } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X, Fingerprint, FileText, Flag } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
 import { safeUUID } from '@/lib/utils';
@@ -730,7 +730,12 @@ export default function ControlsPage() {
     toast({ title: "Overtime Extra Añadido", description: "Se ha añadido un período de OT y se ha iniciado un descanso." });
   };
   
-  const isTiedAndFinished = state.live.clock.periodDisplayOverride === 'End of Game' && state.live.score.home === state.live.score.away;
+  const handleFinalizeAsTie = () => {
+    dispatch({ type: 'MANUAL_END_GAME' });
+    toast({ title: "Partido Finalizado", description: "El juego ha sido finalizado como empate." });
+  }
+
+  const isTiedAndFinished = state.live.clock.periodDisplayOverride === 'Shootout' && !state.live.shootout.isActive;
 
   const performStartShootout = () => {
     dispatch({ type: 'START_SHOOTOUT' });
@@ -854,21 +859,30 @@ export default function ControlsPage() {
       )}
       
       {isTiedAndFinished && (
-          <div className="flex flex-col items-center gap-2 mt-4">
-            <Button
-              onClick={handleAddExtraOvertime}
-              className="w-full max-w-[200px] mx-auto bg-blue-600 hover:bg-blue-700"
-              aria-label="Añadir Overtime Extra"
-            >
-              <PlusCircle className="mr-2 h-5 w-5" /> Añadir Overtime Extra
-            </Button>
-            <Button
-              onClick={handlePrepareStartShootout}
-              className="w-full max-w-[200px] mx-auto bg-indigo-600 hover:bg-indigo-700"
-            >
-              <Swords className="mr-2 h-5 w-5" />
-              Ir a Tanda de Penales
-            </Button>
+          <div className="flex flex-col items-center gap-2 mt-4 p-4 border-2 border-dashed rounded-lg">
+            <h3 className="text-lg font-bold text-center mb-2">Partido Finalizado en Empate</h3>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button
+                onClick={handleAddExtraOvertime}
+                className="bg-blue-600 hover:bg-blue-700"
+                aria-label="Añadir Overtime Extra"
+              >
+                <PlusCircle className="mr-2 h-5 w-5" /> Añadir Overtime Extra
+              </Button>
+              <Button
+                onClick={handlePrepareStartShootout}
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                <Swords className="mr-2 h-5 w-5" />
+                Ir a Tanda de Penales
+              </Button>
+               <Button
+                onClick={handleFinalizeAsTie}
+                variant="destructive"
+              >
+                <Flag className="mr-2 h-5 w-5" /> Finalizar Partido (Empate)
+              </Button>
+            </div>
           </div>
       )}
 

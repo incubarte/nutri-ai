@@ -263,33 +263,32 @@ const handleAutoTransition = (currentState: GameState): GameState => {
       newGameStateAfterTransition.live.clock.absoluteElapsedTimeCs = newAbsoluteTime;
       newGameStateAfterTransition.live.clock._liveAbsoluteElapsedTimeCs = newAbsoluteTime;
 
-      // Check for end of regulation
-      if (currentPeriod === numberOfRegularPeriods) {
-        if (score.home !== score.away) {
-          // Game ends, no tie
-          newGameStateAfterTransition.live.clock.periodDisplayOverride = "End of Game";
-        } else if (numberOfOvertimePeriods > 0) {
-          // Tie game, start pre-OT break
-          newGameStateAfterTransition.live.clock.currentTime = defaultPreOTBreakDuration;
-          newGameStateAfterTransition.live.clock.isClockRunning = autoStartPreOTBreaks && defaultPreOTBreakDuration > 0;
-          newGameStateAfterTransition.live.clock.periodDisplayOverride = 'Pre-OT Break';
-        } else {
-          // Tie game, no OT configured, end game
-          newGameStateAfterTransition.live.clock.periodDisplayOverride = "End of Game";
-        }
-      } else if (currentPeriod < totalGamePeriods) {
-        // Start a regular break
+      // Check for end of regulation or last OT
+      if (currentPeriod >= totalGamePeriods) {
+          if (score.home !== score.away) {
+              // Game ends, no tie
+              newGameStateAfterTransition.live.clock.periodDisplayOverride = "End of Game";
+          } else {
+              // Tie game, go to pre-end decision state
+              newGameStateAfterTransition.live.clock.periodDisplayOverride = "Shootout"; // Re-using this to show tie-breaker options
+              newGameStateAfterTransition.live.shootout.isActive = false; // But shootout is not active yet
+          }
+      } else if (currentPeriod >= numberOfRegularPeriods) {
+          // It's a regular OT period that ended (but not the last one)
+          if (score.home !== score.away) {
+              // Golden goal situation in a non-final OT, game is over
+              newGameStateAfterTransition.live.clock.periodDisplayOverride = "End of Game";
+          } else {
+              // Start a pre-OT break before the next OT
+              newGameStateAfterTransition.live.clock.currentTime = defaultPreOTBreakDuration;
+              newGameStateAfterTransition.live.clock.isClockRunning = autoStartPreOTBreaks && defaultPreOTBreakDuration > 0;
+              newGameStateAfterTransition.live.clock.periodDisplayOverride = 'Pre-OT Break';
+          }
+      } else {
+        // End of a regular period, not the final one
         newGameStateAfterTransition.live.clock.currentTime = defaultBreakDuration;
         newGameStateAfterTransition.live.clock.isClockRunning = autoStartBreaks && defaultBreakDuration > 0;
         newGameStateAfterTransition.live.clock.periodDisplayOverride = 'Break';
-      } else if (currentPeriod < totalGamePeriods) {
-        // Start another pre-OT break if there are multiple OTs
-        newGameStateAfterTransition.live.clock.currentTime = defaultPreOTBreakDuration;
-        newGameStateAfterTransition.live.clock.isClockRunning = autoStartPreOTBreaks && defaultPreOTBreakDuration > 0;
-        newGameStateAfterTransition.live.clock.periodDisplayOverride = 'Pre-OT Break';
-      } else {
-        // End of the game (after last OT)
-        newGameStateAfterTransition.live.clock.periodDisplayOverride = "End of Game";
       }
       break;
 
@@ -629,7 +628,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       newState = { ...state, live: { ...state.live, 
         score,
-        pendingPowerPlayGoal: pendingPPGoal,
+        pendingPowerPlayGoal,
         gameSummary: {
           ...newGameSummary,
           home: { ...newGameSummary.home, playerStats: homePlayerStats },
@@ -1208,7 +1207,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'ADD_EXTRA_OVERTIME': {
-      if (state.live.clock.periodDisplayOverride !== 'End of Game' || state.live.score.home !== state.live.score.away) break;
+      if (state.live.score.home !== state.live.score.away) break;
       const { config, live } = state;
       const newNumberOfOTs = config.numberOfOvertimePeriods + 1;
       const newTotalPeriods = config.numberOfRegularPeriods + newNumberOfOTs;
@@ -1327,8 +1326,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const awayGoals = awayAttempts.filter(a => a.isGoal).length;
         
         let newScore = { ...state.live.score };
-        const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-
+        
         if (homeGoals > awayGoals) {
             newScore.home += 1;
             const lastScorer = homeAttempts.filter(a => a.isGoal).pop() || homeAttempts.pop();
@@ -1351,7 +1349,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             }
         }
         
-        // Update gameSummary goals to reflect the shootout winner's goal
+        const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
         newGameSummary.home.goals = newScore.homeGoals;
         newGameSummary.away.goals = newScore.awayGoals;
 
@@ -1724,7 +1722,13 @@ export const formatTime = (
 export const getActualPeriodText = (period: number, override: PeriodDisplayOverrideType, numberOfRegularPeriods: number): string => {
   if (override === "Time Out") return "TIME OUT";
   if (override === "End of Game") return "END OF GAME";
-  if (override === "Shootout") return "SHOOTOUT";
+  if (override === "Shootout" ) {
+      const { state } = useGameState();
+      if (!state.live.shootout.isActive) {
+        return "FINAL - EMPATE";
+      }
+      return "SHOOTOUT"
+  }
   if (override) return override;
   return getPeriodText(period, numberOfRegularPeriods);
 };
@@ -1792,6 +1796,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 
