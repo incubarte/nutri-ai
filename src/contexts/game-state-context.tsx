@@ -400,7 +400,10 @@ const recalculateAllStatsFromLogs = (gameSummary: GameSummary): { homePlayerStat
     });
     
     // Process shots
-    [...(gameSummary.home.homeShotsLog || []), ...(gameSummary.away.awayShotsLog || [])].forEach(shot => {
+    const homeShotsLog = gameSummary.home.homeShotsLog || [];
+    const awayShotsLog = gameSummary.away.awayShotsLog || [];
+
+    [...homeShotsLog, ...awayShotsLog].forEach(shot => {
         const stats = shot.team === 'home' ? homePlayerStats : awayPlayerStats;
         if (shot.playerId && stats[shot.playerId]) {
             stats[shot.playerId].shots += 1;
@@ -421,8 +424,8 @@ const recalculateAllStatsFromLogs = (gameSummary: GameSummary): { homePlayerStat
     const finalHomePlayerStats = convertToNumberBased(homePlayerStats, gameSummary.attendance.home);
     const finalAwayPlayerStats = convertToNumberBased(awayPlayerStats, gameSummary.attendance.away);
     
-    const homeTotalShots = (gameSummary.home.homeShotsLog || []).length;
-    const awayTotalShots = (gameSummary.away.awayShotsLog || []).length;
+    const homeTotalShots = homeShotsLog.length;
+    const awayTotalShots = awayShotsLog.length;
 
     return { homePlayerStats: finalHomePlayerStats, awayPlayerStats: finalAwayPlayerStats, homeTotalShots, awayTotalShots };
 };
@@ -725,6 +728,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
       const shotsLogKey = `${team}ShotsLog` as const;
+      if (!newGameSummary[team][shotsLogKey]) {
+        newGameSummary[team][shotsLogKey] = [];
+      }
       newGameSummary[team][shotsLogKey].push(newShotLog);
       
       const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
@@ -821,8 +827,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         },
         gameSummary: {
           ...gameSummary,
-          home: { ...gameSummary.home, playerStats: homePlayerStats },
-          away: { ...gameSummary.away, playerStats: awayPlayerStats },
+          home: { ...newGameSummary.home, playerStats: homePlayerStats },
+          away: { ...newGameSummary.away, playerStats: awayPlayerStats },
         },
         playHornTrigger: state.live.playHornTrigger + 1,
       }};
