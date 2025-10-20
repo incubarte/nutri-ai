@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import { useGameState, formatTime, type Team, getCategoryNameById, getEndReasonText } from "@/contexts/game-state-context";
+import { useGameState, formatTime, type Team, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo } from "@/contexts/game-state-context";
 import type { PlayerData, PenaltyLog, GoalLog, PlayerStats as LivePlayerStats } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -234,7 +234,7 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas - {teamName}</CardTitle>
-                {editable && (
+                 {editable && periodText ? (
                     <div className="flex gap-2">
                         {isEditing ? (
                             <>
@@ -242,23 +242,25 @@ const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable,
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><X className="h-5 w-5" /></Button>
                             </>
                         ) : (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="outline" size="sm" onClick={handleEditClick} disabled={!periodText}>
-                                            <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
-                                        </Button>
-                                    </TooltipTrigger>
-                                    {!periodText && (
-                                        <TooltipContent>
-                                            <p>La edición de tiros debe hacerse por período en la pestaña "Detalle por Periodo".</p>
-                                        </TooltipContent>
-                                    )}
-                                </Tooltip>
-                            </TooltipProvider>
+                            <Button variant="outline" size="sm" onClick={handleEditClick}>
+                                <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
+                            </Button>
                         )}
                     </div>
-                )}
+                ) : editable && !periodText ? (
+                     <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="outline" size="sm" disabled>
+                                    <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>La edición de tiros debe hacerse por período en la pestaña "Detalle por Periodo".</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                ) : null}
             </CardHeader>
             <CardContent>
                 <TooltipProvider>
@@ -344,8 +346,6 @@ export default function ResumenPage() {
   const [overwriteConfirm, setOverwriteConfirm] = useState<{ onConfirm: () => void } | null>(null);
   const [unassignedPlayerWarning, setUnassignedPlayerWarning] = useState<{ players: string[]; onConfirm: () => void } | null>(null);
   
-  const [refreshKey, setRefreshKey] = useState(0);
-
   const generateSummaryData = useCallback(() => {
     const { live, config } = liveGameState;
     
@@ -370,7 +370,8 @@ export default function ResumenPage() {
         }
       });
       
-      (live.gameSummary[team]?.[`${team}ShotsLog` as const] || []).forEach(shot => {
+      const shotsLogKey = `${team}ShotsLog` as const;
+      (live.gameSummary[team]?.[shotsLogKey] || []).forEach(shot => {
         const shooter = attendance.find(p => p.id === shot.playerId);
         if (shooter) {
            const stat = statsMap.get(shooter.id);
@@ -404,13 +405,12 @@ export default function ResumenPage() {
   }, [liveGameState]);
 
   useEffect(() => {
-    // Auto-generate summary on first load if there's game data
     const { goals: homeGoals, penalties: homePenalties } = liveGameState.live.gameSummary.home;
     const { goals: awayGoals, penalties: awayPenalties } = liveGameState.live.gameSummary.away;
     if (homeGoals.length > 0 || homePenalties.length > 0 || awayGoals.length > 0 || awayPenalties.length > 0) {
       generateSummaryData();
     }
-  }, []); // Run only on mount
+  }, []); 
   
   const allPeriodTexts = useMemo(() => {
     if (!summaryData) return [];
@@ -517,6 +517,7 @@ export default function ResumenPage() {
         addPeriodText: periodText,
     }});
     
+    // Force a re-calculation of summary data
     generateSummaryData();
     
     toast({ title: "Penalidad Añadida", description: "La penalidad se ha agregado al resumen."});
@@ -587,13 +588,13 @@ export default function ResumenPage() {
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} />
-                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} />
+                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} onAdd={() => handleOpenAddPenalty('home')} onDelete={(logId) => handlePrepareDeletePenalty('home', logId)} />
+                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} onAdd={() => handleOpenAddPenalty('away')} onDelete={(logId) => handlePrepareDeletePenalty('away', logId)} />
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <PlayerStatsSection team="home" teamName={summaryData.homeTeamName} playerStats={summaryData.home.playerStats} />
-                                    <PlayerStatsSection team="away" teamName={summaryData.awayTeamName} playerStats={summaryData.away.playerStats} />
+                                    <PlayerStatsSection team="home" teamName={summaryData.homeTeamName} playerStats={summaryData.home.playerStats} attendance={liveGameState.live.gameSummary.attendance.home} editable={false} />
+                                    <PlayerStatsSection team="away" teamName={summaryData.awayTeamName} playerStats={summaryData.away.playerStats} attendance={liveGameState.live.gameSummary.attendance.away} editable={false} />
                                 </div>
                             </div>
                         </ScrollArea>
@@ -659,8 +660,8 @@ export default function ResumenPage() {
                                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={awayPenaltiesInPeriod} onAdd={() => handleOpenAddPenalty('away', periodText)} onDelete={(logId) => handlePrepareDeletePenalty('away', logId)} />
                                                 </div>
                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <PlayerStatsSection team="home" teamName={summaryData.homeTeamName} playerStats={homePlayerStatsInPeriod} editable={true} periodText={periodText} onEdit={() => generateSummaryData()} />
-                                                    <PlayerStatsSection team="away" teamName={summaryData.awayTeamName} playerStats={awayPlayerStatsInPeriod} editable={true} periodText={periodText} onEdit={() => generateSummaryData()} />
+                                                    <PlayerStatsSection team="home" teamName={summaryData.homeTeamName} playerStats={homePlayerStatsInPeriod} attendance={liveGameState.live.gameSummary.attendance.home} editable={true} periodText={periodText} onEdit={() => generateSummaryData()} />
+                                                    <PlayerStatsSection team="away" teamName={summaryData.awayTeamName} playerStats={awayPlayerStatsInPeriod} attendance={liveGameState.live.gameSummary.attendance.away} editable={true} periodText={periodText} onEdit={() => generateSummaryData()} />
                                                 </div>
                                             </div>
                                         </AccordionContent>
@@ -737,17 +738,17 @@ export default function ResumenPage() {
             <AlertDialog open={!!unassignedPlayerWarning} onOpenChange={() => setUnassignedPlayerWarning(null)}>
                 <AlertDialogContent>
                     <AlertTitle className="flex items-center gap-2"><AlertTriangle className="text-amber-500" /> Jugadores sin Número Asignado</AlertTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogDesc>
                         Los siguientes jugadores tienen asistencia registrada pero no tienen un número asignado. Si continúas, no podrás editar sus estadísticas de tiros más adelante.
-                    </AlertDialogDescription>
+                    </AlertDialogDesc>
                     <ScrollArea className="max-h-32 mt-4 border bg-muted/50 p-2 rounded-md">
                        <ul className="list-disc pl-5">
                             {unassignedPlayerWarning.players.map((name, i) => <li key={i}>{name}</li>)}
                        </ul>
                     </ScrollArea>
-                    <AlertDialogDescription className="mt-2">
+                    <AlertDialogDesc className="mt-2">
                         ¿Deseas generar el resumen de todas formas?
-                    </AlertDialogDescription>
+                    </AlertDialogDesc>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setUnassignedPlayerWarning(null)}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={() => { unassignedPlayerWarning.onConfirm(); setUnassignedPlayerWarning(null); }}>
@@ -763,4 +764,5 @@ export default function ResumenPage() {
     
 
     
+
 
