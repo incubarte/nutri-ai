@@ -731,7 +731,7 @@ export default function ControlsPage() {
   };
   
   const handleFinalizeAsTie = () => {
-    dispatch({ type: 'MANUAL_END_GAME' });
+    dispatch({ type: 'FINISH_SHOOTOUT' });
     toast({ title: "Partido Finalizado", description: "El juego ha sido finalizado como empate." });
   }
 

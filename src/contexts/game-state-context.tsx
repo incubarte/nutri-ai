@@ -1345,7 +1345,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 id: safeUUID(), team: 'home', timestamp: Date.now(), gameTime: 0, periodText: 'SO',
                 scorer: { playerNumber: lastScorer.playerNumber, playerName: lastScorer.playerName },
               };
-               newScore.homeGoals = [...newScore.homeGoals, newGoal];
+              newScore.homeGoals = [...newScore.homeGoals, newGoal];
             }
         } else if (awayGoals > homeGoals) {
             newScore.away += 1;
@@ -1731,9 +1731,9 @@ export const formatTime = (
 
 export const getActualPeriodText = (period: number, override: PeriodDisplayOverrideType, numberOfRegularPeriods: number, shootoutState?: ShootoutState): string => {
   if (override === "Time Out") return "TIME OUT";
-  if (override === "End of Game") return "END OF GAME";
-  if (override === "AwaitingDecision") return "Decisión";
-  if (override === "Shootout" ) {
+  if (override === "End of Game") return "PARTIDO FINALIZADO";
+  if (override === "AwaitingDecision") return "PRE-FINAL";
+  if (override === "Shootout" || (shootoutState && shootoutState.isActive)) {
       return "SHOOTOUT"
   }
   if (override) return override;
@@ -1803,6 +1803,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 
