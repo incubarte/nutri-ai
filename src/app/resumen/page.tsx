@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import { useGameState, formatTime, type Team, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo, SUMMARY_DATA_STORAGE_KEY } from "@/contexts/game-state-context";
+import { useGameState, formatTime, type Team, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo, SUMMARY_DATA_STORAGE_KEY, getPeriodText } from "@/contexts/game-state-context";
 import type { PlayerData, GoalLog, PlayerStats as LivePlayerStats, GameSummary, SummaryPlayerStats, GameState } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -346,7 +346,7 @@ export default function ResumenPage() {
 
     const statsByPeriod: Record<string, PeriodStats> = {};
     
-    const allPeriodTextsSet = new Set<string>();
+    const playedPeriodNumbers = new Set<number>();
     
     const allEvents = [
         ...gameSummary.home.goals, ...gameSummary.away.goals, 
@@ -357,14 +357,25 @@ export default function ResumenPage() {
     allEvents.forEach(e => {
         const periodText = (e as any).addPeriodText || e.periodText;
         if (periodText && !periodText.toLowerCase().includes('warm-up') && !periodText.toLowerCase().includes('break')) {
-          allPeriodTextsSet.add(periodText);
+          const periodNum = parseInt(periodText.replace(/\D/g, '')) || 0;
+          if (periodText.toUpperCase().startsWith('OT')) {
+              playedPeriodNumbers.add(config.numberOfRegularPeriods + periodNum);
+          } else {
+              playedPeriodNumbers.add(periodNum);
+          }
         }
     });
 
-    const allPeriodTexts = Array.from(allPeriodTextsSet).sort((a,b) => {
-        const getNum = (t: string) => parseInt(t.replace(/\D/g, '')) || 0;
-        return getNum(a) - getNum(b);
-    });
+    // Add all periods up to the current one, even if they had no events
+    if (live.clock.currentPeriod > 0) {
+      for (let i = 1; i <= live.clock.currentPeriod; i++) {
+        playedPeriodNumbers.add(i);
+      }
+    }
+    
+    const sortedPeriodNumbers = Array.from(playedPeriodNumbers).sort((a,b) => a - b);
+    const allPeriodTexts = sortedPeriodNumbers.map(num => getPeriodText(num, config.numberOfRegularPeriods));
+
 
     allPeriodTexts.forEach(period => {
         statsByPeriod[period] = {
@@ -860,6 +871,8 @@ export default function ResumenPage() {
 
     
 
+
+    
 
     
 
