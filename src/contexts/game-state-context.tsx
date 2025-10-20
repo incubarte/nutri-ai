@@ -1358,7 +1358,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
               newScore.awayGoals = [...newScore.awayGoals, newGoal];
             }
         }
-        
+
         newState = {
             ...state,
             live: { ...state.live,
