@@ -490,7 +490,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       let newClockState: Partial<ClockState> = {};
       let newAbsoluteElapsedTimeCs = absoluteElapsedTimeCs;
-      let newPenalties: PenaltiesState | undefined;
 
       if (isClockRunning) { // Stopping the clock
         let preciseCurrentTimeCs = currentTime;
@@ -514,33 +513,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 clockStartTimeMs: Date.now(),
                 remainingTimeAtStartCs: currentTime,
             };
-
-            // Conditionally activate penalties
-            if (state.config.autoActivatePuckPenalties) {
-                const activate = (penalties: Penalty[]) => penalties.map(p => {
-                    if (p._status === 'pending_puck') {
-                        let updatedPenalty = { ...p, _status: 'pending_concurrent' };
-                        if (!p.reducesPlayerCount) {
-                            updatedPenalty._status = 'running';
-                            updatedPenalty.startTime = state.live.clock._liveAbsoluteElapsedTimeCs;
-                            updatedPenalty.expirationTime = state.live.clock._liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND);
-                        }
-                        return updatedPenalty;
-                    }
-                    return p;
-                });
-                newPenalties = {
-                    home: activate(state.live.penalties.home),
-                    away: activate(state.live.penalties.away)
-                };
-            }
         }
       }
       
       const updatedLiveState = {
         ...state.live,
         clock: { ...state.live.clock, ...newClockState },
-        ...(newPenalties && { penalties: newPenalties })
       };
       
       newState = { ...state, live: updatedLiveState };
@@ -906,7 +884,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         let startTime, expirationTime;
         
         if (penaltyDef.reducesPlayerCount) {
-          newStatus = 'pending_puck';
+          // New logic: Check auto-activation config
+          newStatus = config.autoActivatePuckPenalties ? 'pending_concurrent' : 'pending_puck';
           startTime = undefined;
           expirationTime = undefined;
         } else {
@@ -1807,3 +1786,5 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
+    

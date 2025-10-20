@@ -600,8 +600,8 @@ export default function ControlsPage() {
   const shouldShowPendingPuckButton = useMemo(() => {
     const hasPending = state.live.penalties.home.some(p => p._status === 'pending_puck') ||
                        state.live.penalties.away.some(p => p._status === 'pending_puck');
-    return hasPending && !state.config.autoActivatePuckPenalties;
-  }, [state.live.penalties, state.config.autoActivatePuckPenalties]);
+    return hasPending;
+  }, [state.live.penalties]);
 
 
   const handleScoreClick = (team: Team) => {
@@ -1041,3 +1041,5 @@ export default function ControlsPage() {
     </div>
   );
 }
+
+    
