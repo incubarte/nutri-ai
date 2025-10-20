@@ -22,6 +22,8 @@ import { AddPenaltyForm } from "@/components/shared/add-penalty-form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription as AlertDialogDesc, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle as AlertTitle } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { safeUUID } from "@/lib/utils";
+
 
 // Simplified model for the summary page
 interface SummaryPlayerStats {
@@ -349,6 +351,9 @@ export default function ResumenPage() {
   const generateSummaryData = useCallback(() => {
     const { live, config } = liveGameState;
     
+    // Always clear old data first
+    setSummaryData(null);
+    
     const calculatePlayerStats = (team: Team): SummaryPlayerStats[] => {
       const attendance = live.gameSummary.attendance[team] || [];
       const statsMap = new Map<string, SummaryPlayerStats>();
@@ -411,6 +416,13 @@ export default function ResumenPage() {
       generateSummaryData();
     }
   }, []); 
+
+   // Effect to refresh summary data whenever live game summary changes
+  useEffect(() => {
+    if (summaryData) { // Only refresh if a summary is already being displayed
+      generateSummaryData();
+    }
+  }, [liveGameState.live.gameSummary, generateSummaryData, summaryData]);
   
   const allPeriodTexts = useMemo(() => {
     if (!summaryData) return [];
@@ -440,8 +452,9 @@ export default function ResumenPage() {
     const allUnassigned = [...unassignedHome, ...unassignedAway];
 
     const confirmAndGenerate = () => {
+      setSummaryData(null); // Clean the model first
       if (allUnassigned.length > 0) {
-        setUnassignedPlayerWarning({ players: allUnassigned, onConfirm: generateSummaryData });
+        setUnassignedPlayerWarning({ players: allUnassigned, onConfirm: () => { generateSummaryData(); toast({ title: "Resumen Generado" }); } });
       } else {
         generateSummaryData();
         toast({ title: "Resumen Generado", description: "Se han cargado los datos del partido actual." });
@@ -517,9 +530,6 @@ export default function ResumenPage() {
         addPeriodText: periodText,
     }});
     
-    // Force a re-calculation of summary data
-    generateSummaryData();
-    
     toast({ title: "Penalidad Añadida", description: "La penalidad se ha agregado al resumen."});
     setIsAddPenaltyDialogOpen(false);
     setPenaltyContext(null);
@@ -532,7 +542,6 @@ export default function ResumenPage() {
   const handleConfirmDeletePenalty = () => {
       if (penaltyToDelete && summaryData) {
         dispatch({ type: 'DELETE_PENALTY_LOG', payload: { team: penaltyToDelete.team, logId: penaltyToDelete.logId }});
-        generateSummaryData();
         toast({ title: "Penalidad Eliminada", variant: "destructive" });
         setPenaltyToDelete(null);
       }
@@ -588,8 +597,8 @@ export default function ResumenPage() {
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} onAdd={() => handleOpenAddPenalty('home')} onDelete={(logId) => handlePrepareDeletePenalty('home', logId)} />
-                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} onAdd={() => handleOpenAddPenalty('away')} onDelete={(logId) => handlePrepareDeletePenalty('away', logId)} />
+                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.home.penalties} />
+                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.away.penalties} />
                                 </div>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -764,5 +773,6 @@ export default function ResumenPage() {
     
 
     
+
 
 
