@@ -79,7 +79,7 @@ export function FullScoreboard() {
 
   return (
     <div 
-      className="flex flex-col transition-transform duration-200 h-full"
+      className="flex flex-col transition-transform duration-200 flex-grow"
       style={{
         gap: `${scoreboardLayout.mainContentGap}rem`,
         paddingTop: `${scoreboardLayout.scoreboardVerticalPosition}rem`,
