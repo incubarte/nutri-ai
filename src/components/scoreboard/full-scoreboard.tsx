@@ -109,7 +109,7 @@ export function FullScoreboard({ className }: { className?: string }) {
     >
       <div 
         ref={headerRef} 
-        className="absolute top-0 left-0 right-0 z-20"
+        className="absolute top-0 left-0 right-0 z-10"
         style={{
             paddingTop: `${scoreboardLayout.scoreboardVerticalPosition}rem`,
         }}
@@ -118,14 +118,14 @@ export function FullScoreboard({ className }: { className?: string }) {
       </div>
 
       <div 
-        className="absolute inset-0 z-10"
+        className="absolute inset-0 z-0"
         style={{
             paddingTop: `calc(${headerHeight}px + ${scoreboardLayout.mainContentGap}rem)`,
         }}
       >
         <div className="relative flex-grow h-full">
             {showOverlay && (
-             <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+             <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm">
                 {overlayText === "Valentino Caffe" ? <ValentinoCaffeAd /> : <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>}
             </div>
             )}
