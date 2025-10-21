@@ -7,6 +7,23 @@ import { CompactHeaderScoreboard } from './compact-header-scoreboard';
 import { PenaltiesDisplay } from './penalties-display';
 import { ShootoutDisplay, MAX_DISPLAY_SLOTS } from './shootout-display';
 
+const ValentinoCaffeAd = () => {
+    return (
+        <div className="flex flex-col items-center justify-center gap-4 text-center p-4">
+            <h1 className="text-4xl md:text-5xl font-semibold text-foreground animate-fade-in-down" style={{ animationDelay: '0.2s' }}>
+                Este partido esta muy frio?
+            </h1>
+            <h2 className="text-3xl md:text-4xl font-medium text-muted-foreground animate-fade-in-up" style={{ animationDelay: '1.2s' }}>
+                Mejor tomate un cafe
+            </h2>
+            <h3 className="text-6xl md:text-7xl font-bold text-accent animate-text-glow mt-4" style={{ animationDelay: '2.5s' }}>
+                Valentino Caffe!
+            </h3>
+        </div>
+    );
+};
+
+
 export function FullScoreboard() {
   const { state, dispatch, isLoading } = useGameState();
   const [showOverlay, setShowOverlay] = useState(false);
@@ -65,7 +82,7 @@ export function FullScoreboard() {
       <div className="relative">
           {showOverlay && (
              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-                <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>
+                {overlayText === "Valentino Caffe" ? <ValentinoCaffeAd /> : <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>}
             </div>
           )}
 
