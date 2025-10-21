@@ -109,17 +109,14 @@ export default {
           '0%, 100%': { opacity: '1', transform: 'scale(1)' },
           '50%': { opacity: '0.7', transform: 'scale(1.05)' },
         },
-        'fade-in-down': {
-            '0%': { opacity: '0', transform: 'translateY(-20px)' },
-            '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        'fade-in-up': {
-            '0%': { opacity: '0', transform: 'translateY(20px)' },
-            '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        'text-glow': {
-            '0%, 100%': { textShadow: '0 0 5px hsl(var(--accent)), 0 0 10px hsl(var(--accent))' },
-            '50%': { textShadow: '0 0 15px hsl(var(--accent)), 0 0 25px hsl(var(--accent))' },
+        'slide-in-pulse-out': {
+          '0%': { transform: 'translateX(-110%)', opacity: '0' },
+          '20%': { transform: 'translateX(0)', opacity: '1' },
+          '35%': { transform: 'scale(1.05)' },
+          '50%': { transform: 'scale(1)' },
+          '65%': { transform: 'scale(1.05)' },
+          '80%': { transform: 'translateX(0)', opacity: '1' },
+          '100%': { transform: 'translateX(110%)', opacity: '0' },
         }
       },
       animation: {
@@ -130,9 +127,7 @@ export default {
         'flashing-clock': 'flashing-clock 1s ease-in-out infinite',
         'pass-puck': 'pass-puck 1s ease-in-out infinite alternate',
         'pulse-text': 'pulse-text 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'fade-in-down': 'fade-in-down 0.8s ease-out forwards',
-        'fade-in-up': 'fade-in-up 0.8s ease-out forwards',
-        'text-glow': 'text-glow 2.5s ease-in-out infinite',
+        'slide-in-pulse-out': 'slide-in-pulse-out 4s ease-in-out forwards',
       },
     },
   },

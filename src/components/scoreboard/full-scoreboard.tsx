@@ -9,14 +9,23 @@ import { ShootoutDisplay, MAX_DISPLAY_SLOTS } from './shootout-display';
 
 const ValentinoCaffeAd = () => {
     return (
-        <div className="flex flex-col items-center justify-center gap-4 text-center p-4">
-            <h1 className="text-4xl md:text-5xl font-semibold text-foreground animate-fade-in-down" style={{ animationDelay: '0.2s' }}>
+        <div className="w-full h-full flex flex-col items-center justify-center gap-8 overflow-hidden">
+            <h1 
+                className="text-4xl md:text-5xl font-semibold text-foreground animate-slide-in-pulse-out"
+                style={{ animationDelay: '0s' }}
+            >
                 Este partido esta muy frio?
             </h1>
-            <h2 className="text-3xl md:text-4xl font-medium text-muted-foreground animate-fade-in-up" style={{ animationDelay: '1.2s' }}>
+            <h2 
+                className="text-3xl md:text-4xl font-medium text-muted-foreground animate-slide-in-pulse-out"
+                style={{ animationDelay: '1.5s' }}
+            >
                 Mejor tomate un cafe
             </h2>
-            <h3 className="text-6xl md:text-7xl font-bold text-accent animate-text-glow mt-4" style={{ animationDelay: '2.5s' }}>
+            <h3 
+                className="text-6xl md:text-7xl font-bold text-accent animate-slide-in-pulse-out"
+                style={{ animationDelay: '3s' }}
+            >
                 Valentino Caffe!
             </h3>
         </div>
