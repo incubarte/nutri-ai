@@ -1,11 +1,12 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useGameState, type GameAction } from '@/contexts/game-state-context';
 import { CompactHeaderScoreboard } from './compact-header-scoreboard';
 import { PenaltiesDisplay } from './penalties-display';
 import { ShootoutDisplay, MAX_DISPLAY_SLOTS } from './shootout-display';
+import { cn } from '@/lib/utils';
 
 const ValentinoCaffeAd = () => {
     return (
@@ -33,10 +34,13 @@ const ValentinoCaffeAd = () => {
 };
 
 
-export function FullScoreboard() {
+export function FullScoreboard({ className }: { className?: string }) {
   const { state, dispatch, isLoading } = useGameState();
   const [showOverlay, setShowOverlay] = useState(false);
   const [overlayText, setOverlayText] = useState('');
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  const headerRef = useRef<HTMLDivElement>(null);
   
   const { config, live } = state;
   const scoreboardLayout = config?.scoreboardLayout;
@@ -56,21 +60,39 @@ export function FullScoreboard() {
     }
   }, [live?.overlayMessage, dispatch]);
 
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.offsetHeight);
+      }
+    };
+    
+    updateHeaderHeight();
+    const resizeObserver = new ResizeObserver(updateHeaderHeight);
+    if(headerRef.current) {
+        resizeObserver.observe(headerRef.current);
+    }
 
-  if (isLoading || !config || !live) {
-    return null; // Or a loading spinner, but null is fine to prevent layout shifts
+    return () => {
+      if (headerRef.current) {
+        resizeObserver.unobserve(headerRef.current);
+      }
+    };
+  }, [scoreboardLayout]); // Re-calculate on layout changes
+
+
+  if (isLoading || !config || !live || !scoreboardLayout) {
+    return null;
   }
 
 
   const { penalties, homeTeamName, awayTeamName, shootout } = live;
 
-  // Centralize the sliding window logic here, ensuring shootout exists
   const homeAttempts = shootout?.homeAttempts || [];
   const awayAttempts = shootout?.awayAttempts || [];
   const totalRounds = shootout?.rounds || 5;
 
   const maxAttempts = Math.max(homeAttempts.length, awayAttempts.length);
-  // Only start sliding the window after the 5th attempt slot is filled
   const startIdx = Math.max(0, maxAttempts - MAX_DISPLAY_SLOTS);
   const currentRound = homeAttempts.length + awayAttempts.length > 0
     ? Math.max(homeAttempts.length, awayAttempts.length) + (homeAttempts.length === awayAttempts.length ? 1 : 0)
@@ -79,47 +101,63 @@ export function FullScoreboard() {
 
   return (
     <div 
-      className="flex flex-col transition-transform duration-200 flex-grow"
+      className={cn("transition-transform duration-200", className)}
       style={{
-        gap: `${scoreboardLayout.mainContentGap}rem`,
-        paddingTop: `${scoreboardLayout.scoreboardVerticalPosition}rem`,
         transform: `translateX(${scoreboardLayout.scoreboardHorizontalPosition}rem)`
       }}
     >
-      <CompactHeaderScoreboard />
+      <div 
+        ref={headerRef} 
+        className="absolute top-0 left-0 right-0 z-20"
+        style={{
+            paddingTop: `${scoreboardLayout.scoreboardVerticalPosition}rem`,
+        }}
+      >
+        <CompactHeaderScoreboard />
+      </div>
 
-      <div className="relative flex-grow">
-          {showOverlay && (
+      <div 
+        className="absolute inset-0 z-10"
+        style={{
+            paddingTop: `${headerHeight}px`,
+            gap: `${scoreboardLayout.mainContentGap}rem`,
+            display: 'flex',
+            flexDirection: 'column'
+        }}
+      >
+        <div className="relative flex-grow">
+            {showOverlay && (
              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
                 {overlayText === "Valentino Caffe" ? <ValentinoCaffeAd /> : <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>}
             </div>
-          )}
+            )}
 
-          {live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12">
-              <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
-              <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
-            </div>
-          ) : live.clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
-            <div className="flex flex-col items-center gap-4">
-               <h1 
-                className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
-                style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
-               >
-                 <span>Penales</span>
-                 <span 
-                    className="text-foreground/80 font-normal"
-                    style={{ fontSize: `${scoreboardLayout.periodSize * 1.5 * 0.5}rem` }}
+            {live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
+                <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
+                <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
+                </div>
+            ) : live.clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
+                <div className="flex flex-col items-center gap-4">
+                <h1 
+                    className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
+                    style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
                 >
-                    (Ronda {currentRound})
-                </span>
-               </h1>
-               <div className="w-full max-w-4xl space-y-4">
-                  <ShootoutDisplay team="home" teamName={homeTeamName} attempts={homeAttempts} totalRounds={totalRounds} startIdx={startIdx} />
-                  <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
-               </div>
-            </div>
-          ) : null}
+                    <span>Penales</span>
+                    <span 
+                        className="text-foreground/80 font-normal"
+                        style={{ fontSize: `${scoreboardLayout.periodSize * 1.5 * 0.5}rem` }}
+                    >
+                        (Ronda {currentRound})
+                    </span>
+                </h1>
+                <div className="w-full max-w-4xl space-y-4">
+                    <ShootoutDisplay team="home" teamName={homeTeamName} attempts={homeAttempts} totalRounds={totalRounds} startIdx={startIdx} />
+                    <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
+                </div>
+                </div>
+            ) : null}
+        </div>
       </div>
     </div>
   );

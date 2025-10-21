@@ -28,8 +28,6 @@ export default function ScoreboardPage() {
   }, []);
 
   return (
-    <div className="w-full h-full flex flex-col relative">
-      <FullScoreboard />
-    </div>
+    <FullScoreboard className="w-full h-full flex flex-col relative" />
   );
 }
