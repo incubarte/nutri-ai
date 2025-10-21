@@ -117,45 +117,51 @@ export function FullScoreboard({ className }: { className?: string }) {
         <CompactHeaderScoreboard />
       </div>
 
+      <AnimatePresence>
+        {showOverlay && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+          >
+            {overlayText === "Valentino Caffe" ? <ValentinoCaffeAd /> : <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div 
-        className="absolute inset-0 z-0"
+        className="relative flex-grow z-0"
         style={{
             paddingTop: `calc(${headerHeight}px + ${scoreboardLayout.mainContentGap}rem)`,
         }}
       >
-        <div className="relative flex-grow h-full">
-            {showOverlay && (
-             <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-                {overlayText === "Valentino Caffe" ? <ValentinoCaffeAd /> : <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>}
+        {live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
+            <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
+            <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
             </div>
-            )}
-
-            {live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
-                <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
-                <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
-                </div>
-            ) : live.clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
-                <div className="flex flex-col items-center gap-4">
-                <h1 
-                    className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
-                    style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
+        ) : live.clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
+            <div className="flex flex-col items-center gap-4">
+            <h1 
+                className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
+                style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
+            >
+                <span>Penales</span>
+                <span 
+                    className="text-foreground/80 font-normal"
+                    style={{ fontSize: `${scoreboardLayout.periodSize * 1.5 * 0.5}rem` }}
                 >
-                    <span>Penales</span>
-                    <span 
-                        className="text-foreground/80 font-normal"
-                        style={{ fontSize: `${scoreboardLayout.periodSize * 1.5 * 0.5}rem` }}
-                    >
-                        (Ronda {currentRound})
-                    </span>
-                </h1>
-                <div className="w-full max-w-4xl space-y-4">
-                    <ShootoutDisplay team="home" teamName={homeTeamName} attempts={homeAttempts} totalRounds={totalRounds} startIdx={startIdx} />
-                    <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
-                </div>
-                </div>
-            ) : null}
-        </div>
+                    (Ronda {currentRound})
+                </span>
+            </h1>
+            <div className="w-full max-w-4xl space-y-4">
+                <ShootoutDisplay team="home" teamName={homeTeamName} attempts={homeAttempts} totalRounds={totalRounds} startIdx={startIdx} />
+                <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
+            </div>
+            </div>
+        ) : null}
       </div>
     </div>
   );
