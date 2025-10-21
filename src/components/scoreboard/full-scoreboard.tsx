@@ -79,7 +79,7 @@ export function FullScoreboard() {
 
   return (
     <div 
-      className="flex flex-col transition-transform duration-200"
+      className="flex flex-col transition-transform duration-200 h-full"
       style={{
         gap: `${scoreboardLayout.mainContentGap}rem`,
         paddingTop: `${scoreboardLayout.scoreboardVerticalPosition}rem`,
@@ -88,7 +88,7 @@ export function FullScoreboard() {
     >
       <CompactHeaderScoreboard />
 
-      <div className="relative">
+      <div className="relative flex-grow">
           {showOverlay && (
              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
                 {overlayText === "Valentino Caffe" ? <ValentinoCaffeAd /> : <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>}
