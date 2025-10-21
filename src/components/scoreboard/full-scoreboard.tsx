@@ -76,6 +76,7 @@ export function FullScoreboard({ className }: { className?: string }) {
 
     return () => {
       if (headerRef.current) {
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         resizeObserver.unobserve(headerRef.current);
       }
     };
@@ -109,7 +110,7 @@ export function FullScoreboard({ className }: { className?: string }) {
     >
       <div 
         ref={headerRef} 
-        className="absolute top-0 left-0 right-0 z-10"
+        className="relative z-10"
         style={{
             paddingTop: `${scoreboardLayout.scoreboardVerticalPosition}rem`,
         }}
@@ -124,7 +125,10 @@ export function FullScoreboard({ className }: { className?: string }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+            className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+            style={{
+              top: `calc(${headerHeight}px)`,
+            }}
           >
             {overlayText === "Valentino Caffe" ? <ValentinoCaffeAd /> : <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>}
           </motion.div>
@@ -134,7 +138,7 @@ export function FullScoreboard({ className }: { className?: string }) {
       <div 
         className="relative flex-grow z-0"
         style={{
-            paddingTop: `calc(${headerHeight}px + ${scoreboardLayout.mainContentGap}rem)`,
+            paddingTop: `${scoreboardLayout.mainContentGap}rem`,
         }}
       >
         {live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision' ? (
