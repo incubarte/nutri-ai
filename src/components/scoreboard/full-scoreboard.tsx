@@ -7,6 +7,7 @@ import { CompactHeaderScoreboard } from './compact-header-scoreboard';
 import { PenaltiesDisplay } from './penalties-display';
 import { ShootoutDisplay, MAX_DISPLAY_SLOTS } from './shootout-display';
 import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const ValentinoCaffeAd = () => {
     return (
@@ -101,7 +102,7 @@ export function FullScoreboard({ className }: { className?: string }) {
 
   return (
     <div 
-      className={cn("transition-transform duration-200", className)}
+      className={cn("w-full h-full flex-grow flex flex-col relative", className)}
       style={{
         transform: `translateX(${scoreboardLayout.scoreboardHorizontalPosition}rem)`
       }}
@@ -119,13 +120,10 @@ export function FullScoreboard({ className }: { className?: string }) {
       <div 
         className="absolute inset-0 z-10"
         style={{
-            paddingTop: `${headerHeight}px`,
-            gap: `${scoreboardLayout.mainContentGap}rem`,
-            display: 'flex',
-            flexDirection: 'column'
+            paddingTop: `calc(${headerHeight}px + ${scoreboardLayout.mainContentGap}rem)`,
         }}
       >
-        <div className="relative flex-grow">
+        <div className="relative flex-grow h-full">
             {showOverlay && (
              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
                 {overlayText === "Valentino Caffe" ? <ValentinoCaffeAd /> : <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>}
