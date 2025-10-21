@@ -1,3 +1,4 @@
+
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -104,9 +105,9 @@ export default {
           '0%': { transform: 'translateX(0px)' },
           '100%': { transform: 'translateX(110px)' },
         },
-        'pulse': {
-          '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0.5' },
+        'pulse-text': {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.7', transform: 'scale(1.05)' },
         },
       },
       animation: {
@@ -116,7 +117,7 @@ export default {
         'flashing-border': 'flashing-border 1.5s ease-in-out infinite',
         'flashing-clock': 'flashing-clock 1s ease-in-out infinite',
         'pass-puck': 'pass-puck 1s ease-in-out infinite alternate',
-        'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'pulse-text': 'pulse-text 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
     },
   },

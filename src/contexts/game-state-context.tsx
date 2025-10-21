@@ -109,7 +109,7 @@ export const createDefaultFormatAndTimingsProfile = (id?: string, name?: string)
   name: name || IN_CODE_INITIAL_PROFILE_NAME,
   ...defaultSettings.formatAndTimings,
   gameTimeMode: 'stopped',
-  autoActivatePuckPenalties: false, // Default changed as per user request
+  autoActivatePuckPenalties: true, // Default changed as per user request
   enableStoppedTimeAlert: false, // Default for new profiles
   stoppedTimeAlertGoalDiff: 1,
   stoppedTimeAlertTimeRemaining: 2,
@@ -136,7 +136,7 @@ const getInitialState = (): GameState => {
     config: {
       ...defaultSettings.formatAndTimings,
       gameTimeMode: 'stopped',
-      autoActivatePuckPenalties: false,
+      autoActivatePuckPenalties: true,
       enableStoppedTimeAlert: false,
       stoppedTimeAlertGoalDiff: 1,
       stoppedTimeAlertTimeRemaining: 2,
@@ -176,6 +176,7 @@ const getInitialState = (): GameState => {
       homeTeamName: 'Local', homeTeamSubName: undefined, awayTeamName: 'Visitante', awayTeamSubName: undefined,
       gameSummary: IN_CODE_INITIAL_GAME_SUMMARY, playHornTrigger: 0, playPenaltyBeepTrigger: 0,
       pendingPowerPlayGoal: null,
+      overlayMessage: null,
     },
     _initialConfigLoadComplete: false,
   };
@@ -439,6 +440,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
   }
 
   switch (action.type) {
+    case 'SHOW_OVERLAY_MESSAGE':
+      newState = { ...state, live: { ...state.live, overlayMessage: { id: safeUUID(), ...action.payload } } };
+      break;
+    case 'HIDE_OVERLAY_MESSAGE':
+      newState = { ...state, live: { ...state.live, overlayMessage: null } };
+      break;
     case 'HYDRATE_FROM_STORAGE': {
         let finalState: GameState;
         try {
@@ -1609,6 +1616,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
         playHornTrigger: state.live.playHornTrigger, playPenaltyBeepTrigger: state.live.playPenaltyBeepTrigger,
         pendingPowerPlayGoal: null,
+        overlayMessage: null,
       }};
       break;
     }
@@ -1863,6 +1871,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 

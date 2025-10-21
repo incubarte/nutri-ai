@@ -13,7 +13,7 @@ import type { PlayerData, RemoteCommand, AccessRequest, TunnelState } from '@/ty
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X, Fingerprint, FileText, Flag } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X, Fingerprint, FileText, Flag, MessageSquare } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
 import { safeUUID } from '@/lib/utils';
@@ -598,10 +598,11 @@ export default function ControlsPage() {
   };
   
   const shouldShowPendingPuckButton = useMemo(() => {
+    if (state.config.autoActivatePuckPenalties) return false;
     const hasPending = state.live.penalties.home.some(p => p._status === 'pending_puck') ||
                        state.live.penalties.away.some(p => p._status === 'pending_puck');
     return hasPending;
-  }, [state.live.penalties]);
+  }, [state.live.penalties, state.config.autoActivatePuckPenalties]);
 
 
   const handleScoreClick = (team: Team) => {
@@ -760,6 +761,11 @@ export default function ControlsPage() {
   }, [state]);
 
 
+  const handleTestOverlay = () => {
+    dispatch({ type: 'SHOW_OVERLAY_MESSAGE', payload: { text: "Valentino Caffe", duration: 5000 } });
+    toast({ title: "Overlay de prueba enviado", description: "El mensaje 'Valentino Caffe' debería aparecer en el scoreboard." });
+  }
+
   if (authStatus === 'loading' || isGameStateLoading || !state.live || !state.config || !state.live.penalties) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
@@ -899,6 +905,9 @@ export default function ControlsPage() {
             <Button variant="outline" className="flex-shrink-0" onClick={() => setIsGameSetupDialogOpen(true)}>
               <RefreshCw className="mr-2 h-4 w-4" /> Iniciar Nuevo Partido
             </Button>
+             <Button variant="secondary" onClick={handleTestOverlay}>
+                <MessageSquare className="mr-2 h-4 w-4" /> Mostrar Overlay de Prueba
+             </Button>
         </div>
          <p className="text-xs text-muted-foreground mt-2">
           La acción "Iniciar Nuevo Partido" restablecerá los marcadores, el reloj, el período actual, las penalidades y el registro de eventos del partido.

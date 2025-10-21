@@ -291,6 +291,11 @@ export interface LiveState {
     team: Team; // The team that conceded the goal (and has the penalty)
     penaltyId: string;
   } | null;
+  overlayMessage: {
+    id: string;
+    text: string;
+    duration: number; // in milliseconds
+  } | null;
 }
 
 export interface LiveGameState extends LiveState {
@@ -398,7 +403,9 @@ export type GameAction =
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
-  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
+  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } }
+  | { type: 'SHOW_OVERLAY_MESSAGE'; payload: { text: string, duration: number } }
+  | { type: 'HIDE_OVERLAY_MESSAGE' };
 
 export interface GameState {
   config: ConfigState;

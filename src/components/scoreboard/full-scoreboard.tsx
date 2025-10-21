@@ -1,20 +1,41 @@
 
 "use client";
 
-import { useGameState } from '@/contexts/game-state-context';
+import { useEffect, useState } from 'react';
+import { useGameState, type GameAction } from '@/contexts/game-state-context';
 import { CompactHeaderScoreboard } from './compact-header-scoreboard';
 import { PenaltiesDisplay } from './penalties-display';
 import { ShootoutDisplay, MAX_DISPLAY_SLOTS } from './shootout-display';
 
 export function FullScoreboard() {
-  const { state, isLoading } = useGameState();
+  const { state, dispatch, isLoading } = useGameState();
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [overlayText, setOverlayText] = useState('');
+  
+  const { config, live } = state;
+  const scoreboardLayout = config?.scoreboardLayout;
+  
+  useEffect(() => {
+    if (live?.overlayMessage && live.overlayMessage.id) {
+      setOverlayText(live.overlayMessage.text);
+      setShowOverlay(true);
 
-  if (isLoading || !state.config || !state.live) {
+      const timer = setTimeout(() => {
+        dispatch({ type: 'HIDE_OVERLAY_MESSAGE' });
+      }, live.overlayMessage.duration);
+
+      return () => clearTimeout(timer);
+    } else {
+      setShowOverlay(false);
+    }
+  }, [live?.overlayMessage, dispatch]);
+
+
+  if (isLoading || !config || !live) {
     return null; // Or a loading spinner, but null is fine to prevent layout shifts
   }
 
-  const { config, live } = state;
-  const { scoreboardLayout } = config;
+
   const { penalties, homeTeamName, awayTeamName, shootout } = live;
 
   // Centralize the sliding window logic here, ensuring shootout exists
@@ -39,36 +60,41 @@ export function FullScoreboard() {
         transform: `translateX(${scoreboardLayout.scoreboardHorizontalPosition}rem)`
       }}
     >
-      {live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision' ? (
-        <>
-          <CompactHeaderScoreboard />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12">
-            <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
-            <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
-          </div>
-        </>
-      ) : live.clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
-        <div className="flex flex-col items-center gap-4">
-           <h1 
-            className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
-            style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
-           >
-             <span>Penales</span>
-             <span 
-                className="text-foreground/80 font-normal"
-                style={{ fontSize: `${scoreboardLayout.periodSize * 1.5 * 0.5}rem` }}
-            >
-                (Ronda {currentRound})
-            </span>
-           </h1>
-           <div className="w-full max-w-4xl space-y-4">
-              <ShootoutDisplay team="home" teamName={homeTeamName} attempts={homeAttempts} totalRounds={totalRounds} startIdx={startIdx} />
-              <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
-           </div>
-        </div>
-      ) : (
-         <CompactHeaderScoreboard />
-      )}
+      <CompactHeaderScoreboard />
+
+      <div className="relative">
+          {showOverlay && (
+             <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>
+            </div>
+          )}
+
+          {live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12">
+              <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
+              <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
+            </div>
+          ) : live.clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
+            <div className="flex flex-col items-center gap-4">
+               <h1 
+                className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
+                style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
+               >
+                 <span>Penales</span>
+                 <span 
+                    className="text-foreground/80 font-normal"
+                    style={{ fontSize: `${scoreboardLayout.periodSize * 1.5 * 0.5}rem` }}
+                >
+                    (Ronda {currentRound})
+                </span>
+               </h1>
+               <div className="w-full max-w-4xl space-y-4">
+                  <ShootoutDisplay team="home" teamName={homeTeamName} attempts={homeAttempts} totalRounds={totalRounds} startIdx={startIdx} />
+                  <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
+               </div>
+            </div>
+          ) : null}
+      </div>
     </div>
   );
 }
