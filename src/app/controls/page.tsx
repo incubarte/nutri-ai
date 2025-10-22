@@ -759,6 +759,16 @@ export default function ControlsPage() {
 
     return isLastRegularPeriod && isTimeConditionMet && isGoalDiffConditionMet && live.clock.periodDisplayOverride === null;
   }, [state]);
+  
+  const handleTogglePuckAutomation = () => {
+      const currentSetting = state.config.autoActivatePuckPenalties;
+      const newSetting = !currentSetting;
+      dispatch({ type: 'UPDATE_SELECTED_FT_PROFILE_DATA', payload: { autoActivatePuckPenalties: newSetting } });
+      toast({
+          title: "Modo de Activación Cambiado",
+          description: `Las penalidades ahora se activarán de forma ${newSetting ? 'automática' : 'manual'}.`
+      });
+  };
 
   if (authStatus === 'loading' || isGameStateLoading || !state.live || !state.config || !state.live.penalties) {
     return (
@@ -912,7 +922,29 @@ export default function ControlsPage() {
       {/* Connection Status Indicators */}
       <div className="fixed bottom-4 right-4 flex flex-col items-end gap-2 z-50">
           <AccessRequestManager />
-          <TooltipProvider delayDuration={100}>
+           <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                 <TooltipTrigger asChild>
+                    <Badge
+                        onClick={handleTogglePuckAutomation}
+                        className={cn(
+                            "flex items-center gap-2 transition-all cursor-pointer",
+                             state.config.autoActivatePuckPenalties
+                                ? "bg-green-600 hover:bg-green-700 text-white"
+                                : "bg-amber-500 hover:bg-amber-600 text-black"
+                        )}
+                    >
+                      <PlayCircle className="h-3 w-3" />
+                      <span className="text-xs">
+                          Esperando Puck - {state.config.autoActivatePuckPenalties ? 'Automático' : 'Manual'}
+                      </span>
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                      <p>Clic para cambiar. <span className="font-bold">Automático:</span> las penalidades empiezan al descontar.</p>
+                      <p><span className="font-bold">Manual:</span> requiere "Puck en Juego" para iniciar.</p>
+                  </TooltipContent>
+              </Tooltip>
               <Tooltip>
                   <TooltipTrigger asChild>
                       <Badge className={cn("flex items-center gap-2 transition-all text-white cursor-help", statusIndicators.local.className)}>
