@@ -33,8 +33,8 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
     
     const iconStyle = {
         display: 'inline-block',
-        width: `${scoreboardLayout.periodSize * 0.8}rem`,
-        height: `${scoreboardLayout.periodSize * 0.8}rem`,
+        width: `${scoreboardLayout.periodSize * 0.6}rem`,
+        height: `${scoreboardLayout.periodSize * 0.6}rem`,
         margin: `0 ${scoreboardLayout.periodSize * 0.2}rem`
     };
 
