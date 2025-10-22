@@ -122,8 +122,8 @@ export const exportGameSummaryPDF = (summaryData: SummaryData, homeAggregatedSta
         allAwayPenalties.push(...(periodStats.away.penalties || []));
     });
 
-    allHomeGoals.sort((a, b) => a.addTimestamp - b.addTimestamp);
-    allAwayGoals.sort((a, b) => a.addTimestamp - b.addTimestamp);
+    allHomeGoals.sort((a, b) => a.timestamp - b.timestamp);
+    allAwayGoals.sort((a, b) => a.timestamp - b.timestamp);
     allHomePenalties.sort((a,b) => a.addTimestamp - b.addTimestamp);
     allAwayPenalties.sort((a,b) => a.addTimestamp - b.addTimestamp);
 
@@ -197,9 +197,16 @@ export const exportGameSummaryPDF = (summaryData: SummaryData, homeAggregatedSta
         
         currentY = addTable(doc, `${summaryData.awayTeamName} - Penalidades`, currentY, ['Tiempo', 'Jugador', 'Tipo'], (periodStats.away.penalties || []).map(p => [formatTime(p.addGameTime), p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber} ${p.playerName || ''}`.trim(), p.penaltyName || '---']), { headFillColor: [231, 76, 60], showTotal: true });
         currentY = checkPageBreak(doc, currentY);
+
+        currentY = addPlayerStatsTable(doc, `${summaryData.homeTeamName} - Estadísticas de Jugador (${periodText})`, currentY, periodStats.home.playerStats);
+        currentY = checkPageBreak(doc, currentY);
+        
+        currentY = addPlayerStatsTable(doc, `${summaryData.awayTeamName} - Estadísticas de Jugador (${periodText})`, currentY, periodStats.away.playerStats);
+        currentY = checkPageBreak(doc, currentY);
     }
 
     doc.save(filename);
     
     return filename;
 };
+
