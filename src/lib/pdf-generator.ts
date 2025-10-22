@@ -1,8 +1,10 @@
 
+
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { formatTime, getCategoryNameById, getEndReasonText, type GameState, getPeriodText } from '@/contexts/game-state-context';
-import type { GoalLog, PenaltyLog, PlayerData, PlayerStats, SummaryPlayerStats } from '@/types';
+import { formatTime, getCategoryNameById, getEndReasonText } from '@/contexts/game-state-context';
+import type { GoalLog, PenaltyLog, SummaryPlayerStats } from '@/types';
+import type { SummaryData } from '@/app/resumen/page';
 
 // Helper to add a section with a title
 const addSectionTitle = (doc: jsPDF, title: string, y: number): number => {
@@ -83,61 +85,71 @@ const checkPageBreak = (doc: jsPDF, currentY: number): number => {
     return currentY;
 };
 
-export const exportGameSummaryPDF = (state: GameState) => {
-    if (!state.config || !state.live) {
-        console.error("Cannot generate PDF: game state is not fully loaded.");
-        return "error_no_state.pdf";
+export const exportGameSummaryPDF = (summaryData: SummaryData, homeAggregatedStats: { playerStats: SummaryPlayerStats[] }, awayAggregatedStats: { playerStats: SummaryPlayerStats[] }): string => {
+    if (!summaryData) {
+        console.error("Cannot generate PDF: summary data is missing.");
+        return "error_no_summary_data.pdf";
     }
 
-    const { config, live } = state;
     const doc = new jsPDF();
-    const teamTitle = `${live.homeTeamName} vs ${live.awayTeamName}`;
-    const categoryName = getCategoryNameById(config.selectedMatchCategory, config.availableCategories) || 'N/A';
+    const teamTitle = `${summaryData.homeTeamName} vs ${summaryData.awayTeamName}`;
     
     const date = new Date();
     const dateString = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-    const filename = `${dateString} - Cat ${categoryName} - ${live.homeTeamName} vs ${live.awayTeamName}.pdf`;
+    const filename = `${dateString} - Cat ${summaryData.categoryName} - ${summaryData.homeTeamName} vs ${summaryData.awayTeamName}.pdf`;
 
-    const finalScore = `${live.score.home} - ${live.score.away}`;
+    const finalScore = `${summaryData.homeScore} - ${summaryData.awayScore}`;
 
     // --- Resumen General ---
     doc.setFontSize(16);
     doc.text(`Resumen del Partido: ${teamTitle}`, 14, 15);
     doc.setFontSize(10);
-    doc.text(`Categoría: ${categoryName}  |  Fecha: ${date.toLocaleDateString()}`, 14, 22);
+    doc.text(`Categoría: ${summaryData.categoryName}  |  Fecha: ${date.toLocaleDateString()}`, 14, 22);
     doc.setFontSize(12);
     doc.text(`Resultado Final: ${finalScore}`, 14, 29);
 
     let currentY = 40;
 
-    const allHomeGoals = [...live.score.homeGoals].sort((a, b) => a.timestamp - b.timestamp);
-    const allAwayGoals = [...live.score.awayGoals].sort((a, b) => a.timestamp - b.timestamp);
-    const allHomePenalties = [...live.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
-    const allAwayPenalties = [...live.gameSummary.away.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
+    const allHomeGoals: GoalLog[] = [];
+    const allAwayGoals: GoalLog[] = [];
+    const allHomePenalties: PenaltyLog[] = [];
+    const allAwayPenalties: PenaltyLog[] = [];
+    
+    Object.values(summaryData.statsByPeriod).forEach(periodStats => {
+        allHomeGoals.push(...(periodStats.home.goals || []));
+        allAwayGoals.push(...(periodStats.away.goals || []));
+        allHomePenalties.push(...(periodStats.home.penalties || []));
+        allAwayPenalties.push(...(periodStats.away.penalties || []));
+    });
+
+    allHomeGoals.sort((a, b) => a.addTimestamp - b.addTimestamp);
+    allAwayGoals.sort((a, b) => a.addTimestamp - b.addTimestamp);
+    allHomePenalties.sort((a,b) => a.addTimestamp - b.addTimestamp);
+    allAwayPenalties.sort((a,b) => a.addTimestamp - b.addTimestamp);
 
     // --- Tablas Generales ---
-    currentY = addTable(doc, `${live.homeTeamName} - Goles`, currentY,
+    currentY = addTable(doc, `${summaryData.homeTeamName} - Goles`, currentY,
         ['Tiempo', 'Gol', 'Asistencia'],
         allHomeGoals.map(g => [`${formatTime(g.gameTime)} - ${g.periodText}`,`#${g.scorer?.playerNumber || 'S/N'} ${g.scorer?.playerName || ''}`.trim(), g.assist ? `#${g.assist.playerNumber} ${g.assist.playerName || ''}`.trim() : '---']),
         { headFillColor: [41, 128, 185], showTotal: true }
     );
     currentY = checkPageBreak(doc, currentY);
 
-    currentY = addTable(doc, `${live.awayTeamName} - Goles`, currentY,
+    currentY = addTable(doc, `${summaryData.awayTeamName} - Goles`, currentY,
         ['Tiempo', 'Gol', 'Asistencia'],
         allAwayGoals.map(g => [`${formatTime(g.gameTime)} - ${g.periodText}`,`#${g.scorer?.playerNumber || 'S/N'} ${g.scorer?.playerName || ''}`.trim(), g.assist ? `#${g.assist.playerNumber} ${g.assist.playerName || ''}`.trim() : '---']),
         { headFillColor: [41, 128, 185], showTotal: true }
     );
     currentY = checkPageBreak(doc, currentY);
 
-    currentY = addTable(doc, `${live.homeTeamName} - Penalidades`, currentY,
+    currentY = addTable(doc, `${summaryData.homeTeamName} - Penalidades`, currentY,
         ['Tiempo', 'Jugador', 'Tipo', 'Duración', 'Estado'],
         allHomePenalties.map(p => [`${p.addPeriodText} ${formatTime(p.addGameTime)}`, p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber} ${p.playerName || ''}`.trim(), p.penaltyName || '---', formatTime(p.initialDuration * 100), getEndReasonText(p.endReason)]),
         { headFillColor: [231, 76, 60], showTotal: true }
     );
     currentY = checkPageBreak(doc, currentY);
 
-    currentY = addTable(doc, `${live.awayTeamName} - Penalidades`, currentY,
+    currentY = addTable(doc, `${summaryData.awayTeamName} - Penalidades`, currentY,
         ['Tiempo', 'Jugador', 'Tipo', 'Duración', 'Estado'],
         allAwayPenalties.map(p => [`${p.addPeriodText} ${formatTime(p.addGameTime)}`, p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber} ${p.playerName || ''}`.trim(), p.penaltyName || '---', formatTime(p.initialDuration * 100), getEndReasonText(p.endReason)]),
         { headFillColor: [231, 76, 60], showTotal: true }
@@ -146,61 +158,23 @@ export const exportGameSummaryPDF = (state: GameState) => {
     // --- Estadísticas Generales por Jugador ---
     doc.addPage();
     currentY = 20;
-
-    const getAggregatePlayerStats = (team: 'home' | 'away'): SummaryPlayerStats[] => {
-        const playerStatsMap = new Map<string, SummaryPlayerStats>();
-        const attendance = live.gameSummary.attendance[team];
-
-        attendance.forEach(p => {
-            playerStatsMap.set(p.id, {
-                id: p.id,
-                name: p.name,
-                number: p.number,
-                shots: 0,
-                goals: 0,
-                assists: 0
-            });
-        });
-        
-        live.gameSummary[team].goals.forEach(goal => {
-            const scorerInAttendance = attendance.find(p => p.number === goal.scorer?.playerNumber);
-            if (scorerInAttendance && playerStatsMap.has(scorerInAttendance.id)) {
-                playerStatsMap.get(scorerInAttendance.id)!.goals++;
-            }
-            const assistInAttendance = attendance.find(p => p.number === goal.assist?.playerNumber);
-            if(assistInAttendance && playerStatsMap.has(assistInAttendance.id)) {
-                playerStatsMap.get(assistInAttendance.id)!.assists++;
-            }
-        });
-
-        (live.gameSummary[team][`${team}ShotsLog` as const] || []).forEach(shot => {
-             if (shot.playerId && playerStatsMap.has(shot.playerId)) {
-                playerStatsMap.get(shot.playerId)!.shots++;
-            }
-        });
-        
-        return Array.from(playerStatsMap.values());
-    };
     
-    const homeAggregatedStats = getAggregatePlayerStats('home');
-    const awayAggregatedStats = getAggregatePlayerStats('away');
-
-    currentY = addPlayerStatsTable(doc, `${live.homeTeamName} - Estadísticas de Jugador`, currentY, homeAggregatedStats);
+    currentY = addPlayerStatsTable(doc, `${summaryData.homeTeamName} - Estadísticas de Jugador`, currentY, homeAggregatedStats.playerStats);
     currentY = checkPageBreak(doc, currentY);
-    currentY = addPlayerStatsTable(doc, `${live.awayTeamName} - Estadísticas de Jugador`, currentY, awayAggregatedStats);
+    currentY = addPlayerStatsTable(doc, `${summaryData.awayTeamName} - Estadísticas de Jugador`, currentY, awayAggregatedStats.playerStats);
 
 
     // --- Desglose por Período ---
     doc.addPage();
     currentY = addSectionTitle(doc, 'Detalle de Estadísticas por Periodo', 20);
-
-    const getPeriodNumber = (periodText: string): number => {
-        if (periodText.startsWith('OT')) return config.numberOfRegularPeriods + parseInt(periodText.replace('OT', '') || '1', 10);
-        if (periodText.toLowerCase().includes('warm-up')) return -1;
-        return parseInt(periodText.replace(/\D/g, ''), 10);
-    }
     
-    const allPeriodTexts = Array.from(new Set([...allHomeGoals, ...allAwayGoals, ...allHomePenalties, ...allAwayPenalties].map(e => e.addPeriodText || e.periodText))).sort((a, b) => getPeriodNumber(a) - getPeriodNumber(b));
+    const allPeriodTexts = Object.keys(summaryData.statsByPeriod).sort((a, b) => {
+        const getPeriodNumber = (text: string) => {
+            if (text.startsWith('OT')) return (summaryData.availableCategories.find(c=>c.id === summaryData.selectedMatchCategory) ? 2 : 2) + parseInt(text.replace('OT', '') || '1', 10);
+            return parseInt(text.replace(/\D/g, ''), 10);
+        };
+        return getPeriodNumber(a) - getPeriodNumber(b);
+    });
 
     for (const periodText of allPeriodTexts) {
         if (periodText.toLowerCase().includes('warm-up')) continue;
@@ -210,21 +184,18 @@ export const exportGameSummaryPDF = (state: GameState) => {
         doc.text(`Estadísticas para: ${periodText}`, 14, currentY);
         currentY += 8;
 
-        const homeGoalsInPeriod = allHomeGoals.filter(g => g.periodText === periodText);
-        const awayGoalsInPeriod = allAwayGoals.filter(g => g.periodText === periodText);
-        const homePenaltiesInPeriod = allHomePenalties.filter(p => p.addPeriodText === periodText);
-        const awayPenaltiesInPeriod = allAwayPenalties.filter(p => p.addPeriodText === periodText);
+        const periodStats = summaryData.statsByPeriod[periodText];
         
-        currentY = addTable(doc, `${live.homeTeamName} - Goles`, currentY, ['Tiempo', 'Gol', 'Asistencia'], homeGoalsInPeriod.map(g => [formatTime(g.gameTime), `#${g.scorer?.playerNumber || 'S/N'} ${g.scorer?.playerName || ''}`.trim(), g.assist ? `#${g.assist.playerNumber} ${g.assist.playerName || ''}`.trim() : '---']), { showTotal: true });
+        currentY = addTable(doc, `${summaryData.homeTeamName} - Goles`, currentY, ['Tiempo', 'Gol', 'Asistencia'], (periodStats.home.goals || []).map(g => [formatTime(g.gameTime), `#${g.scorer?.playerNumber || 'S/N'} ${g.scorer?.playerName || ''}`.trim(), g.assist ? `#${g.assist.playerNumber} ${g.assist.playerName || ''}`.trim() : '---']), { showTotal: true });
         currentY = checkPageBreak(doc, currentY);
         
-        currentY = addTable(doc, `${live.awayTeamName} - Goles`, currentY, ['Tiempo', 'Gol', 'Asistencia'], awayGoalsInPeriod.map(g => [formatTime(g.gameTime), `#${g.scorer?.playerNumber || 'S/N'} ${g.scorer?.playerName || ''}`.trim(), g.assist ? `#${g.assist.playerNumber} ${g.assist.playerName || ''}`.trim() : '---']), { showTotal: true });
+        currentY = addTable(doc, `${summaryData.awayTeamName} - Goles`, currentY, ['Tiempo', 'Gol', 'Asistencia'], (periodStats.away.goals || []).map(g => [formatTime(g.gameTime), `#${g.scorer?.playerNumber || 'S/N'} ${g.scorer?.playerName || ''}`.trim(), g.assist ? `#${g.assist.playerNumber} ${g.assist.playerName || ''}`.trim() : '---']), { showTotal: true });
         currentY = checkPageBreak(doc, currentY);
         
-        currentY = addTable(doc, `${live.homeTeamName} - Penalidades`, currentY, ['Tiempo', 'Jugador', 'Tipo'], homePenaltiesInPeriod.map(p => [formatTime(p.addGameTime), p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber} ${p.playerName || ''}`.trim(), p.penaltyName || '---']), { headFillColor: [231, 76, 60], showTotal: true });
+        currentY = addTable(doc, `${summaryData.homeTeamName} - Penalidades`, currentY, ['Tiempo', 'Jugador', 'Tipo'], (periodStats.home.penalties || []).map(p => [formatTime(p.addGameTime), p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber} ${p.playerName || ''}`.trim(), p.penaltyName || '---']), { headFillColor: [231, 76, 60], showTotal: true });
         currentY = checkPageBreak(doc, currentY);
         
-        currentY = addTable(doc, `${live.awayTeamName} - Penalidades`, currentY, ['Tiempo', 'Jugador', 'Tipo'], awayPenaltiesInPeriod.map(p => [formatTime(p.addGameTime), p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber} ${p.playerName || ''}`.trim(), p.penaltyName || '---']), { headFillColor: [231, 76, 60], showTotal: true });
+        currentY = addTable(doc, `${summaryData.awayTeamName} - Penalidades`, currentY, ['Tiempo', 'Jugador', 'Tipo'], (periodStats.away.penalties || []).map(p => [formatTime(p.addGameTime), p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber} ${p.playerName || ''}`.trim(), p.penaltyName || '---']), { headFillColor: [231, 76, 60], showTotal: true });
         currentY = checkPageBreak(doc, currentY);
     }
 

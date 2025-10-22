@@ -336,6 +336,8 @@ export type RemoteCommand =
 
 
 export type GameAction =
+  | { type: 'SHOW_OVERLAY_MESSAGE'; payload: { text: string, duration: number } }
+  | { type: 'HIDE_OVERLAY_MESSAGE' }
   | { type: 'TOGGLE_CLOCK' }
   | { type: 'SET_TIME'; payload: { minutes: number; seconds: number } }
   | { type: 'ADJUST_TIME'; payload: number }
@@ -403,9 +405,7 @@ export type GameAction =
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
-  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } }
-  | { type: 'SHOW_OVERLAY_MESSAGE'; payload: { text: string, duration: number } }
-  | { type: 'HIDE_OVERLAY_MESSAGE' };
+  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
 
 export interface GameState {
   config: ConfigState;

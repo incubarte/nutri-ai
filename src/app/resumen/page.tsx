@@ -4,7 +4,7 @@
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useGameState, formatTime, type Team, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo, SUMMARY_DATA_STORAGE_KEY, getPeriodText } from "@/contexts/game-state-context";
-import type { PlayerData, GoalLog, PlayerStats as LivePlayerStats, GameSummary, SummaryPlayerStats, GameState, ShootoutState, ShootoutAttempt } from "@/types";
+import type { PlayerData, GoalLog, PlayerStats as LivePlayerStats, GameSummary, SummaryPlayerStats, GameState, ShootoutState, ShootoutAttempt, CategoryData, TeamData } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,12 +28,12 @@ import { saveGameSummary, saveTeamCsvSummary } from "@/ai/flows/file-operations"
 
 
 // --- Modelos de Datos para la Página de Resumen ---
-interface PeriodStats {
+export interface PeriodStats {
   home: { goals: GoalLog[]; penalties: PenaltyLog[]; playerStats: SummaryPlayerStats[]; };
   away: { goals: GoalLog[]; penalties: PenaltyLog[]; playerStats: SummaryPlayerStats[]; };
 }
 
-interface SummaryData {
+export interface SummaryData {
   homeTeamName: string;
   awayTeamName: string;
   homeScore: number;
@@ -45,6 +45,10 @@ interface SummaryData {
       away: AttendedPlayerInfo[];
   };
   shootout?: ShootoutState;
+  // Extra data for PDF generation
+  availableCategories: CategoryData[];
+  teams: TeamData[];
+  selectedMatchCategory: string;
 }
 // --- Fin de Modelos de Datos ---
 
@@ -463,6 +467,9 @@ export default function ResumenPage() {
         attendance: gameSummary.attendance,
         statsByPeriod,
         shootout: shootout.isActive ? shootout : undefined,
+        availableCategories: config.availableCategories,
+        teams: config.teams,
+        selectedMatchCategory: config.selectedMatchCategory,
     };
     setSummaryData(newSummaryData);
     toast({ title: "Resumen Generado", description: "Se han cargado los datos del partido actual." });
@@ -540,7 +547,7 @@ export default function ResumenPage() {
     toast({ title: "Procesando...", description: "Guardando resúmenes y generando PDF." });
 
     // 1. Export PDF
-    const pdfFilename = exportGameSummaryPDF(liveGameState);
+    const pdfFilename = exportGameSummaryPDF(summaryData, homeAggregatedStats, awayAggregatedStats);
 
     // 2. Prepare data and save CSVs
     const getResult = (teamScore: number, opponentScore: number): "Ganó" | "Perdió" | "Empató" => {
@@ -949,5 +956,6 @@ export default function ResumenPage() {
     
 
     
+
 
 
