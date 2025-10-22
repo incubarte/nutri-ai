@@ -39,9 +39,6 @@ export function FullScoreboard({ className }: { className?: string }) {
   const { state, dispatch, isLoading } = useGameState();
   const [showOverlay, setShowOverlay] = useState(false);
   const [overlayText, setOverlayText] = useState('');
-  const [headerHeight, setHeaderHeight] = useState(0);
-
-  const headerRef = useRef<HTMLDivElement>(null);
   
   const { config, live } = state;
   const scoreboardLayout = config?.scoreboardLayout;
@@ -61,32 +58,9 @@ export function FullScoreboard({ className }: { className?: string }) {
     }
   }, [live?.overlayMessage, dispatch]);
 
-  useEffect(() => {
-    const updateHeaderHeight = () => {
-      if (headerRef.current) {
-        setHeaderHeight(headerRef.current.offsetHeight);
-      }
-    };
-    
-    updateHeaderHeight();
-    const resizeObserver = new ResizeObserver(updateHeaderHeight);
-    if(headerRef.current) {
-        resizeObserver.observe(headerRef.current);
-    }
-
-    return () => {
-      if (headerRef.current) {
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        resizeObserver.unobserve(headerRef.current);
-      }
-    };
-  }, [scoreboardLayout]); // Re-calculate on layout changes
-
-
   if (isLoading || !config || !live || !scoreboardLayout) {
     return null;
   }
-
 
   const { penalties, homeTeamName, awayTeamName, shootout } = live;
 
@@ -100,16 +74,14 @@ export function FullScoreboard({ className }: { className?: string }) {
     ? Math.max(homeAttempts.length, awayAttempts.length) + (homeAttempts.length === awayAttempts.length ? 1 : 0)
     : 1;
 
-
   return (
     <div 
-      className={cn("w-full h-full flex-grow flex flex-col relative", className)}
+      className={cn("w-full h-full flex flex-col", className)}
       style={{
         transform: `translateX(${scoreboardLayout.scoreboardHorizontalPosition}rem)`
       }}
     >
       <div 
-        ref={headerRef} 
         className="relative z-10"
         style={{
             paddingTop: `${scoreboardLayout.scoreboardVerticalPosition}rem`,
@@ -118,54 +90,53 @@ export function FullScoreboard({ className }: { className?: string }) {
         <CompactHeaderScoreboard />
       </div>
 
-      <AnimatePresence>
-        {showOverlay && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm"
-            style={{
-              top: `calc(${headerHeight}px)`,
-            }}
-          >
-            {overlayText === "Valentino Caffe" ? <ValentinoCaffeAd /> : <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <div 
-        className="relative flex-grow z-0"
+        className="relative flex-grow flex flex-col"
         style={{
             paddingTop: `${scoreboardLayout.mainContentGap}rem`,
         }}
       >
-        {live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
-            <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
-            <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
-            </div>
-        ) : live.clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
-            <div className="flex flex-col items-center gap-4">
-            <h1 
-                className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
-                style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
+        <AnimatePresence>
+          {showOverlay && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm"
             >
-                <span>Penales</span>
-                <span 
-                    className="text-foreground/80 font-normal"
-                    style={{ fontSize: `${scoreboardLayout.periodSize * 1.5 * 0.5}rem` }}
-                >
-                    (Ronda {currentRound})
-                </span>
-            </h1>
-            <div className="w-full max-w-4xl space-y-4">
-                <ShootoutDisplay team="home" teamName={homeTeamName} attempts={homeAttempts} totalRounds={totalRounds} startIdx={startIdx} />
-                <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
-            </div>
-            </div>
-        ) : null}
+              {overlayText === "Valentino Caffe" ? <ValentinoCaffeAd /> : <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="relative z-0 flex-grow">
+          {live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
+              <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
+              <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
+              </div>
+          ) : live.clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
+              <div className="flex flex-col items-center gap-4">
+              <h1 
+                  className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
+                  style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
+              >
+                  <span>Penales</span>
+                  <span 
+                      className="text-foreground/80 font-normal"
+                      style={{ fontSize: `${scoreboardLayout.periodSize * 1.5 * 0.5}rem` }}
+                  >
+                      (Ronda {currentRound})
+                  </span>
+              </h1>
+              <div className="w-full max-w-4xl space-y-4">
+                  <ShootoutDisplay team="home" teamName={homeTeamName} attempts={homeAttempts} totalRounds={totalRounds} startIdx={startIdx} />
+                  <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
+              </div>
+              </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );
