@@ -937,25 +937,4 @@ export default function ResumenPage() {
 
     
 
-
-
-
-
-
-
-
-
-
-
-
     
-
-
-    
-
-    
-
-    
-
-
-
