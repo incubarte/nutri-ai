@@ -76,13 +76,13 @@ export function FullScoreboard({ className }: { className?: string }) {
 
   return (
     <div 
-      className={cn("w-full h-full flex flex-col", className)}
+      className={cn("w-full h-screen grid grid-rows-[auto_1fr] relative", className)}
       style={{
         transform: `translateX(${scoreboardLayout.scoreboardHorizontalPosition}rem)`
       }}
     >
       <div 
-        className="relative z-10"
+        className="relative z-10" // Header container
         style={{
             paddingTop: `${scoreboardLayout.scoreboardVerticalPosition}rem`,
         }}
@@ -90,9 +90,9 @@ export function FullScoreboard({ className }: { className?: string }) {
         <CompactHeaderScoreboard />
       </div>
 
-      {/* Contenedor transparente que ocupa el resto del espacio */}
+      {/* Transparent container that takes all remaining space */}
       <div 
-        className="relative flex-grow"
+        className="relative" // Content container
         style={{
             marginTop: `${scoreboardLayout.mainContentGap}rem`,
         }}
@@ -111,7 +111,7 @@ export function FullScoreboard({ className }: { className?: string }) {
           )}
         </AnimatePresence>
         
-        {/* Contenido de Penalidades/Shootout posicionado dentro del contenedor transparente */}
+        {/* Penalties/Shootout content positioned within the transparent container */}
         <div className="relative z-0 h-full">
           {live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
