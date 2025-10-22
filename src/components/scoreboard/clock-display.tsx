@@ -61,7 +61,7 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
 
   const formattedTime = clock.isFlashingZero ? "00:00" : formatTime(clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
 
-  const showClock = clock.periodDisplayOverride !== 'AwaitingDecision' && clock.periodDisplayOverride !== "End of Game";
+  const showClock = clock.periodDisplayOverride !== 'AwaitingDecision' && clock.periodDisplayOverride !== "End of Game" && clock.periodDisplayOverride !== "Shootout";
 
   return (
     <div className={cn("text-center", className)}>
