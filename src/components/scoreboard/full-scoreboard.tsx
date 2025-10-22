@@ -74,6 +74,9 @@ export function FullScoreboard({ className }: { className?: string }) {
     ? Math.max(homeAttempts.length, awayAttempts.length) + (homeAttempts.length === awayAttempts.length ? 1 : 0)
     : 1;
 
+  const showMainScoreboard = live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision';
+
+
   return (
     <div 
       className={cn("w-full h-screen grid grid-rows-[auto_1fr] relative", className)}
@@ -87,7 +90,7 @@ export function FullScoreboard({ className }: { className?: string }) {
             paddingTop: `${scoreboardLayout.scoreboardVerticalPosition}rem`,
         }}
       >
-        <CompactHeaderScoreboard />
+        {showMainScoreboard && <CompactHeaderScoreboard />}
       </div>
 
       {/* Transparent container that takes all remaining space */}
@@ -113,7 +116,7 @@ export function FullScoreboard({ className }: { className?: string }) {
         
         {/* Penalties/Shootout content positioned within the transparent container */}
         <div className="relative z-0 h-full">
-          {live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision' ? (
+          {showMainScoreboard ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
               <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
               <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
