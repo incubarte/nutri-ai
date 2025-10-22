@@ -42,7 +42,7 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
 
   const isWinnerState = clock.periodDisplayOverride === 'End of Game' && score.home !== score.away;
   const formattedTime = clock.isFlashingZero ? "00:00" : formatTime(clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
-  const showClock = !isWinnerState && clock.periodDisplayOverride !== 'AwaitingDecision' && clock.periodDisplayOverride !== "End of Game" && clock.periodDisplayOverride !== "Shootout";
+  const showClock = !isWinnerState && clock.periodDisplayOverride !== 'AwaitingDecision' && clock.periodDisplayOverride !== "End of Game";
 
   return (
     <div className={cn("text-center", className)}>
@@ -55,7 +55,7 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
         style={{ fontSize: `${scoreboardLayout.clockSize}rem`, lineHeight: 1 }}
         >
         {isWinnerState ? (
-            <Trophy className="w-[1em] h-[1em]" />
+            <Trophy className="w-[0.75em] h-[0.75em]" />
         ) : (
             showClock && formattedTime
         )}
@@ -93,3 +93,4 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
     </div>
   );
 }
+
