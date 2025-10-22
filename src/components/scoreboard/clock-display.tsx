@@ -31,50 +31,34 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
       return getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout);
     }
     
-    const iconStyle = {
-        display: 'inline-block',
-        width: `${scoreboardLayout.periodSize * 0.6}rem`,
-        height: `${scoreboardLayout.periodSize * 0.6}rem`,
-        margin: `0 ${scoreboardLayout.periodSize * 0.2}rem`
-    };
-
     if (score.home > score.away) {
-      return (
-        <span className="flex items-center justify-center">
-            <Trophy style={iconStyle} />
-            <span className="truncate">{homeTeamName || 'Local'}</span>
-            <Trophy style={iconStyle} />
-        </span>
-      );
+      return <span className="truncate">{homeTeamName || 'Local'}</span>;
     } else if (score.away > score.home) {
-      return (
-        <span className="flex items-center justify-center">
-            <Trophy style={iconStyle} />
-            <span className="truncate">{awayTeamName || 'Visitante'}</span>
-            <Trophy style={iconStyle} />
-        </span>
-      );
+      return <span className="truncate">{awayTeamName || 'Visitante'}</span>;
     } else {
       return "EMPATE";
     }
   };
 
+  const isWinnerState = clock.periodDisplayOverride === 'End of Game' && score.home !== score.away;
   const formattedTime = clock.isFlashingZero ? "00:00" : formatTime(clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
-
-  const showClock = clock.periodDisplayOverride !== 'AwaitingDecision' && clock.periodDisplayOverride !== "End of Game" && clock.periodDisplayOverride !== "Shootout";
+  const showClock = !isWinnerState && clock.periodDisplayOverride !== 'AwaitingDecision' && clock.periodDisplayOverride !== "End of Game" && clock.periodDisplayOverride !== "Shootout";
 
   return (
     <div className={cn("text-center", className)}>
       <div 
         className={cn(
-          "font-bold font-headline tabular-nums tracking-tighter transition-opacity duration-300",
-          isMainClockLastMinute ? "text-orange-500" : "text-accent",
-          clock.isFlashingZero && "animate-flashing-clock",
-          !showClock && "opacity-0"
+          "font-bold font-headline tabular-nums tracking-tighter transition-opacity duration-300 flex items-center justify-center",
+          isWinnerState ? "text-accent" : (isMainClockLastMinute ? "text-orange-500" : "text-accent"),
+          clock.isFlashingZero && "animate-flashing-clock"
         )}
         style={{ fontSize: `${scoreboardLayout.clockSize}rem`, lineHeight: 1 }}
         >
-        {formattedTime}
+        {isWinnerState ? (
+            <Trophy className="w-[1em] h-[1em]" />
+        ) : (
+            showClock && formattedTime
+        )}
       </div>
       
       <div 
