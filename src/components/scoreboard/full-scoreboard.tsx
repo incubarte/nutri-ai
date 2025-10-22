@@ -90,10 +90,11 @@ export function FullScoreboard({ className }: { className?: string }) {
         <CompactHeaderScoreboard />
       </div>
 
+      {/* Contenedor transparente que ocupa el resto del espacio */}
       <div 
-        className="relative flex-grow flex flex-col"
+        className="relative flex-grow"
         style={{
-            paddingTop: `${scoreboardLayout.mainContentGap}rem`,
+            marginTop: `${scoreboardLayout.mainContentGap}rem`,
         }}
       >
         <AnimatePresence>
@@ -109,8 +110,9 @@ export function FullScoreboard({ className }: { className?: string }) {
             </motion.div>
           )}
         </AnimatePresence>
-
-        <div className="relative z-0 flex-grow">
+        
+        {/* Contenido de Penalidades/Shootout posicionado dentro del contenedor transparente */}
+        <div className="relative z-0 h-full">
           {live.clock.periodDisplayOverride !== 'Shootout' && live.clock.periodDisplayOverride !== 'AwaitingDecision' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
               <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
