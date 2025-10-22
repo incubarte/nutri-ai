@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter as UiTableFooter } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Goal, Siren, FileText, FileDown, BarChart3, Edit3, Check, XCircle, Trash2, PlusCircle, X, AlertTriangle, Info, RefreshCw, Swords } from "lucide-react";
+import { Goal, Siren, FileText, FileDown, BarChart3, Edit3, Check, XCircle, Trash2, PlusCircle, X, AlertTriangle, Info, RefreshCw, Swords, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { exportGameSummaryPDF } from "@/lib/pdf-generator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -24,6 +24,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { safeUUID } from "@/lib/utils";
 import type { PenaltyLog } from "@/types";
+import { saveGameSummary, saveTeamCsvSummary } from "@/ai/flows/file-operations";
 
 
 // --- Modelos de Datos para la Página de Resumen ---
@@ -357,6 +358,7 @@ export default function ResumenPage() {
   const [penaltyToDelete, setPenaltyToDelete] = useState<{ team: Team, periodText: string, logId: string } | null>(null);
   const [overwriteConfirm, setOverwriteConfirm] = useState<{ onConfirm: () => void } | null>(null);
   const [unassignedPlayerWarning, setUnassignedPlayerWarning] = useState<{ players: string[]; onConfirm: () => void } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   
   useEffect(() => {
     try {
@@ -521,73 +523,81 @@ export default function ResumenPage() {
     };
   }, [summaryData]);
   
-  const homeAggregatedStats = useMemo(() => getAggregateStats('home'), [getAggregateStats]);
-  const awayAggregatedStats = useMemo(() => getAggregateStats('away'), [getAggregateStats]);
+  const homeAggregatedStats = useMemo(() => getAggregateStats('home'), [getAggregateStats, summaryData]);
+  const awayAggregatedStats = useMemo(() => getAggregateStats('away'), [getAggregateStats, summaryData]);
 
-  const escapeCsvCell = (cellData: any): string => {
-    if (!summaryData) return '';
-    const stringData = String(cellData ?? '');
-    if (stringData.includes(',') || stringData.includes('"') || stringData.includes('\n')) {
-        return `"${stringData.replace(/"/g, '""')}"`;
+  const handleSaveAndExport = async () => {
+    if (!summaryData) {
+        toast({
+            title: "No hay resumen",
+            description: "Genera un resumen antes de guardarlo o exportarlo.",
+            variant: "destructive"
+        });
+        return;
     }
-    return stringData;
-  };
 
-  const handleExportCSV = () => {
-    if (!summaryData) return;
-    const headers = ['Equipo', 'Tipo', 'Tiempo Juego', 'Periodo', '# Jugador', 'Nombre', '# Jugador 2', 'Nombre 2', 'Duración Pen.', 'Estado Pen.'];
-    const rows: string[][] = [];
+    setIsSaving(true);
+    toast({ title: "Procesando...", description: "Guardando resúmenes y generando PDF." });
 
-    homeAggregatedStats.goals.forEach(g => rows.push([summaryData.homeTeamName, 'Gol', formatTime(g.gameTime), g.periodText, g.scorer?.playerNumber || 'S/N', g.scorer?.playerName || '---', g.assist?.playerNumber || '', g.assist?.playerName || '', '', '']));
-    awayAggregatedStats.goals.forEach(g => rows.push([summaryData.awayTeamName, 'Gol', formatTime(g.gameTime), g.periodText, g.scorer?.playerNumber || 'S/N', g.scorer?.playerName || '---', g.assist?.playerNumber || '', g.assist?.playerName || '', '', '']));
-    homeAggregatedStats.penalties.forEach(p => rows.push([summaryData.homeTeamName, 'Penalidad', formatTime(p.addGameTime), p.addPeriodText, p.playerNumber, p.playerName || '---', '', '', formatTime(p.initialDuration * 100), getEndReasonText(p.endReason) ]));
-    awayAggregatedStats.penalties.forEach(p => rows.push([summaryData.awayTeamName, 'Penalidad', formatTime(p.addGameTime), p.addPeriodText, p.playerNumber, p.playerName || '---', '', '', formatTime(p.initialDuration * 100), getEndReasonText(p.endReason) ]));
+    // 1. Export PDF
+    const pdfFilename = exportGameSummaryPDF(liveGameState);
 
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + [headers.map(escapeCsvCell).join(','), ...rows.map(row => row.map(escapeCsvCell).join(','))].join('\n');
+    // 2. Prepare data and save CSVs
+    const getResult = (teamScore: number, opponentScore: number): "Ganó" | "Perdió" | "Empató" => {
+        if (teamScore > opponentScore) return "Ganó";
+        if (teamScore < opponentScore) return "Perdió";
+        return "Empató";
+    };
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `resumen_partido_${summaryData.homeTeamName}_vs_${summaryData.awayTeamName}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-  
-  const handleExportPDF = () => {
-    if (!summaryData) return;
-    
-    const stateForPDF: GameState = JSON.parse(JSON.stringify(liveGameState));
-
-    stateForPDF.live.homeTeamName = summaryData.homeTeamName;
-    stateForPDF.live.awayTeamName = summaryData.awayTeamName;
-    stateForPDF.live.score.home = summaryData.homeScore;
-    stateForPDF.live.score.away = summaryData.awayScore;
-    
-    stateForPDF.live.gameSummary = {
-        home: {
-            goals: homeAggregatedStats.goals,
-            penalties: homeAggregatedStats.penalties,
-            playerStats: homeAggregatedStats.playerStats,
-            homeShotsLog: [],
-        },
-        away: {
-            goals: awayAggregatedStats.goals,
-            penalties: awayAggregatedStats.penalties,
-            playerStats: awayAggregatedStats.playerStats,
-            awayShotsLog: [],
-        },
-        attendance: summaryData.attendance,
+    const homeCsvPayload = {
+        teamName: summaryData.homeTeamName,
+        categoryName: summaryData.categoryName,
+        gameResult: getResult(summaryData.homeScore, summaryData.awayScore),
+        goalsFor: summaryData.homeScore,
+        goalsAgainst: summaryData.awayScore,
+        playerStats: homeAggregatedStats.playerStats.map(p => ({
+            number: p.number, name: p.name, goals: p.goals, assists: p.assists, shots: p.shots
+        }))
     };
     
-    const filename = exportGameSummaryPDF(stateForPDF);
-    toast({
-        title: "Resumen Descargado",
-        description: `El archivo ${filename} se ha guardado.`,
-    });
-  };
+    const awayCsvPayload = {
+        teamName: summaryData.awayTeamName,
+        categoryName: summaryData.categoryName,
+        gameResult: getResult(summaryData.awayScore, summaryData.homeScore),
+        goalsFor: summaryData.awayScore,
+        goalsAgainst: summaryData.homeScore,
+        playerStats: awayAggregatedStats.playerStats.map(p => ({
+            number: p.number, name: p.name, goals: p.goals, assists: p.assists, shots: p.shots
+        }))
+    };
 
+    try {
+        const [homeResult, awayResult] = await Promise.all([
+            saveTeamCsvSummary(homeCsvPayload),
+            saveTeamCsvSummary(awayCsvPayload)
+        ]);
+
+        if (homeResult.success && awayResult.success) {
+            toast({
+                title: "Éxito",
+                description: `PDF generado (${pdfFilename}) y resúmenes CSV guardados en el servidor.`,
+            });
+        } else {
+            throw new Error(`CSV Home: ${homeResult.message}, CSV Away: ${awayResult.message}`);
+        }
+    } catch (error) {
+        console.error("Error saving summaries:", error);
+        toast({
+            title: "Error al Guardar CSVs",
+            description: "El PDF se generó, pero hubo un error al guardar los archivos CSV en el servidor.",
+            variant: "destructive"
+        });
+    } finally {
+        setIsSaving(false);
+    }
+};
+
+  
   const handleOpenAddPenalty = (team: Team, periodText?: string) => {
     setPenaltyContext({ team, periodText });
     setIsAddPenaltyDialogOpen(true);
@@ -622,7 +632,6 @@ export default function ResumenPage() {
              newSummary.statsByPeriod[periodText][team] = { goals: [], penalties: [], playerStats: [] };
         }
         
-        // Ensure all arrays exist before pushing
         if (!newSummary.statsByPeriod[periodText][team].penalties) newSummary.statsByPeriod[periodText][team].penalties = [];
         if (!newSummary.statsByPeriod[periodText][team].goals) newSummary.statsByPeriod[periodText][team].goals = [];
         if (!newSummary.statsByPeriod[periodText][team].playerStats) newSummary.statsByPeriod[periodText][team].playerStats = [];
@@ -703,9 +712,15 @@ export default function ResumenPage() {
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-wrap justify-between items-center gap-4">
             <h1 className="text-3xl font-bold text-primary-foreground">Resumen del Partido</h1>
-            <Button onClick={handleGenerateSummaryClick}><RefreshCw className="mr-2 h-4 w-4"/> Generar Resumen con Datos del Partido</Button>
+            <div className="flex gap-2">
+                <Button onClick={handleGenerateSummaryClick} variant="outline"><RefreshCw className="mr-2 h-4 w-4"/> Recargar Datos del Partido</Button>
+                <Button onClick={handleSaveAndExport} disabled={!summaryData || isSaving}>
+                    {isSaving ? <HockeyPuckSpinner className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4"/>}
+                    Guardar y Exportar Resumen
+                </Button>
+            </div>
         </div>
 
         {!summaryData ? (
@@ -713,7 +728,7 @@ export default function ResumenPage() {
                 <CardContent>
                     <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                     <h2 className="text-xl font-semibold">Resumen no generado</h2>
-                    <p className="text-muted-foreground">Haz clic en el botón de arriba para cargar las estadísticas del partido actual.</p>
+                    <p className="text-muted-foreground">Haz clic en "Recargar Datos" para cargar las estadísticas del partido actual.</p>
                 </CardContent>
             </Card>
         ) : (
@@ -721,10 +736,6 @@ export default function ResumenPage() {
                 <div className="grid grid-cols-2 text-center my-2">
                     <h3 className="text-2xl font-bold text-primary">{summaryData.homeTeamName} - <span className="text-accent">{summaryData.homeScore}</span></h3>
                     <h3 className="text-2xl font-bold text-primary">{summaryData.awayTeamName} - <span className="text-accent">{summaryData.awayScore}</span></h3>
-                </div>
-                 <div className="flex justify-start gap-2">
-                    <Button type="button" variant="outline" onClick={handleExportCSV}><FileText className="mr-2 h-4 w-4" />Exportar a CSV</Button>
-                    <Button type="button" variant="outline" onClick={handleExportPDF}><FileDown className="mr-2 h-4 w-4" />Exportar a PDF</Button>
                 </div>
                 
                 <Tabs defaultValue="general">
@@ -874,14 +885,14 @@ export default function ResumenPage() {
         {overwriteConfirm && (
             <AlertDialog open={!!overwriteConfirm} onOpenChange={() => setOverwriteConfirm(null)}>
                 <AlertDialogContent>
-                    <AlertTitle className="flex items-center gap-2"><AlertTriangle className="text-amber-500" /> Confirmar Generación de Resumen</AlertTitle>
+                    <AlertTitle className="flex items-center gap-2"><AlertTriangle className="text-amber-500" /> Confirmar Recarga de Datos</AlertTitle>
                     <AlertDialogDesc>
                         Ya existe un resumen generado. Si continúas, se perderán todos los cambios manuales que hayas hecho en este resumen. ¿Deseas continuar y reemplazar los datos?
                     </AlertDialogDesc>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setOverwriteConfirm(null)}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={() => { overwriteConfirm.onConfirm(); setOverwriteConfirm(null); }}>
-                            Sí, Reemplazar Datos
+                            Sí, Recargar Datos
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -938,4 +949,5 @@ export default function ResumenPage() {
     
 
     
+
 
