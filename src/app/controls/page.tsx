@@ -760,12 +760,6 @@ export default function ControlsPage() {
     return isLastRegularPeriod && isTimeConditionMet && isGoalDiffConditionMet && live.clock.periodDisplayOverride === null;
   }, [state]);
 
-
-  const handleTestOverlay = () => {
-    dispatch({ type: 'SHOW_OVERLAY_MESSAGE', payload: { text: "Valentino Caffe", duration: 5000 } });
-    toast({ title: "Overlay de prueba enviado", description: "El mensaje 'Valentino Caffe' debería aparecer en el scoreboard." });
-  }
-
   if (authStatus === 'loading' || isGameStateLoading || !state.live || !state.config || !state.live.penalties) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
@@ -905,9 +899,6 @@ export default function ControlsPage() {
             <Button variant="outline" className="flex-shrink-0" onClick={() => setIsGameSetupDialogOpen(true)}>
               <RefreshCw className="mr-2 h-4 w-4" /> Iniciar Nuevo Partido
             </Button>
-             <Button variant="secondary" onClick={handleTestOverlay}>
-                <MessageSquare className="mr-2 h-4 w-4" /> Mostrar Overlay de Prueba
-             </Button>
         </div>
          <p className="text-xs text-muted-foreground mt-2">
           La acción "Iniciar Nuevo Partido" restablecerá los marcadores, el reloj, el período actual, las penalidades y el registro de eventos del partido.
@@ -1050,5 +1041,3 @@ export default function ControlsPage() {
     </div>
   );
 }
-
-    

@@ -14,7 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ShieldAlert, LogIn, SlidersHorizontal, Info } from 'lucide-react';
+import { Trash2, ShieldAlert, LogIn, SlidersHorizontal, Info, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from "@/hooks/use-auth";
 import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
@@ -107,6 +107,32 @@ function PerformanceSettingsCard() {
     )
 }
 
+function ScoreboardToolsCard() {
+    const { dispatch } = useGameState();
+    const { toast } = useToast();
+
+    const handleTestOverlay = () => {
+        dispatch({ type: 'SHOW_OVERLAY_MESSAGE', payload: { text: "Valentino Caffe", duration: 5000 } });
+        toast({ title: "Overlay de prueba enviado", description: "El mensaje 'Valentino Caffe' debería aparecer en el scoreboard." });
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Herramientas de Scoreboard</CardTitle>
+                <CardDescription>
+                    Acciones para probar funcionalidades del scoreboard.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button variant="secondary" onClick={handleTestOverlay}>
+                    <MessageSquare className="mr-2 h-4 w-4" /> Mostrar Overlay de Prueba
+                </Button>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function AdminPage() {
   const { toast } = useToast();
   const { authStatus } = useAuth();
@@ -167,6 +193,8 @@ export default function AdminPage() {
             <p className="text-muted-foreground mt-2">Herramientas para la gestión avanzada de la aplicación.</p>
         </div>
         
+        <ScoreboardToolsCard />
+
         <PerformanceSettingsCard />
 
         <Card className="bg-destructive/10 border-destructive/30">
