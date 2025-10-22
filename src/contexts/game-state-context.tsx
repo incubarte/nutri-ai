@@ -1259,28 +1259,40 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'MANUAL_END_GAME': {
         const { live, config } = state;
         const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
-        
-        // If we are ending a period that is not the last one
-        if (live.clock.currentPeriod < totalGamePeriods && live.clock.periodDisplayOverride === null) {
-            const isPreOT = live.clock.currentPeriod >= config.numberOfRegularPeriods;
-            const breakType = isPreOT ? 'START_PRE_OT_BREAK' : 'START_BREAK';
-            return gameReducer(state, { type: breakType });
-        }
 
-        // If it's a tie, go to decision, otherwise end the game
-        if (live.score.home !== live.score.away) {
+        // If it's the end of a regular period AND the game is NOT tied, end the game.
+        if (live.clock.currentPeriod >= config.numberOfRegularPeriods && live.score.home !== live.score.away) {
             const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
-            newState = { ...state, live: { ...state.live,
-                clock: { ...state.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
+            newState = { ...state, live: { ...live,
+                clock: { ...live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
                     absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
                     clockStartTimeMs: null, remainingTimeAtStartCs: null, preTimeoutState: null,
                 },
                 playHornTrigger: state.live.playHornTrigger + 1
             }};
-        } else {
-             newState = { ...state, live: { ...state.live,
-                clock: { ...state.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
-                shootout: { ...state.live.shootout, isActive: false }
+        }
+        // If we are in a running period before the last total period.
+        else if (live.clock.currentPeriod < totalGamePeriods && live.clock.periodDisplayOverride === null) {
+            const isPreOT = live.clock.currentPeriod >= config.numberOfRegularPeriods;
+            const breakType = isPreOT ? 'START_PRE_OT_BREAK' : 'START_BREAK';
+            return gameReducer(state, { type: breakType });
+        }
+        // If it's a TIE at the end of regulation or OT.
+        else if (live.score.home === live.score.away) {
+            newState = { ...state, live: { ...live,
+                clock: { ...live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
+                shootout: { ...live.shootout, isActive: false }
+            }};
+        }
+        // Fallback to just end the game (e.g., end of final OT with no winner yet).
+        else {
+             const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
+            newState = { ...state, live: { ...live,
+                clock: { ...live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
+                    absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
+                    clockStartTimeMs: null, remainingTimeAtStartCs: null, preTimeoutState: null,
+                },
+                playHornTrigger: state.live.playHornTrigger + 1
             }};
         }
         break;
@@ -1881,14 +1893,3 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
-
-
-
-
-
-
-
-
-
-
-
