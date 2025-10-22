@@ -1257,7 +1257,17 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'MANUAL_END_GAME': {
-        const { live } = state;
+        const { live, config } = state;
+        const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
+        
+        // If we are ending a period that is not the last one
+        if (live.clock.currentPeriod < totalGamePeriods && live.clock.periodDisplayOverride === null) {
+            const isPreOT = live.clock.currentPeriod >= config.numberOfRegularPeriods;
+            const breakType = isPreOT ? 'START_PRE_OT_BREAK' : 'START_BREAK';
+            return gameReducer(state, { type: breakType });
+        }
+
+        // If it's a tie, go to decision, otherwise end the game
         if (live.score.home !== live.score.away) {
             const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
             newState = { ...state, live: { ...state.live,
@@ -1871,6 +1881,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 
