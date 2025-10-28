@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Home, Settings, Wrench, MonitorPlay, Loader2, BarChart3, Trophy, Check } from 'lucide-react';
+import { Home, Settings, Wrench, MonitorPlay, Loader2, BarChart3, Trophy, Check, ChevronsUpDown } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { FullscreenToggle } from './fullscreen-toggle';
@@ -57,6 +57,11 @@ export function Header() {
   const activeTournaments = useMemo(() => {
     return (tournaments || []).filter(t => t.status === 'active');
   }, [tournaments]);
+  
+  const otherActiveTournaments = useMemo(() => {
+    return activeTournaments.filter(t => t.id !== selectedTournamentId);
+  }, [activeTournaments, selectedTournamentId]);
+
 
   const selectedTournament = useMemo(() => {
     return (tournaments || []).find(t => t.id === selectedTournamentId);
@@ -252,16 +257,49 @@ export function Header() {
           </Link>
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-2">
-           {selectedTournament && (
-            <Link 
-              href={`/tournaments/${selectedTournament.id}`}
-              className="hidden md:flex items-center gap-2 text-sm text-amber-400 mr-4 hover:text-amber-300 transition-colors"
-              onClick={(e) => handleNav(e, `/tournaments/${selectedTournament.id}`)}
-            >
-              <Trophy className="h-4 w-4" />
-              <span className="font-medium truncate max-w-xs">{selectedTournament.name}</span>
-            </Link>
-           )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="hidden md:flex items-center gap-2 text-sm text-amber-400 mr-4 hover:text-amber-300 transition-colors">
+                  {selectedTournament ? (
+                      <>
+                        <Trophy className="h-4 w-4" />
+                        <span className="font-medium truncate max-w-[200px]">{selectedTournament.name}</span>
+                      </>
+                  ) : (
+                      <>
+                        <Trophy className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Sin Torneo</span>
+                      </>
+                  )}
+                  <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {selectedTournament && (
+                  <>
+                  <DropdownMenuItem onClick={() => router.push(`/tournaments/${selectedTournament.id}`)}>
+                    Configurar Torneo Actual
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuLabel>Cambiar Torneo Activo</DropdownMenuLabel>
+                 {otherActiveTournaments.length > 0 ? (
+                  otherActiveTournaments.map(tournament => (
+                    <DropdownMenuItem key={tournament.id} onClick={() => handleSelectTournament(tournament.id)}>
+                      {tournament.name}
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>No hay otros torneos activos</DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push('/tournaments')}>
+                  Administrar Torneos
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
            <div className="flex items-center">
              <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
               <Link href="/" aria-label="Scoreboard" onClick={(e) => handleNav(e, '/')}>
@@ -278,33 +316,8 @@ export function Header() {
                 <BarChart3 className="h-5 w-5" />
               </Link>
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className={cn(pathname.startsWith("/tournaments") ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
-                    <Trophy className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Torneos Activos</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {activeTournaments.length > 0 ? (
-                  activeTournaments.map(tournament => (
-                    <DropdownMenuItem key={tournament.id} onClick={() => handleSelectTournament(tournament.id)}>
-                       <Check className={cn("mr-2 h-4 w-4", selectedTournamentId === tournament.id ? "opacity-100" : "opacity-0")} />
-                      {tournament.name}
-                    </DropdownMenuItem>
-                  ))
-                ) : (
-                  <DropdownMenuItem disabled>No hay torneos activos</DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push('/tournaments')}>
-                  Administrar Torneos
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/config" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
-              <Link href="/config" aria-label="Configuración & Equipos" onClick={(e) => handleNav(e, '/config')}>
+             <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/config" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
+              <Link href="/config" aria-label="Configuración General" onClick={(e) => handleNav(e, '/config')}>
                 <Wrench className="h-5 w-5" />
               </Link>
             </Button>
