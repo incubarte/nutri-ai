@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -84,7 +83,7 @@ function CreateEditTournamentDialog({
       return;
     }
 
-    const isDuplicate = state.config.tournaments.some(
+    const isDuplicate = (state.config.tournaments || []).some(
       (t) => t.id !== tournamentToEdit?.id && t.name.toLowerCase() === trimmedName.toLowerCase()
     );
 
@@ -104,7 +103,7 @@ function CreateEditTournamentDialog({
       });
       toast({ title: "Torneo Actualizado", description: `"${trimmedName}" ha sido actualizado.` });
     } else {
-      dispatch({ type: "ADD_TOURNAMENT", payload: { name: trimmedName, status } });
+      dispatch({ type: "ADD_TOURNAMENT", payload: { name: trimmedName, status: status || 'inactive' } });
       toast({ title: "Torneo Creado", description: `"${trimmedName}" ha sido creado.` });
     }
     onOpenChange(false);
@@ -156,6 +155,7 @@ function CreateEditTournamentDialog({
 
 export default function TournamentsPage() {
   const { state, dispatch } = useGameState();
+  const { toast } = useToast();
   const [isCreateEditDialogOpen, setIsCreateEditDialogOpen] = useState(false);
   const [tournamentToEdit, setTournamentToEdit] = useState<Tournament | null>(null);
   const [tournamentToDelete, setTournamentToDelete] = useState<Tournament | null>(null);
@@ -181,6 +181,8 @@ export default function TournamentsPage() {
     }
   };
 
+  const tournaments = state.config.tournaments || [];
+
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8 py-10">
       <div className="flex justify-between items-center">
@@ -194,20 +196,20 @@ export default function TournamentsPage() {
       </div>
 
       <div className="space-y-4">
-        {state.config.tournaments.length === 0 ? (
+        {tournaments.length === 0 ? (
           <div className="text-center py-12 border-2 border-dashed rounded-lg">
             <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No has creado ningún torneo todavía.</p>
             <p className="text-sm text-muted-foreground">¡Usa el botón de arriba para crear el primero!</p>
           </div>
         ) : (
-          state.config.tournaments.map((tournament) => (
+          tournaments.map((tournament) => (
             <Card key={tournament.id}>
               <CardContent className="p-4 flex justify-between items-center">
                 <div className="flex flex-col">
                   <span className="font-semibold text-lg text-card-foreground">{tournament.name}</span>
-                   <Badge className={cn("w-fit", statusMap[tournament.status].className)}>
-                    {statusMap[tournament.status].text}
+                   <Badge className={cn("w-fit", statusMap[tournament.status]?.className)}>
+                    {statusMap[tournament.status]?.text || tournament.status}
                   </Badge>
                 </div>
                 <div className="flex gap-2">
@@ -251,4 +253,3 @@ export default function TournamentsPage() {
     </div>
   );
 }
-

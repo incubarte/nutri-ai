@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -1443,15 +1441,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             name: action.payload.name,
             status: action.payload.status
         };
-        newState = { ...state, config: { ...state.config, tournaments: [...state.config.tournaments, newTournament] } };
+        newState = { ...state, config: { ...state.config, tournaments: [...(state.config.tournaments || []), newTournament] } };
         break;
     }
     case 'UPDATE_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === action.payload.id ? action.payload : t) } };
+        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === action.payload.id ? action.payload : t) } };
         break;
     }
     case 'DELETE_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.filter(t => t.id !== action.payload.id) } };
+        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).filter(t => t.id !== action.payload.id) } };
         break;
     }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
@@ -1911,4 +1909,5 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
