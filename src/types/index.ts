@@ -40,6 +40,16 @@ export interface PlayerData {
   name: string; 
 }
 
+export interface MatchData {
+  id: string;
+  date: string; // ISO string
+  categoryId: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  playersPerTeam: number;
+}
+
+
 export interface TeamData {
   id: string;
   name: string;
@@ -55,6 +65,7 @@ export interface Tournament {
   status: 'active' | 'inactive' | 'finished';
   teams: TeamData[];
   categories: CategoryData[];
+  matches: MatchData[];
 }
 
 export interface CategoryData {
@@ -410,10 +421,14 @@ export type GameAction =
   | { type: 'UPDATE_TOURNAMENT'; payload: { id: string; name: string; status: Tournament['status'] } }
   | { type: 'DELETE_TOURNAMENT'; payload: { id: string } }
   | { type: 'SET_ACTIVE_TOURNAMENT'; payload: { tournamentId: string | null } }
+  | { type: 'ADD_MATCH_TO_TOURNAMENT'; payload: { tournamentId: string; match: Omit<MatchData, 'id'> } }
+  | { type: 'UPDATE_MATCH_IN_TOURNAMENT'; payload: { tournamentId: string; match: MatchData } }
+  | { type: 'DELETE_MATCH_FROM_TOURNAMENT'; payload: { tournamentId: string; matchId: string } }
   | { type: 'HYDRATE_FROM_STORAGE'; payload: Partial<GameState> }
   | { type: 'SET_STATE_FROM_LOCAL_BROADCAST'; payload: GameState }
   | { type: 'RESET_CONFIG_TO_DEFAULTS' }
   | { type: 'RESET_GAME_STATE' }
+  | { type: 'ADD_TEAM'; payload: Omit<TeamData, 'id' | 'players'> & { players: PlayerData[] } }
   | { type: 'ADD_TEAM_TO_TOURNAMENT'; payload: { tournamentId: string, team: Omit<TeamData, 'id'> & { id?: string } } }
   | { type: 'DELETE_TEAMS_FROM_TOURNAMENT', payload: { tournamentId: string, teamIds: string[] } }
   | { type: 'UPDATE_TEAM_DETAILS'; payload: { teamId: string; name: string; subName?: string; category: string; logoDataUrl?: string | null } }
@@ -421,6 +436,7 @@ export type GameAction =
   | { type: 'ADD_PLAYER_TO_TEAM'; payload: { teamId: string; player: Omit<PlayerData, 'id'> } }
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
+  | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
 
 export interface GameState {

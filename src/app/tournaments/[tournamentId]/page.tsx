@@ -10,6 +10,7 @@ import { ArrowLeft, Trophy, Info } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CategorySettingsCard } from '@/components/config/category-settings-card';
 import { TeamsManagementTab } from '@/components/config/teams-management-tab';
+import { FixtureManagementTab } from '@/components/config/fixture-management-tab';
 import { Separator } from '@/components/ui/separator';
 
 const VALID_TAB_VALUES = ["teamsAndCategories", "fixture"];
@@ -83,13 +84,9 @@ export default function TournamentDetailPage() {
           </div>
         </TabsContent>
         <TabsContent value="fixture" className="mt-6">
-           <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">La funcionalidad para gestionar el fixture estará disponible próximamente.</p>
-            </div>
+           <FixtureManagementTab />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
-
