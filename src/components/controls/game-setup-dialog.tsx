@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useGameState } from "@/contexts/game-state-context";
+import { useGameState, type FormatAndTimingsProfileData } from "@/contexts/game-state-context";
 import type { TeamData } from "@/types";
 import {
   Command,
@@ -40,11 +40,16 @@ import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { Switch } from "../ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DurationSettingsCard } from "../config/duration-settings-card";
+import { PenaltySettingsCard } from "../config/penalty-settings-card";
+import { StoppedTimeAlertCard } from "../config/stopped-time-alert-card";
+
 
 interface GameSetupDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onTeamsConfirmed: () => void;
+  onGameReset: () => void;
 }
 
 const TeamSelector = ({
@@ -115,20 +120,25 @@ const TeamSelector = ({
 };
 
 
-export function GameSetupDialog({ isOpen, onOpenChange, onTeamsConfirmed }: GameSetupDialogProps) {
+export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetupDialogProps) {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
+  
+  const [activeTab, setActiveTab] = useState("teams");
   
   const { selectedTournamentId, tournaments } = state.config;
   const selectedTournament = useMemo(() => tournaments.find(t => t.id === selectedTournamentId), [tournaments, selectedTournamentId]);
   
+  // Team selection state
   const [useManualTeamNames, setUseManualTeamNames] = useState(false);
   const [manualHomeTeamName, setManualHomeTeamName] = useState('Local');
   const [manualAwayTeamName, setManualAwayTeamName] = useState('Visitante');
-
   const [localCategoryId, setLocalCategoryId] = useState(state.config.selectedMatchCategory || '');
   const [homeTeamId, setHomeTeamId] = useState('');
   const [awayTeamId, setAwayTeamId] = useState('');
+  
+  // Game rules state
+  const [tempFormatSettings, setTempFormatSettings] = useState<Partial<FormatAndTimingsProfileData>>({});
   
   const availableCategories = useMemo(() => selectedTournament?.categories || [], [selectedTournament]);
 
@@ -138,20 +148,34 @@ export function GameSetupDialog({ isOpen, onOpenChange, onTeamsConfirmed }: Game
   }, [selectedTournament, localCategoryId]);
   
   useEffect(() => {
-    if (isOpen && state.live.pendingMatchConfig) {
-      const { categoryId, homeTeamId, awayTeamId } = state.live.pendingMatchConfig;
-      setUseManualTeamNames(false);
-      setLocalCategoryId(categoryId);
-      setHomeTeamId(homeTeamId);
-      setAwayTeamId(awayTeamId);
-      dispatch({ type: 'UPDATE_LIVE_STATE', payload: { pendingMatchConfig: undefined } });
-    } else if (isOpen) {
-      setUseManualTeamNames(false);
-      setLocalCategoryId(state.config.selectedMatchCategory || '');
-      setHomeTeamId('');
-      setAwayTeamId('');
+    if (isOpen) {
+        setActiveTab("teams");
+        // Pre-fill from pending match if available
+        if (state.live.pendingMatchConfig) {
+          const { categoryId, homeTeamId, awayTeamId } = state.live.pendingMatchConfig;
+          setUseManualTeamNames(false);
+          setLocalCategoryId(categoryId);
+          setHomeTeamId(homeTeamId);
+          setAwayTeamId(awayTeamId);
+        } else {
+            // Reset to defaults
+            setUseManualTeamNames(false);
+            setLocalCategoryId(state.config.selectedMatchCategory || '');
+            setHomeTeamId('');
+            setAwayTeamId('');
+        }
+        
+        // Load current profile settings into temp state for editing
+        const currentProfile = state.config.formatAndTimingsProfiles.find(p => p.id === state.config.selectedFormatAndTimingsProfileId) || state.config;
+        setTempFormatSettings(currentProfile);
+
+    } else {
+        // Clear pending match on close
+        if (state.live.pendingMatchConfig) {
+          dispatch({ type: 'UPDATE_LIVE_STATE', payload: { pendingMatchConfig: undefined } });
+        }
     }
-  }, [isOpen, state.live.pendingMatchConfig, state.config.selectedMatchCategory, dispatch]);
+  }, [isOpen, state.live.pendingMatchConfig, state.config.selectedMatchCategory, state.config.formatAndTimingsProfiles, state.config.selectedFormatAndTimingsProfileId, dispatch]);
 
   useEffect(() => {
     if (!useManualTeamNames) {
@@ -161,10 +185,32 @@ export function GameSetupDialog({ isOpen, onOpenChange, onTeamsConfirmed }: Game
   }, [localCategoryId, useManualTeamNames]);
 
 
-  const handleConfirmTeams = () => {
+  const handleNextStep = () => {
+    if (useManualTeamNames) {
+        const homeName = manualHomeTeamName.trim() || 'Local';
+        const awayName = manualAwayTeamName.trim() || 'Visitante';
+        if (homeName === awayName) {
+            toast({ title: "Nombres Iguales", description: "Los nombres de los equipos no pueden ser iguales.", variant: "destructive" });
+            return;
+        }
+    } else {
+        if (!homeTeamId || !awayTeamId || !localCategoryId) {
+          toast({
+            title: "Datos Incompletos",
+            description: "Por favor, selecciona una categoría y ambos equipos para continuar.",
+            variant: "destructive",
+          });
+          return;
+        }
+    }
+    setActiveTab("rules");
+  };
+  
+  const handleConfirmAndStart = () => {
+    // 1. Reset game state
+    onGameReset();
     
-    dispatch({ type: 'SET_ACTIVE_MATCH', payload: { matchId: state.live.pendingMatchConfig?.matchId || null } });
-    
+    // 2. Set Teams
     if (useManualTeamNames) {
         const homeName = manualHomeTeamName.trim() || 'Local';
         const awayName = manualAwayTeamName.trim() || 'Visitante';
@@ -176,27 +222,12 @@ export function GameSetupDialog({ isOpen, onOpenChange, onTeamsConfirmed }: Game
         dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'home', playerIds: [] }});
         dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'away', playerIds: [] }});
         
-        onTeamsConfirmed();
-        toast({
-          title: "Equipos Configurados (Manual)",
-          description: `El partido será ${homeName} vs ${awayName}.`
-        });
-        
     } else {
-        if (!homeTeamId || !awayTeamId || !localCategoryId) {
-          toast({
-            title: "Datos Incompletos",
-            description: "Por favor, selecciona una categoría y ambos equipos para continuar.",
-            variant: "destructive",
-          });
-          return;
-        }
-
         const homeTeam = teamsInCategory.find(t => t.id === homeTeamId);
         const awayTeam = teamsInCategory.find(t => t.id === awayTeamId);
 
         if (!homeTeam || !awayTeam) {
-            toast({ title: "Error", description: "No se pudieron encontrar los datos de los equipos seleccionados.", variant: "destructive" });
+            toast({ title: "Error", description: "No se pudieron encontrar los datos de los equipos.", variant: "destructive" });
             return;
         }
 
@@ -205,98 +236,129 @@ export function GameSetupDialog({ isOpen, onOpenChange, onTeamsConfirmed }: Game
         dispatch({ type: 'SET_HOME_TEAM_SUB_NAME', payload: homeTeam.subName });
         dispatch({ type: 'SET_AWAY_TEAM_NAME', payload: awayTeam.name });
         dispatch({ type: 'SET_AWAY_TEAM_SUB_NAME', payload: awayTeam.subName });
-        
         dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'home', playerIds: homeTeam.players.map(p => p.id) }});
         dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'away', playerIds: awayTeam.players.map(p => p.id) }});
-
-        onTeamsConfirmed();
-        toast({
-          title: "Equipos Configurados",
-          description: `El partido será ${homeTeam.name} vs ${awayTeam.name}.`
-        });
     }
 
+    // 3. Apply temporary game rules
+    dispatch({ type: 'UPDATE_SELECTED_FT_PROFILE_DATA', payload: tempFormatSettings });
+    
+    // 4. Set active match ID
+    if (state.live.pendingMatchConfig?.matchId) {
+        dispatch({ type: 'UPDATE_LIVE_STATE', payload: { matchId: state.live.pendingMatchConfig.matchId } });
+    } else {
+        dispatch({ type: 'UPDATE_LIVE_STATE', payload: { matchId: null } });
+    }
+    
+    toast({ title: "¡Partido Listo!", description: "Se ha configurado un nuevo partido." });
     onOpenChange(false);
-  };
+  }
 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Configurar Equipos del Partido</DialogTitle>
-            <DialogDescription>
-              Selecciona la categoría y los equipos o ingresa los nombres manualmente.
-            </DialogDescription>
+          <DialogTitle>Configurar Nuevo Partido</DialogTitle>
+          <DialogDescription>
+            Configura los equipos y las reglas para el próximo partido.
+          </DialogDescription>
         </DialogHeader>
         
-        <div className="py-4 space-y-4">
-             <div className="flex items-center space-x-2">
-                <Switch 
-                    id="manual-team-names-switch"
-                    checked={useManualTeamNames}
-                    onCheckedChange={setUseManualTeamNames}
-                />
-                <Label htmlFor="manual-team-names-switch">Ingresar nombres de equipo manualmente</Label>
-            </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="teams">Paso 1: Equipos</TabsTrigger>
+                <TabsTrigger value="rules" disabled={activeTab !== 'rules'}>Paso 2: Reglas</TabsTrigger>
+            </TabsList>
             
-            <Separator />
-
-            {useManualTeamNames ? (
-                <div className="space-y-4">
-                    <div className="grid w-full items-center gap-1.5">
-                        <Label htmlFor="manual-home-name">Nombre del Equipo Local</Label>
-                        <Input id="manual-home-name" value={manualHomeTeamName} onChange={(e) => setManualHomeTeamName(e.target.value)} />
-                    </div>
-                     <div className="grid w-full items-center gap-1.5">
-                        <Label htmlFor="manual-away-name">Nombre del Equipo Visitante</Label>
-                        <Input id="manual-away-name" value={manualAwayTeamName} onChange={(e) => setManualAwayTeamName(e.target.value)} />
-                    </div>
+            <TabsContent value="teams" className="py-4 space-y-4">
+                <div className="flex items-center space-x-2">
+                    <Switch 
+                        id="manual-team-names-switch"
+                        checked={useManualTeamNames}
+                        onCheckedChange={setUseManualTeamNames}
+                    />
+                    <Label htmlFor="manual-team-names-switch">Ingresar nombres de equipo manualmente</Label>
                 </div>
-            ) : (
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Label>Categoría</Label>
-                         <Select value={localCategoryId} onValueChange={setLocalCategoryId}>
-                          <SelectTrigger className="w-full h-11">
-                            <SelectValue placeholder={availableCategories.length > 0 ? "Seleccionar categoría..." : "Sin categorías"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableCategories.map(cat => (
-                              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                    </div>
-                   
-                   <TeamSelector
-                        label="Equipo Local"
-                        teams={teamsInCategory}
-                        selectedTeamId={homeTeamId}
-                        onSelectTeam={setHomeTeamId}
-                        disabledTeamId={awayTeamId}
-                        disabled={!localCategoryId}
-                   />
+                
+                <Separator />
 
-                   <TeamSelector
-                        label="Equipo Visitante"
-                        teams={teamsInCategory}
-                        selectedTeamId={awayTeamId}
-                        onSelectTeam={setAwayTeamId}
-                        disabledTeamId={homeTeamId}
-                        disabled={!localCategoryId}
-                   />
-                </div>
-            )}
-        </div>
+                {useManualTeamNames ? (
+                    <div className="space-y-4">
+                        <div className="grid w-full items-center gap-1.5">
+                            <Label htmlFor="manual-home-name">Nombre del Equipo Local</Label>
+                            <Input id="manual-home-name" value={manualHomeTeamName} onChange={(e) => setManualHomeTeamName(e.target.value)} />
+                        </div>
+                         <div className="grid w-full items-center gap-1.5">
+                            <Label htmlFor="manual-away-name">Nombre del Equipo Visitante</Label>
+                            <Input id="manual-away-name" value={manualAwayTeamName} onChange={(e) => setManualAwayTeamName(e.target.value)} />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Categoría</Label>
+                             <Select value={localCategoryId} onValueChange={setLocalCategoryId}>
+                              <SelectTrigger className="w-full h-11">
+                                <SelectValue placeholder={availableCategories.length > 0 ? "Seleccionar categoría..." : "Sin categorías"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableCategories.map(cat => (
+                                  <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                        </div>
+                       
+                       <TeamSelector
+                            label="Equipo Local"
+                            teams={teamsInCategory}
+                            selectedTeamId={homeTeamId}
+                            onSelectTeam={setHomeTeamId}
+                            disabledTeamId={awayTeamId}
+                            disabled={!localCategoryId}
+                       />
+
+                       <TeamSelector
+                            label="Equipo Visitante"
+                            teams={teamsInCategory}
+                            selectedTeamId={awayTeamId}
+                            onSelectTeam={setAwayTeamId}
+                            disabledTeamId={homeTeamId}
+                            disabled={!localCategoryId}
+                       />
+                    </div>
+                )}
+            </TabsContent>
+
+            <TabsContent value="rules" className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                 <DurationSettingsCard 
+                    isDialogMode={true} 
+                    tempSettings={tempFormatSettings}
+                    onSettingsChange={setTempFormatSettings}
+                />
+                <PenaltySettingsCard
+                    isDialogMode={true}
+                    tempSettings={tempFormatSettings}
+                    onSettingsChange={setTempFormatSettings}
+                />
+                <StoppedTimeAlertCard
+                    isDialogMode={true}
+                    tempSettings={tempFormatSettings}
+                    onSettingsChange={setTempFormatSettings}
+                />
+            </TabsContent>
+        </Tabs>
        
         <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleConfirmTeams}>
-              Confirmar Equipos y Continuar
-            </Button>
+            {activeTab === "teams" ? (
+                <Button onClick={handleNextStep}>Siguiente</Button>
+            ) : (
+                <Button onClick={handleConfirmAndStart}>Confirmar e Iniciar Partido</Button>
+            )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
