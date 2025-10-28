@@ -224,7 +224,7 @@ export default function SetupPage() {
                                     <CalendarCheck className="h-5 w-5 text-primary"/>
                                     Partidos Programados para Hoy
                                 </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                <div className="grid grid-cols-1 gap-2">
                                      {todaysMatches.map(match => {
                                         const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
                                         const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
@@ -338,3 +338,5 @@ export default function SetupPage() {
         </div>
     );
 }
+
+    
