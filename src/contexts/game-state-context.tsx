@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -161,6 +162,7 @@ const getInitialState = (): GameState => {
       selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
       teams: [],
       tournaments: [],
+      selectedTournamentId: null,
       tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
     },
     live: {
@@ -1452,6 +1454,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).filter(t => t.id !== action.payload.id) } };
         break;
     }
+    case 'SET_ACTIVE_TOURNAMENT': {
+        newState = { ...state, config: { ...state.config, selectedTournamentId: action.payload.tournamentId } };
+        break;
+    }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
       const { selectedFormatAndTimingsProfileId, formatAndTimingsProfiles } = state.config;
       if (!selectedFormatAndTimingsProfileId) break;
@@ -1909,5 +1915,3 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
-
-

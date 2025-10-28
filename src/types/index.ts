@@ -223,6 +223,7 @@ export interface ConfigState extends Omit<FormatAndTimingsProfileData, 'id' | 'n
   selectedMatchCategory: string;
   teams: TeamData[];
   tournaments: Tournament[];
+  selectedTournamentId: string | null;
 }
 
 export type PeriodDisplayOverrideType = 'Warm-up' | 'Break' | 'Pre-OT Break' | 'Time Out' | 'End of Game' | 'Shootout' | 'AwaitingDecision' | null;
@@ -402,8 +403,9 @@ export type GameAction =
   | { type: 'SET_SELECTED_MATCH_CATEGORY'; payload: string }
   | { type: 'UPDATE_TUNNEL_STATE', payload: Partial<TunnelState> }
   | { type: 'ADD_TOURNAMENT'; payload: { name: string; status: Tournament['status'] } }
-  | { type: 'UPDATE_TOURNAMENT'; payload: { id: string; name: string; status: Tournament['status'] } }
+  | { type: 'UPDATE_TOURNAMENT'; payload: Tournament }
   | { type: 'DELETE_TOURNAMENT'; payload: { id: string } }
+  | { type: 'SET_ACTIVE_TOURNAMENT'; payload: { tournamentId: string | null } }
   | { type: 'HYDRATE_FROM_STORAGE'; payload: Partial<GameState> }
   | { type: 'SET_STATE_FROM_LOCAL_BROADCAST'; payload: GameState }
   | { type: 'RESET_CONFIG_TO_DEFAULTS' }

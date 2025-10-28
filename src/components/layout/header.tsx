@@ -6,11 +6,20 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Home, Settings, Wrench, MonitorPlay, Loader2, BarChart3, Trophy } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { Home, Settings, Wrench, MonitorPlay, Loader2, BarChart3, Trophy, Check } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { FullscreenToggle } from './fullscreen-toggle';
 import { HockeyPuckSpinner } from '../ui/hockey-puck-spinner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useGameState } from '@/contexts/game-state-context';
 
 const EXTERNAL_WINDOW_CONFIG_KEY = 'externalWindowConfig';
 
@@ -18,6 +27,8 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
+  const { state, dispatch } = useGameState();
+  const { tournaments, selectedTournamentId } = state.config;
 
   const isScoreboardPage = pathname === '/';
   const isControlsPage = pathname === '/controls';
@@ -28,19 +39,35 @@ export function Header() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Cuando el pathname cambia, la nueva página ha cargado, así que ocultamos el loader.
+    // When the pathname changes, the new page has loaded, so we hide the loader.
     setIsLoading(false);
   }, [pathname]);
 
   const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    // Si ya estamos en la página de destino, no hacemos nada.
+    // If we are already on the destination page, do nothing.
     if (pathname === href) {
         e.preventDefault();
         return;
     }
-    // Si no, activamos el loader.
+    // Otherwise, activate the loader.
     setIsLoading(true);
-    // La navegación del Link continuará normalmente.
+    // The Link navigation will continue normally.
+  };
+
+  const activeTournaments = useMemo(() => {
+    return (tournaments || []).filter(t => t.status === 'active');
+  }, [tournaments]);
+
+  const selectedTournament = useMemo(() => {
+    return (tournaments || []).find(t => t.id === selectedTournamentId);
+  }, [tournaments, selectedTournamentId]);
+
+  const handleSelectTournament = (tournamentId: string) => {
+    dispatch({ type: 'SET_ACTIVE_TOURNAMENT', payload: { tournamentId } });
+    const tournament = tournaments.find(t => t.id === tournamentId);
+    if (tournament) {
+      toast({ title: 'Torneo Activo Cambiado', description: `Ahora estás viendo "${tournament.name}".` });
+    }
   };
 
 
@@ -53,7 +80,7 @@ export function Header() {
         }
     } catch (e) { console.error("Error parsing window config from localStorage", e); }
     
-    // Si no hay config, la obtenemos del servidor
+    // If no config, get it from the server
     if (!config || !config.binaryPath) {
         try {
             const res = await fetch('/api/system-info');
@@ -79,7 +106,7 @@ export function Header() {
 
     const payload = {
         binaryPath: config.binaryPath,
-        url: `${window.location.protocol}//${window.location.host}/`, // URL dinámica del scoreboard
+        url: `${window.location.protocol}//${window.location.host}/`, // Dynamic scoreboard URL
         position: { x: config.posX, y: config.posY },
         size: { width: config.width, height: config.height },
     };
@@ -192,7 +219,7 @@ export function Header() {
         <Link href="/" className="mr-6 flex items-center space-x-2" onClick={(e) => handleNav(e, '/')}>
           <span className="font-headline text-xl font-bold text-primary-foreground">IceVision</span>
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
+        <nav className="hidden sm:flex items-center gap-4 text-sm">
           <Link
             href="/"
             onClick={(e) => handleNav(e, '/')}
@@ -223,53 +250,61 @@ export function Header() {
           >
             Resumen
           </Link>
-          <Link
-            href="/tournaments"
-            onClick={(e) => handleNav(e, '/tournaments')}
-            className={cn(
-              "transition-colors hover:text-foreground/80",
-              pathname === "/tournaments" ? "text-foreground" : "text-foreground/60"
-            )}
-          >
-            Torneos
-          </Link>
-          <Link
-            href="/config"
-            onClick={(e) => handleNav(e, '/config')}
-            className={cn(
-              "transition-colors hover:text-foreground/80",
-              pathname === "/config" ? "text-foreground" : "text-foreground/60"
-            )}
-          >
-            Configuración
-          </Link>
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-2">
-           <Button variant="ghost" size="icon" asChild className={pathname === "/" ? "text-primary-foreground bg-primary/80" : "text-foreground/60"}>
-            <Link href="/" aria-label="Scoreboard" onClick={(e) => handleNav(e, '/')}>
-              <Home className="h-5 w-5" />
-            </Link>
-          </Button>
-          <Button variant="ghost" size="icon" asChild className={pathname === "/controls" ? "text-primary-foreground bg-primary/80" : "text-foreground/60"}>
-            <Link href="/controls" aria-label="Controls" onClick={(e) => handleNav(e, '/controls')}>
-              <Settings className="h-5 w-5" />
-            </Link>
-          </Button>
-           <Button variant="ghost" size="icon" asChild className={pathname === "/resumen" ? "text-primary-foreground bg-primary/80" : "text-foreground/60"}>
-            <Link href="/resumen" aria-label="Resumen" onClick={(e) => handleNav(e, '/resumen')}>
-              <BarChart3 className="h-5 w-5" />
-            </Link>
-          </Button>
-           <Button variant="ghost" size="icon" asChild className={pathname === "/tournaments" ? "text-primary-foreground bg-primary/80" : "text-foreground/60"}>
-            <Link href="/tournaments" aria-label="Torneos" onClick={(e) => handleNav(e, '/tournaments')}>
-              <Trophy className="h-5 w-5" />
-            </Link>
-          </Button>
-          <Button variant="ghost" size="icon" asChild className={pathname === "/config" ? "text-primary-foreground bg-primary/80" : "text-foreground/60"}>
-            <Link href="/config" aria-label="Configuración & Equipos" onClick={(e) => handleNav(e, '/config')}>
-              <Wrench className="h-5 w-5" />
-            </Link>
-          </Button>
+           {selectedTournament && (
+            <div className="hidden md:flex items-center gap-2 text-sm text-amber-400 mr-4">
+              <Trophy className="h-4 w-4" />
+              <span className="font-medium truncate max-w-xs">{selectedTournament.name}</span>
+            </div>
+           )}
+           <div className="flex items-center">
+             <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
+              <Link href="/" aria-label="Scoreboard" onClick={(e) => handleNav(e, '/')}>
+                <Home className="h-5 w-5" />
+              </Link>
+            </Button>
+            <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/controls" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
+              <Link href="/controls" aria-label="Controls" onClick={(e) => handleNav(e, '/controls')}>
+                <Settings className="h-5 w-5" />
+              </Link>
+            </Button>
+             <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/resumen" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
+              <Link href="/resumen" aria-label="Resumen" onClick={(e) => handleNav(e, '/resumen')}>
+                <BarChart3 className="h-5 w-5" />
+              </Link>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className={cn(pathname === "/tournaments" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
+                    <Trophy className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Torneos Activos</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {activeTournaments.length > 0 ? (
+                  activeTournaments.map(tournament => (
+                    <DropdownMenuItem key={tournament.id} onClick={() => handleSelectTournament(tournament.id)}>
+                       <Check className={cn("mr-2 h-4 w-4", selectedTournamentId === tournament.id ? "opacity-100" : "opacity-0")} />
+                      {tournament.name}
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>No hay torneos activos</DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push('/tournaments')}>
+                  Administrar Torneos
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/config" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
+              <Link href="/config" aria-label="Configuración & Equipos" onClick={(e) => handleNav(e, '/config')}>
+                <Wrench className="h-5 w-5" />
+              </Link>
+            </Button>
+          </div>
 
           {isControlsPage && (
             <Button variant="ghost" size="icon" onClick={handleOpenExternalWindow} aria-label="Abrir ventana de scoreboard externa">
