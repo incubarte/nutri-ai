@@ -53,6 +53,8 @@ export interface Tournament {
   id: string;
   name: string;
   status: 'active' | 'inactive' | 'finished';
+  teams: TeamData[];
+  categories: CategoryData[];
 }
 
 export interface CategoryData {
@@ -219,11 +221,10 @@ export interface ConfigState extends Omit<FormatAndTimingsProfileData, 'id' | 'n
   selectedFormatAndTimingsProfileId: string | null;
   scoreboardLayout: ScoreboardLayoutSettings;
   selectedScoreboardLayoutProfileId: string | null;
-  availableCategories: CategoryData[];
-  selectedMatchCategory: string;
-  teams: TeamData[];
+  // availableCategories and teams are now part of Tournament
   tournaments: Tournament[];
   selectedTournamentId: string | null;
+  selectedMatchCategory: string; // This might now be derived from the selected tournament
 }
 
 export type PeriodDisplayOverrideType = 'Warm-up' | 'Break' | 'Pre-OT Break' | 'Time Out' | 'End of Game' | 'Shootout' | 'AwaitingDecision' | null;
@@ -309,7 +310,10 @@ export interface LiveState {
 export interface LiveGameState extends LiveState {
     playersPerTeamOnIce?: number; 
     numberOfRegularPeriods?: number;
+    // These optional fields are for backward compatibility during transitions.
+    // They will be derived from the selected tournament's data.
     teams?: TeamData[];
+    availableCategories?: CategoryData[]; 
     selectedMatchCategory?: string;
     penaltyTypes?: PenaltyTypeDefinition[];
     defaultPenaltyTypeId?: string | null;
