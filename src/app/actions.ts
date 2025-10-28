@@ -2,49 +2,27 @@
 
 'use client';
 
-import type { LiveGameState, ConfigState, RemoteCommand } from '@/types';
+import type { GameState } from '@/types';
 
-export async function updateConfigOnServer(config: ConfigState) {
-  // The try/catch is removed. Let the caller handle errors.
-  await fetch('/api/config', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(config),
-  });
-}
-
-export async function updateGameStateOnServer(gameState: LiveGameState) {
-    // The try/catch is removed. Let the caller handle errors.
-    await fetch('/api/game-state', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(gameState),
-    });
-}
-
-export async function sendRemoteCommand(command: RemoteCommand) {
+export async function saveDataOnServer(data: Partial<GameState>) {
   try {
-    const response = await fetch('/api/remote-commands', {
+    const response = await fetch('/api/db', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(command),
+      body: JSON.stringify(data),
     });
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to send remote command.');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save data.');
     }
     return await response.json();
   } catch (error) {
-    console.error('Failed to send remote command:', error);
-    if (error instanceof Error) {
+     console.error('Failed to save data on server:', error);
+     if (error instanceof Error) {
         return { success: false, message: error.message };
     }
-    return { success: false, message: 'An unknown error occurred.' };
+    return { success: false, message: 'An unknown error occurred while saving data.' };
   }
 }

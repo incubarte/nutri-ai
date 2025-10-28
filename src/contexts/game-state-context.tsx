@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -6,15 +7,13 @@ import React, { createContext, useContext, useReducer, useEffect, useRef, useSta
 import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
-import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
+import { saveDataOnServer } from '@/app/actions';
 import { safeUUID } from '@/lib/utils';
 import defaultSettings from '@/config/defaults.json';
 
 
 // --- Constantes para la sincronización local ---
 export const BROADCAST_CHANNEL_NAME = 'icevision-game-state-channel';
-export const GAME_STATE_STORAGE_KEY = 'icevision-game-state';
-export const TEAMS_STORAGE_KEY = 'icevision-teams-data';
 export const SUMMARY_DATA_STORAGE_KEY = 'icevision-summary-data';
 
 const CENTISECONDS_PER_SECOND = 100;
@@ -453,33 +452,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'HIDE_OVERLAY_MESSAGE':
       newState = { ...state, live: { ...state.live, overlayMessage: null } };
       break;
-    case 'HYDRATE_FROM_STORAGE': {
-        let finalState: GameState;
-        try {
-            const rawGameState = localStorage.getItem(GAME_STATE_STORAGE_KEY);
-            
-            if (rawGameState) {
-                const loadedGameState: GameState = JSON.parse(rawGameState);
-                // Basic validation to ensure the loaded state is not completely broken
-                if (loadedGameState.config && loadedGameState.live) {
-                    finalState = loadedGameState;
-                } else {
-                    finalState = getInitialState();
-                }
-            } else {
-                finalState = getInitialState();
-            }
-        } catch (error) {
-            console.error("Error reading or parsing state from localStorage:", error);
-            finalState = getInitialState();
-        }
+    case 'HYDRATE_FROM_SERVER': {
+      const serverState = action.payload;
+      if (!serverState.config) {
+          console.error("Hydration from server failed: config is missing.");
+          return state; // Return current state if server data is incomplete
+      }
+      
+      let finalState: GameState = {
+        ...getInitialState(), // Start with a clean slate
+        config: serverState.config, // Overwrite with server config
+        _initialConfigLoadComplete: true,
+      };
 
-        finalState._initialConfigLoadComplete = true;
-
-        // Ensure the correct profiles are applied upon hydration
-        newState = applyFormatAndTimingsProfileToState(finalState, finalState.config.selectedFormatAndTimingsProfileId);
-        newState = applyScoreboardLayoutProfileToState(newState, newState.config.selectedScoreboardLayoutProfileId);
-        break;
+      // Ensure the correct profiles are applied upon hydration
+      newState = applyFormatAndTimingsProfileToState(finalState, finalState.config.selectedFormatAndTimingsProfileId);
+      newState = applyScoreboardLayoutProfileToState(newState, newState.config.selectedScoreboardLayoutProfileId);
+      break;
     }
     case 'SET_STATE_FROM_LOCAL_BROADCAST': {
         const incomingTimestamp = action.payload._lastUpdatedTimestamp;
@@ -1765,7 +1754,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
   }
 
-  const nonOriginatingActionTypes: GameAction['type'][] = ['HYDRATE_FROM_STORAGE', 'SET_STATE_FROM_LOCAL_BROADCAST'];
+  const nonOriginatingActionTypes: GameAction['type'][] = ['HYDRATE_FROM_SERVER', 'SET_STATE_FROM_LOCAL_BROADCAST'];
   if (action.type === 'TICK') return newState;
   if (nonOriginatingActionTypes.includes(action.type)) return { ...newState, _lastActionOriginator: undefined };
   
@@ -1795,16 +1784,12 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const channelRef = useRef<BroadcastChannel | null>(null);
 
   const syncToServer = useCallback(async (stateToSync: GameState) => {
-    const { ...configToSync } = stateToSync.config;
     try {
-      await Promise.all([
-        updateConfigOnServer(configToSync as ConfigState),
-        updateGameStateOnServer(stateToSync.live)
-      ]);
+        await saveDataOnServer({ config: stateToSync.config });
     } catch (error) {
       showToast({
         title: "Error de Sincronización",
-        description: "No se pudo sincronizar con el servidor.",
+        description: "No se pudo guardar la configuración en el servidor.",
         variant: "destructive",
         duration: 2000,
       });
@@ -1828,10 +1813,25 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && !state._initialConfigLoadComplete) {
-      dispatch({ type: 'HYDRATE_FROM_STORAGE', payload: {} });
-    }
-    setIsLoading(false);
+    const fetchInitialData = async () => {
+      try {
+        const res = await fetch('/api/db');
+        if (res.ok) {
+          const data: GameState = await res.json();
+          dispatch({ type: 'HYDRATE_FROM_SERVER', payload: data });
+        } else {
+          // If fetching fails, we might fall back to a default state or show an error
+          dispatch({ type: 'HYDRATE_FROM_SERVER', payload: getInitialState() });
+        }
+      } catch (error) {
+        console.error("Failed to fetch initial state from server:", error);
+        dispatch({ type: 'HYDRATE_FROM_SERVER', payload: getInitialState() });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchInitialData();
 
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       if (!channelRef.current) {
@@ -1854,20 +1854,20 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
         channelRef.current?.removeEventListener('message', handleMessage);
       };
     }
-  }, [state._initialConfigLoadComplete]);
+  }, []);
 
 
   useEffect(() => {
-    if (isLoading || typeof window === 'undefined') return;
+    if (isLoading || typeof window === 'undefined' || !state._lastActionOriginator) return;
 
     if (state._lastActionOriginator === TAB_ID) {
       try {
-        localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(state));
-        
+        // Broadcast the full state, other tabs will receive it
         channelRef.current?.postMessage(state);
-        syncToServer(state);
+        // Save only config changes to the server
+        syncToServer({ config: state.config, live: state.live, _initialConfigLoadComplete: true }); 
       } catch (error) {
-        console.error("Error saving/broadcasting state:", error);
+        console.error("Error broadcasting or saving state:", error);
       }
     }
   }, [state, isLoading, syncToServer]);
@@ -2007,6 +2007,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 
