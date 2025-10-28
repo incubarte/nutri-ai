@@ -4,22 +4,22 @@
 import React, { useState, useMemo } from 'react';
 import { useGameState, getCategoryNameById } from '@/contexts/game-state-context';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Calendar as CalendarIcon, Edit, Trash2, List } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar } from '@/components/ui/calendar';
-import { addDays, format, isSameDay } from 'date-fns';
+import { PlusCircle, Calendar as CalendarIcon, Edit, Trash2, List, ChevronLeft, ChevronRight } from 'lucide-react';
+import { addMonths, subMonths, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AddEditMatchDialog } from './add-edit-match-dialog';
 import { DefaultTeamLogo } from '@/components/teams/default-team-logo';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import type { MatchData, TeamData } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '../ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 export function FixtureManagementTab() {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
   const { selectedTournamentId, tournaments } = state.config;
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isAddEditDialogOpen, setIsAddEditDialogOpen] = useState(false);
   const [matchToEdit, setMatchToEdit] = useState<MatchData | null>(null);
   const [matchToDelete, setMatchToDelete] = useState<MatchData | null>(null);
@@ -32,17 +32,6 @@ export function FixtureManagementTab() {
     return selectedTournament?.matches || [];
   }, [selectedTournament]);
 
-  const matchesOnSelectedDate = useMemo(() => {
-    if (!selectedDate) return [];
-    return matches
-      .filter(match => isSameDay(new Date(match.date), selectedDate))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [matches, selectedDate]);
-  
-  const getTeamById = (teamId: string): TeamData | undefined => {
-    return selectedTournament?.teams.find(t => t.id === teamId);
-  }
-  
   const handleEditMatch = (match: MatchData) => {
     setMatchToEdit(match);
     setIsAddEditDialogOpen(true);
@@ -55,6 +44,17 @@ export function FixtureManagementTab() {
     setMatchToDelete(null);
   };
 
+  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+
+  const daysOfWeek = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+
+  const days = eachDayOfInterval({ start: startDate, end: endDate });
+
   return (
     <div className="space-y-6">
        <div className="flex justify-between items-center">
@@ -65,71 +65,56 @@ export function FixtureManagementTab() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <CalendarIcon className="h-5 w-5" /> Calendario
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="flex justify-center">
-                <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    locale={es}
-                    modifiers={{
-                        hasMatch: matches.map(m => new Date(m.date))
-                    }}
-                    modifiersStyles={{
-                        hasMatch: { fontWeight: 'bold', color: 'hsl(var(--accent))' }
-                    }}
-                />
-            </CardContent>
-        </Card>
-        
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <List className="h-5 w-5" />
-                    Partidos del {selectedDate ? format(selectedDate, "d 'de' MMMM", { locale: es }) : "día seleccionado"}
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                {matchesOnSelectedDate.length > 0 ? (
-                    matchesOnSelectedDate.map(match => {
-                        const homeTeam = getTeamById(match.homeTeamId);
-                        const awayTeam = getTeamById(match.awayTeamId);
-                        const categoryName = getCategoryNameById(match.categoryId, selectedTournament?.categories);
+      <div className="flex justify-between items-center px-2">
+        <h3 className="text-xl font-semibold">{format(currentMonth, "MMMM yyyy", { locale: es })}</h3>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={prevMonth}><ChevronLeft className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" onClick={nextMonth}><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-7 border-t border-l">
+        {daysOfWeek.map(day => (
+          <div key={day} className="text-center font-bold p-2 border-b border-r bg-muted/50">{day}</div>
+        ))}
+        {days.map(day => {
+          const matchesForDay = matches
+            .filter(match => isSameDay(new Date(match.date), day))
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-                        return (
-                            <div key={match.id} className="p-3 border rounded-md bg-muted/50 flex justify-between items-center">
-                               <div className="space-y-1.5">
-                                    <div className="flex items-center gap-2">
-                                        {homeTeam ? <DefaultTeamLogo teamName={homeTeam.name} size="sm" /> : <div className="w-8 h-8 rounded-full bg-muted"></div>}
-                                        <span className="font-semibold">{homeTeam?.name || 'Equipo no encontrado'}</span>
-                                        <span className="text-muted-foreground mx-1">vs</span>
-                                        <span className="font-semibold">{awayTeam?.name || 'Equipo no encontrado'}</span>
-                                        {awayTeam ? <DefaultTeamLogo teamName={awayTeam.name} size="sm" /> : <div className="w-8 h-8 rounded-full bg-muted"></div>}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground flex items-center gap-4 pl-10">
-                                       <span>{format(new Date(match.date), 'HH:mm')} hs</span>
-                                       <span>Cat: {categoryName || 'N/A'}</span>
-                                       <span>{match.playersPerTeam} vs {match.playersPerTeam}</span>
-                                    </div>
-                               </div>
-                               <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditMatch(match)}><Edit className="h-4 w-4"/></Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setMatchToDelete(match)}><Trash2 className="h-4 w-4"/></Button>
-                               </div>
-                            </div>
-                        )
-                    })
-                ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">No hay partidos programados para este día.</p>
-                )}
-            </CardContent>
-        </Card>
+          return (
+            <div 
+              key={day.toString()} 
+              className={cn(
+                "relative p-2 border-b border-r min-h-[120px] flex flex-col", 
+                !isSameMonth(day, currentMonth) && "bg-muted/20 text-muted-foreground"
+              )}
+            >
+              <div className={cn("font-medium", isSameDay(day, new Date()) && "text-blue-500 font-bold")}>{format(day, "d")}</div>
+              <ScrollArea className="flex-grow mt-1">
+                <div className="space-y-1 pr-1">
+                  {matchesForDay.map(match => {
+                    const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
+                    const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
+
+                    return (
+                      <div key={match.id} className="text-xs p-1 rounded-md bg-background/50 border border-border/50">
+                        <div className="font-semibold truncate">{format(new Date(match.date), 'HH:mm')} - {homeTeam?.name || '?'} vs {awayTeam?.name || '?'}</div>
+                        <div className="flex justify-between items-center text-muted-foreground">
+                            <span className="truncate">Cat: {getCategoryNameById(match.categoryId, selectedTournament?.categories) || 'N/A'}</span>
+                             <div className="flex gap-0">
+                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleEditMatch(match)}><Edit className="h-3 w-3"/></Button>
+                                <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => setMatchToDelete(match)}><Trash2 className="h-3 w-3"/></Button>
+                           </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
+          );
+        })}
       </div>
 
       <AddEditMatchDialog

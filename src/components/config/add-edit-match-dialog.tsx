@@ -50,12 +50,11 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
     }, [isOpen, matchToEdit, tournament]);
 
     useEffect(() => {
-        // Reset team selections when category changes, unless we are editing
-        if (!isEditing) {
-            setHomeTeamId('');
-            setAwayTeamId('');
+        if (!isEditing || (matchToEdit && categoryId !== matchToEdit.categoryId)) {
+          setHomeTeamId('');
+          setAwayTeamId('');
         }
-    }, [categoryId, isEditing]);
+    }, [categoryId, isEditing, matchToEdit]);
 
     const teamsInCategory = useMemo(() => {
         if (!categoryId || !tournament) return [];
@@ -96,7 +95,16 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent 
+              className="sm:max-w-lg"
+              onInteractOutside={(e) => {
+                // Prevent closing when clicking on the calendar popover
+                const target = e.target as HTMLElement;
+                if (target.closest('.rdp')) {
+                  e.preventDefault();
+                }
+              }}
+            >
                 <DialogHeader>
                     <DialogTitle>{isEditing ? 'Editar Partido' : 'Añadir Nuevo Partido'}</DialogTitle>
                 </DialogHeader>
@@ -180,4 +188,3 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
         </Dialog>
     );
 }
-
