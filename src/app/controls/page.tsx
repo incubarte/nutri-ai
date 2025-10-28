@@ -12,7 +12,6 @@ import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryName
 import type { PlayerData, RemoteCommand, AccessRequest, TunnelState, MatchData } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Dialog, DialogClose } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { RefreshCw, AlertTriangle, PlayCircle, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X, Fingerprint, FileText, Flag, MessageSquare, CalendarCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -947,7 +946,7 @@ export default function ControlsPage() {
             </Button>
         </div>
          <p className="text-xs text-muted-foreground mt-2">
-          La acción "Iniciar Nuevo Partido" restablecerá los marcadores, el reloj, el período actual, las penalidades y el registro de eventos del partido.
+          La acción "Iniciar Nuevo Partido" te permitirá configurar los equipos y luego reiniciará los marcadores, el reloj, el período y las penalidades.
         </p>
       </div>
        <p className="text-xs text-muted-foreground mt-6 text-center">
@@ -1050,7 +1049,7 @@ export default function ControlsPage() {
         <GameSetupDialog 
             isOpen={isGameSetupDialogOpen}
             onOpenChange={setIsGameSetupDialogOpen}
-            onGameReset={handleResetGame}
+            onTeamsConfirmed={handleResetGame}
         />
       )}
       

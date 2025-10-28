@@ -21,8 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useGameState, getCategoryNameById, formatTime } from "@/contexts/game-state-context";
-import type { TeamData, CategoryData } from "@/types";
+import { useGameState } from "@/contexts/game-state-context";
+import type { TeamData } from "@/types";
 import {
   Command,
   CommandEmpty,
@@ -44,7 +44,7 @@ import { Switch } from "../ui/switch";
 interface GameSetupDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onGameReset: () => void;
+  onTeamsConfirmed: () => void;
 }
 
 const TeamSelector = ({
@@ -115,7 +115,7 @@ const TeamSelector = ({
 };
 
 
-export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetupDialogProps) {
+export function GameSetupDialog({ isOpen, onOpenChange, onTeamsConfirmed }: GameSetupDialogProps) {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
   
@@ -161,7 +161,7 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
   }, [localCategoryId, useManualTeamNames]);
 
 
-  const handleStartGame = () => {
+  const handleConfirmTeams = () => {
     
     dispatch({ type: 'SET_ACTIVE_MATCH', payload: { matchId: state.live.pendingMatchConfig?.matchId || null } });
     
@@ -176,17 +176,17 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
         dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'home', playerIds: [] }});
         dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'away', playerIds: [] }});
         
-        onGameReset();
+        onTeamsConfirmed();
         toast({
-          title: "¡Partido Iniciado (Manual)!",
-          description: `${homeName} vs ${awayName}. ¡Mucha suerte!`
+          title: "Equipos Configurados (Manual)",
+          description: `El partido será ${homeName} vs ${awayName}.`
         });
         
     } else {
         if (!homeTeamId || !awayTeamId || !localCategoryId) {
           toast({
             title: "Datos Incompletos",
-            description: "Por favor, selecciona una categoría y ambos equipos para iniciar.",
+            description: "Por favor, selecciona una categoría y ambos equipos para continuar.",
             variant: "destructive",
           });
           return;
@@ -209,10 +209,10 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
         dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'home', playerIds: homeTeam.players.map(p => p.id) }});
         dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'away', playerIds: awayTeam.players.map(p => p.id) }});
 
-        onGameReset();
+        onTeamsConfirmed();
         toast({
-          title: "¡Partido Iniciado!",
-          description: `${homeTeam.name} vs ${awayTeam.name}. ¡Mucha suerte!`
+          title: "Equipos Configurados",
+          description: `El partido será ${homeTeam.name} vs ${awayTeam.name}.`
         });
     }
 
@@ -224,9 +224,9 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Iniciar Nuevo Partido</DialogTitle>
+          <DialogTitle>Configurar Equipos del Partido</DialogTitle>
             <DialogDescription>
-              Selecciona la categoría y los equipos o ingresa los nombres manualmente. Esto reiniciará el partido actual.
+              Selecciona la categoría y los equipos o ingresa los nombres manualmente.
             </DialogDescription>
         </DialogHeader>
         
@@ -294,8 +294,8 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleStartGame}>
-              Iniciar Partido
+            <Button onClick={handleConfirmTeams}>
+              Confirmar Equipos y Continuar
             </Button>
         </DialogFooter>
       </DialogContent>
