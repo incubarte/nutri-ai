@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -84,9 +85,15 @@ export const INITIAL_LAYOUT_SETTINGS: ScoreboardLayoutSettings = {
   scoreLabelGap: -2,
 };
 
-const IN_CODE_INITIAL_CATEGORIES_RAW = ['A', 'B', 'C', 'Menores', 'Damas'];
-const IN_CODE_INITIAL_AVAILABLE_CATEGORIES: CategoryData[] = IN_CODE_INITIAL_CATEGORIES_RAW.map(name => ({ id: safeUUID(), name: name }));
-const IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY = IN_CODE_INITIAL_AVAILABLE_CATEGORIES[0]?.id || '';
+const IN_CODE_INITIAL_TOURNAMENT_NAME = "torneito";
+const IN_CODE_INITIAL_TOURNAMENT: Tournament = {
+  id: safeUUID(),
+  name: IN_CODE_INITIAL_TOURNAMENT_NAME,
+  status: 'active',
+  teams: [],
+  categories: [],
+};
+
 
 const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
   home: { goals: [], penalties: [], playerStats: [], homeShotsLog: [] },
@@ -158,7 +165,7 @@ const getInitialState = (): GameState => {
       scoreboardLayout: INITIAL_LAYOUT_SETTINGS,
       scoreboardLayoutProfiles: [defaultInitialLayoutProfile],
       selectedScoreboardLayoutProfileId: defaultInitialLayoutProfile.id,
-      selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
+      selectedMatchCategory: '',
       tournaments: [],
       selectedTournamentId: null,
       tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
@@ -1429,39 +1436,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
       break;
     }
-    case 'ADD_TOURNAMENT': {
-        const newTournament: Tournament = {
-            id: safeUUID(),
-            name: action.payload.name,
-            status: action.payload.status,
-            teams: [],
-            categories: [],
-        };
-        newState = { ...state, config: { ...state.config, tournaments: [...(state.config.tournaments || []), newTournament] } };
-        break;
-    }
-    case 'UPDATE_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === action.payload.id ? {...t, ...action.payload} : t) } };
-        break;
-    }
-    case 'DELETE_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).filter(t => t.id !== action.payload.id) } };
-        break;
-    }
-    case 'SET_ACTIVE_TOURNAMENT': {
-        const selectedTournament = state.config.tournaments.find(t => t.id === action.payload.tournamentId);
-        const selectedCategory = selectedTournament?.categories[0]?.id || '';
-        newState = { ...state, config: { ...state.config, selectedTournamentId: action.payload.tournamentId, selectedMatchCategory: selectedCategory } };
-        break;
-    }
-    case 'SET_CATEGORIES_FOR_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === action.payload.tournamentId ? {...t, categories: action.payload.categories} : t) }};
-        break;
-    }
-     case 'ADD_CATEGORIES_TO_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === action.payload.tournamentId ? {...t, categories: [...(t.categories || []), ...action.payload.categories]} : t) }};
-        break;
-    }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
       const { selectedFormatAndTimingsProfileId, formatAndTimingsProfiles } = state.config;
       if (!selectedFormatAndTimingsProfileId) break;
@@ -1573,11 +1547,59 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         newState = applyScoreboardLayoutProfileToState(newState, newProfiles[0].id);
         break;
     }
+    case 'SET_CATEGORIES_FOR_TOURNAMENT': {
+        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === action.payload.tournamentId ? { ...t, categories: action.payload.categories } : t) } };
+        break;
+    }
+    case 'ADD_CATEGORIES_TO_TOURNAMENT': {
+        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === action.payload.tournamentId ? { ...t, categories: [...(t.categories || []), ...action.payload.categories] } : t) } };
+        break;
+    }
     case 'SET_SELECTED_MATCH_CATEGORY': newState = { ...state, config: { ...state.config, selectedMatchCategory: action.payload } }; toastMessage = { title: "Categoría del Partido Actualizada" }; break;
     case 'UPDATE_TUNNEL_STATE': newState = { ...state, config: { ...state.config, tunnel: { ...state.config.tunnel, ...action.payload } }}; break;
+    case 'ADD_TOURNAMENT': {
+        const newTournament: Tournament = {
+            id: safeUUID(),
+            name: action.payload.name,
+            status: action.payload.status,
+            teams: [],
+            categories: [],
+        };
+        newState = { ...state, config: { ...state.config, tournaments: [...(state.config.tournaments || []), newTournament] } };
+        break;
+    }
+    case 'UPDATE_TOURNAMENT': {
+        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === action.payload.id ? {...t, ...action.payload} : t) } };
+        break;
+    }
+    case 'DELETE_TOURNAMENT': {
+        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).filter(t => t.id !== action.payload.id) } };
+        break;
+    }
+    case 'SET_ACTIVE_TOURNAMENT': {
+        const selectedTournament = state.config.tournaments.find(t => t.id === action.payload.tournamentId);
+        const selectedCategory = (selectedTournament?.categories || [])[0]?.id || '';
+        newState = { ...state, config: { ...state.config, selectedTournamentId: action.payload.tournamentId, selectedMatchCategory: selectedCategory } };
+        break;
+    }
+    case 'ADD_TEAM': { // Legacy: adds to a global list, will now add to the selected tournament
+        const { selectedTournamentId } = state.config;
+        if (!selectedTournamentId) {
+            toastMessage = { title: "Error", description: "No hay un torneo seleccionado para añadir el equipo.", variant: "destructive" };
+            break;
+        }
+        const teamWithId = { ...action.payload, id: action.payload.id || safeUUID() };
+        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === selectedTournamentId ? { ...t, teams: [...t.teams, teamWithId] } : t) } };
+        break;
+    }
     case 'ADD_TEAM_TO_TOURNAMENT': {
         const { tournamentId, team } = action.payload;
-        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === tournamentId ? { ...t, teams: [...t.teams, { ...team, id: team.id || safeUUID() }] } : t) }};
+        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === tournamentId ? { ...t, teams: [...t.teams, { ...team, id: team.id || safeUUID() }] } : t) } };
+        break;
+    }
+    case 'DELETE_TEAMS_FROM_TOURNAMENT': {
+        const { tournamentId, teamIds } = action.payload;
+         newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === tournamentId ? { ...t, teams: t.teams.filter(team => !teamIds.includes(team.id)) } : t) } };
         break;
     }
     case 'UPDATE_TEAM_DETAILS': {
@@ -1586,7 +1608,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       toastMessage = { title: "Equipo Actualizado", description: `El equipo "${updates.name}" ha sido actualizado.` };
       break;
     }
-    case 'DELETE_TEAM': {
+    case 'DELETE_TEAM': { // Legacy: will delete from any tournament that contains it
       const { teamId } = action.payload;
       newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.filter(team => team.id !== teamId) })) }};
       break;
@@ -1607,7 +1629,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
       break;
     }
-    case 'LOAD_TEAMS_FROM_FILE': newState = { ...state, config: { ...state.config, teams: action.payload } }; break;
+    case 'LOAD_TEAMS_FROM_FILE': { // Legacy: no longer used directly.
+        // This case would need tournament context to be useful now.
+        // For now, it does nothing to prevent incorrect data loading.
+        break;
+    }
     case 'SET_TEAM_ATTENDANCE': {
       const { team, playerIds } = action.payload;
       const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
@@ -1662,7 +1688,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           showAliasInControlsPenaltyList: IN_CODE_INITIAL_SHOW_ALIAS_IN_CONTROLS_PENALTY_LIST,
           showAliasInScoreboardPenalties: IN_CODE_INITIAL_SHOW_ALIAS_IN_SCOREBOARD_PENALTIES,
           enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
-          selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
+          selectedMatchCategory: '', // Resets match category
           tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
         }
       };
@@ -1937,3 +1963,4 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
