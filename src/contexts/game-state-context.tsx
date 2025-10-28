@@ -4,7 +4,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
@@ -162,6 +162,7 @@ const getInitialState = (): GameState => {
       availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
       selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
       teams: [],
+      tournaments: [],
       tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
     },
     live: {
@@ -1436,6 +1437,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
       break;
     }
+    case 'ADD_TOURNAMENT': {
+        const newTournament: Tournament = {
+            id: safeUUID(),
+            name: action.payload.name,
+            status: action.payload.status
+        };
+        newState = { ...state, config: { ...state.config, tournaments: [...state.config.tournaments, newTournament] } };
+        break;
+    }
+    case 'UPDATE_TOURNAMENT': {
+        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === action.payload.id ? action.payload : t) } };
+        break;
+    }
+    case 'DELETE_TOURNAMENT': {
+        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.filter(t => t.id !== action.payload.id) } };
+        break;
+    }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
       const { selectedFormatAndTimingsProfileId, formatAndTimingsProfiles } = state.config;
       if (!selectedFormatAndTimingsProfileId) break;
@@ -1893,3 +1911,4 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
