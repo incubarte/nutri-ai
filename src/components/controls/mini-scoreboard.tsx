@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -445,8 +444,10 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   };
 
   const filteredTeamsForSearch = (searchTerm: string) => {
-    if (!state.config.teams) return [];
-    return state.config.teams.filter(team =>
+    const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+    if (!selectedTournament || !selectedTournament.teams) return [];
+    
+    return selectedTournament.teams.filter(team =>
       team.category === state.config.selectedMatchCategory &&
       (
         team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -455,8 +456,8 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     ).sort((a,b) => a.name.localeCompare(b.name));
   };
 
-  const filteredHomeTeams = useMemo(() => filteredTeamsForSearch(homeTeamSearchTerm), [homeTeamSearchTerm, state.config.teams, state.config.selectedMatchCategory]);
-  const filteredAwayTeams = useMemo(() => filteredTeamsForSearch(awayTeamSearchTerm), [awayTeamSearchTerm, state.config.teams, state.config.selectedMatchCategory]);
+  const filteredHomeTeams = useMemo(() => filteredTeamsForSearch(homeTeamSearchTerm), [homeTeamSearchTerm, state.config.tournaments, state.config.selectedTournamentId, state.config.selectedMatchCategory]);
+  const filteredAwayTeams = useMemo(() => filteredTeamsForSearch(awayTeamSearchTerm), [awayTeamSearchTerm, state.config.tournaments, state.config.selectedTournamentId, state.config.selectedMatchCategory]);
 
   const handleSelectTeam = (teamType: 'home' | 'away', teamData: TeamData) => {
     if (teamType === 'home') {
@@ -475,26 +476,32 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
   const matchedHomeTeamId = useMemo(() => {
     if (!state.config.enableTeamSelectionInMiniScoreboard) return null;
-    const matched = state.config.teams.find(t =>
+    const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+    if (!selectedTournament || !selectedTournament.teams) return null;
+
+    const matched = selectedTournament.teams.find(t =>
       t.name === state.live.homeTeamName &&
       (t.subName || undefined) === (state.live.homeTeamSubName || undefined) &&
       t.category === state.config.selectedMatchCategory
     );
     return matched ? matched.id : null;
-  }, [state.live.homeTeamName, state.live.homeTeamSubName, state.config.teams, state.config.selectedMatchCategory, state.config.enableTeamSelectionInMiniScoreboard]);
+  }, [state.live.homeTeamName, state.live.homeTeamSubName, state.config.tournaments, state.config.selectedTournamentId, state.config.selectedMatchCategory, state.config.enableTeamSelectionInMiniScoreboard]);
 
   const matchedAwayTeamId = useMemo(() => {
-     if (!state.config.enableTeamSelectionInMiniScoreboard) return null;
-    const matched = state.config.teams.find(t =>
+    if (!state.config.enableTeamSelectionInMiniScoreboard) return null;
+    const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+    if (!selectedTournament || !selectedTournament.teams) return null;
+
+    const matched = selectedTournament.teams.find(t =>
       t.name === state.live.awayTeamName &&
       (t.subName || undefined) === (state.live.awayTeamSubName || undefined) &&
       t.category === state.config.selectedMatchCategory
     );
     return matched ? matched.id : null;
-  }, [state.live.awayTeamName, state.live.awayTeamSubName, state.config.teams, state.config.selectedMatchCategory, state.config.enableTeamSelectionInMiniScoreboard]);
+  }, [state.live.awayTeamName, state.live.awayTeamSubName, state.config.tournaments, state.config.selectedTournamentId, state.config.selectedMatchCategory, state.config.enableTeamSelectionInMiniScoreboard]);
 
-  const showHomeSearchIcon = state.config.enableTeamSelectionInMiniScoreboard && state.config.teams.length > 0;
-  const showAwaySearchIcon = state.config.enableTeamSelectionInMiniScoreboard && state.config.teams.length > 0;
+  const showHomeSearchIcon = state.config.enableTeamSelectionInMiniScoreboard && state.config.tournaments.length > 0;
+  const showAwaySearchIcon = state.config.enableTeamSelectionInMiniScoreboard && state.config.tournaments.length > 0;
   const showHomePlayersIcon = state.config.enableTeamSelectionInMiniScoreboard;
   const showAwayPlayersIcon = state.config.enableTeamSelectionInMiniScoreboard;
 
@@ -556,11 +563,15 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const isFinalState = state.live.clock.periodDisplayOverride === 'AwaitingDecision' || state.live.clock.periodDisplayOverride === 'End of Game';
   const showClock = !isShootout && !isFinalState;
 
+  const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+  const availableCategories = selectedTournament?.categories || [];
+
+
   return (
     <div className="relative">
       <div className="absolute top-0 left-0 p-2 sm:p-3 md:p-4 z-20">
         <div className="flex items-center gap-2">
-          {state.config.availableCategories.length > 0 ? (
+          {availableCategories.length > 0 ? (
               <Select value={state.config.selectedMatchCategory} onValueChange={handleMatchCategoryChange}>
                   <SelectTrigger className="w-auto min-w-[120px] max-w-[200px] h-8 text-xs bg-card/80 border-border/50 backdrop-blur-sm">
                       <div className="flex items-center gap-1.5 truncate">
@@ -569,7 +580,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                       </div>
                   </SelectTrigger>
                   <SelectContent>
-                      {state.config.availableCategories.map(cat => (
+                      {availableCategories.map(cat => (
                           <SelectItem key={cat.id} value={cat.id} className="text-xs">
                               {cat.name}
                           </SelectItem>
