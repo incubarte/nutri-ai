@@ -28,10 +28,13 @@ function AddGoalForm({ team, onGoalAdded }: { team: Team, onGoalAdded: () => voi
   const [assistNumber, setAssistNumber] = useState('');
 
   const teamData = useMemo(() => {
-    if (!state.config || !state.live) return null;
+    if (!state.config || !state.live || !state.config.tournaments) return null;
+    const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+    if (!selectedTournament || !selectedTournament.teams) return null;
+
     const teamName = team === 'home' ? state.live.homeTeamName : state.live.awayTeamName;
     const teamSubName = team === 'home' ? state.live.homeTeamSubName : state.live.awayTeamSubName;
-    return state.config.teams.find(t => t.name === teamName && (t.subName || undefined) === (teamSubName || undefined) && t.category === state.config.selectedMatchCategory);
+    return selectedTournament.teams.find(t => t.name === teamName && (t.subName || undefined) === (teamSubName || undefined) && t.category === state.config.selectedMatchCategory);
   }, [team, state.live, state.config]);
 
   const selectedPlayer = useMemo(() => teamData?.players.find(p => p.number === scorerNumber), [teamData, scorerNumber]);
@@ -58,7 +61,7 @@ function AddGoalForm({ team, onGoalAdded }: { team: Team, onGoalAdded: () => voi
         team,
         timestamp: Date.now(),
         gameTime: state.live.clock.currentTime,
-        periodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
+        periodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout),
         scorer: {
           playerNumber: trimmedScorerNumber,
           playerName: selectedPlayer?.name,
@@ -171,10 +174,13 @@ function EditableGoalItem({ goal }: { goal: GoalLog }) {
   }, [isEditing, goal]);
 
   const teamData = useMemo(() => {
-    if (!state.config || !state.live) return null;
+    if (!state.config || !state.live || !state.config.tournaments) return null;
+    const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+    if (!selectedTournament || !selectedTournament.teams) return null;
+
     const teamName = goal.team === 'home' ? state.live.homeTeamName : state.live.awayTeamName;
     const teamSubName = goal.team === 'home' ? state.live.homeTeamSubName : state.live.awayTeamSubName;
-    return state.config.teams.find(t => t.name === teamName && (t.subName || undefined) === (teamSubName || undefined) && t.category === state.config.selectedMatchCategory);
+    return selectedTournament.teams.find(t => t.name === teamName && (t.subName || undefined) === (teamSubName || undefined) && t.category === state.config.selectedMatchCategory);
   }, [goal.team, state.live, state.config]);
 
   const handleSave = () => {
