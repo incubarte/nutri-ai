@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useGameState } from "@/contexts/game-state-context";
-import { UploadCloud, FileJson, FileCsv, AlertTriangle, Loader2 } from "lucide-react";
+import { UploadCloud, FileJson, FileText, AlertTriangle, Loader2 } from "lucide-react";
 import type { TeamData, PlayerData, PlayerType, CategoryData, Tournament } from "@/types";
 import { safeUUID } from '@/lib/utils';
 import { getSpecificDefaultLogoUrlForCsv } from './create-edit-team-dialog';
@@ -240,7 +240,7 @@ export function ImportTeamsDialog({ isOpen, onOpenChange, tournament }: ImportTe
                 <div className="flex-grow space-y-2 overflow-y-auto pr-2">
                     {files.map(file => (
                         <div key={file.name} className="flex items-center gap-2 text-sm p-2 bg-muted/50 rounded-md">
-                            {file.type === 'application/json' ? <FileJson className="h-5 w-5 text-amber-500"/> : <FileCsv className="h-5 w-5 text-green-500" />}
+                            {file.type === 'application/json' ? <FileJson className="h-5 w-5 text-amber-500"/> : <FileText className="h-5 w-5 text-green-500" />}
                             <span className="truncate flex-grow text-left">{file.name}</span>
                             <span className="text-muted-foreground text-xs shrink-0">({(file.size / 1024).toFixed(1)} KB)</span>
                         </div>
