@@ -43,7 +43,7 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
             const initialDate = matchToEdit ? new Date(matchToEdit.date) : (selectedDate || new Date());
             setDate(initialDate);
             setTime(format(initialDate, 'HH:mm'));
-            setCategoryId(matchToEdit?.categoryId || tournament?.categories[0]?.id || '');
+            setCategoryId(matchToEdit?.categoryId || tournament?.categories?.[0]?.id || '');
             setHomeTeamId(matchToEdit?.homeTeamId || '');
             setAwayTeamId(matchToEdit?.awayTeamId || '');
             setPlayersPerTeam(String(matchToEdit?.playersPerTeam || '5'));
@@ -58,7 +58,7 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
     }, [categoryId, isEditing, matchToEdit]);
 
     const teamsInCategory = useMemo(() => {
-        if (!categoryId || !tournament) return [];
+        if (!categoryId || !tournament?.teams) return [];
         return tournament.teams.filter(t => t.category === categoryId);
     }, [categoryId, tournament]);
 
@@ -116,7 +116,7 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
                                 <SelectValue placeholder="Seleccionar categoría..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {tournament?.categories.map(cat => (
+                                {tournament?.categories?.map(cat => (
                                     <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                                 ))}
                             </SelectContent>
