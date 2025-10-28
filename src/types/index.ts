@@ -234,7 +234,7 @@ export interface ConfigState extends Omit<FormatAndTimingsProfileData, 'id' | 'n
   selectedScoreboardLayoutProfileId: string | null;
   tournaments: Tournament[];
   selectedTournamentId: string | null;
-  selectedMatchCategory: string; // This might now be derived from the selected tournament
+  selectedMatchCategory: string;
 }
 
 export type PeriodDisplayOverrideType = 'Warm-up' | 'Break' | 'Pre-OT Break' | 'Time Out' | 'End of Game' | 'Shootout' | 'AwaitingDecision' | null;
@@ -316,10 +316,12 @@ export interface LiveState {
     duration: number; // in milliseconds
   } | null;
   pendingMatchConfig?: {
+    matchId: string;
     categoryId: string;
     homeTeamId: string;
     awayTeamId: string;
   };
+  matchId: string | null;
 }
 
 export interface LiveGameState extends LiveState {
@@ -443,7 +445,9 @@ export type GameAction =
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
-  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
+  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } }
+  | { type: 'SET_ACTIVE_MATCH'; payload: { matchId: string | null } };
+
 
 export interface GameState {
   config: ConfigState;

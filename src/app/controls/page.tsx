@@ -11,7 +11,7 @@ import { ShootoutControl } from '@/components/controls/shootout-control';
 import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getActualPeriodText, formatTime, type GameState } from '@/contexts/game-state-context';
 import type { PlayerData, RemoteCommand, AccessRequest, TunnelState, MatchData } from '@/types';
 import { Button } from '@/components/ui/button';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogClose } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { RefreshCw, AlertTriangle, PlayCircle, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X, Fingerprint, FileText, Flag, MessageSquare, CalendarCheck } from 'lucide-react';
@@ -796,6 +796,7 @@ export default function ControlsPage() {
 
   const handleLoadMatchConfig = (match: MatchData) => {
     dispatch({ type: 'UPDATE_LIVE_STATE', payload: { pendingMatchConfig: {
+      matchId: match.id,
       categoryId: match.categoryId,
       homeTeamId: match.homeTeamId,
       awayTeamId: match.awayTeamId,
@@ -1050,7 +1051,6 @@ export default function ControlsPage() {
             isOpen={isGameSetupDialogOpen}
             onOpenChange={setIsGameSetupDialogOpen}
             onGameReset={handleResetGame}
-            onLoadMatchConfig={(catId, homeId, awayId) => {}}
         />
       )}
       
@@ -1078,7 +1078,7 @@ export default function ControlsPage() {
                             onClick={() => handleLoadMatchConfig(match)}
                         >
                             <div className="flex flex-col">
-                                <span className="font-semibold">{format(new Date(match.date), 'HH:mm')}hs - {homeTeam?.name || 'N/A'} vs {awayTeam?.name || 'N/A'}</span>
+                                <span className="font-semibold">{format(new Date(match.date), 'HH:mm')}hs - {homeTeam?.name || '?'} vs {awayTeam?.name || '?'}</span>
                                 <span className="text-xs text-muted-foreground">Categoría: {getCategoryNameById(match.categoryId, state.config.tournaments.find(t => t.id === state.config.selectedTournamentId)?.categories)}</span>
                             </div>
                         </Button>
