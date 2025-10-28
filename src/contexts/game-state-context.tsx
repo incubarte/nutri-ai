@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -1579,7 +1578,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'SET_ACTIVE_TOURNAMENT': {
-        const selectedTournament = state.config.tournaments.find(t => t.id === action.payload.tournamentId);
+        const selectedTournament = (state.config.tournaments || []).find(t => t.id === action.payload.tournamentId);
         const selectedCategory = (selectedTournament?.categories || [])[0]?.id || '';
         newState = { ...state, config: { ...state.config, selectedTournamentId: action.payload.tournamentId, selectedMatchCategory: selectedCategory } };
         break;
@@ -1689,6 +1688,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === tournamentId ? { ...t, matches: (t.matches || []).filter(m => m.id !== matchId) } : t) }};
         break;
     }
+     case 'UPDATE_LIVE_STATE':
+        newState = { ...state, live: { ...state.live, ...action.payload } };
+        break;
     case 'RESET_CONFIG_TO_DEFAULTS': {
       const defaultFormatProfile = createDefaultFormatAndTimingsProfile();
       const defaultLayoutParams = createDefaultScoreboardLayoutProfile();
@@ -1983,10 +1985,3 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
-
-    
-
-    
-
-
-

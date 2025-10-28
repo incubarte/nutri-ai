@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useRef, useState, useEffect, useMemo } from "react";
@@ -14,193 +13,238 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import type { DurationSettingsCardRef } from "@/components/config/duration-settings-card";
-import type { PenaltySettingsCardRef } from "@/components/config/penalty-settings-card";
-import { DurationSettingsCard } from "@/components/config/duration-settings-card";
-import { PenaltySettingsCard } from "@/components/config/penalty-settings-card";
-import { StoppedTimeAlertCard } from "@/components/config/stopped-time-alert-card";
-import { useGameState, createDefaultFormatAndTimingsProfile, formatTime } from "@/contexts/game-state-context";
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import type { FormatAndTimingsProfileData } from "@/types";
-import type { StoppedTimeAlertCardRef } from "@/components/config/stopped-time-alert-card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { useGameState, getCategoryNameById, formatTime } from "@/contexts/game-state-context";
+import type { TeamData, CategoryData } from "@/types";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 interface GameSetupDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onGameReset: () => void;
+  onLoadMatchConfig: (categoryId: string, homeTeamId: string, awayTeamId: string) => void;
 }
 
-const ConfirmationView = ({ profileData, onBack }: { profileData: FormatAndTimingsProfileData; onBack: () => void; }) => {
-  const summaryItems = [
-    { label: "Períodos Regulares", value: `${profileData.numberOfRegularPeriods} x ${formatTime(profileData.defaultPeriodDuration, { showTenths: false })}` },
-    { label: "Períodos Overtime", value: `${profileData.numberOfOvertimePeriods} x ${formatTime(profileData.defaultOTPeriodDuration, { showTenths: false })}` },
-    { label: "Duración Descansos", value: `${formatTime(profileData.defaultBreakDuration, { showTenths: false })}` },
-    { label: "Duración Descansos Pre-OT", value: `${formatTime(profileData.defaultPreOTBreakDuration, { showTenths: false })}` },
-    { label: "Duración Timeouts", value: `${formatTime(profileData.defaultTimeoutDuration, { showTenths: false })}` },
-    { label: "Jugadores en Cancha", value: profileData.playersPerTeamOnIce },
-    { label: "Máx. Penalidades Concurrentes", value: profileData.maxConcurrentPenalties },
-  ];
-  
-  const stoppedTimeAlertSummary = profileData.enableStoppedTimeAlert
-    ? `Sí (Dif. Goles: ${profileData.stoppedTimeAlertGoalDiff}, Tiempo Restante: ${profileData.stoppedTimeAlertTimeRemaining} min)`
-    : "No";
+const TeamSelector = ({
+    label,
+    teams,
+    selectedTeamId,
+    onSelectTeam,
+    disabledTeamId,
+    disabled
+}: {
+    label: string;
+    teams: TeamData[];
+    selectedTeamId: string;
+    onSelectTeam: (teamId: string) => void;
+    disabledTeamId?: string;
+    disabled?: boolean;
+}) => {
+    const [open, setOpen] = useState(false);
+    const selectedTeam = teams.find(t => t.id === selectedTeamId);
 
-  return (
-    <div className="space-y-4">
-      <DialogDescription>
-        Revisa la configuración a continuación. Si es correcta, haz clic en "Iniciar Partido".
-      </DialogDescription>
-       <div className="border rounded-lg max-h-[45vh] overflow-y-auto">
-        <Table>
-          <TableBody>
-            {summaryItems.map(item => (
-              <TableRow key={item.label}>
-                <TableCell className="font-medium text-muted-foreground">{item.label}</TableCell>
-                <TableCell className="text-right font-semibold">{item.value}</TableCell>
-              </TableRow>
-            ))}
-             <TableRow>
-                <TableCell className="font-medium text-muted-foreground">Alerta Tiempo Frenado</TableCell>
-                <TableCell className="text-right font-semibold">{stoppedTimeAlertSummary}</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-       </div>
-    </div>
-  );
+    return (
+        <div className="space-y-2">
+            <Label>{label}</Label>
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className="w-full justify-between h-11"
+                        disabled={disabled || teams.length === 0}
+                    >
+                        <span className="truncate">
+                          {selectedTeam
+                            ? `${selectedTeam.name}${selectedTeam.subName ? ` (${selectedTeam.subName})` : ''}`
+                            : (teams.length > 0 ? "Seleccionar equipo..." : "Sin equipos en categoría")}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                        <CommandInput placeholder="Buscar equipo..." />
+                        <CommandList>
+                            <CommandEmpty>No se encontró el equipo.</CommandEmpty>
+                            <CommandGroup>
+                                {teams.map((team) => (
+                                    <CommandItem
+                                        key={team.id}
+                                        value={`${team.name}${team.subName || ''}`}
+                                        onSelect={() => {
+                                            onSelectTeam(team.id);
+                                            setOpen(false);
+                                        }}
+                                        disabled={team.id === disabledTeamId}
+                                    >
+                                        <Check className={cn("mr-2 h-4 w-4", selectedTeamId === team.id ? "opacity-100" : "opacity-0")} />
+                                        <span className="truncate">{team.name}{team.subName ? ` (${team.subName})` : ''}</span>
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
+        </div>
+    );
 };
 
 
-export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetupDialogProps) {
-  const { state } = useGameState();
+export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, onLoadMatchConfig }: GameSetupDialogProps) {
+  const { state, dispatch } = useGameState();
   const { toast } = useToast();
   
-  const durationSettingsRef = useRef<DurationSettingsCardRef>(null);
-  const penaltySettingsRef = useRef<PenaltySettingsCardRef>(null);
-  const stoppedTimeAlertRef = useRef<StoppedTimeAlertCardRef>(null);
+  const { selectedTournamentId, tournaments } = state.config;
+  const selectedTournament = useMemo(() => tournaments.find(t => t.id === selectedTournamentId), [tournaments, selectedTournamentId]);
+
+  const [localCategoryId, setLocalCategoryId] = useState(state.config.selectedMatchCategory || '');
+  const [homeTeamId, setHomeTeamId] = useState('');
+  const [awayTeamId, setAwayTeamId] = useState('');
   
-  const [isDurationDirty, setIsDurationDirty] = useState(false);
-  const [isPenaltyDirty, setIsPenaltyDirty] = useState(false);
-  const [isStoppedTimeAlertDirty, setIsStoppedTimeAlertDirty] = useState(false);
-  const [view, setView] = useState<'editing' | 'confirming'>('editing');
+  const availableCategories = useMemo(() => selectedTournament?.categories || [], [selectedTournament]);
 
-  // Memoize the profile to ensure stability
-  const selectedFTProfile = useMemo(() => {
-    return state.config.formatAndTimingsProfiles.find(p => p.id === state.config.selectedFormatAndTimingsProfileId) 
-      || state.config.formatAndTimingsProfiles[0] 
-      || createDefaultFormatAndTimingsProfile();
-  }, [state.config.formatAndTimingsProfiles, state.config.selectedFormatAndTimingsProfileId]);
-
-  // Reset view to 'editing' whenever the dialog is opened
+  const teamsInCategory = useMemo(() => {
+    if (!selectedTournament || !localCategoryId) return [];
+    return selectedTournament.teams.filter(t => t.category === localCategoryId);
+  }, [selectedTournament, localCategoryId]);
+  
+  // Effect to load config from a selected match
   useEffect(() => {
-    if (isOpen) {
-      setView('editing');
+    if (isOpen && state.live.pendingMatchConfig) {
+      const { categoryId, homeTeamId, awayTeamId } = state.live.pendingMatchConfig;
+      setLocalCategoryId(categoryId);
+      setHomeTeamId(homeTeamId);
+      setAwayTeamId(awayTeamId);
+      // Clear the pending config so it doesn't get re-applied on subsequent opens
+      dispatch({ type: 'UPDATE_LIVE_STATE', payload: { pendingMatchConfig: undefined } });
+    } else if (isOpen) {
+      // If opening manually, reset to defaults
+      setLocalCategoryId(state.config.selectedMatchCategory || '');
+      setHomeTeamId('');
+      setAwayTeamId('');
     }
-  }, [isOpen]);
+  }, [isOpen, state.live.pendingMatchConfig, state.config.selectedMatchCategory, dispatch]);
 
-  const handleSaveChanges = (): boolean => {
-    let allSavesSuccessful = true;
+  useEffect(() => {
+    // Reset team selections if category changes
+    setHomeTeamId('');
+    setAwayTeamId('');
+  }, [localCategoryId]);
 
-    if (isDurationDirty && durationSettingsRef.current) {
-      if (!durationSettingsRef.current.handleSave()) allSavesSuccessful = false;
-    }
-    if (isPenaltyDirty && penaltySettingsRef.current) {
-      if (!penaltySettingsRef.current.handleSave()) allSavesSuccessful = false;
-    }
-    if (isStoppedTimeAlertDirty && stoppedTimeAlertRef.current) {
-      if (!stoppedTimeAlertRef.current.handleSave()) allSavesSuccessful = false;
-    }
-    
-    if (allSavesSuccessful) {
-        if (isDurationDirty || isPenaltyDirty || isStoppedTimeAlertDirty) {
-             toast({
-                title: "Configuración Aplicada",
-                description: "Se han guardado los ajustes para el nuevo partido."
-            });
-        }
-        return true;
-    } else {
-        toast({
-            title: "Error al Guardar",
-            description: "No se pudieron guardar todos los cambios. Por favor revisa los valores.",
-            variant: "destructive",
-        });
-        return false;
-    }
-  };
-  
-  const handleReviewAndContinue = () => {
-    if (handleSaveChanges()) {
-      setView('confirming');
-    }
-  };
 
   const handleStartGame = () => {
+    if (!homeTeamId || !awayTeamId || !localCategoryId) {
+      toast({
+        title: "Datos Incompletos",
+        description: "Por favor, selecciona una categoría y ambos equipos para iniciar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const homeTeam = teamsInCategory.find(t => t.id === homeTeamId);
+    const awayTeam = teamsInCategory.find(t => t.id === awayTeamId);
+
+    if (!homeTeam || !awayTeam) {
+        toast({ title: "Error", description: "No se pudieron encontrar los datos de los equipos seleccionados.", variant: "destructive" });
+        return;
+    }
+
+    dispatch({ type: 'SET_SELECTED_MATCH_CATEGORY', payload: localCategoryId });
+    dispatch({ type: 'SET_HOME_TEAM_NAME', payload: homeTeam.name });
+    dispatch({ type: 'SET_HOME_TEAM_SUB_NAME', payload: homeTeam.subName });
+    dispatch({ type: 'SET_AWAY_TEAM_NAME', payload: awayTeam.name });
+    dispatch({ type: 'SET_AWAY_TEAM_SUB_NAME', payload: awayTeam.subName });
+    
+    // Set attendance for both teams
+    dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'home', playerIds: homeTeam.players.map(p => p.id) }});
+    dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'away', playerIds: awayTeam.players.map(p => p.id) }});
+
+
     onGameReset();
+    toast({
+      title: "¡Partido Iniciado!",
+      description: `${homeTeam.name} vs ${awayTeam.name}. ¡Mucha suerte!`
+    });
     onOpenChange(false);
   };
 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            {view === 'editing' ? 'Configuración del Nuevo Partido' : 'Confirmar Configuración'}
-          </DialogTitle>
-          {view === 'editing' && (
+          <DialogTitle>Iniciar Nuevo Partido</DialogTitle>
             <DialogDescription>
-              Ajusta la configuración del partido. Los cambios se guardarán en el perfil de formato y tiempos seleccionado. Al continuar, se reiniciará el estado del partido actual.
+              Selecciona la categoría y los equipos. Esto reiniciará el partido actual y cargará los jugadores para las estadísticas.
             </DialogDescription>
-          )}
         </DialogHeader>
         
-        {view === 'editing' ? (
-           <div className="py-4 space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-              <PenaltySettingsCard
-                  ref={penaltySettingsRef}
-                  onDirtyChange={setIsPenaltyDirty}
-                  initialValues={selectedFTProfile}
-              />
-              <Separator />
-              <DurationSettingsCard
-                  ref={durationSettingsRef}
-                  onDirtyChange={setIsDurationDirty}
-                  initialValues={selectedFTProfile}
-              />
-              <Separator />
-               <StoppedTimeAlertCard 
-                  ref={stoppedTimeAlertRef}
-                  onDirtyChange={setIsStoppedTimeAlertDirty}
-                  initialValues={selectedFTProfile}
-               />
-          </div>
-        ) : (
-           <div className="py-4">
-            <ConfirmationView profileData={selectedFTProfile} onBack={() => setView('editing')} />
-          </div>
-        )}
+        <div className="py-4 space-y-4">
+            <div className="space-y-2">
+                <Label>Categoría</Label>
+                 <Select value={localCategoryId} onValueChange={setLocalCategoryId}>
+                  <SelectTrigger className="w-full h-11">
+                    <SelectValue placeholder={availableCategories.length > 0 ? "Seleccionar categoría..." : "Sin categorías"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableCategories.map(cat => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+            </div>
+           
+           <TeamSelector
+                label="Equipo Local"
+                teams={teamsInCategory}
+                selectedTeamId={homeTeamId}
+                onSelectTeam={setHomeTeamId}
+                disabledTeamId={awayTeamId}
+                disabled={!localCategoryId}
+           />
 
+           <TeamSelector
+                label="Equipo Visitante"
+                teams={teamsInCategory}
+                selectedTeamId={awayTeamId}
+                onSelectTeam={setAwayTeamId}
+                disabledTeamId={homeTeamId}
+                disabled={!localCategoryId}
+           />
+        </div>
+       
         <DialogFooter>
-          {view === 'editing' ? (
-            <>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleReviewAndContinue}>
-                Revisar y Continuar
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="outline" onClick={() => setView('editing')}>
-                Volver a Editar
-              </Button>
-              <Button onClick={handleStartGame}>
-                Iniciar Partido
-              </Button>
-            </>
-          )}
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleStartGame}>
+              Iniciar Partido
+            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

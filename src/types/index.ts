@@ -315,6 +315,11 @@ export interface LiveState {
     text: string;
     duration: number; // in milliseconds
   } | null;
+  pendingMatchConfig?: {
+    categoryId: string;
+    homeTeamId: string;
+    awayTeamId: string;
+  };
 }
 
 export interface LiveGameState extends LiveState {
@@ -426,6 +431,7 @@ export type GameAction =
   | { type: 'DELETE_MATCH_FROM_TOURNAMENT'; payload: { tournamentId: string; matchId: string } }
   | { type: 'HYDRATE_FROM_STORAGE'; payload: Partial<GameState> }
   | { type: 'SET_STATE_FROM_LOCAL_BROADCAST'; payload: GameState }
+  | { type: 'UPDATE_LIVE_STATE', payload: Partial<LiveState> }
   | { type: 'RESET_CONFIG_TO_DEFAULTS' }
   | { type: 'RESET_GAME_STATE' }
   | { type: 'ADD_TEAM'; payload: Omit<TeamData, 'id' | 'players'> & { players: PlayerData[] } }

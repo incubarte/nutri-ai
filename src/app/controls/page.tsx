@@ -9,11 +9,12 @@ import { GoldenGoalDialog } from '@/components/controls/golden-goal-dialog';
 import { GameSetupDialog } from '@/components/controls/game-setup-dialog';
 import { ShootoutControl } from '@/components/controls/shootout-control';
 import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getActualPeriodText, formatTime, type GameState } from '@/contexts/game-state-context';
-import type { PlayerData, RemoteCommand, AccessRequest, TunnelState } from '@/types';
+import type { PlayerData, RemoteCommand, AccessRequest, TunnelState, MatchData } from '@/types';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogClose } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, AlertTriangle, PlayCircle, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X, Fingerprint, FileText, Flag, MessageSquare } from 'lucide-react';
+import { RefreshCw, AlertTriangle, PlayCircle, Trophy, Wifi, Power, PowerOff, Loader2, Copy, ShieldAlert, LogIn, Swords, PlusCircle, Check, X, Fingerprint, FileText, Flag, MessageSquare, CalendarCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
 import { safeUUID } from '@/lib/utils';
@@ -23,6 +24,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '@/hooks/use-auth';
+import { isToday, format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const CONTROLS_LOCK_KEY = 'icevision-controls-lock-id';
 const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
@@ -298,6 +301,9 @@ export default function ControlsPage() {
   const [isConnectingTunnel, setIsConnectingTunnel] = useState(false);
   const [isShootoutConfirmOpen, setIsShootoutConfirmOpen] = useState(false);
   const [isEndGameSummaryDialogOpen, setIsEndGameSummaryDialogOpen] = useState(false);
+  
+  const [todaysMatches, setTodaysMatches] = useState<MatchData[]>([]);
+  const [isSelectMatchDialogOpen, setIsSelectMatchDialogOpen] = useState(false);
 
 
   const prevPeriodDisplayOverrideRef = useRef<string | null>();
@@ -486,7 +492,9 @@ export default function ControlsPage() {
         console.log("Remote command received:", command);
         if (command.type === 'ADD_GOAL') {
           const { team, scorerNumber, assistNumber } = command.payload;
-          const teamData = currentConfig.teams.find(t => t.name === currentLive[`${team}TeamName`] && (t.subName || undefined) === (currentLive[`${team}TeamSubName`] || undefined) && t.category === currentConfig.selectedMatchCategory);
+          
+          const selectedTournament = (currentConfig.tournaments || []).find(t => t.id === currentConfig.selectedTournamentId);
+          const teamData = selectedTournament?.teams.find(t => t.name === currentLive[`${team}TeamName`] && (t.subName || undefined) === (currentLive[`${team}TeamSubName`] || undefined) && t.category === currentConfig.selectedMatchCategory);
           const scorerPlayer = teamData?.players.find(p => p.number === scorerNumber);
           const assistPlayer = assistNumber ? teamData?.players.find(p => p.number === assistNumber) : undefined;
           
@@ -770,6 +778,33 @@ export default function ControlsPage() {
       });
   };
 
+  const handleInitiateNewGame = () => {
+    const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+    if (!selectedTournament || !selectedTournament.matches || selectedTournament.matches.length === 0) {
+      setIsGameSetupDialogOpen(true);
+      return;
+    }
+
+    const todayMatches = selectedTournament.matches.filter(match => isToday(new Date(match.date)));
+    if (todayMatches.length > 0) {
+      setTodaysMatches(todayMatches);
+      setIsSelectMatchDialogOpen(true);
+    } else {
+      setIsGameSetupDialogOpen(true);
+    }
+  };
+
+  const handleLoadMatchConfig = (match: MatchData) => {
+    dispatch({ type: 'UPDATE_LIVE_STATE', payload: { pendingMatchConfig: {
+      categoryId: match.categoryId,
+      homeTeamId: match.homeTeamId,
+      awayTeamId: match.awayTeamId,
+    }}});
+    setIsSelectMatchDialogOpen(false);
+    setIsGameSetupDialogOpen(true);
+  };
+
+
   if (authStatus === 'loading' || isGameStateLoading || !state.live || !state.config || !state.live.penalties) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
@@ -906,13 +941,12 @@ export default function ControlsPage() {
 
       <div className="mt-12 pt-8 border-t border-border">
          <div className="flex flex-wrap gap-4 items-start">
-            <Button variant="outline" className="flex-shrink-0" onClick={() => setIsGameSetupDialogOpen(true)}>
+            <Button variant="outline" className="flex-shrink-0" onClick={handleInitiateNewGame}>
               <RefreshCw className="mr-2 h-4 w-4" /> Iniciar Nuevo Partido
             </Button>
         </div>
          <p className="text-xs text-muted-foreground mt-2">
           La acción "Iniciar Nuevo Partido" restablecerá los marcadores, el reloj, el período actual, las penalidades y el registro de eventos del partido.
-          Las configuraciones de duración de períodos, descansos, timeouts y penalidades se mantendrán.
         </p>
       </div>
        <p className="text-xs text-muted-foreground mt-6 text-center">
@@ -1010,21 +1044,57 @@ export default function ControlsPage() {
               }}
           />
       )}
-
+      
       {isGameSetupDialogOpen && (
         <GameSetupDialog 
             isOpen={isGameSetupDialogOpen}
-            onOpenChange={(isOpen) => {
-              if (isOpen) {
-                setIsGameSetupDialogOpen(true);
-              } else {
-                setTimeout(() => setIsGameSetupDialogOpen(false), 150);
-              }
-            }}
+            onOpenChange={setIsGameSetupDialogOpen}
             onGameReset={handleResetGame}
+            onLoadMatchConfig={(catId, homeId, awayId) => {}}
         />
       )}
       
+      <Dialog open={isSelectMatchDialogOpen} onOpenChange={setIsSelectMatchDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                    <CalendarCheck className="h-6 w-6 text-primary" />
+                    Partidos Programados para Hoy
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                    Se encontraron partidos en el fixture para hoy. Puedes cargar la configuración de uno de ellos o configurar uno manualmente.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2 max-h-60 overflow-y-auto my-4">
+                {todaysMatches.map(match => {
+                    const homeTeam = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId)?.teams.find(t => t.id === match.homeTeamId);
+                    const awayTeam = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId)?.teams.find(t => t.id === match.awayTeamId);
+
+                    return (
+                        <Button
+                            key={match.id}
+                            variant="outline"
+                            className="w-full justify-start h-auto text-left"
+                            onClick={() => handleLoadMatchConfig(match)}
+                        >
+                            <div className="flex flex-col">
+                                <span className="font-semibold">{format(new Date(match.date), 'HH:mm')}hs - {homeTeam?.name || 'N/A'} vs {awayTeam?.name || 'N/A'}</span>
+                                <span className="text-xs text-muted-foreground">Categoría: {getCategoryNameById(match.categoryId, state.config.tournaments.find(t => t.id === state.config.selectedTournamentId)?.categories)}</span>
+                            </div>
+                        </Button>
+                    )
+                })}
+            </div>
+            <AlertDialogFooter>
+                 <Button variant="secondary" onClick={() => { setIsSelectMatchDialogOpen(false); setIsGameSetupDialogOpen(true); }}>
+                    Configurar partido manualmente
+                </Button>
+                <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </Dialog>
+
+
       {isShootoutConfirmOpen && (
         <AlertDialog open={isShootoutConfirmOpen} onOpenChange={setIsShootoutConfirmOpen}>
           <AlertDialogContent>
