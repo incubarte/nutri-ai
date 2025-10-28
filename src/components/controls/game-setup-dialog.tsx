@@ -134,7 +134,7 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
   const [useManualTeamNames, setUseManualTeamNames] = useState(false);
   const [manualHomeTeamName, setManualHomeTeamName] = useState('Local');
   const [manualAwayTeamName, setManualAwayTeamName] = useState('Visitante');
-  const [localCategoryId, setLocalCategoryId] = useState(state.config.selectedMatchCategory || '');
+  const [localCategoryId, setLocalCategoryId] = useState('');
   const [homeTeamId, setHomeTeamId] = useState('');
   const [awayTeamId, setAwayTeamId] = useState('');
   
@@ -160,7 +160,7 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
           setAwayTeamId(awayTeamId);
         } else {
             setUseManualTeamNames(false);
-            setLocalCategoryId(state.config.selectedMatchCategory || '');
+            setLocalCategoryId(state.config.selectedMatchCategory || availableCategories[0]?.id || '');
             setHomeTeamId('');
             setAwayTeamId('');
         }
@@ -173,14 +173,16 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
           dispatch({ type: 'UPDATE_LIVE_STATE', payload: { pendingMatchConfig: undefined } });
         }
     }
-  }, [isOpen, startTab, state.live.pendingMatchConfig, state.config.selectedMatchCategory, state.config.formatAndTimingsProfiles, state.config.selectedFormatAndTimingsProfileId, dispatch]);
+  }, [isOpen, startTab, state.live.pendingMatchConfig, state.config.selectedMatchCategory, state.config.formatAndTimingsProfiles, state.config.selectedFormatAndTimingsProfileId, dispatch, availableCategories]);
 
   useEffect(() => {
     if (!useManualTeamNames) {
-        setHomeTeamId('');
-        setAwayTeamId('');
+        if (!state.live.pendingMatchConfig) {
+            setHomeTeamId('');
+            setAwayTeamId('');
+        }
     }
-  }, [localCategoryId, useManualTeamNames]);
+  }, [localCategoryId, useManualTeamNames, state.live.pendingMatchConfig]);
 
 
   const handleNextStep = () => {
@@ -255,7 +257,7 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Configurar Nuevo Partido</DialogTitle>
           <DialogDescription>
@@ -330,21 +332,25 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
             </TabsContent>
 
             <TabsContent value="rules" className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
-                 <DurationSettingsCard 
-                    isDialogMode={true} 
-                    tempSettings={tempFormatSettings}
-                    onSettingsChange={setTempFormatSettings}
-                />
-                <PenaltySettingsCard
-                    isDialogMode={true}
-                    tempSettings={tempFormatSettings}
-                    onSettingsChange={setTempFormatSettings}
-                />
-                <StoppedTimeAlertCard
-                    isDialogMode={true}
-                    tempSettings={tempFormatSettings}
-                    onSettingsChange={setTempFormatSettings}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                    <DurationSettingsCard 
+                        isDialogMode={true} 
+                        tempSettings={tempFormatSettings}
+                        onSettingsChange={setTempFormatSettings}
+                    />
+                    <div className="flex flex-col gap-4">
+                        <PenaltySettingsCard
+                            isDialogMode={true}
+                            tempSettings={tempFormatSettings}
+                            onSettingsChange={setTempFormatSettings}
+                        />
+                        <StoppedTimeAlertCard
+                            isDialogMode={true}
+                            tempSettings={tempFormatSettings}
+                            onSettingsChange={setTempFormatSettings}
+                        />
+                    </div>
+                </div>
             </TabsContent>
         </Tabs>
        

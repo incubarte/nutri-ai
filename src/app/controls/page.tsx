@@ -291,7 +291,7 @@ export default function ControlsPage() {
   const [editingTeamForGoals, setEditingTeamForGoals] = useState<Team | null>(null);
   const [isGoldenGoalDialogOpen, setIsGoldenGoalDialogOpen] = useState(false);
   const [isGameSetupDialogOpen, setIsGameSetupDialogOpen] = useState(false);
-  const [gameSetupStartTab, setGameSetupStartTab] = useState('teams');
+  const [gameSetupStartTab, setGameSetupStartTab] = useState<'teams' | 'rules'>('teams');
   
   const [reconnectTrigger, setReconnectTrigger] = useState(0);
 
@@ -1052,7 +1052,12 @@ export default function ControlsPage() {
       {isGameSetupDialogOpen && (
         <GameSetupDialog 
             isOpen={isGameSetupDialogOpen}
-            onOpenChange={setIsGameSetupDialogOpen}
+            onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    dispatch({ type: 'UPDATE_LIVE_STATE', payload: { pendingMatchConfig: undefined } });
+                }
+                setIsGameSetupDialogOpen(isOpen);
+            }}
             onGameReset={handleResetGame}
             startTab={gameSetupStartTab}
         />

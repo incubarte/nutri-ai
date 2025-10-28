@@ -183,6 +183,7 @@ const getInitialState = (): GameState => {
       gameSummary: IN_CODE_INITIAL_GAME_SUMMARY, playHornTrigger: 0, playPenaltyBeepTrigger: 0,
       pendingPowerPlayGoal: null,
       overlayMessage: null,
+      matchId: null,
     },
     _initialConfigLoadComplete: false,
   };
@@ -1668,10 +1669,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_MATCH_TO_TOURNAMENT': {
         const { tournamentId, match } = action.payload;
-        const newTournaments = (state.config.tournaments || []).map(t => {
+        // Correct way: create a new tournaments array, then map over it.
+        const newTournaments = state.config.tournaments.map(t => {
             if (t.id === tournamentId) {
-                const newMatches = [...(t.matches || []), { ...match, id: safeUUID() }];
-                return { ...t, matches: newMatches };
+                // Create a new tournament object with a new matches array
+                return { ...t, matches: [...(t.matches || []), { ...match, id: safeUUID() }] };
             }
             return t;
         });
@@ -1680,12 +1682,27 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'UPDATE_MATCH_IN_TOURNAMENT': {
         const { tournamentId, match } = action.payload;
-        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === tournamentId ? { ...t, matches: (t.matches || []).map(m => m.id === match.id ? match : m) } : t) }};
+        const newTournaments = state.config.tournaments.map(t => {
+            if (t.id === tournamentId) {
+                // Create a new tournament object with a new matches array
+                const newMatches = (t.matches || []).map(m => m.id === match.id ? match : m);
+                return { ...t, matches: newMatches };
+            }
+            return t;
+        });
+        newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
         break;
     }
     case 'DELETE_MATCH_FROM_TOURNAMENT': {
         const { tournamentId, matchId } = action.payload;
-        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === tournamentId ? { ...t, matches: (t.matches || []).filter(m => m.id !== matchId) } : t) }};
+        const newTournaments = state.config.tournaments.map(t => {
+             if (t.id === tournamentId) {
+                const newMatches = (t.matches || []).filter(m => m.id !== matchId);
+                return { ...t, matches: newMatches };
+             }
+             return t;
+        });
+        newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
         break;
     }
      case 'UPDATE_LIVE_STATE':
@@ -1742,6 +1759,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         playHornTrigger: state.live.playHornTrigger, playPenaltyBeepTrigger: state.live.playPenaltyBeepTrigger,
         pendingPowerPlayGoal: null,
         overlayMessage: null,
+        matchId: null,
       }};
       break;
     }
@@ -1985,3 +2003,10 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
+    
+
+    
+
+
+
