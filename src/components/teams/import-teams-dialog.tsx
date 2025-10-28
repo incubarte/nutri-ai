@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -77,7 +76,7 @@ export function ImportTeamsDialog({ isOpen, onOpenChange, tournament }: ImportTe
                         name: team.name || 'Sin Nombre',
                         subName: team.subName,
                         logoDataUrl: team.logoDataUrl,
-                        categoryName: team.category || 'Sin Categoría',
+                        categoryName: team.categoryName || team.category || 'Sin Categoría',
                         players: (team.players || []).map((p: any) => ({
                             number: String(p.number || ''),
                             name: p.name || 'Sin Nombre',
@@ -87,42 +86,51 @@ export function ImportTeamsDialog({ isOpen, onOpenChange, tournament }: ImportTe
                     resolve(teams);
 
                 } else if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
-                    const lines = content.split(/\r?\n/).filter(line => line.trim());
-                    if (lines.length < 2) throw new Error("El archivo CSV está vacío o solo tiene cabecera.");
-                    
-                    const teamsMap = new Map<string, ParsedTeam>();
-                    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-                    const requiredHeaders = ['equipo', 'categoria', 'numero', 'nombre'];
-                    if (!requiredHeaders.every(h => headers.includes(h))) {
-                        throw new Error(`Cabeceras requeridas faltantes en CSV: ${requiredHeaders.join(', ')}`);
-                    }
+                    const lines = content.split(/\r?\n/);
+                    const teams: ParsedTeam[] = [];
+                    let currentTeam: ParsedTeam | null = null;
 
-                    for (let i = 1; i < lines.length; i++) {
-                        const values = lines[i].split(',').map(v => v.trim());
-                        const row = headers.reduce((obj, header, index) => {
-                            obj[header] = values[index];
-                            return obj;
-                        }, {} as Record<string, string>);
-
-                        const teamKey = `${row.equipo || 's/n'}-${row.categoria || 's/c'}`;
-                        if (!teamsMap.has(teamKey)) {
-                            teamsMap.set(teamKey, {
-                                name: row.equipo || 'Equipo Sin Nombre',
-                                subName: row.subnombre,
-                                logoDataUrl: getSpecificDefaultLogoUrlForCsv(row.equipo),
-                                categoryName: row.categoria || 'Sin Categoría',
-                                players: []
-                            });
+                    for (const line of lines) {
+                        const trimmedLine = line.trim();
+                        if (!trimmedLine) { // Empty line signifies a new team
+                            if (currentTeam) {
+                                teams.push(currentTeam);
+                            }
+                            currentTeam = null;
+                            continue;
                         }
 
-                        const playerType: PlayerType = (row.tipo?.toLowerCase() === 'arquero' || row.tipo?.toLowerCase() === 'goalkeeper') ? 'goalkeeper' : 'player';
-                        teamsMap.get(teamKey)!.players.push({
-                            number: row.numero || '',
-                            name: row.nombre || 'Jugador Sin Nombre',
-                            type: playerType,
-                        });
+                        const parts = trimmedLine.split(',').map(p => p.trim());
+                        
+                        if (!currentTeam) { // This must be a team definition line
+                            const [name, subName, category] = parts;
+                            if (!name) continue; // Skip if team name is missing
+
+                            currentTeam = {
+                                name: name || 'Equipo Sin Nombre',
+                                subName: subName || undefined,
+                                categoryName: category || 'Sin Categoría',
+                                logoDataUrl: getSpecificDefaultLogoUrlForCsv(name),
+                                players: []
+                            };
+                        } else { // This is a player line
+                            const [number, name, position] = parts;
+                            if (!name) continue; // Skip if player name is missing
+
+                            const playerType: PlayerType = (position?.toLowerCase() === 'arquero' || position?.toLowerCase() === 'goalkeeper') ? 'goalkeeper' : 'player';
+                            currentTeam.players.push({
+                                number: number || '',
+                                name: name,
+                                type: playerType,
+                            });
+                        }
                     }
-                    resolve(Array.from(teamsMap.values()));
+
+                    if (currentTeam) { // Add the last team if the file doesn't end with a blank line
+                        teams.push(currentTeam);
+                    }
+
+                    resolve(teams);
                 } else {
                     throw new Error(`Tipo de archivo no soportado: ${file.name}`);
                 }
