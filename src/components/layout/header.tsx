@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Home, Settings, Wrench, MonitorPlay, Loader2, BarChart3 } from 'lucide-react';
+import { Home, Settings, Wrench, MonitorPlay, Loader2, BarChart3, Trophy } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { FullscreenToggle } from './fullscreen-toggle';
@@ -109,6 +109,7 @@ export function Header() {
     router.prefetch('/controls');
     router.prefetch('/config');
     router.prefetch('/resumen');
+    router.prefetch('/tournaments');
   }, [router]);
 
   useEffect(() => {
@@ -223,6 +224,16 @@ export function Header() {
             Resumen
           </Link>
           <Link
+            href="/tournaments"
+            onClick={(e) => handleNav(e, '/tournaments')}
+            className={cn(
+              "transition-colors hover:text-foreground/80",
+              pathname === "/tournaments" ? "text-foreground" : "text-foreground/60"
+            )}
+          >
+            Torneos
+          </Link>
+          <Link
             href="/config"
             onClick={(e) => handleNav(e, '/config')}
             className={cn(
@@ -247,6 +258,11 @@ export function Header() {
            <Button variant="ghost" size="icon" asChild className={pathname === "/resumen" ? "text-primary-foreground bg-primary/80" : "text-foreground/60"}>
             <Link href="/resumen" aria-label="Resumen" onClick={(e) => handleNav(e, '/resumen')}>
               <BarChart3 className="h-5 w-5" />
+            </Link>
+          </Button>
+           <Button variant="ghost" size="icon" asChild className={pathname === "/tournaments" ? "text-primary-foreground bg-primary/80" : "text-foreground/60"}>
+            <Link href="/tournaments" aria-label="Torneos" onClick={(e) => handleNav(e, '/tournaments')}>
+              <Trophy className="h-5 w-5" />
             </Link>
           </Button>
           <Button variant="ghost" size="icon" asChild className={pathname === "/config" ? "text-primary-foreground bg-primary/80" : "text-foreground/60"}>
