@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -22,13 +22,14 @@ interface AddEditMatchDialogProps {
     onOpenChange: (isOpen: boolean) => void;
     tournament: Tournament | null;
     matchToEdit: MatchData | null;
+    selectedDate?: Date;
 }
 
-export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEdit }: AddEditMatchDialogProps) {
+export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEdit, selectedDate }: AddEditMatchDialogProps) {
     const { state, dispatch } = useGameState();
     const { toast } = useToast();
 
-    const [date, setDate] = useState<Date | undefined>(matchToEdit ? new Date(matchToEdit.date) : new Date());
+    const [date, setDate] = useState<Date | undefined>(new Date());
     const [categoryId, setCategoryId] = useState<string>('');
     const [homeTeamId, setHomeTeamId] = useState<string>('');
     const [awayTeamId, setAwayTeamId] = useState<string>('');
@@ -39,7 +40,7 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
 
     useEffect(() => {
         if (isOpen) {
-            const initialDate = matchToEdit ? new Date(matchToEdit.date) : new Date();
+            const initialDate = matchToEdit ? new Date(matchToEdit.date) : (selectedDate || new Date());
             setDate(initialDate);
             setTime(format(initialDate, 'HH:mm'));
             setCategoryId(matchToEdit?.categoryId || tournament?.categories[0]?.id || '');
@@ -47,7 +48,7 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
             setAwayTeamId(matchToEdit?.awayTeamId || '');
             setPlayersPerTeam(String(matchToEdit?.playersPerTeam || '5'));
         }
-    }, [isOpen, matchToEdit, tournament]);
+    }, [isOpen, matchToEdit, tournament, selectedDate]);
 
     useEffect(() => {
         if (!isEditing || (matchToEdit && categoryId !== matchToEdit.categoryId)) {
@@ -98,7 +99,6 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
             <DialogContent 
               className="sm:max-w-lg"
               onInteractOutside={(e) => {
-                // Prevent closing when clicking on the calendar popover
                 const target = e.target as HTMLElement;
                 if (target.closest('.rdp')) {
                   e.preventDefault();

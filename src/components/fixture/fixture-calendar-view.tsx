@@ -4,25 +4,26 @@
 import React, { useState, useMemo } from 'react';
 import { useGameState, getCategoryNameById } from '@/contexts/game-state-context';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Calendar as CalendarIcon, Edit, Trash2, List, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { addMonths, subMonths, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AddEditMatchDialog } from './add-edit-match-dialog';
-import { DefaultTeamLogo } from '@/components/teams/default-team-logo';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import type { MatchData, TeamData } from '@/types';
+import type { MatchData } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 
-export function FixtureManagementTab() {
+export function FixtureCalendarView() {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
   const { selectedTournamentId, tournaments } = state.config;
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  
   const [isAddEditDialogOpen, setIsAddEditDialogOpen] = useState(false);
   const [matchToEdit, setMatchToEdit] = useState<MatchData | null>(null);
   const [matchToDelete, setMatchToDelete] = useState<MatchData | null>(null);
+  const [dialogSelectedDate, setDialogSelectedDate] = useState<Date | undefined>(undefined);
 
   const selectedTournament = useMemo(() => {
     return tournaments.find(t => t.id === selectedTournamentId);
@@ -32,8 +33,15 @@ export function FixtureManagementTab() {
     return selectedTournament?.matches || [];
   }, [selectedTournament]);
 
+  const handleDayClick = (day: Date) => {
+    setDialogSelectedDate(day);
+    setMatchToEdit(null);
+    setIsAddEditDialogOpen(true);
+  };
+
   const handleEditMatch = (match: MatchData) => {
     setMatchToEdit(match);
+    setDialogSelectedDate(new Date(match.date));
     setIsAddEditDialogOpen(true);
   };
   
@@ -57,14 +65,6 @@ export function FixtureManagementTab() {
 
   return (
     <div className="space-y-6">
-       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Fixture del Torneo</h2>
-        <Button onClick={() => { setMatchToEdit(null); setIsAddEditDialogOpen(true); }}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Añadir Partido
-        </Button>
-      </div>
-
       <div className="flex justify-between items-center px-2">
         <h3 className="text-xl font-semibold">{format(currentMonth, "MMMM yyyy", { locale: es })}</h3>
         <div className="flex items-center gap-2">
@@ -90,7 +90,12 @@ export function FixtureManagementTab() {
                 !isSameMonth(day, currentMonth) && "bg-muted/20 text-muted-foreground"
               )}
             >
-              <div className={cn("font-medium", isSameDay(day, new Date()) && "text-blue-500 font-bold")}>{format(day, "d")}</div>
+              <div 
+                className={cn("font-medium cursor-pointer hover:text-blue-500", isSameDay(day, new Date()) && "text-blue-500 font-bold")}
+                onClick={() => handleDayClick(day)}
+              >
+                {format(day, "d")}
+              </div>
               <ScrollArea className="flex-grow mt-1">
                 <div className="space-y-1 pr-1">
                   {matchesForDay.map(match => {
@@ -122,6 +127,7 @@ export function FixtureManagementTab() {
         onOpenChange={setIsAddEditDialogOpen}
         tournament={selectedTournament}
         matchToEdit={matchToEdit}
+        selectedDate={dialogSelectedDate}
       />
       
        {matchToDelete && (

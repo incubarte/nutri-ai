@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -10,10 +9,9 @@ import { ArrowLeft, Trophy, Info } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CategorySettingsCard } from '@/components/config/category-settings-card';
 import { TeamsManagementTab } from '@/components/config/teams-management-tab';
-import { FixtureManagementTab } from '@/components/config/fixture-management-tab';
+import { FixtureCalendarView } from '@/components/fixture/fixture-calendar-view';
+import { FixtureListView } from '@/components/fixture/fixture-list-view';
 import { Separator } from '@/components/ui/separator';
-
-const VALID_TAB_VALUES = ["teamsAndCategories", "fixture"];
 
 export default function TournamentDetailPage() {
   const params = useParams();
@@ -84,7 +82,18 @@ export default function TournamentDetailPage() {
           </div>
         </TabsContent>
         <TabsContent value="fixture" className="mt-6">
-           <FixtureManagementTab />
+            <Tabs defaultValue="calendar" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="calendar">Vista Calendario</TabsTrigger>
+                <TabsTrigger value="list">Vista Lista</TabsTrigger>
+              </TabsList>
+              <TabsContent value="calendar" className="mt-6">
+                 <FixtureCalendarView />
+              </TabsContent>
+              <TabsContent value="list" className="mt-6">
+                <FixtureListView />
+              </TabsContent>
+            </Tabs>
         </TabsContent>
       </Tabs>
     </div>

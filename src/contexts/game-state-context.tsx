@@ -4,7 +4,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
@@ -92,6 +92,7 @@ const IN_CODE_INITIAL_TOURNAMENT: Tournament = {
   status: 'active',
   teams: [],
   categories: [],
+  matches: [],
 };
 
 
@@ -1548,11 +1549,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'SET_CATEGORIES_FOR_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === action.payload.tournamentId ? { ...t, categories: action.payload.categories } : t) } };
+        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === action.payload.tournamentId ? { ...t, categories: action.payload.categories } : t) } };
         break;
     }
     case 'ADD_CATEGORIES_TO_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === action.payload.tournamentId ? { ...t, categories: [...(t.categories || []), ...action.payload.categories] } : t) } };
+        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === action.payload.tournamentId ? { ...t, categories: [...(t.categories || []), ...action.payload.categories] } : t) } };
         break;
     }
     case 'SET_SELECTED_MATCH_CATEGORY': newState = { ...state, config: { ...state.config, selectedMatchCategory: action.payload } }; toastMessage = { title: "Categoría del Partido Actualizada" }; break;
@@ -1564,6 +1565,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             status: action.payload.status,
             teams: [],
             categories: [],
+            matches: [],
         };
         newState = { ...state, config: { ...state.config, tournaments: [...(state.config.tournaments || []), newTournament] } };
         break;
@@ -1594,12 +1596,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_TEAM_TO_TOURNAMENT': {
         const { tournamentId, team } = action.payload;
-        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === tournamentId ? { ...t, teams: [...t.teams, { ...team, id: team.id || safeUUID() }] } : t) } };
+        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === tournamentId ? { ...t, teams: [...t.teams, { ...team, id: team.id || safeUUID() }] } : t) } };
         break;
     }
     case 'DELETE_TEAMS_FROM_TOURNAMENT': {
         const { tournamentId, teamIds } = action.payload;
-         newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === tournamentId ? { ...t, teams: t.teams.filter(team => !teamIds.includes(team.id)) } : t) } };
+         newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === tournamentId ? { ...t, teams: t.teams.filter(team => !teamIds.includes(team.id)) } : t) } };
         break;
     }
     case 'UPDATE_TEAM_DETAILS': {
@@ -1664,6 +1666,28 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         },
       };
       break;
+    }
+    case 'ADD_MATCH_TO_TOURNAMENT': {
+        const { tournamentId, match } = action.payload;
+        const newTournaments = (state.config.tournaments || []).map(t => {
+            if (t.id === tournamentId) {
+                const newMatches = [...(t.matches || []), { ...match, id: safeUUID() }];
+                return { ...t, matches: newMatches };
+            }
+            return t;
+        });
+        newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
+        break;
+    }
+    case 'UPDATE_MATCH_IN_TOURNAMENT': {
+        const { tournamentId, match } = action.payload;
+        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === tournamentId ? { ...t, matches: (t.matches || []).map(m => m.id === match.id ? match : m) } : t) }};
+        break;
+    }
+    case 'DELETE_MATCH_FROM_TOURNAMENT': {
+        const { tournamentId, matchId } = action.payload;
+        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === tournamentId ? { ...t, matches: (t.matches || []).filter(m => m.id !== matchId) } : t) }};
+        break;
     }
     case 'RESET_CONFIG_TO_DEFAULTS': {
       const defaultFormatProfile = createDefaultFormatAndTimingsProfile();
@@ -1963,4 +1987,6 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
+
 
