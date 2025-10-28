@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Edit3, XCircle } from "lucide-react";
+import { Edit3, XCircle, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { safeUUID } from "@/lib/utils";
@@ -50,65 +50,72 @@ export const CategorySettingsCard = forwardRef<CategorySettingsCardRef, Category
 
   const markDirty = () => setIsDirtyLocal(true);
 
-  useImperativeHandle(ref, () => ({
-    handleSave: () => {
-      if (!isDirtyLocal) return true;
-      if (!selectedTournamentId) {
-        toast({ title: "Error", description: "No hay un torneo seleccionado para guardar las categorías.", variant: "destructive" });
-        return false;
-      }
-
-      const categoryNames = localCategoriesString
-        .split(',')
-        .map(name => name.trim())
-        .filter(name => name.length > 0);
-      
-      const uniqueCategoryNames = Array.from(new Set(categoryNames.map(name => name.toLowerCase())));
-      
-      if (uniqueCategoryNames.length !== categoryNames.length) {
-         toast({
-            title: "Error en Categorías",
-            description: "Los nombres de las categorías deben ser únicos (ignorando mayúsculas/minúsculas).",
-            variant: "destructive",
-        });
-        return false; 
-      }
-      
-      const finalCategories: CategoryData[] = Array.from(new Set(categoryNames))
-          .map(name => ({ id: safeUUID(), name })); 
-
-      dispatch({ type: "SET_CATEGORIES_FOR_TOURNAMENT", payload: { tournamentId: selectedTournamentId, categories: finalCategories } });
-      
-      toast({ title: "Categorías Guardadas", description: `Las categorías para "${selectedTournament?.name}" han sido actualizadas.` });
-      setIsDirtyLocal(false);
-      setIsEditing(false);
-      return true; 
-    },
-    handleDiscard: () => {
-      setLocalCategoriesString(availableCategories.map(c => c.name).join(", "));
-      setIsDirtyLocal(false);
-      setIsEditing(false);
-    },
-    getIsDirty: () => isDirtyLocal,
-  }));
-
-  const handleEditToggle = () => {
-    if (isEditing && isDirtyLocal) {
-        setLocalCategoriesString(availableCategories.map(c => c.name).join(", "));
-        setIsDirtyLocal(false);
+  const handleSave = () => {
+    if (!selectedTournamentId) {
+      toast({ title: "Error", description: "No hay un torneo seleccionado para guardar las categorías.", variant: "destructive" });
+      return false;
     }
-    setIsEditing(!isEditing);
+
+    const categoryNames = localCategoriesString
+      .split(',')
+      .map(name => name.trim())
+      .filter(name => name.length > 0);
+    
+    const uniqueCategoryNames = Array.from(new Set(categoryNames.map(name => name.toLowerCase())));
+    
+    if (uniqueCategoryNames.length !== categoryNames.length) {
+       toast({
+          title: "Error en Categorías",
+          description: "Los nombres de las categorías deben ser únicos (ignorando mayúsculas/minúsculas).",
+          variant: "destructive",
+      });
+      return false; 
+    }
+    
+    const finalCategories: CategoryData[] = Array.from(new Set(categoryNames))
+        .map(name => ({ id: safeUUID(), name })); 
+
+    dispatch({ type: "SET_CATEGORIES_FOR_TOURNAMENT", payload: { tournamentId: selectedTournamentId, categories: finalCategories } });
+    
+    toast({ title: "Categorías Guardadas", description: `Las categorías para "${selectedTournament?.name}" han sido actualizadas.` });
+    setIsDirtyLocal(false);
+    setIsEditing(false);
+    return true; 
   };
 
+  const handleDiscard = () => {
+    setLocalCategoriesString(availableCategories.map(c => c.name).join(", "));
+    setIsDirtyLocal(false);
+    setIsEditing(false);
+  };
+
+  useImperativeHandle(ref, () => ({
+    handleSave,
+    handleDiscard,
+    getIsDirty: () => isDirtyLocal,
+  }));
 
   return (
     <Card className="bg-card shadow-md">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-xl text-primary-foreground">Configuración de Categorías</CardTitle>
         {selectedTournament && (
-          <Button variant="ghost" size="icon" onClick={handleEditToggle} className="text-primary-foreground hover:text-accent">
-            {isEditing ? <XCircle className="h-5 w-5" /> : <Edit3 className="h-5 w-5" />}
-          </Button>
+          <div className="flex items-center gap-1">
+            {isEditing ? (
+              <>
+                <Button variant="ghost" size="icon" onClick={handleSave} className="text-green-500 hover:text-green-600 h-8 w-8">
+                  <Check className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={handleDiscard} className="text-destructive hover:text-destructive/80 h-8 w-8">
+                  <XCircle className="h-5 w-5" />
+                </Button>
+              </>
+            ) : (
+              <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="text-primary-foreground hover:text-accent h-8 w-8">
+                <Edit3 className="h-5 w-5" />
+              </Button>
+            )}
+          </div>
         )}
       </CardHeader>
       <CardContent>
