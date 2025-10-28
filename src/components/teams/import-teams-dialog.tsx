@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -99,10 +100,9 @@ export function ImportTeamsDialog({ isOpen, onOpenChange, tournament }: ImportTe
                             currentTeam = null;
                             continue;
                         }
-
-                        const parts = trimmedLine.split(',').map(p => p.trim());
                         
                         if (!currentTeam) { // This must be a team definition line
+                            const parts = trimmedLine.split(',').map(p => p.trim());
                             const [name, subName, category] = parts;
                             if (!name) continue; // Skip if team name is missing
 
@@ -114,6 +114,7 @@ export function ImportTeamsDialog({ isOpen, onOpenChange, tournament }: ImportTe
                                 players: []
                             };
                         } else { // This is a player line
+                             const parts = trimmedLine.split(',').map(p => p.trim());
                             const [number, name, position] = parts;
                             if (!name) continue; // Skip if player name is missing
 
@@ -168,7 +169,7 @@ export function ImportTeamsDialog({ isOpen, onOpenChange, tournament }: ImportTe
 
     let newCategories: CategoryData[] = [];
     if (createMissingCategories) {
-        const existingCategoryNames = new Set(tournament.categories.map(c => c.name.toLowerCase()));
+        const existingCategoryNames = new Set((tournament.categories || []).map(c => c.name.toLowerCase()));
         const missingCategories = new Set<string>();
         
         parsedTeams.forEach(team => {
@@ -183,7 +184,7 @@ export function ImportTeamsDialog({ isOpen, onOpenChange, tournament }: ImportTe
         }
     }
 
-    const allCategories = [...tournament.categories, ...newCategories];
+    const allCategories = [...(tournament.categories || []), ...newCategories];
     let importedCount = 0;
 
     parsedTeams.forEach(parsedTeam => {
