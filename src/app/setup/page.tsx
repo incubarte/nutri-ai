@@ -286,8 +286,9 @@ export default function SetupPage() {
                     </TabsContent>
 
                     <TabsContent value="rules" className="py-4 max-h-[60vh] overflow-y-auto">
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
+                        <div className="space-y-6">
                             <DurationSettingsCard isDialogMode={true} tempSettings={tempFormatSettings} onSettingsChange={setTempFormatSettings} />
+                            <Separator />
                             <div className="flex flex-col gap-6">
                                 <PenaltySettingsCard isDialogMode={true} tempSettings={tempFormatSettings} onSettingsChange={setTempFormatSettings} />
                                 <StoppedTimeAlertCard isDialogMode={true} tempSettings={tempFormatSettings} onSettingsChange={setTempFormatSettings} />
