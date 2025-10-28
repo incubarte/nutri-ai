@@ -47,9 +47,11 @@ export function EditTeamPlayersDialog({
   const [attendedPlayerIds, setAttendedPlayerIds] = useState<Set<string>>(new Set());
   
   const teamDetails = useMemo(() => {
-    if (!state.config) return null;
-    return state.config.teams.find(t => t.id === teamId);
-  }, [state.config, teamId]);
+    if (!state.config || !state.config.tournaments) return null;
+    const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+    if (!selectedTournament || !selectedTournament.teams) return null;
+    return selectedTournament.teams.find(t => t.id === teamId);
+  }, [state.config.tournaments, state.config.selectedTournamentId, teamId]);
 
   useEffect(() => {
     if (isOpen && teamDetails) {
@@ -70,7 +72,7 @@ export function EditTeamPlayersDialog({
       setAttendedPlayerIds(new Set(attendedInfo.map(p => p.id)));
 
     }
-  }, [isOpen, teamDetails]); // Only re-run when the dialog is opened or the fundamental team details change
+  }, [isOpen, teamDetails, state.live.gameSummary.attendance, teamType]);
 
   const handlePlayerNumberChange = (playerId: string, newNumber: string) => {
     if (/^\d*$/.test(newNumber)) {
@@ -95,6 +97,11 @@ export function EditTeamPlayersDialog({
   };
 
   const handleSave = () => {
+    if (!state.config.selectedTournamentId) {
+      toast({ title: "Error", description: "No se ha seleccionado un torneo.", variant: "destructive" });
+      return;
+    }
+
     let numberChangesCount = 0;
     let hasError = false;
     
