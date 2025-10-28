@@ -64,7 +64,7 @@ export default function ManageTeamPage() {
       const numB = parseInt(b.number, 10);
       if (isNaN(numA) && isNaN(numB)) return 0; 
       if (isNaN(numA)) return 1; 
-      if (isNaN(numB)) return -1; 
+      if (!isNaN(numA) && isNaN(numB)) return -1; 
       return numA - numB;
     });
   }, [team?.players]);
