@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -290,6 +291,7 @@ export default function ControlsPage() {
   const [editingTeamForGoals, setEditingTeamForGoals] = useState<Team | null>(null);
   const [isGoldenGoalDialogOpen, setIsGoldenGoalDialogOpen] = useState(false);
   const [isGameSetupDialogOpen, setIsGameSetupDialogOpen] = useState(false);
+  const [gameSetupStartTab, setGameSetupStartTab] = useState('teams');
   
   const [reconnectTrigger, setReconnectTrigger] = useState(0);
 
@@ -779,6 +781,7 @@ export default function ControlsPage() {
   const handleInitiateNewGame = () => {
     const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
     if (!selectedTournament || !selectedTournament.matches || selectedTournament.matches.length === 0) {
+      setGameSetupStartTab('teams');
       setIsGameSetupDialogOpen(true);
       return;
     }
@@ -788,6 +791,7 @@ export default function ControlsPage() {
       setTodaysMatches(todayMatches);
       setIsSelectMatchDialogOpen(true);
     } else {
+      setGameSetupStartTab('teams');
       setIsGameSetupDialogOpen(true);
     }
   };
@@ -800,6 +804,7 @@ export default function ControlsPage() {
       awayTeamId: match.awayTeamId,
     }}});
     setIsSelectMatchDialogOpen(false);
+    setGameSetupStartTab('rules');
     setIsGameSetupDialogOpen(true);
   };
 
@@ -1049,6 +1054,7 @@ export default function ControlsPage() {
             isOpen={isGameSetupDialogOpen}
             onOpenChange={setIsGameSetupDialogOpen}
             onGameReset={handleResetGame}
+            startTab={gameSetupStartTab}
         />
       )}
       
@@ -1084,7 +1090,7 @@ export default function ControlsPage() {
                 })}
             </div>
             <AlertDialogFooter>
-                 <Button variant="secondary" onClick={() => { setIsSelectMatchDialogOpen(false); setIsGameSetupDialogOpen(true); }}>
+                 <Button variant="secondary" onClick={() => { setIsSelectMatchDialogOpen(false); setGameSetupStartTab('teams'); setIsGameSetupDialogOpen(true); }}>
                     Configurar partido manualmente
                 </Button>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>

@@ -50,6 +50,7 @@ interface GameSetupDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onGameReset: () => void;
+  startTab?: 'teams' | 'rules';
 }
 
 const TeamSelector = ({
@@ -120,11 +121,11 @@ const TeamSelector = ({
 };
 
 
-export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetupDialogProps) {
+export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 'teams' }: GameSetupDialogProps) {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
   
-  const [activeTab, setActiveTab] = useState("teams");
+  const [activeTab, setActiveTab] = useState(startTab);
   
   const { selectedTournamentId, tournaments } = state.config;
   const selectedTournament = useMemo(() => tournaments.find(t => t.id === selectedTournamentId), [tournaments, selectedTournamentId]);
@@ -149,8 +150,8 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
   
   useEffect(() => {
     if (isOpen) {
-        setActiveTab("teams");
-        // Pre-fill from pending match if available
+        setActiveTab(startTab);
+
         if (state.live.pendingMatchConfig) {
           const { categoryId, homeTeamId, awayTeamId } = state.live.pendingMatchConfig;
           setUseManualTeamNames(false);
@@ -158,24 +159,21 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
           setHomeTeamId(homeTeamId);
           setAwayTeamId(awayTeamId);
         } else {
-            // Reset to defaults
             setUseManualTeamNames(false);
             setLocalCategoryId(state.config.selectedMatchCategory || '');
             setHomeTeamId('');
             setAwayTeamId('');
         }
         
-        // Load current profile settings into temp state for editing
         const currentProfile = state.config.formatAndTimingsProfiles.find(p => p.id === state.config.selectedFormatAndTimingsProfileId) || state.config;
         setTempFormatSettings(currentProfile);
 
     } else {
-        // Clear pending match on close
         if (state.live.pendingMatchConfig) {
           dispatch({ type: 'UPDATE_LIVE_STATE', payload: { pendingMatchConfig: undefined } });
         }
     }
-  }, [isOpen, state.live.pendingMatchConfig, state.config.selectedMatchCategory, state.config.formatAndTimingsProfiles, state.config.selectedFormatAndTimingsProfileId, dispatch]);
+  }, [isOpen, startTab, state.live.pendingMatchConfig, state.config.selectedMatchCategory, state.config.formatAndTimingsProfiles, state.config.selectedFormatAndTimingsProfileId, dispatch]);
 
   useEffect(() => {
     if (!useManualTeamNames) {
@@ -189,8 +187,8 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
     if (useManualTeamNames) {
         const homeName = manualHomeTeamName.trim() || 'Local';
         const awayName = manualAwayTeamName.trim() || 'Visitante';
-        if (homeName === awayName) {
-            toast({ title: "Nombres Iguales", description: "Los nombres de los equipos no pueden ser iguales.", variant: "destructive" });
+        if (homeName.toLowerCase() === awayName.toLowerCase()) {
+            toast({ title: "Nombres Iguales", description: "Los nombres de los equipos no pueden ser el mismo.", variant: "destructive" });
             return;
         }
     } else {
@@ -268,7 +266,7 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset }: GameSetup
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="teams">Paso 1: Equipos</TabsTrigger>
-                <TabsTrigger value="rules" disabled={activeTab !== 'rules'}>Paso 2: Reglas</TabsTrigger>
+                <TabsTrigger value="rules">Paso 2: Reglas</TabsTrigger>
             </TabsList>
             
             <TabsContent value="teams" className="py-4 space-y-4">
