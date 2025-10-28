@@ -547,7 +547,7 @@ export default function ResumenPage() {
     toast({ title: "Procesando...", description: "Guardando resúmenes y generando PDF." });
 
     // 1. Export PDF
-    const pdfFilename = exportGameSummaryPDF(summaryData, homeAggregatedStats, awayAggregatedStats);
+    const pdfFilename = exportGameSummaryPDF(summaryData, homeAggregatedStats, awayAggregatedStats, liveGameState);
 
     // 2. Prepare data and save CSVs
     const getResult = (teamScore: number, opponentScore: number): "Ganó" | "Perdió" | "Empató" => {
@@ -616,7 +616,7 @@ export default function ResumenPage() {
     const penaltyDef = liveGameState.config.penaltyTypes.find(p => p.id === penaltyTypeId);
     if (!penaltyDef) return;
 
-    const teamData = liveGameState.config.teams.find(t => t.name === summaryData[`${team}TeamName`] && t.category === summaryData.categoryName);
+    const teamData = (liveGameState.config.tournaments.find(t => t.id === liveGameState.config.selectedTournamentId)?.teams || []).find(t => t.name === summaryData[`${team}TeamName`] && t.category === summaryData.categoryName);
     const playerDetails = teamData?.players.find(p => p.number === playerNumber);
 
     const newPenaltyLog: PenaltyLog = {
@@ -801,8 +801,8 @@ export default function ResumenPage() {
                                         );
                                     }
 
-                                    const periodData = summaryData.statsByPeriod[periodText];
-                                    if (!periodData) return null;
+                                    const periodStats = summaryData.statsByPeriod[periodText];
+                                    if (!periodStats) return null;
 
                                     return (
                                         <AccordionItem value={periodText} key={periodText}>
@@ -810,18 +810,18 @@ export default function ResumenPage() {
                                             <AccordionContent>
                                                 <div className="space-y-8 pl-2">
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                        <GoalsSection teamName={summaryData.homeTeamName} goals={periodData.home.goals} />
-                                                        <GoalsSection teamName={summaryData.awayTeamName} goals={periodData.away.goals} />
+                                                        <GoalsSection teamName={summaryData.homeTeamName} goals={periodStats.home.goals} />
+                                                        <GoalsSection teamName={summaryData.awayTeamName} goals={periodStats.away.goals} />
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                        <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={periodData.home.penalties} onAdd={() => handleOpenAddPenalty('home', periodText)} onDelete={(logId) => handlePrepareDeletePenalty('home', periodText, logId)} />
-                                                        <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={periodData.away.penalties} onAdd={() => handleOpenAddPenalty('away', periodText)} onDelete={(logId) => handlePrepareDeletePenalty('away', periodText, logId)} />
+                                                        <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={periodStats.home.penalties} onAdd={() => handleOpenAddPenalty('home', periodText)} onDelete={(logId) => handlePrepareDeletePenalty('home', periodText, logId)} />
+                                                        <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={periodStats.away.penalties} onAdd={() => handleOpenAddPenalty('away', periodText)} onDelete={(logId) => handlePrepareDeletePenalty('away', periodText, logId)} />
                                                     </div>
                                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                         <PlayerStatsSection 
                                                             team="home" 
                                                             teamName={summaryData.homeTeamName} 
-                                                            playerStats={periodData.home.playerStats} 
+                                                            playerStats={periodStats.home.playerStats} 
                                                             editable={true} 
                                                             onStatsChange={handleStatsChange}
                                                             periodText={periodText}
@@ -829,7 +829,7 @@ export default function ResumenPage() {
                                                         <PlayerStatsSection 
                                                             team="away" 
                                                             teamName={summaryData.awayTeamName} 
-                                                            playerStats={periodData.away.playerStats} 
+                                                            playerStats={periodStats.away.playerStats} 
                                                             editable={true} 
                                                             onStatsChange={handleStatsChange}
                                                             periodText={periodText}

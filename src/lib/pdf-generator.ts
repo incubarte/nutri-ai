@@ -2,7 +2,7 @@
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { formatTime, getCategoryNameById, getEndReasonText } from '@/contexts/game-state-context';
+import { formatTime, getCategoryNameById, getEndReasonText, type GameState } from '@/contexts/game-state-context';
 import type { GoalLog, PenaltyLog, SummaryPlayerStats } from '@/types';
 import type { SummaryData } from '@/app/resumen/page';
 
@@ -85,9 +85,9 @@ const checkPageBreak = (doc: jsPDF, currentY: number): number => {
     return currentY;
 };
 
-export const exportGameSummaryPDF = (summaryData: SummaryData, homeAggregatedStats: { playerStats: SummaryPlayerStats[] }, awayAggregatedStats: { playerStats: SummaryPlayerStats[] }): string => {
-    if (!summaryData) {
-        console.error("Cannot generate PDF: summary data is missing.");
+export const exportGameSummaryPDF = (summaryData: SummaryData, homeAggregatedStats: { playerStats: SummaryPlayerStats[] }, awayAggregatedStats: { playerStats: SummaryPlayerStats[] }, state: GameState): string => {
+    if (!summaryData || !state.config) {
+        console.error("Cannot generate PDF: summary data or config is missing.");
         return "error_no_summary_data.pdf";
     }
 
@@ -170,7 +170,7 @@ export const exportGameSummaryPDF = (summaryData: SummaryData, homeAggregatedSta
     
     const allPeriodTexts = Object.keys(summaryData.statsByPeriod).sort((a, b) => {
         const getPeriodNumber = (text: string) => {
-            if (text.startsWith('OT')) return (summaryData.availableCategories.find(c=>c.id === summaryData.selectedMatchCategory) ? 2 : 2) + parseInt(text.replace('OT', '') || '1', 10);
+            if (text.startsWith('OT')) return (state.config.numberOfRegularPeriods || 2) + parseInt(text.replace('OT', '') || '1', 10);
             return parseInt(text.replace(/\D/g, ''), 10);
         };
         return getPeriodNumber(a) - getPeriodNumber(b);
@@ -209,4 +209,5 @@ export const exportGameSummaryPDF = (summaryData: SummaryData, homeAggregatedSta
     
     return filename;
 };
+
 
