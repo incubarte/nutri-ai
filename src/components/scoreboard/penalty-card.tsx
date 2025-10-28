@@ -60,7 +60,10 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
   const currentTeamSubName = live.homeTeamName === teamName ? live.homeTeamSubName : live.awayTeamSubName;
 
   const matchedPlayer = React.useMemo(() => {
-    const currentTeam = config.teams.find(t =>
+    const selectedTournament = (config.tournaments || []).find(t => t.id === config.selectedTournamentId);
+    if (!selectedTournament || !selectedTournament.teams) return null;
+
+    const currentTeam = selectedTournament.teams.find(t =>
         t.name === teamName &&
         (t.subName || undefined) === (currentTeamSubName || undefined) &&
         t.category === config.selectedMatchCategory
@@ -69,7 +72,7 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
       return currentTeam.players.find(p => p.number === penalty.playerNumber || (penalty.playerNumber === "S/N" && !p.number));
     }
     return null;
-  }, [config.teams, teamName, currentTeamSubName, config.selectedMatchCategory, penalty.playerNumber]);
+  }, [config.tournaments, config.selectedTournamentId, config.selectedMatchCategory, teamName, currentTeamSubName, penalty.playerNumber]);
 
   const isWaitingSlot = penalty._status === 'pending_concurrent';
   const isPendingPuck = penalty._status === 'pending_puck';
