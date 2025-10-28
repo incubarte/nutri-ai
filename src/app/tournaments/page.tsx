@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -37,6 +38,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Tournament } from "@/types";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 const statusMap: Record<Tournament['status'], { text: string; className: string }> = {
   active: { text: "Activo", className: "bg-green-600 hover:bg-green-700" },
@@ -206,12 +208,12 @@ export default function TournamentsPage() {
           tournaments.map((tournament) => (
             <Card key={tournament.id}>
               <CardContent className="p-4 flex justify-between items-center">
-                <div className="flex flex-col">
+                <Link href={`/tournaments/${tournament.id}`} className="flex flex-col hover:text-accent-foreground transition-colors">
                   <span className="font-semibold text-lg text-card-foreground">{tournament.name}</span>
                    <Badge className={cn("w-fit", statusMap[tournament.status]?.className)}>
                     {statusMap[tournament.status]?.text || tournament.status}
                   </Badge>
-                </div>
+                </Link>
                 <div className="flex gap-2">
                   <Button variant="outline" size="icon" onClick={() => handleEdit(tournament)}>
                     <Edit className="h-4 w-4" />

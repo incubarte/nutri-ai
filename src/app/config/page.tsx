@@ -50,7 +50,6 @@ import type { PenaltyTypesCardRef } from "@/components/config/penalty-types-card
 import type { SoundSettingsCardRef } from "@/components/config/sound-settings-card";
 import type { PenaltyCountdownSoundCardRef } from "@/components/config/penalty-countdown-sound-card";
 import type { TeamSettingsCardRef } from "@/components/config/team-settings-card";
-import type { CategorySettingsCardRef } from "@/components/config/category-settings-card";
 import type { LayoutSettingsCardRef } from "@/components/config/layout-settings-card";
 import type { DebugSettingsCardRef } from "@/components/config/debug-settings-card";
 import { RemoteControlsSettingsCard } from '@/components/config/remote-controls-settings-card';
@@ -68,13 +67,11 @@ const PenaltyTypesCard = dynamic(() => import('@/components/config/penalty-types
 const SoundSettingsCard = dynamic(() => import('@/components/config/sound-settings-card').then(mod => mod.SoundSettingsCard), { loading: loadingComponent });
 const PenaltyCountdownSoundCard = dynamic(() => import('@/components/config/penalty-countdown-sound-card').then(mod => mod.PenaltyCountdownSoundCard), { loading: loadingComponent });
 const TeamSettingsCard = dynamic(() => import('@/components/config/team-settings-card').then(mod => mod.TeamSettingsCard), { loading: loadingComponent });
-const CategorySettingsCard = dynamic(() => import('@/components/config/category-settings-card').then(mod => mod.CategorySettingsCard), { loading: loadingComponent });
 const LayoutSettingsCard = dynamic(() => import('@/components/config/layout-settings-card').then(mod => mod.LayoutSettingsCard), { loading: loadingComponent });
-const TeamsManagementTab = dynamic(() => import('@/components/config/teams-management-tab').then(mod => mod.TeamsManagementTab), { loading: loadingComponent });
 const DebugSettingsCard = dynamic(() => import('@/components/config/debug-settings-card').then(mod => mod.DebugSettingsCard), { loading: loadingComponent });
 
 
-const VALID_TAB_VALUES = ["formatAndTimings", "soundAndDisplay", "categoriesAndTeams", "remoteControls"];
+const VALID_TAB_VALUES = ["formatAndTimings", "soundAndDisplay", "remoteControls"];
 
 type ExportableSoundAndDisplayConfig = Pick<ConfigFields,
   | 'playSoundAtPeriodEnd' | 'customHornSoundDataUrl'
@@ -99,7 +96,6 @@ export default function ConfigPage() {
   const soundSettingsRef = useRef<SoundSettingsCardRef>(null);
   const penaltyCountdownSoundRef = useRef<PenaltyCountdownSoundCardRef>(null);
   const teamSettingsRef = useRef<TeamSettingsCardRef>(null);
-  const categorySettingsRef = useRef<CategorySettingsCardRef>(null);
   const layoutSettingsRef = useRef<LayoutSettingsCardRef>(null);
   const debugSettingsRef = useRef<DebugSettingsCardRef>(null);
   
@@ -113,7 +109,6 @@ export default function ConfigPage() {
   const [isSoundDirty, setIsSoundDirty] = useState(false);
   const [isPenaltyCountdownSoundDirty, setIsPenaltyCountdownSoundDirty] = useState(false);
   const [isTeamSettingsDirty, setIsTeamSettingsDirty] = useState(false);
-  const [isCategorySettingsDirty, setIsCategorySettingsDirty] = useState(false);
   const [isDebugDirty, setIsDebugDirty] = useState(false);
   
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -251,25 +246,6 @@ export default function ConfigPage() {
     if (debugSettingsRef.current && isDebugDirty) { debugSettingsRef.current.handleDiscard(); setIsDebugDirty(false); }
     
     toast({ title: "Cambios Descartados", description: "Los cambios no guardados en Sonido y Display han sido revertidos." });
-  };
-
-  const handleSaveChanges_Categories = () => {
-    if (categorySettingsRef.current && isCategorySettingsDirty) {
-      if (categorySettingsRef.current.handleSave()) {
-        setIsCategorySettingsDirty(false);
-        toast({ title: "Categorías Guardadas", description: "Los cambios en Categorías han sido guardados en la configuración activa." });
-      } else {
-        toast({ title: "Error al Guardar", description: "No se pudieron guardar los cambios en Categorías.", variant: "destructive" });
-      }
-    }
-  };
-
-  const handleDiscardChanges_Categories = () => {
-    if (categorySettingsRef.current && isCategorySettingsDirty) {
-      categorySettingsRef.current.handleDiscard();
-      setIsCategorySettingsDirty(false);
-      toast({ title: "Cambios Descartados", description: "Los cambios no guardados en Categorías han sido revertidos." });
-    }
   };
   
   const handleSaveChanges_RemoteControls = () => {
@@ -459,7 +435,6 @@ export default function ConfigPage() {
     setIsSoundDirty(false);
     setIsPenaltyCountdownSoundDirty(false);
     setIsTeamSettingsDirty(false);
-    setIsCategorySettingsDirty(false);
     setIsDebugDirty(false);
 
     toast({
@@ -615,10 +590,6 @@ export default function ConfigPage() {
       sectionName = "Sonido y Display";
       isDirty = true;
       discardAction = handleDiscardChanges_SoundAndDisplay;
-    } else if (activeTab === "categoriesAndTeams" && isCategorySettingsDirty) {
-      sectionName = "Categorías";
-      isDirty = true;
-      discardAction = handleDiscardChanges_Categories;
     }
 
     if (isDirty) {
@@ -675,10 +646,9 @@ export default function ConfigPage() {
       </div>
       
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto sm:h-10">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 h-auto sm:h-10">
           <TabsTrigger value="formatAndTimings" className="py-2 sm:py-1.5">Formato y Tiempos</TabsTrigger>
           <TabsTrigger value="soundAndDisplay" className="py-2 sm:py-1.5">Sonido y Display</TabsTrigger>
-          <TabsTrigger value="categoriesAndTeams" className="py-2 sm:py-1.5">Categorías y Equipos</TabsTrigger>
           <TabsTrigger value="remoteControls" className="py-2 sm:py-1.5">Controles Remotos</TabsTrigger>
         </TabsList>
 
@@ -833,24 +803,6 @@ export default function ConfigPage() {
                 </div>
             </div>
            </div>
-        </TabsContent>
-
-        <TabsContent value="categoriesAndTeams" className={tabContentClassName}>
-          <div className="space-y-8">
-            <CategorySettingsCard ref={categorySettingsRef} onDirtyChange={setIsCategorySettingsDirty} />
-            {isCategorySettingsDirty && (
-              <div className={cn(sectionActionsContainerClass, "mt-0 mb-6")}>
-                <Button onClick={handleSaveChanges_Categories} size="sm">
-                  <Save className="mr-2 h-4 w-4" /> Guardar Cambios de Categorías
-                </Button>
-                <Button onClick={handleDiscardChanges_Categories} variant="outline" size="sm">
-                  <Undo2 className="mr-2 h-4 w-4" /> Descartar Cambios de Categorías
-                </Button>
-              </div>
-            )}
-            <Separator />
-            <TeamsManagementTab />
-          </div>
         </TabsContent>
 
         <TabsContent value="remoteControls" className={tabContentClassName}>

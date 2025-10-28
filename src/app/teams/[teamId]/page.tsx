@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -23,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
-import type { PlayerData } from "@/types";
+import type { PlayerData, Tournament } from "@/types";
 import { Badge } from "@/components/ui/badge";
 
 export default function ManageTeamPage() {
@@ -33,16 +34,25 @@ export default function ManageTeamPage() {
   const { toast } = useToast();
 
   const teamId = typeof params.teamId === 'string' ? params.teamId : undefined;
-  const [team, setTeam] = useState(teamId ? state.config.teams.find(t => t.id === teamId) : undefined);
+  
+  const [tournament, setTournament] = useState<Tournament | null>(null);
+  const [team, setTeam] = useState(teamId ? tournament?.teams.find(t => t.id === teamId) : undefined);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (teamId) {
-      setTeam(state.config.teams.find(t => t.id === teamId));
+      for (const t of (state.config.tournaments || [])) {
+        const foundTeam = t.teams.find(tm => tm.id === teamId);
+        if (foundTeam) {
+          setTeam(foundTeam);
+          setTournament(t);
+          break;
+        }
+      }
     }
-  }, [teamId, state.config.teams]);
+  }, [teamId, state.config.tournaments]);
 
   const sortedPlayers = useMemo(() => {
     if (!team?.players) return [];
@@ -63,7 +73,7 @@ export default function ManageTeamPage() {
     return <div className="text-center text-muted-foreground py-10">Cargando datos del equipo...</div>;
   }
 
-  if (!team) {
+  if (!team || !tournament) {
     return (
       <div className="text-center py-10">
         <Info className="mx-auto h-12 w-12 text-destructive mb-4" />
@@ -71,8 +81,8 @@ export default function ManageTeamPage() {
         <p className="text-muted-foreground mb-6">
           El equipo que estás buscando no existe o ha sido eliminado.
         </p>
-        <Button onClick={() => router.push('/config?tab=categoriesAndTeams')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Gestión de Equipos
+        <Button onClick={() => router.push(`/tournaments/${state.config.selectedTournamentId}`)}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver a la Gestión del Torneo
         </Button>
       </div>
     );
@@ -87,21 +97,21 @@ export default function ManageTeamPage() {
   };
 
   const handleDeleteTeam = () => {
-    dispatch({ type: "DELETE_TEAM", payload: { teamId: team.id } });
+    dispatch({ type: "DELETE_TEAMS_FROM_TOURNAMENT", payload: { tournamentId: tournament.id, teamIds: [team.id] } });
     toast({
       title: "Equipo Eliminado",
       description: `El equipo "${team.name}" ha sido eliminado.`,
       variant: "destructive",
     });
-    router.push('/config?tab=categoriesAndTeams');
+    router.push(`/tournaments/${tournament.id}`);
   };
   
-  const categoryName = getCategoryNameById(team.category, state.config.availableCategories);
+  const categoryName = getCategoryNameById(team.category, tournament.categories);
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
-      <Button variant="outline" onClick={() => router.push('/config?tab=categoriesAndTeams')} className="mb-6">
-        <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Gestión de Equipos
+      <Button variant="outline" onClick={() => router.push(`/tournaments/${tournament.id}`)} className="mb-6">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Volver a {tournament.name}
       </Button>
 
       <div className="flex flex-col sm:flex-row items-center gap-6 p-6 border rounded-lg bg-card shadow-md">

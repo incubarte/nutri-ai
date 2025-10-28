@@ -253,10 +253,14 @@ export function Header() {
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-2">
            {selectedTournament && (
-            <div className="hidden md:flex items-center gap-2 text-sm text-amber-400 mr-4">
+            <Link 
+              href={`/tournaments/${selectedTournament.id}`}
+              className="hidden md:flex items-center gap-2 text-sm text-amber-400 mr-4 hover:text-amber-300 transition-colors"
+              onClick={(e) => handleNav(e, `/tournaments/${selectedTournament.id}`)}
+            >
               <Trophy className="h-4 w-4" />
               <span className="font-medium truncate max-w-xs">{selectedTournament.name}</span>
-            </div>
+            </Link>
            )}
            <div className="flex items-center">
              <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
@@ -276,7 +280,7 @@ export function Header() {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className={cn(pathname === "/tournaments" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
+                <Button variant="ghost" size="icon" className={cn(pathname.startsWith("/tournaments") ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
                     <Trophy className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>

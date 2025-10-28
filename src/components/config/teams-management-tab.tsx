@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo, useRef } from "react";
@@ -10,7 +11,7 @@ import { TeamListItem } from "@/components/teams/team-list-item";
 import { CreateEditTeamDialog } from "@/components/teams/create-edit-team-dialog";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import type { TeamData, PlayerData, PlayerType, CategoryData, Tournament } from "@/types";
+import type { TeamData } from "@/types";
 import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
@@ -295,6 +296,7 @@ export function TeamsManagementTab() {
       <CreateEditTeamDialog
         isOpen={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
+        onTeamSaved={() => {}}
       />
 
       {isExportDialogOpen && (

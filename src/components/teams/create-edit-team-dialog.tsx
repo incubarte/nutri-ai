@@ -68,8 +68,12 @@ export function CreateEditTeamDialog({
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { tournaments, selectedTournamentId } = state.config;
+  const selectedTournament = tournaments.find(t => t.id === selectedTournamentId);
+  const availableCategories = selectedTournament?.categories || [];
+  const teams = selectedTournament?.teams || [];
+
   const isEditing = !!teamToEdit;
-  const { availableCategories, teams } = state.config;
 
   useEffect(() => {
     if (isOpen) {
@@ -136,6 +140,11 @@ export function CreateEditTeamDialog({
   const handleSubmit = () => {
     const trimmedTeamName = teamName.trim();
     const trimmedTeamSubName = teamSubName.trim();
+    
+    if (!selectedTournamentId) {
+      toast({ title: "Error", description: "No hay un torneo seleccionado.", variant: "destructive" });
+      return;
+    }
 
     if (!trimmedTeamName) {
       toast({
@@ -156,7 +165,7 @@ export function CreateEditTeamDialog({
     if (availableCategories.length === 0) {
         toast({
             title: "No hay Categorías",
-            description: "No hay categorías definidas. Por favor, añade categorías en la página de Configuración antes de crear un equipo.",
+            description: "No hay categorías definidas en este torneo. Por favor, añádelas antes de crear un equipo.",
             variant: "destructive",
         });
         return;
@@ -192,14 +201,13 @@ export function CreateEditTeamDialog({
     }
 
 
-    const teamPayload = {
-      name: trimmedTeamName,
-      subName: trimmedTeamSubName || undefined,
-      category: teamCategory,
-      logoDataUrl: finalLogoDataUrl,
-    };
-
     if (isEditing && teamToEdit) {
+      const teamPayload = {
+        name: trimmedTeamName,
+        subName: trimmedTeamSubName || undefined,
+        category: teamCategory,
+        logoDataUrl: finalLogoDataUrl,
+      };
       dispatch({
         type: "UPDATE_TEAM_DETAILS",
         payload: { ...teamPayload, teamId: teamToEdit.id },
@@ -210,15 +218,21 @@ export function CreateEditTeamDialog({
       });
       onTeamSaved(teamToEdit.id);
     } else {
+      const teamPayload: Omit<TeamData, 'id'> = {
+        name: trimmedTeamName,
+        subName: trimmedTeamSubName || undefined,
+        category: teamCategory,
+        logoDataUrl: finalLogoDataUrl,
+        players: [],
+      };
       dispatch({
-        type: "ADD_TEAM",
-        payload: { ...teamPayload, players: [] },
+        type: "ADD_TEAM_TO_TOURNAMENT",
+        payload: { tournamentId: selectedTournamentId, team: teamPayload },
       });
       toast({
         title: "Equipo Creado",
-        description: `El equipo "${teamPayload.name}" ha sido creado.`,
+        description: `El equipo "${teamPayload.name}" ha sido creado en el torneo actual.`,
       });
-      // Assuming onTeamSaved should be called for new teams too, but without an ID since it's generated in the reducer
       // onTeamSaved(''); 
     }
     onOpenChange(false);
