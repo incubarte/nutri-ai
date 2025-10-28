@@ -20,7 +20,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DurationSettingsCard } from '@/components/config/duration-settings-card';
 import { PenaltySettingsCard } from '@/components/config/penalty-settings-card';
 import { StoppedTimeAlertCard } from '@/components/config/stopped-time-alert-card';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { isToday, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -110,7 +109,6 @@ export default function SetupPage() {
     
     const [tempFormatSettings, setTempFormatSettings] = useState<Partial<FormatAndTimingsProfileData>>({});
     
-    const [isSelectMatchDialogOpen, setIsSelectMatchDialogOpen] = useState(false);
     const [todaysMatches, setTodaysMatches] = useState<MatchData[]>([]);
 
     const availableCategories = useMemo(() => selectedTournament?.categories || [], [selectedTournament]);
@@ -123,14 +121,12 @@ export default function SetupPage() {
     useEffect(() => {
         const selectedTournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
         if (!selectedTournament || !selectedTournament.matches || selectedTournament.matches.length === 0) {
+            setTodaysMatches([]);
             return;
         }
 
         const todayMatches = selectedTournament.matches.filter(match => isToday(new Date(match.date)));
-        if (todayMatches.length > 0) {
-            setTodaysMatches(todayMatches);
-            setIsSelectMatchDialogOpen(true);
-        }
+        setTodaysMatches(todayMatches);
     }, [state.config.tournaments, state.config.selectedTournamentId]);
 
     useEffect(() => {
@@ -144,7 +140,6 @@ export default function SetupPage() {
         setLocalCategoryId(match.categoryId);
         setHomeTeamId(match.homeTeamId);
         setAwayTeamId(match.awayTeamId);
-        setIsSelectMatchDialogOpen(false);
         setActiveTab('rules');
     };
     
@@ -222,7 +217,35 @@ export default function SetupPage() {
                         <TabsTrigger value="summary">Paso 3: Resumen</TabsTrigger>
                     </TabsList>
                     
-                    <TabsContent value="teams" className="py-4 space-y-4">
+                    <TabsContent value="teams" className="py-4 space-y-6">
+                         {todaysMatches.length > 0 && (
+                            <div className="space-y-3 p-4 border-2 border-dashed rounded-lg bg-muted/30">
+                                <h3 className="text-lg font-semibold flex items-center gap-2">
+                                    <CalendarCheck className="h-5 w-5 text-primary"/>
+                                    Partidos Programados para Hoy
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                     {todaysMatches.map(match => {
+                                        const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
+                                        const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
+
+                                        return (
+                                            <Button
+                                                key={match.id}
+                                                variant="outline"
+                                                className="w-full justify-start h-auto text-left py-2"
+                                                onClick={() => handleLoadMatchConfig(match)}
+                                            >
+                                                <div className="flex flex-col">
+                                                    <span className="font-semibold">{format(new Date(match.date), 'HH:mm')}hs - {homeTeam?.name || '?'} vs {awayTeam?.name || '?'}</span>
+                                                    <span className="text-xs text-muted-foreground">Cat: {availableCategories.find(c => c.id === match.categoryId)?.name || 'N/A'}</span>
+                                                </div>
+                                            </Button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
                         <div className="flex items-center space-x-2">
                             <Switch id="manual-team-names-switch" checked={useManualTeamNames} onCheckedChange={setUseManualTeamNames} />
                             <Label htmlFor="manual-team-names-switch">Ingresar nombres de equipo manualmente</Label>
@@ -263,9 +286,9 @@ export default function SetupPage() {
                     </TabsContent>
 
                     <TabsContent value="rules" className="py-4 max-h-[60vh] overflow-y-auto">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
                             <DurationSettingsCard isDialogMode={true} tempSettings={tempFormatSettings} onSettingsChange={setTempFormatSettings} />
-                            <div className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-6">
                                 <PenaltySettingsCard isDialogMode={true} tempSettings={tempFormatSettings} onSettingsChange={setTempFormatSettings} />
                                 <StoppedTimeAlertCard isDialogMode={true} tempSettings={tempFormatSettings} onSettingsChange={setTempFormatSettings} />
                             </div>
@@ -297,6 +320,8 @@ export default function SetupPage() {
                                 <ul className="list-disc list-inside text-muted-foreground text-sm mt-2 space-y-1">
                                     <li>Períodos: {tempFormatSettings.numberOfRegularPeriods} de {tempFormatSettings.defaultPeriodDuration! / 6000} min</li>
                                     <li>Overtime: {tempFormatSettings.numberOfOvertimePeriods} de {tempFormatSettings.defaultOTPeriodDuration! / 6000} min</li>
+                                    <li>Jugadores en cancha: {tempFormatSettings.playersPerTeamOnIce}</li>
+                                    <li>Penalidades concurrentes: {tempFormatSettings.maxConcurrentPenalties}</li>
                                     <li>Modo de Tiempo: {tempFormatSettings.gameTimeMode === 'running' ? 'Corrido' : 'Pausado'}</li>
                                 </ul>
                             </div>
@@ -310,46 +335,6 @@ export default function SetupPage() {
                     {activeTab === "summary" && <Button onClick={handleConfirmAndStart}>Confirmar e Iniciar Partido</Button>}
                 </div>
             </div>
-
-            <AlertDialog open={isSelectMatchDialogOpen} onOpenChange={setIsSelectMatchDialogOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <CalendarCheck className="h-6 w-6 text-primary" />
-                            Partidos Programados para Hoy
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Se encontraron partidos en el fixture para hoy. Puedes cargar la configuración de uno de ellos o configurar uno manualmente.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="space-y-2 max-h-60 overflow-y-auto my-4">
-                        {todaysMatches.map(match => {
-                            const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
-                            const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
-
-                            return (
-                                <Button
-                                    key={match.id}
-                                    variant="outline"
-                                    className="w-full justify-start h-auto text-left"
-                                    onClick={() => handleLoadMatchConfig(match)}
-                                >
-                                    <div className="flex flex-col">
-                                        <span className="font-semibold">{format(new Date(match.date), 'HH:mm')}hs - {homeTeam?.name || '?'} vs {awayTeam?.name || '?'}</span>
-                                        <span className="text-xs text-muted-foreground">Categoría: {availableCategories.find(c => c.id === match.categoryId)?.name || 'N/A'}</span>
-                                    </div>
-                                </Button>
-                            )
-                        })}
-                    </div>
-                    <AlertDialogFooter>
-                        <Button variant="secondary" onClick={() => setIsSelectMatchDialogOpen(false)}>
-                            Configurar partido manualmente
-                        </Button>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }

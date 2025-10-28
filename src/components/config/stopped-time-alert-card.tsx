@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
@@ -114,38 +113,6 @@ export const StoppedTimeAlertCard = forwardRef<StoppedTimeAlertCardRef, StoppedT
   
   const inputGrid = (
     <div className="space-y-6">
-        <div>
-          <Label className="text-base font-semibold">Modo de Tiempo de Juego</Label>
-          <RadioGroup 
-            value={localGameTimeMode}
-            onValueChange={handleGameTimeModeChange}
-            className="flex gap-4 mt-2"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="stopped" id="mode-stopped" />
-              <Label htmlFor="mode-stopped" className="font-normal cursor-pointer">Tiempo Pausado</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="running" id="mode-running" />
-              <Label htmlFor="mode-running" className="font-normal cursor-pointer">Tiempo Corrido</Label>
-            </div>
-          </RadioGroup>
-        </div>
-        
-        <div className="flex items-center justify-between p-4 border rounded-md bg-muted/20">
-          <Label htmlFor="autoActivatePuckSwitch" className="flex flex-col space-y-1">
-            <span className="font-semibold text-base">Saltear "Esperando Puck"</span>
-            <span className="font-normal leading-snug text-muted-foreground text-xs">
-              Activo: nuevas faltas van a "Esperando Slot". Inactivo: requiere "Puck en Juego".
-            </span>
-          </Label>
-          <Switch
-            id="autoActivatePuckSwitch"
-            checked={localAutoActivatePuck}
-            onCheckedChange={(c) => handleSwitchChange(setLocalAutoActivatePuck, c, 'autoActivatePuckPenalties')}
-          />
-        </div>
-
         <div className="flex items-center justify-between p-4 border rounded-md bg-muted/20">
           <Label htmlFor="enableStoppedTimeAlertSwitch" className="flex flex-col space-y-1">
             <span className="font-semibold text-base">Activar Alerta de Tiempo Frenado</span>
@@ -186,6 +153,38 @@ export const StoppedTimeAlertCard = forwardRef<StoppedTimeAlertCardRef, StoppedT
               />
             </div>
         </div>
+        <div>
+          <Label className="text-base font-semibold">Modo de Tiempo de Juego</Label>
+          <RadioGroup 
+            value={localGameTimeMode}
+            onValueChange={handleGameTimeModeChange}
+            className="flex gap-4 mt-2"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="stopped" id="mode-stopped" />
+              <Label htmlFor="mode-stopped" className="font-normal cursor-pointer">Tiempo Pausado</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="running" id="mode-running" />
+              <Label htmlFor="mode-running" className="font-normal cursor-pointer">Tiempo Corrido</Label>
+            </div>
+          </RadioGroup>
+        </div>
+        
+        <div className="flex items-center justify-between p-4 border rounded-md bg-muted/20">
+          <Label htmlFor="autoActivatePuckSwitch" className="flex flex-col space-y-1">
+            <span className="font-semibold text-base">Saltear "Esperando Puck"</span>
+            <span className="font-normal leading-snug text-muted-foreground text-xs">
+              Activo: nuevas faltas van a "Esperando Slot". Inactivo: requiere "Puck en Juego".
+            </span>
+          </Label>
+          <Switch
+            id="autoActivatePuckSwitch"
+            checked={localAutoActivatePuck}
+            onCheckedChange={(c) => handleSwitchChange(setLocalAutoActivatePuck, c, 'autoActivatePuckPenalties')}
+          />
+        </div>
+
       </div>
   );
   
