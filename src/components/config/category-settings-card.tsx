@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Edit3, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { safeUUID } from "@/lib/utils";
 
 export interface CategorySettingsCardRef {
   handleSave: () => boolean;
@@ -26,8 +27,12 @@ export const CategorySettingsCard = forwardRef<CategorySettingsCardRef, Category
   const { toast } = useToast();
   const { onDirtyChange } = props;
 
+  const { selectedTournamentId, tournaments } = state.config;
+  const selectedTournament = tournaments.find(t => t.id === selectedTournamentId);
+  const availableCategories = selectedTournament?.categories || [];
+
   const [localCategoriesString, setLocalCategoriesString] = useState(
-    state.config.availableCategories.map(c => c.name).join(", ")
+    availableCategories.map(c => c.name).join(", ")
   );
   const [isDirtyLocal, setIsDirtyLocal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -37,16 +42,21 @@ export const CategorySettingsCard = forwardRef<CategorySettingsCardRef, Category
   }, [isDirtyLocal, onDirtyChange]);
 
   useEffect(() => {
-     if (!isDirtyLocal) {
-      setLocalCategoriesString(state.config.availableCategories.map(c => c.name).join(", "));
-    }
-  }, [state.config.availableCategories, isDirtyLocal]);
+    const categories = selectedTournament?.categories || [];
+    setLocalCategoriesString(categories.map(c => c.name).join(", "));
+    setIsDirtyLocal(false);
+    setIsEditing(false);
+  }, [selectedTournamentId, selectedTournament?.categories]);
 
   const markDirty = () => setIsDirtyLocal(true);
 
   useImperativeHandle(ref, () => ({
     handleSave: () => {
       if (!isDirtyLocal) return true;
+      if (!selectedTournamentId) {
+        toast({ title: "Error", description: "No hay un torneo seleccionado para guardar las categorías.", variant: "destructive" });
+        return false;
+      }
 
       const categoryNames = localCategoriesString
         .split(',')
@@ -58,31 +68,33 @@ export const CategorySettingsCard = forwardRef<CategorySettingsCardRef, Category
       if (uniqueCategoryNames.length !== categoryNames.length) {
          toast({
             title: "Error en Categorías",
-            description: "Los nombres de las categorías deben ser únicos (ignorando mayúsculas/minúsculas y después de eliminar duplicados exactos).",
+            description: "Los nombres de las categorías deben ser únicos (ignorando mayúsculas/minúsculas).",
             variant: "destructive",
         });
         return false; 
       }
       
-      const finalCategories: CategoryData[] = Array.from(new Set(categoryNames)) 
-          .map(name => ({ id: name, name })); 
+      const finalCategories: CategoryData[] = Array.from(new Set(categoryNames))
+          .map(name => ({ id: safeUUID(), name })); 
 
-      dispatch({ type: "SET_AVAILABLE_CATEGORIES", payload: finalCategories });
+      dispatch({ type: "SET_CATEGORIES_FOR_TOURNAMENT", payload: { tournamentId: selectedTournamentId, categories: finalCategories } });
+      
+      toast({ title: "Categorías Guardadas", description: `Las categorías para "${selectedTournament?.name}" han sido actualizadas.` });
       setIsDirtyLocal(false);
-      setIsEditing(false); // Exit editing mode after save
+      setIsEditing(false);
       return true; 
     },
     handleDiscard: () => {
-      setLocalCategoriesString(state.config.availableCategories.map(c => c.name).join(", "));
+      setLocalCategoriesString(availableCategories.map(c => c.name).join(", "));
       setIsDirtyLocal(false);
-      setIsEditing(false); // Exit editing mode after discard
+      setIsEditing(false);
     },
     getIsDirty: () => isDirtyLocal,
   }));
 
   const handleEditToggle = () => {
     if (isEditing && isDirtyLocal) {
-        setLocalCategoriesString(state.config.availableCategories.map(c => c.name).join(", "));
+        setLocalCategoriesString(availableCategories.map(c => c.name).join(", "));
         setIsDirtyLocal(false);
     }
     setIsEditing(!isEditing);
@@ -93,35 +105,39 @@ export const CategorySettingsCard = forwardRef<CategorySettingsCardRef, Category
     <Card className="bg-card shadow-md">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-xl text-primary-foreground">Configuración de Categorías</CardTitle>
-        <Button variant="ghost" size="icon" onClick={handleEditToggle} className="text-primary-foreground hover:text-accent">
-          {isEditing ? <XCircle className="h-5 w-5" /> : <Edit3 className="h-5 w-5" />}
-        </Button>
+        {selectedTournament && (
+          <Button variant="ghost" size="icon" onClick={handleEditToggle} className="text-primary-foreground hover:text-accent">
+            {isEditing ? <XCircle className="h-5 w-5" /> : <Edit3 className="h-5 w-5" />}
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
-        <div className="space-y-2">
-          <div className="grid grid-cols-[auto_1fr] items-center gap-x-4">
-            <Label htmlFor="categoriesInput" className="text-base font-medium whitespace-nowrap">
-              Nombres de Categorías
-            </Label>
-            <Input
-              id="categoriesInput"
-              type="text"
-              placeholder="Ej: A, B, C (separadas por coma)"
-              value={localCategoriesString}
-              onChange={(e) => {
-                setLocalCategoriesString(e.target.value);
-                markDirty();
-              }}
-              disabled={!isEditing}
-              className={cn(!isEditing && "bg-muted/50 border-muted/50 cursor-not-allowed")}
-            />
+        {!selectedTournament ? (
+          <p className="text-muted-foreground">Selecciona un torneo para ver y editar sus categorías.</p>
+        ) : (
+          <div className="space-y-2">
+            <div className="grid grid-cols-[auto_1fr] items-center gap-x-4">
+              <Label htmlFor="categoriesInput" className="text-base font-medium whitespace-nowrap">
+                Nombres de Categorías
+              </Label>
+              <Input
+                id="categoriesInput"
+                type="text"
+                placeholder="Ej: A, B, C (separadas por coma)"
+                value={localCategoriesString}
+                onChange={(e) => {
+                  setLocalCategoriesString(e.target.value);
+                  markDirty();
+                }}
+                disabled={!isEditing}
+                className={cn(!isEditing && "bg-muted/50 border-muted/50 cursor-not-allowed")}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground pl-1">
+              Estas categorías estarán disponibles al crear o editar equipos en el torneo <strong>{selectedTournament.name}</strong>.
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground pl-1">
-            Estas categorías estarán disponibles al crear o editar equipos.
-            Los nombres deben ser únicos (se ignoran mayúsculas/minúsculas para la unicidad).
-            Haga clic en el lápiz para editar.
-          </p>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

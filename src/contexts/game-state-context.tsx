@@ -85,7 +85,7 @@ export const INITIAL_LAYOUT_SETTINGS: ScoreboardLayoutSettings = {
 };
 
 const IN_CODE_INITIAL_CATEGORIES_RAW = ['A', 'B', 'C', 'Menores', 'Damas'];
-const IN_CODE_INITIAL_AVAILABLE_CATEGORIES: CategoryData[] = IN_CODE_INITIAL_CATEGORIES_RAW.map(name => ({ id: name, name: name }));
+const IN_CODE_INITIAL_AVAILABLE_CATEGORIES: CategoryData[] = IN_CODE_INITIAL_CATEGORIES_RAW.map(name => ({ id: safeUUID(), name: name }));
 const IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY = IN_CODE_INITIAL_AVAILABLE_CATEGORIES[0]?.id || '';
 
 const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
@@ -158,9 +158,7 @@ const getInitialState = (): GameState => {
       scoreboardLayout: INITIAL_LAYOUT_SETTINGS,
       scoreboardLayoutProfiles: [defaultInitialLayoutProfile],
       selectedScoreboardLayoutProfileId: defaultInitialLayoutProfile.id,
-      availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
       selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
-      teams: [],
       tournaments: [],
       selectedTournamentId: null,
       tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
@@ -451,7 +449,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         let finalState: GameState;
         try {
             const rawGameState = localStorage.getItem(GAME_STATE_STORAGE_KEY);
-            const rawTeams = localStorage.getItem(TEAMS_STORAGE_KEY);
             
             if (rawGameState) {
                 const loadedGameState: GameState = JSON.parse(rawGameState);
@@ -464,11 +461,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             } else {
                 finalState = getInitialState();
             }
-
-            if (rawTeams) {
-                finalState.config.teams = JSON.parse(rawTeams);
-            }
-
         } catch (error) {
             console.error("Error reading or parsing state from localStorage:", error);
             finalState = getInitialState();
@@ -864,7 +856,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
       
       const newPenaltyId = safeUUID();
-      const teamDetails = config.teams.find(t => t.name === live[`${team}TeamName`] && (t.subName || undefined) === (live[`${team}TeamSubName`] || undefined) && t.category === config.selectedMatchCategory);
+      const teamDetails = config.tournaments.find(t => t.id === config.selectedTournamentId)?.teams.find(t => t.name === live[`${team}TeamName`] && (t.subName || undefined) === (live[`${team}TeamSubName`] || undefined) && t.category === config.selectedMatchCategory);
       const playerDetails = teamDetails?.players.find(p => p.number === playerNumber);
       
       const newPenaltyLog: PenaltyLog = {
@@ -1441,13 +1433,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const newTournament: Tournament = {
             id: safeUUID(),
             name: action.payload.name,
-            status: action.payload.status
+            status: action.payload.status,
+            teams: [],
+            categories: [],
         };
         newState = { ...state, config: { ...state.config, tournaments: [...(state.config.tournaments || []), newTournament] } };
         break;
     }
     case 'UPDATE_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === action.payload.id ? action.payload : t) } };
+        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === action.payload.id ? {...t, ...action.payload} : t) } };
         break;
     }
     case 'DELETE_TOURNAMENT': {
@@ -1455,7 +1449,17 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'SET_ACTIVE_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, selectedTournamentId: action.payload.tournamentId } };
+        const selectedTournament = state.config.tournaments.find(t => t.id === action.payload.tournamentId);
+        const selectedCategory = selectedTournament?.categories[0]?.id || '';
+        newState = { ...state, config: { ...state.config, selectedTournamentId: action.payload.tournamentId, selectedMatchCategory: selectedCategory } };
+        break;
+    }
+    case 'SET_CATEGORIES_FOR_TOURNAMENT': {
+        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === action.payload.tournamentId ? {...t, categories: action.payload.categories} : t) }};
+        break;
+    }
+     case 'ADD_CATEGORIES_TO_TOURNAMENT': {
+        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === action.payload.tournamentId ? {...t, categories: [...(t.categories || []), ...action.payload.categories]} : t) }};
         break;
     }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
@@ -1569,19 +1573,45 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         newState = applyScoreboardLayoutProfileToState(newState, newProfiles[0].id);
         break;
     }
-    case 'SET_AVAILABLE_CATEGORIES': newState = { ...state, config: { ...state.config, availableCategories: action.payload, selectedMatchCategory: (action.payload.find(c => c.id === state.config.selectedMatchCategory) ? state.config.selectedMatchCategory : (action.payload[0]?.id || '')) } }; break;
     case 'SET_SELECTED_MATCH_CATEGORY': newState = { ...state, config: { ...state.config, selectedMatchCategory: action.payload } }; toastMessage = { title: "Categoría del Partido Actualizada" }; break;
     case 'UPDATE_TUNNEL_STATE': newState = { ...state, config: { ...state.config, tunnel: { ...state.config.tunnel, ...action.payload } }}; break;
-    case 'ADD_TEAM': newState = { ...state, config: { ...state.config, teams: [...state.config.teams, { ...action.payload, id: action.payload.id || safeUUID() }] } }; toastMessage = { title: "Equipo Creado", description: `El equipo "${action.payload.name}" ha sido creado.` }; break;
-    case 'UPDATE_TEAM_DETAILS': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, ...action.payload } : t) } }; toastMessage = { title: "Equipo Actualizado", description: `El equipo "${action.payload.name}" ha sido actualizado.` }; break;
-    case 'DELETE_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.filter(t => t.id !== action.payload.teamId) } }; break;
-    case 'ADD_PLAYER_TO_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, players: [...t.players, { ...action.payload.player, id: safeUUID() }] } : t) } }; toastMessage = { title: "Jugador Añadido", description: `Jugador ${action.payload.player.number ? `#${action.payload.player.number} ` : ''}${action.payload.player.name} añadido.` }; break;
-    case 'UPDATE_PLAYER_IN_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, players: t.players.map(p => p.id === action.payload.playerId ? { ...p, ...action.payload.updates } : p) } : t) } }; break;
-    case 'REMOVE_PLAYER_FROM_TEAM': newState = { ...state, config: { ...state.config, teams: state.config.teams.map(t => t.id === action.payload.teamId ? { ...t, players: t.players.filter(p => p.id !== action.payload.playerId) } : t) } }; break;
+    case 'ADD_TEAM_TO_TOURNAMENT': {
+        const { tournamentId, team } = action.payload;
+        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === tournamentId ? { ...t, teams: [...t.teams, { ...team, id: team.id || safeUUID() }] } : t) }};
+        break;
+    }
+    case 'UPDATE_TEAM_DETAILS': {
+      const { teamId, ...updates } = action.payload;
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, ...updates } : team) })) } };
+      toastMessage = { title: "Equipo Actualizado", description: `El equipo "${updates.name}" ha sido actualizado.` };
+      break;
+    }
+    case 'DELETE_TEAM': {
+      const { teamId } = action.payload;
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.filter(team => team.id !== teamId) })) }};
+      break;
+    }
+    case 'ADD_PLAYER_TO_TEAM': {
+      const { teamId, player } = action.payload;
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
+      toastMessage = { title: "Jugador Añadido", description: `Jugador ${player.number ? `#${player.number} ` : ''}${player.name} añadido.` };
+      break;
+    }
+    case 'UPDATE_PLAYER_IN_TEAM': {
+      const { teamId, playerId, updates } = action.payload;
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
+      break;
+    }
+    case 'REMOVE_PLAYER_FROM_TEAM': {
+      const { teamId, playerId } = action.payload;
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
+      break;
+    }
     case 'LOAD_TEAMS_FROM_FILE': newState = { ...state, config: { ...state.config, teams: action.payload } }; break;
     case 'SET_TEAM_ATTENDANCE': {
       const { team, playerIds } = action.payload;
-      const teamData = state.config.teams.find(t => 
+      const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+      const teamData = selectedTournament?.teams.find(t => 
         t.name === state.live[`${team}TeamName`] &&
         (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) &&
         t.category === state.config.selectedMatchCategory
@@ -1632,7 +1662,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           showAliasInControlsPenaltyList: IN_CODE_INITIAL_SHOW_ALIAS_IN_CONTROLS_PENALTY_LIST,
           showAliasInScoreboardPenalties: IN_CODE_INITIAL_SHOW_ALIAS_IN_SCOREBOARD_PENALTIES,
           enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
-          availableCategories: IN_CODE_INITIAL_AVAILABLE_CATEGORIES,
           selectedMatchCategory: IN_CODE_INITIAL_SELECTED_MATCH_CATEGORY,
           tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
         }
@@ -1696,7 +1725,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const channelRef = useRef<BroadcastChannel | null>(null);
 
   const syncToServer = useCallback(async (stateToSync: GameState) => {
-    const { teams, ...configToSync } = stateToSync.config;
+    const { ...configToSync } = stateToSync.config;
     try {
       await Promise.all([
         updateConfigOnServer(configToSync as ConfigState),
@@ -1762,15 +1791,8 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
     if (isLoading || typeof window === 'undefined') return;
 
     if (state._lastActionOriginator === TAB_ID) {
-      const { teams, ...restOfConfig } = state.config;
-      const stateToSave = {
-        ...state,
-        config: restOfConfig,
-      };
-
       try {
-        localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(stateToSave));
-        localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(teams));
+        localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(state));
         
         channelRef.current?.postMessage(state);
         syncToServer(state);
@@ -1904,7 +1926,7 @@ export const getEndReasonText = (reason?: PenaltyLog['endReason']): string => {
     }
 };
 
-export const getCategoryNameById = (categoryId: string, availableCategories: CategoryData[]): string | undefined => {
+export const getCategoryNameById = (categoryId: string, availableCategories: CategoryData[] | undefined): string | undefined => {
   if (!Array.isArray(availableCategories)) return undefined;
   const category = availableCategories.find(cat => cat && typeof cat === 'object' && cat.id === categoryId);
   return category ? category.name : undefined;

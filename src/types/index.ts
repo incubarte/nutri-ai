@@ -221,7 +221,6 @@ export interface ConfigState extends Omit<FormatAndTimingsProfileData, 'id' | 'n
   selectedFormatAndTimingsProfileId: string | null;
   scoreboardLayout: ScoreboardLayoutSettings;
   selectedScoreboardLayoutProfileId: string | null;
-  // availableCategories and teams are now part of Tournament
   tournaments: Tournament[];
   selectedTournamentId: string | null;
   selectedMatchCategory: string; // This might now be derived from the selected tournament
@@ -403,24 +402,25 @@ export type GameAction =
   | { type: 'SELECT_SCOREBOARD_LAYOUT_PROFILE'; payload: { profileId: string } }
   | { type: 'SAVE_CURRENT_LAYOUT_TO_PROFILE' }
   | { type: 'LOAD_SOUND_AND_DISPLAY_CONFIG'; payload: Partial<Pick<ConfigState, 'playSoundAtPeriodEnd' | 'customHornSoundDataUrl' | 'enableTeamSelectionInMiniScoreboard' | 'enablePlayerSelectionForPenalties' | 'showAliasInPenaltyPlayerSelector' | 'showAliasInControlsPenaltyList' | 'showAliasInScoreboardPenalties' | 'scoreboardLayoutProfiles' | 'enablePenaltyCountdownSound' | 'penaltyCountdownStartTime' | 'customPenaltyBeepSoundDataUrl' | 'enableDebugMode' | 'tunnel'>> }
-  | { type: 'SET_AVAILABLE_CATEGORIES'; payload: CategoryData[] }
+  | { type: 'SET_CATEGORIES_FOR_TOURNAMENT'; payload: { tournamentId: string, categories: CategoryData[] } }
+  | { type: 'ADD_CATEGORIES_TO_TOURNAMENT'; payload: { tournamentId: string, categories: CategoryData[] } }
   | { type: 'SET_SELECTED_MATCH_CATEGORY'; payload: string }
   | { type: 'UPDATE_TUNNEL_STATE', payload: Partial<TunnelState> }
   | { type: 'ADD_TOURNAMENT'; payload: { name: string; status: Tournament['status'] } }
-  | { type: 'UPDATE_TOURNAMENT'; payload: Tournament }
+  | { type: 'UPDATE_TOURNAMENT'; payload: { id: string; name: string; status: Tournament['status'] } }
   | { type: 'DELETE_TOURNAMENT'; payload: { id: string } }
   | { type: 'SET_ACTIVE_TOURNAMENT'; payload: { tournamentId: string | null } }
   | { type: 'HYDRATE_FROM_STORAGE'; payload: Partial<GameState> }
   | { type: 'SET_STATE_FROM_LOCAL_BROADCAST'; payload: GameState }
   | { type: 'RESET_CONFIG_TO_DEFAULTS' }
   | { type: 'RESET_GAME_STATE' }
-  | { type: 'ADD_TEAM'; payload: Omit<TeamData, 'id' | 'players'> & { players: PlayerData[] } }
+  | { type: 'ADD_TEAM_TO_TOURNAMENT'; payload: { tournamentId: string, team: Omit<TeamData, 'id'> & { id?: string } } }
+  | { type: 'DELETE_TEAMS_FROM_TOURNAMENT', payload: { tournamentId: string, teamIds: string[] } }
   | { type: 'UPDATE_TEAM_DETAILS'; payload: { teamId: string; name: string; subName?: string; category: string; logoDataUrl?: string | null } }
   | { type: 'DELETE_TEAM'; payload: { teamId: string } }
   | { type: 'ADD_PLAYER_TO_TEAM'; payload: { teamId: string; player: Omit<PlayerData, 'id'> } }
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
-  | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
 
 export interface GameState {

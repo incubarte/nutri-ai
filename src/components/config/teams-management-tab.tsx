@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useMemo, useRef } from "react";
@@ -8,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlusCircle, Search, Users, Info, Upload, Download, ListFilter, FileText, Trash2, X } from "lucide-react";
 import { TeamListItem } from "@/components/teams/team-list-item";
-import { CreateEditTeamDialog, getSpecificDefaultLogoUrlForCsv } from "@/components/teams/create-edit-team-dialog";
+import { CreateEditTeamDialog } from "@/components/teams/create-edit-team-dialog";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import type { TeamData, PlayerData, PlayerType, CategoryData } from "@/types";
+import type { TeamData, PlayerData, PlayerType, CategoryData, Tournament } from "@/types";
 import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
@@ -124,10 +123,10 @@ export function TeamsManagementTab() {
   };
 
   const handleConfirmMassDelete = () => {
-    if (selectedTeamIdsForDeletion.length === 0) return;
-    selectedTeamIdsForDeletion.forEach(teamId => {
-      dispatch({ type: "DELETE_TEAM", payload: { teamId } });
-    });
+    if (selectedTeamIdsForDeletion.length === 0 || !selectedTournamentId) return;
+    
+    dispatch({ type: "DELETE_TEAMS_FROM_TOURNAMENT", payload: { tournamentId: selectedTournamentId, teamIds: selectedTeamIdsForDeletion } });
+
     toast({
       title: "Equipos Eliminados",
       description: `${selectedTeamIdsForDeletion.length} equipo(s) han sido eliminados.`,
