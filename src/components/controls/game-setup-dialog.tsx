@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useRef, useState, useEffect, useMemo } from "react";
@@ -44,6 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DurationSettingsCard } from "../config/duration-settings-card";
 import { PenaltySettingsCard } from "../config/penalty-settings-card";
 import { StoppedTimeAlertCard } from "../config/stopped-time-alert-card";
+import { useRouter } from "next/navigation";
 
 
 interface GameSetupDialogProps {
@@ -124,6 +124,7 @@ const TeamSelector = ({
 export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 'teams' }: GameSetupDialogProps) {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
+  const router = useRouter();
   
   const [activeTab, setActiveTab] = useState(startTab);
   
@@ -152,12 +153,12 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
     if (isOpen) {
         setActiveTab(startTab);
 
-        if (state.live.pendingMatchConfig) {
-          const { categoryId, homeTeamId, awayTeamId } = state.live.pendingMatchConfig;
+        const pendingConfig = state.live.pendingMatchConfig;
+        if (pendingConfig) {
           setUseManualTeamNames(false);
-          setLocalCategoryId(categoryId);
-          setHomeTeamId(homeTeamId);
-          setAwayTeamId(awayTeamId);
+          setLocalCategoryId(pendingConfig.categoryId);
+          setHomeTeamId(pendingConfig.homeTeamId);
+          setAwayTeamId(pendingConfig.awayTeamId);
         } else {
             setUseManualTeamNames(false);
             setLocalCategoryId(state.config.selectedMatchCategory || availableCategories[0]?.id || '');
@@ -173,7 +174,8 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
 
   useEffect(() => {
     if (!useManualTeamNames) {
-        if (!state.live.pendingMatchConfig) {
+        const pendingConfig = state.live.pendingMatchConfig;
+        if (!pendingConfig || (pendingConfig && pendingConfig.categoryId !== localCategoryId)) {
             setHomeTeamId('');
             setAwayTeamId('');
         }
@@ -238,14 +240,12 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
 
     dispatch({ type: 'UPDATE_SELECTED_FT_PROFILE_DATA', payload: tempFormatSettings });
     
-    if (state.live.pendingMatchConfig?.matchId) {
-        dispatch({ type: 'UPDATE_LIVE_STATE', payload: { matchId: state.live.pendingMatchConfig.matchId } });
-    } else {
-        dispatch({ type: 'UPDATE_LIVE_STATE', payload: { matchId: null } });
-    }
+    const matchIdToSet = state.live.pendingMatchConfig?.matchId || null;
+    dispatch({ type: 'UPDATE_LIVE_STATE', payload: { matchId: matchIdToSet } });
     
-    toast({ title: "¡Partido Listo!", description: "Se ha configurado un nuevo partido." });
+    toast({ title: "¡Partido Listo!", description: "Se ha configurado un nuevo partido. Redirigiendo a controles..." });
     onOpenChange(false);
+    router.push('/controls');
   }
 
 

@@ -289,8 +289,6 @@ export default function ControlsPage() {
   const [isGoalManagementOpen, setIsGoalManagementOpen] = useState(false);
   const [editingTeamForGoals, setEditingTeamForGoals] = useState<Team | null>(null);
   const [isGoldenGoalDialogOpen, setIsGoldenGoalDialogOpen] = useState(false);
-  const [isGameSetupDialogOpen, setIsGameSetupDialogOpen] = useState(false);
-  const [gameSetupStartTab, setGameSetupStartTab] = useState<'teams' | 'rules'>('teams');
   
   const [reconnectTrigger, setReconnectTrigger] = useState(0);
 
@@ -301,10 +299,6 @@ export default function ControlsPage() {
   const [isShootoutConfirmOpen, setIsShootoutConfirmOpen] = useState(false);
   const [isEndGameSummaryDialogOpen, setIsEndGameSummaryDialogOpen] = useState(false);
   
-  const [todaysMatches, setTodaysMatches] = useState<MatchData[]>([]);
-  const [isSelectMatchDialogOpen, setIsSelectMatchDialogOpen] = useState(false);
-
-
   const prevPeriodDisplayOverrideRef = useRef<string | null>();
   const isInitialMount = useRef(true);
 
@@ -595,11 +589,6 @@ export default function ControlsPage() {
     toast({ title: "Control Adquirido", description: "Esta pestaña ahora es la principal para los controles." });
   }, [instanceId, toast, setCurrentLockHolderId, setPageDisplayState]);
 
-
-  const handleResetGame = useCallback(() => {
-    dispatch({ type: 'RESET_GAME_STATE' });
-  }, [dispatch]);
-  
   const handleActivatePendingPuckPenalties = () => {
     dispatch({ type: 'ACTIVATE_PENDING_PUCK_PENALTIES' });
   };
@@ -777,37 +766,6 @@ export default function ControlsPage() {
       });
   };
 
-  const handleInitiateNewGame = () => {
-    const selectedTournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
-    if (!selectedTournament || !selectedTournament.matches || selectedTournament.matches.length === 0) {
-      setGameSetupStartTab('teams');
-      setIsGameSetupDialogOpen(true);
-      return;
-    }
-
-    const todayMatches = selectedTournament.matches.filter(match => isToday(new Date(match.date)));
-    if (todayMatches.length > 0) {
-      setTodaysMatches(todayMatches);
-      setIsSelectMatchDialogOpen(true);
-    } else {
-      setGameSetupStartTab('teams');
-      setIsGameSetupDialogOpen(true);
-    }
-  };
-
-  const handleLoadMatchConfig = (match: MatchData) => {
-    dispatch({ type: 'UPDATE_LIVE_STATE', payload: { pendingMatchConfig: {
-      matchId: match.id,
-      categoryId: match.categoryId,
-      homeTeamId: match.homeTeamId,
-      awayTeamId: match.awayTeamId,
-    }}});
-    setIsSelectMatchDialogOpen(false);
-    setGameSetupStartTab('rules'); // Change start tab to rules
-    setIsGameSetupDialogOpen(true);
-  };
-
-
   if (authStatus === 'loading' || isGameStateLoading || !state.live || !state.config || !state.live.penalties) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
@@ -944,12 +902,12 @@ export default function ControlsPage() {
 
       <div className="mt-12 pt-8 border-t border-border">
          <div className="flex flex-wrap gap-4 items-start">
-            <Button variant="outline" className="flex-shrink-0" onClick={handleInitiateNewGame}>
+            <Button variant="outline" className="flex-shrink-0" onClick={() => router.push('/setup')}>
               <RefreshCw className="mr-2 h-4 w-4" /> Iniciar Nuevo Partido
             </Button>
         </div>
          <p className="text-xs text-muted-foreground mt-2">
-          La acción "Iniciar Nuevo Partido" te permitirá configurar los equipos y luego reiniciará los marcadores, el reloj, el período y las penalidades.
+          La acción "Iniciar Nuevo Partido" te llevará a una página para configurar los equipos y reglas del partido.
         </p>
       </div>
        <p className="text-xs text-muted-foreground mt-6 text-center">
@@ -1047,64 +1005,8 @@ export default function ControlsPage() {
               }}
           />
       )}
-      
-      {isGameSetupDialogOpen && (
-        <GameSetupDialog 
-            isOpen={isGameSetupDialogOpen}
-            onOpenChange={(isOpen) => {
-                if (!isOpen) {
-                    dispatch({ type: 'UPDATE_LIVE_STATE', payload: { pendingMatchConfig: undefined } });
-                }
-                setIsGameSetupDialogOpen(isOpen);
-            }}
-            onGameReset={handleResetGame}
-            startTab={gameSetupStartTab}
-        />
-      )}
-      
-      <AlertDialog open={isSelectMatchDialogOpen} onOpenChange={setIsSelectMatchDialogOpen}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle className="flex items-center gap-2">
-                    <CalendarCheck className="h-6 w-6 text-primary" />
-                    Partidos Programados para Hoy
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                    Se encontraron partidos en el fixture para hoy. Puedes cargar la configuración de uno de ellos o configurar uno manualmente.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="space-y-2 max-h-60 overflow-y-auto my-4">
-                {todaysMatches.map(match => {
-                    const homeTeam = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId)?.teams.find(t => t.id === match.homeTeamId);
-                    const awayTeam = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId)?.teams.find(t => t.id === match.awayTeamId);
 
-                    return (
-                        <Button
-                            key={match.id}
-                            variant="outline"
-                            className="w-full justify-start h-auto text-left"
-                            onClick={() => handleLoadMatchConfig(match)}
-                        >
-                            <div className="flex flex-col">
-                                <span className="font-semibold">{format(new Date(match.date), 'HH:mm')}hs - {homeTeam?.name || '?'} vs {awayTeam?.name || '?'}</span>
-                                <span className="text-xs text-muted-foreground">Categoría: {getCategoryNameById(match.categoryId, state.config.tournaments.find(t => t.id === state.config.selectedTournamentId)?.categories)}</span>
-                            </div>
-                        </Button>
-                    )
-                })}
-            </div>
-            <AlertDialogFooter>
-                 <Button variant="secondary" onClick={() => { setIsSelectMatchDialogOpen(false); setGameSetupStartTab('teams'); setIsGameSetupDialogOpen(true); }}>
-                    Configurar partido manualmente
-                </Button>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-
-      {isShootoutConfirmOpen && (
-        <AlertDialog open={isShootoutConfirmOpen} onOpenChange={setIsShootoutConfirmOpen}>
+      <AlertDialog open={isShootoutConfirmOpen} onOpenChange={setIsShootoutConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Confirmar Inicio de Tanda de Penales</AlertDialogTitle>
@@ -1120,7 +1022,6 @@ export default function ControlsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      )}
 
       {isEndGameSummaryDialogOpen && (
         <AlertDialog open={isEndGameSummaryDialogOpen} onOpenChange={setIsEndGameSummaryDialogOpen}>
