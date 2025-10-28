@@ -98,12 +98,14 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
 
     const teamSubName = team === 'home' ? state.live.homeTeamSubName : state.live.awayTeamSubName;
     const matchedTeam = useMemo(() => {
-      return state.config.teams.find(t =>
+      const selectedTournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
+      if (!selectedTournament || !selectedTournament.teams) return null;
+      return selectedTournament.teams.find(t =>
           t.name === state.live[`${team}TeamName`] &&
           (t.subName || undefined) === (teamSubName || undefined) &&
           t.category === state.config.selectedMatchCategory
       );
-    }, [state.config.teams, state.config.selectedMatchCategory, state.live, team, teamSubName]);
+    }, [state.config.tournaments, state.config.selectedTournamentId, state.config.selectedMatchCategory, state.live, team, teamSubName]);
     
     const matchedPlayerForPenaltyDisplay = matchedTeam?.players.find(
       pData => pData.number === penalty.playerNumber || (penalty.playerNumber === "S/N" && !pData.number)
@@ -397,12 +399,14 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
   const teamSubName = team === 'home' ? state.live.homeTeamSubName : state.live.awayTeamSubName;
 
   const matchedTeam = useMemo(() => {
-    return state.config.teams.find(t =>
+      const selectedTournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
+      if (!selectedTournament || !selectedTournament.teams) return null;
+      return selectedTournament.teams.find(t =>
         t.name === teamName &&
         (t.subName || undefined) === (teamSubName || undefined) &&
         t.category === state.config.selectedMatchCategory
-    );
-  }, [state.config.teams, teamName, teamSubName, state.config.selectedMatchCategory]);
+      );
+  }, [state.config.tournaments, state.config.selectedTournamentId, teamName, teamSubName, state.config.selectedMatchCategory]);
   
   const teamHasPlayers = useMemo(() => {
       if (!state.config.enablePlayerSelectionForPenalties) return false;
@@ -858,3 +862,4 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     </>
   );
 }
+
