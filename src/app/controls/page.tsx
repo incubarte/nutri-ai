@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -779,7 +778,7 @@ export default function ControlsPage() {
   };
 
   const handleInitiateNewGame = () => {
-    const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+    const selectedTournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
     if (!selectedTournament || !selectedTournament.matches || selectedTournament.matches.length === 0) {
       setGameSetupStartTab('teams');
       setIsGameSetupDialogOpen(true);
@@ -804,7 +803,7 @@ export default function ControlsPage() {
       awayTeamId: match.awayTeamId,
     }}});
     setIsSelectMatchDialogOpen(false);
-    setGameSetupStartTab('rules');
+    setGameSetupStartTab('rules'); // Change start tab to rules
     setIsGameSetupDialogOpen(true);
   };
 

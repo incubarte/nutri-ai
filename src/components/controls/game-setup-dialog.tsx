@@ -168,12 +168,8 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
         const currentProfile = state.config.formatAndTimingsProfiles.find(p => p.id === state.config.selectedFormatAndTimingsProfileId) || state.config;
         setTempFormatSettings(currentProfile);
 
-    } else {
-        if (state.live.pendingMatchConfig) {
-          dispatch({ type: 'UPDATE_LIVE_STATE', payload: { pendingMatchConfig: undefined } });
-        }
     }
-  }, [isOpen, startTab, state.live.pendingMatchConfig, state.config.selectedMatchCategory, state.config.formatAndTimingsProfiles, state.config.selectedFormatAndTimingsProfileId, dispatch, availableCategories]);
+  }, [isOpen, startTab, state.live.pendingMatchConfig, state.config.selectedMatchCategory, state.config.formatAndTimingsProfiles, state.config.selectedFormatAndTimingsProfileId, availableCategories]);
 
   useEffect(() => {
     if (!useManualTeamNames) {
@@ -185,32 +181,32 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
   }, [localCategoryId, useManualTeamNames, state.live.pendingMatchConfig]);
 
 
-  const handleNextStep = () => {
-    if (useManualTeamNames) {
-        const homeName = manualHomeTeamName.trim() || 'Local';
-        const awayName = manualAwayTeamName.trim() || 'Visitante';
-        if (homeName.toLowerCase() === awayName.toLowerCase()) {
-            toast({ title: "Nombres Iguales", description: "Los nombres de los equipos no pueden ser el mismo.", variant: "destructive" });
+  const handleNextStep = (nextTab: 'rules' | 'summary') => {
+    if (activeTab === 'teams') {
+        if (useManualTeamNames) {
+            const homeName = manualHomeTeamName.trim() || 'Local';
+            const awayName = manualAwayTeamName.trim() || 'Visitante';
+            if (homeName.toLowerCase() === awayName.toLowerCase()) {
+                toast({ title: "Nombres Iguales", description: "Los nombres de los equipos no pueden ser el mismo.", variant: "destructive" });
+                return;
+            }
+        } else {
+            if (!homeTeamId || !awayTeamId || !localCategoryId) {
+            toast({
+                title: "Datos Incompletos",
+                description: "Por favor, selecciona una categoría y ambos equipos para continuar.",
+                variant: "destructive",
+            });
             return;
-        }
-    } else {
-        if (!homeTeamId || !awayTeamId || !localCategoryId) {
-          toast({
-            title: "Datos Incompletos",
-            description: "Por favor, selecciona una categoría y ambos equipos para continuar.",
-            variant: "destructive",
-          });
-          return;
+            }
         }
     }
-    setActiveTab("rules");
+    setActiveTab(nextTab);
   };
   
   const handleConfirmAndStart = () => {
-    // 1. Reset game state
     onGameReset();
     
-    // 2. Set Teams
     if (useManualTeamNames) {
         const homeName = manualHomeTeamName.trim() || 'Local';
         const awayName = manualAwayTeamName.trim() || 'Visitante';
@@ -240,10 +236,8 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
         dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'away', playerIds: awayTeam.players.map(p => p.id) }});
     }
 
-    // 3. Apply temporary game rules
     dispatch({ type: 'UPDATE_SELECTED_FT_PROFILE_DATA', payload: tempFormatSettings });
     
-    // 4. Set active match ID
     if (state.live.pendingMatchConfig?.matchId) {
         dispatch({ type: 'UPDATE_LIVE_STATE', payload: { matchId: state.live.pendingMatchConfig.matchId } });
     } else {
@@ -257,7 +251,7 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Configurar Nuevo Partido</DialogTitle>
           <DialogDescription>
@@ -266,9 +260,10 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
         </DialogHeader>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="teams">Paso 1: Equipos</TabsTrigger>
                 <TabsTrigger value="rules">Paso 2: Reglas</TabsTrigger>
+                <TabsTrigger value="summary">Paso 3: Resumen</TabsTrigger>
             </TabsList>
             
             <TabsContent value="teams" className="py-4 space-y-4">
@@ -331,7 +326,7 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
                 )}
             </TabsContent>
 
-            <TabsContent value="rules" className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+            <TabsContent value="rules" className="py-4 max-h-[60vh] overflow-y-auto">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                     <DurationSettingsCard 
                         isDialogMode={true} 
@@ -352,17 +347,46 @@ export function GameSetupDialog({ isOpen, onOpenChange, onGameReset, startTab = 
                     </div>
                 </div>
             </TabsContent>
+
+            <TabsContent value="summary" className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                 <h3 className="text-lg font-semibold">Resumen de Configuración</h3>
+                 <div className="space-y-4 rounded-md border p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <h4 className="font-medium">Equipo Local</h4>
+                            <p className="text-muted-foreground">{useManualTeamNames ? manualHomeTeamName : teamsInCategory.find(t => t.id === homeTeamId)?.name || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <h4 className="font-medium">Equipo Visitante</h4>
+                            <p className="text-muted-foreground">{useManualTeamNames ? manualAwayTeamName : teamsInCategory.find(t => t.id === awayTeamId)?.name || 'N/A'}</p>
+                        </div>
+                    </div>
+                     {!useManualTeamNames && (
+                        <div>
+                            <h4 className="font-medium">Categoría</h4>
+                            <p className="text-muted-foreground">{availableCategories.find(c => c.id === localCategoryId)?.name || 'N/A'}</p>
+                        </div>
+                     )}
+                     <Separator />
+                     <div>
+                        <h4 className="font-medium">Reglas del Partido</h4>
+                        <ul className="list-disc list-inside text-muted-foreground text-sm mt-2 space-y-1">
+                            <li>Períodos: {tempFormatSettings.numberOfRegularPeriods} de {tempFormatSettings.defaultPeriodDuration! / 6000} min</li>
+                            <li>Overtime: {tempFormatSettings.numberOfOvertimePeriods} de {tempFormatSettings.defaultOTPeriodDuration! / 6000} min</li>
+                            <li>Modo de Tiempo: {tempFormatSettings.gameTimeMode === 'running' ? 'Corrido' : 'Pausado'}</li>
+                        </ul>
+                     </div>
+                 </div>
+            </TabsContent>
         </Tabs>
        
-        <DialogFooter>
+        <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            {activeTab === "teams" ? (
-                <Button onClick={handleNextStep}>Siguiente</Button>
-            ) : (
-                <Button onClick={handleConfirmAndStart}>Confirmar e Iniciar Partido</Button>
-            )}
+            {activeTab === "teams" && <Button onClick={() => handleNextStep('rules')}>Siguiente</Button>}
+            {activeTab === "rules" && <Button onClick={() => handleNextStep('summary')}>Ir a Resumen</Button>}
+            {activeTab === "summary" && <Button onClick={handleConfirmAndStart}>Confirmar e Iniciar Partido</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>
