@@ -1054,7 +1054,7 @@ export default function ControlsPage() {
         />
       )}
       
-      <Dialog open={isSelectMatchDialogOpen} onOpenChange={setIsSelectMatchDialogOpen}>
+      <AlertDialog open={isSelectMatchDialogOpen} onOpenChange={setIsSelectMatchDialogOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2">
@@ -1089,10 +1089,10 @@ export default function ControlsPage() {
                  <Button variant="secondary" onClick={() => { setIsSelectMatchDialogOpen(false); setIsGameSetupDialogOpen(true); }}>
                     Configurar partido manualmente
                 </Button>
-                <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
             </AlertDialogFooter>
         </AlertDialogContent>
-      </Dialog>
+      </AlertDialog>
 
 
       {isShootoutConfirmOpen && (
