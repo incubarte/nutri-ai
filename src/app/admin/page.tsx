@@ -14,7 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ShieldAlert, LogIn, SlidersHorizontal, Info, MessageSquare } from 'lucide-react';
+import { Trash2, ShieldAlert, LogIn, SlidersHorizontal, Info, MessageSquare, CalendarCheck } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from "@/hooks/use-auth";
 import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
@@ -119,7 +119,9 @@ function ScoreboardToolsCard() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Herramientas de Scoreboard</CardTitle>
+                 <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" /> Herramientas de Scoreboard
+                </CardTitle>
                 <CardDescription>
                     Acciones para probar funcionalidades del scoreboard.
                 </CardDescription>
@@ -132,6 +134,49 @@ function ScoreboardToolsCard() {
         </Card>
     );
 }
+
+function MatchStatusCard() {
+    const { state, isLoading } = useGameState();
+
+    if (isLoading) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Estado del Partido Actual</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p>Cargando...</p>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    const matchId = state.live?.matchId;
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <CalendarCheck className="h-5 w-5" /> Estado del Partido (Test)
+                </CardTitle>
+                <CardDescription>
+                    Información de debug sobre el partido actual en juego.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {matchId ? (
+                    <div>
+                        <p className="text-sm font-semibold text-green-400">Partido del Fixture Activo:</p>
+                        <p className="text-xs font-mono text-muted-foreground mt-1 bg-muted p-2 rounded-md">{matchId}</p>
+                    </div>
+                ) : (
+                    <p className="text-sm text-muted-foreground">No hay un partido del fixture activo.</p>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
 
 export default function AdminPage() {
   const { toast } = useToast();
@@ -191,6 +236,8 @@ export default function AdminPage() {
         </div>
         
         <ScoreboardToolsCard />
+
+        <MatchStatusCard />
 
         <PerformanceSettingsCard />
 

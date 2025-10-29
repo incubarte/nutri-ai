@@ -110,6 +110,8 @@ export default function SetupPage() {
     const [tempFormatSettings, setTempFormatSettings] = useState<Partial<FormatAndTimingsProfileData>>({});
     
     const [todaysMatches, setTodaysMatches] = useState<MatchData[]>([]);
+    const [pendingMatchConfig, setPendingMatchConfig] = useState<any>(null);
+
 
     const availableCategories = useMemo(() => selectedTournament?.categories || [], [selectedTournament]);
 
@@ -129,17 +131,25 @@ export default function SetupPage() {
         setTodaysMatches(todayMatches);
     }, [state.config.tournaments, state.config.selectedTournamentId]);
 
-    useEffect(() => {
+     useEffect(() => {
+        // This effect runs only when the page loads or the active tournament changes.
         setLocalCategoryId(state.config.selectedMatchCategory || availableCategories[0]?.id || '');
         const currentProfile = state.config.formatAndTimingsProfiles.find(p => p.id === state.config.selectedFormatAndTimingsProfileId) || state.config;
         setTempFormatSettings(currentProfile);
-    }, [state.config.selectedMatchCategory, availableCategories, state.config.formatAndTimingsProfiles, state.config.selectedFormatAndTimingsProfileId, state.config]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state.config.selectedTournamentId]);
 
     const handleLoadMatchConfig = (match: MatchData) => {
         setUseManualTeamNames(false);
         setLocalCategoryId(match.categoryId);
         setHomeTeamId(match.homeTeamId);
         setAwayTeamId(match.awayTeamId);
+        setPendingMatchConfig({
+            matchId: match.id,
+            categoryId: match.categoryId,
+            homeTeamId: match.homeTeamId,
+            awayTeamId: match.awayTeamId,
+        });
         setActiveTab('rules');
     };
     
@@ -157,6 +167,14 @@ export default function SetupPage() {
                     toast({ title: "Datos Incompletos", description: "Por favor, selecciona una categoría y ambos equipos para continuar.", variant: "destructive" });
                     return;
                 }
+                 if (!pendingMatchConfig) {
+                    setPendingMatchConfig({
+                        matchId: null, // This is not a fixture match
+                        categoryId: localCategoryId,
+                        homeTeamId: homeTeamId,
+                        awayTeamId: awayTeamId,
+                    });
+                }
             }
         }
         setActiveTab(nextTab);
@@ -164,6 +182,8 @@ export default function SetupPage() {
   
     const handleConfirmAndStart = () => {
         dispatch({ type: 'RESET_GAME_STATE' });
+        
+        let matchIdToSet: string | null = null;
         
         if (useManualTeamNames) {
             const homeName = manualHomeTeamName.trim() || 'Local';
@@ -190,9 +210,15 @@ export default function SetupPage() {
             dispatch({ type: 'SET_AWAY_TEAM_SUB_NAME', payload: awayTeam.subName });
             dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'home', playerIds: homeTeam.players.map(p => p.id) }});
             dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'away', playerIds: awayTeam.players.map(p => p.id) }});
+            
+            if (pendingMatchConfig) {
+              matchIdToSet = pendingMatchConfig.matchId;
+            }
         }
 
         dispatch({ type: 'UPDATE_SELECTED_FT_PROFILE_DATA', payload: tempFormatSettings });
+        dispatch({ type: 'UPDATE_LIVE_STATE', payload: { matchId: matchIdToSet } });
+
         
         toast({ title: "¡Partido Listo!", description: "Se ha configurado un nuevo partido. Redirigiendo a controles..." });
         

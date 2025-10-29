@@ -12,13 +12,13 @@
     "away": []
   },
   "clock": {
-    "currentTime": 20712,
+    "currentTime": 30000,
     "currentPeriod": 0,
-    "isClockRunning": false,
+    "isClockRunning": true,
     "periodDisplayOverride": "Warm-up",
     "preTimeoutState": null,
-    "clockStartTimeMs": null,
-    "remainingTimeAtStartCs": null,
+    "clockStartTimeMs": 1761766594384,
+    "remainingTimeAtStartCs": 30000,
     "absoluteElapsedTimeCs": 0,
     "_liveAbsoluteElapsedTimeCs": 0
   },
