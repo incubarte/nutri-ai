@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { useGameState, getCategoryNameById } from '@/contexts/game-state-context';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AddEditMatchDialog } from './add-edit-match-dialog';
@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { MatchData } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { FixtureMatchSummaryDialog } from './fixture-match-summary-dialog';
 
 export function FixtureListView() {
   const { state, dispatch } = useGameState();
@@ -21,6 +22,7 @@ export function FixtureListView() {
   const [isAddEditDialogOpen, setIsAddEditDialogOpen] = useState(false);
   const [matchToEdit, setMatchToEdit] = useState<MatchData | null>(null);
   const [matchToDelete, setMatchToDelete] = useState<MatchData | null>(null);
+  const [matchToShowSummary, setMatchToShowSummary] = useState<MatchData | null>(null);
 
   const selectedTournament = useMemo(() => {
     return tournaments.find(t => t.id === selectedTournamentId);
@@ -64,6 +66,8 @@ export function FixtureListView() {
               sortedMatches.map(match => {
                 const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
                 const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
+                const hasSummary = !!match.summary;
+
                 return (
                   <TableRow key={match.id}>
                     <TableCell>{format(new Date(match.date), "dd/MM/yy HH:mm", { locale: es })}</TableCell>
@@ -73,6 +77,11 @@ export function FixtureListView() {
                     <TableCell>{match.playersPerTeam} vs {match.playersPerTeam}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-1 justify-end">
+                        {hasSummary && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMatchToShowSummary(match)}>
+                                <FileText className="h-4 w-4 text-blue-400" />
+                            </Button>
+                        )}
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditMatch(match)}>
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -102,6 +111,15 @@ export function FixtureListView() {
         matchToEdit={matchToEdit}
       />
       
+      {matchToShowSummary && (
+        <FixtureMatchSummaryDialog
+          isOpen={!!matchToShowSummary}
+          onOpenChange={() => setMatchToShowSummary(null)}
+          match={matchToShowSummary}
+          tournament={selectedTournament}
+        />
+      )}
+
        {matchToDelete && (
         <AlertDialog open={!!matchToDelete} onOpenChange={() => setMatchToDelete(null)}>
           <AlertDialogContent>

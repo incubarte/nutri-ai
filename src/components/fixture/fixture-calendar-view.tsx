@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { useGameState, getCategoryNameById } from '@/contexts/game-state-context';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit, Trash2, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { addMonths, subMonths, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AddEditMatchDialog } from './add-edit-match-dialog';
@@ -13,6 +13,7 @@ import type { MatchData } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { FixtureMatchSummaryDialog } from './fixture-match-summary-dialog';
 
 export function FixtureCalendarView() {
   const { state, dispatch } = useGameState();
@@ -24,6 +25,7 @@ export function FixtureCalendarView() {
   const [matchToEdit, setMatchToEdit] = useState<MatchData | null>(null);
   const [matchToDelete, setMatchToDelete] = useState<MatchData | null>(null);
   const [dialogSelectedDate, setDialogSelectedDate] = useState<Date | undefined>(undefined);
+  const [matchToShowSummary, setMatchToShowSummary] = useState<MatchData | null>(null);
 
   const selectedTournament = useMemo(() => {
     return tournaments.find(t => t.id === selectedTournamentId);
@@ -101,6 +103,7 @@ export function FixtureCalendarView() {
                   {matchesForDay.map(match => {
                     const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
                     const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
+                    const hasSummary = !!match.summary;
 
                     return (
                       <div key={match.id} className="text-xs p-1 rounded-md bg-background/50 border border-border/50">
@@ -108,6 +111,11 @@ export function FixtureCalendarView() {
                         <div className="flex justify-between items-center text-muted-foreground">
                             <span className="truncate">Cat: {getCategoryNameById(match.categoryId, selectedTournament?.categories) || 'N/A'}</span>
                              <div className="flex gap-0">
+                                {hasSummary && (
+                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setMatchToShowSummary(match)}>
+                                        <FileText className="h-3 w-3 text-blue-400" />
+                                    </Button>
+                                )}
                                 <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleEditMatch(match)}><Edit className="h-3 w-3"/></Button>
                                 <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => setMatchToDelete(match)}><Trash2 className="h-3 w-3"/></Button>
                            </div>
@@ -130,6 +138,15 @@ export function FixtureCalendarView() {
         selectedDate={dialogSelectedDate}
       />
       
+      {matchToShowSummary && (
+        <FixtureMatchSummaryDialog
+          isOpen={!!matchToShowSummary}
+          onOpenChange={() => setMatchToShowSummary(null)}
+          match={matchToShowSummary}
+          tournament={selectedTournament}
+        />
+      )}
+
        {matchToDelete && (
         <AlertDialog open={!!matchToDelete} onOpenChange={() => setMatchToDelete(null)}>
           <AlertDialogContent>
