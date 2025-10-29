@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Goal, Siren, BarChart3, X } from "lucide-react";
 import type { MatchData, Tournament, GoalLog, PenaltyLog, SummaryPlayerStats } from "@/types";
 import { formatTime, getCategoryNameById, getEndReasonText } from "@/contexts/game-state-context";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Separator } from "@/components/ui/separator";
 
 interface FixtureMatchSummaryDialogProps {
   isOpen: boolean;
@@ -101,10 +103,22 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   const awayPlayerStats = match.summary?.away?.playerStats || [];
   const homeAttendance = match.summary?.attendance?.home || [];
   const awayAttendance = match.summary?.attendance?.away || [];
+  
+  const allPeriodTexts = useMemo(() => {
+    if (!match.summary?.statsByPeriod) return [];
+    const periods = Object.keys(match.summary.statsByPeriod);
+    return periods.sort((a,b) => {
+        const getPeriodNumber = (text: string) => {
+            if (text.startsWith('OT')) return 100 + parseInt(text.replace('OT', '') || '1', 10);
+            return parseInt(text.replace(/\D/g, ''), 10);
+        };
+        return getPeriodNumber(a) - getPeriodNumber(b);
+    });
+  }, [match.summary?.statsByPeriod]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+      <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl">Resumen de Partido Jugado</DialogTitle>
           <DialogDescription>
@@ -117,18 +131,50 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
             <h3 className="text-2xl font-bold text-primary">{awayTeam?.name} - <span className="text-accent">{awayGoals.length}</span></h3>
         </div>
 
-        <ScrollArea className="flex-grow my-2 border-y py-4 pr-6 -mr-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-4">
-                  <GoalsSection goals={homeGoals} />
-                  <PenaltiesSection penalties={homePenalties} />
-                  <PlayerStatsSection playerStats={homePlayerStats} attendance={homeAttendance} />
+        <ScrollArea className="flex-grow my-2 border-t pt-4 pr-6 -mr-6">
+          <div className="space-y-6">
+              {/* Totales */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                      <GoalsSection goals={homeGoals} />
+                      <PenaltiesSection penalties={homePenalties} />
+                      <PlayerStatsSection playerStats={homePlayerStats} attendance={homeAttendance} />
+                  </div>
+                  <div className="space-y-4">
+                       <GoalsSection goals={awayGoals} />
+                       <PenaltiesSection penalties={awayPenalties} />
+                       <PlayerStatsSection playerStats={awayPlayerStats} attendance={awayAttendance} />
+                  </div>
               </div>
-              <div className="space-y-4">
-                   <GoalsSection goals={awayGoals} />
-                   <PenaltiesSection penalties={awayPenalties} />
-                   <PlayerStatsSection playerStats={awayPlayerStats} attendance={awayAttendance} />
-              </div>
+              <Separator />
+              {/* Desglose por período */}
+              <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="periods">
+                      <AccordionTrigger className="text-xl">Detalle por Período</AccordionTrigger>
+                      <AccordionContent className="space-y-6 pl-2">
+                          {allPeriodTexts.map(periodText => {
+                              const periodStats = match.summary!.statsByPeriod![periodText];
+                              return (
+                                  <div key={periodText} className="space-y-4 border-l-2 pl-4 ml-2">
+                                      <h3 className="text-lg font-semibold">{periodText}</h3>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                          <div className="space-y-4">
+                                              <GoalsSection goals={periodStats.home.goals} />
+                                              <PenaltiesSection penalties={periodStats.home.penalties} />
+                                              <PlayerStatsSection playerStats={periodStats.home.playerStats} attendance={homeAttendance} />
+                                          </div>
+                                          <div className="space-y-4">
+                                              <GoalsSection goals={periodStats.away.goals} />
+                                              <PenaltiesSection penalties={periodStats.away.penalties} />
+                                              <PlayerStatsSection playerStats={periodStats.away.playerStats} attendance={awayAttendance} />
+                                          </div>
+                                      </div>
+                                  </div>
+                              )
+                          })}
+                      </AccordionContent>
+                  </AccordionItem>
+              </Accordion>
           </div>
         </ScrollArea>
         <DialogFooter>
@@ -140,3 +186,5 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
     </Dialog>
   );
 }
+
+    
