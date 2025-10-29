@@ -3,28 +3,24 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import { useGameState, formatTime, type Team, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo, SUMMARY_DATA_STORAGE_KEY, getPeriodText } from "@/contexts/game-state-context";
-import type { PlayerData, GoalLog, PlayerStats as LivePlayerStats, GameSummary, SummaryPlayerStats, GameState, ShootoutState, ShootoutAttempt, CategoryData, TeamData } from "@/types";
+import { useGameState, getCategoryNameById, type GameState } from "@/contexts/game-state-context";
+import type { SummaryPlayerStats, GameSummary, ShootoutState, CategoryData, TeamData, MatchData } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter as UiTableFooter } from "@/components/ui/table";
-import { Separator } from "@/components/ui/separator";
-import { Goal, Siren, FileText, FileDown, BarChart3, Edit3, Check, XCircle, Trash2, PlusCircle, X, AlertTriangle, Info, RefreshCw, Swords, Save } from "lucide-react";
+import { Save, Info, RefreshCw, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { exportGameSummaryPDF } from "@/lib/pdf-generator";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
 import { AddPenaltyForm } from "@/components/shared/add-penalty-form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription as AlertDialogDesc, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle as AlertTitle } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { safeUUID } from "@/lib/utils";
-import type { PenaltyLog } from "@/types";
-
+import { GoalsSection } from "@/components/summary/goals-section";
+import { PenaltiesSection } from "@/components/summary/penalties-section";
+import { PlayerStatsSection } from "@/components/summary/player-stats-section";
+import { ShootoutSection } from "@/components/summary/shootout-section";
+import { getPeriodText } from "@/contexts/game-state-context";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import type { Team, GoalLog, PenaltyLog, ShotLog, AttendedPlayerInfo } from "@/types";
 
 // --- Modelos de Datos para la Página de Resumen ---
 export interface PeriodStats {
@@ -52,305 +48,6 @@ export interface SummaryData {
 // --- Fin de Modelos de Datos ---
 
 
-const GoalsSection = ({ teamName, goals }: { teamName: string; goals: GoalLog[] }) => {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl"><Goal className="h-5 w-5" />Goles</CardTitle>
-            </CardHeader>
-            <CardContent>
-                {goals.length > 0 ? (
-                <Table>
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead>Tiempo</TableHead>
-                        <TableHead>Gol</TableHead>
-                        <TableHead>Asistencia</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {goals.map(goal => (
-                        <TableRow key={goal.id}>
-                        <TableCell>
-                            <div className="font-mono text-sm">{formatTime(goal.gameTime)}</div>
-                            <div className="text-xs text-muted-foreground">{goal.periodText}</div>
-                        </TableCell>
-                        <TableCell>
-                            <div className="font-semibold">#{goal.scorer?.playerNumber || 'S/N'}</div>
-                            <div className="text-xs text-muted-foreground">{goal.scorer?.playerName || '---'}</div>
-                        </TableCell>
-                        <TableCell>
-                            {goal.assist?.playerNumber ? (
-                            <>
-                                <div className="font-semibold">#{goal.assist.playerNumber}</div>
-                                <div className="text-xs text-muted-foreground">{goal.assist.playerName || '---'}</div>
-                            </>
-                            ) : <span className="text-muted-foreground">---</span>}
-                        </TableCell>
-                        </TableRow>
-                    ))}
-                    </TableBody>
-                    <UiTableFooter>
-                        <TableRow>
-                            <TableCell colSpan={3} className="text-right font-bold">Total Goles: {goals.length}</TableCell>
-                        </TableRow>
-                    </UiTableFooter>
-                </Table>
-                ) : <p className="text-sm text-muted-foreground">Sin goles registrados.</p>}
-            </CardContent>
-        </Card>
-    );
-};
-
-const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }: { team: Team; teamName: string; penalties: PenaltyLog[]; onAdd?: () => void; onDelete?: (logId: string) => void; }) => {
-    return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-xl"><Siren className="h-5 w-5" />Penalidades</CardTitle>
-                {onAdd && (
-                    <Button variant="ghost" size="icon" onClick={onAdd} className="h-8 w-8 text-primary hover:text-primary/80">
-                        <PlusCircle className="h-5 w-5" />
-                    </Button>
-                )}
-            </CardHeader>
-            <CardContent>
-                {penalties.length > 0 ? (
-                <Table>
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead>Tiempo</TableHead>
-                        <TableHead>Jugador</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Duración</TableHead>
-                        <TableHead>Estado</TableHead>
-                         {onDelete && <TableHead className="text-right">Acción</TableHead>}
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {penalties.map(p => (
-                        <TableRow key={p.id}>
-                        <TableCell>
-                            <div className="font-mono text-sm">{formatTime(p.addGameTime)}</div>
-                            <div className="text-xs text-muted-foreground">{p.addPeriodText}</div>
-                        </TableCell>
-                        <TableCell>
-                            <div className="font-semibold">{p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber}`}</div>
-                            <div className="text-xs text-muted-foreground">{p.isBenchPenalty ? '---' : p.playerName || '---'}</div>
-                        </TableCell>
-                        <TableCell className="text-xs">{p.penaltyName || '---'}</TableCell>
-                        <TableCell className="font-mono text-sm">{formatTime(p.initialDuration * 100)}</TableCell>
-                        <TableCell>
-                            <div className="text-sm">{getEndReasonText(p.endReason)}</div>
-                            {p.timeServed !== undefined && <div className="text-xs text-muted-foreground font-mono">({formatTime(p.timeServed * 100)})</div>}
-                        </TableCell>
-                         {onDelete && (
-                            <TableCell className="text-right">
-                               <Button variant="ghost" size="icon" onClick={() => onDelete(p.id)} className="h-8 w-8 text-destructive hover:text-destructive">
-                                    <Trash2 className="h-4 w-4" />
-                               </Button>
-                            </TableCell>
-                         )}
-                        </TableRow>
-                    ))}
-                    </TableBody>
-                     <UiTableFooter>
-                        <TableRow>
-                            <TableCell colSpan={onDelete ? 6 : 5} className="text-right font-bold">Total Penalidades: {penalties.length}</TableCell>
-                        </TableRow>
-                    </UiTableFooter>
-                </Table>
-                ) : <p className="text-sm text-muted-foreground">Sin penalidades registradas.</p>}
-            </CardContent>
-        </Card>
-    );
-};
-
-const PlayerStatsSection = ({ team, teamName, playerStats, onStatsChange, editable, periodText }: { team: Team; teamName: string; playerStats: SummaryPlayerStats[]; onStatsChange?: (team: Team, newStats: SummaryPlayerStats[], period: string) => void, editable?: boolean, periodText?: string }) => {
-    
-    const [isEditing, setIsEditing] = useState(false);
-    const [editedShots, setEditedShots] = useState<Record<string, string>>({});
-    
-    const sortedPlayerStats = useMemo(() => {
-        return [...playerStats].sort((a, b) => {
-            const numA = parseInt(a.number, 10);
-            const numB = parseInt(b.number, 10);
-
-            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-            if (isNaN(numA) && !isNaN(numB)) return 1;
-            if (!isNaN(numA) && isNaN(numB)) return -1;
-            return a.name.localeCompare(b.name);
-        });
-    }, [playerStats]);
-
-
-    const totals = useMemo(() => {
-        return sortedPlayerStats.reduce((acc, player) => {
-            acc.goals += player.goals || 0;
-            acc.assists += player.assists || 0;
-            acc.shots += player.shots || 0;
-            return acc;
-        }, { goals: 0, assists: 0, shots: 0 });
-    }, [sortedPlayerStats]);
-
-    const handleEditClick = () => {
-        const initialShots = sortedPlayerStats.reduce((acc, player) => {
-            acc[player.id] = String(player.shots || 0);
-            return acc;
-        }, {} as Record<string, string>);
-        setEditedShots(initialShots);
-        setIsEditing(true);
-    };
-
-    const handleCancelClick = () => setIsEditing(false);
-
-    const handleSaveClick = () => {
-        if (!onStatsChange || !periodText) return;
-
-        const newPlayerStats = playerStats.map(player => {
-            const newShotCountStr = editedShots[player.id];
-            if (newShotCountStr !== undefined) {
-                const newShotCount = parseInt(newShotCountStr, 10);
-                if (!isNaN(newShotCount)) {
-                    return { ...player, shots: newShotCount };
-                }
-            }
-            return player;
-        });
-        onStatsChange(team, newPlayerStats, periodText);
-        setIsEditing(false);
-    };
-
-    const handleShotChange = (playerId: string, value: string) => {
-        if (/^\d*$/.test(value)) {
-            setEditedShots(prev => ({ ...prev, [playerId]: value }));
-        }
-    };
-    
-    return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas - {teamName}</CardTitle>
-                {editable && (
-                  <div className="flex gap-2">
-                      {isEditing ? (
-                          <>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveClick}><Check className="h-5 w-5" /></Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><X className="h-5 w-5" /></Button>
-                          </>
-                      ) : (
-                          <Button variant="outline" size="sm" onClick={handleEditClick}>
-                            <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
-                          </Button>
-                      )}
-                  </div>
-                )}
-            </CardHeader>
-            <CardContent>
-                <TooltipProvider>
-                    {sortedPlayerStats.length > 0 ? (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>#</TableHead>
-                                    <TableHead>Nombre</TableHead>
-                                    <TableHead className="text-center">G</TableHead>
-                                    <TableHead className="text-center">A</TableHead>
-                                    <TableHead className="text-center">Tiros</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {sortedPlayerStats.map(player => {
-                                    const isEditDisabledForThisRow = isEditing && (!player.number);
-                                    return (
-                                        <TableRow key={player.id} className={cn(isEditDisabledForThisRow && "opacity-50")}>
-                                            <TableCell className="font-semibold">{player.number || 'S/N'}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground">{player.name}</TableCell>
-                                            <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
-                                            <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
-                                            <TableCell className="text-center">
-                                            {isEditing && editable ? (
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <div className="w-full h-full flex items-center justify-center">
-                                                            <Input
-                                                                type="number"
-                                                                value={isEditDisabledForThisRow ? String(player.shots || 0) : editedShots[player.id]}
-                                                                onChange={(e) => !isEditDisabledForThisRow && handleShotChange(player.id, e.target.value)}
-                                                                className={cn("h-7 w-16 mx-auto text-center", isEditDisabledForThisRow && "cursor-not-allowed")}
-                                                                disabled={isEditDisabledForThisRow}
-                                                            />
-                                                        </div>
-                                                    </TooltipTrigger>
-                                                    {isEditDisabledForThisRow && (
-                                                        <TooltipContent>
-                                                            <p>No se pueden editar los tiros de un jugador sin número asignado.</p>
-                                                        </TooltipContent>
-                                                    )}
-                                                </Tooltip>
-                                            ) : (
-                                                <span className="font-mono">{player.shots || 0}</span>
-                                            )}
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                            <UiTableFooter>
-                                <TableRow>
-                                    <TableCell colSpan={2} className="text-right font-bold">TOTAL</TableCell>
-                                    <TableCell className="text-center font-bold font-mono">{totals.goals}</TableCell>
-                                    <TableCell className="text-center font-bold font-mono">{totals.assists}</TableCell>
-                                    <TableCell className="text-center font-bold font-mono">{totals.shots}</TableCell>
-                                </TableRow>
-                            </UiTableFooter>
-                        </Table>
-                    ) : (
-                        <p className="text-sm text-muted-foreground">No hay jugadores con asistencia registrada.</p>
-                    )}
-                </TooltipProvider>
-            </CardContent>
-        </Card>
-    );
-};
-
-const ShootoutSection = ({ teamName, attempts }: { teamName: string; attempts: ShootoutAttempt[] }) => {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl"><Swords className="h-5 w-5" />Tiros de Penal (Shootout)</CardTitle>
-            </CardHeader>
-            <CardContent>
-                {attempts.length > 0 ? (
-                <Table>
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead>Ronda</TableHead>
-                        <TableHead>Jugador</TableHead>
-                        <TableHead>Resultado</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {attempts.map(attempt => (
-                        <TableRow key={attempt.id}>
-                            <TableCell className="font-mono">{attempt.round}</TableCell>
-                            <TableCell>
-                                <div className="font-semibold">#{attempt.playerNumber}</div>
-                                <div className="text-xs text-muted-foreground">{attempt.playerName || '---'}</div>
-                            </TableCell>
-                            <TableCell>
-                                {attempt.isGoal ? <span className="text-green-500 font-bold">Gol</span> : <span className="text-destructive">Atajado/Fallado</span>}
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                    </TableBody>
-                </Table>
-                ) : <p className="text-sm text-muted-foreground">Sin tiros de penal registrados.</p>}
-            </CardContent>
-        </Card>
-    );
-};
-
-
 export default function ResumenPage() {
   const { state, dispatch, isLoading } = useGameState();
   const { toast } = useToast();
@@ -363,24 +60,6 @@ export default function ResumenPage() {
   const [unassignedPlayerWarning, setUnassignedPlayerWarning] = useState<{ players: string[]; onConfirm: () => void } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   
-  useEffect(() => {
-    try {
-      const savedSummaryRaw = localStorage.getItem(SUMMARY_DATA_STORAGE_KEY);
-      if (savedSummaryRaw) {
-        setSummaryData(JSON.parse(savedSummaryRaw));
-      }
-    } catch (error) {
-      console.error("Error loading summary from localStorage:", error);
-      localStorage.removeItem(SUMMARY_DATA_STORAGE_KEY);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (summaryData) {
-      localStorage.setItem(SUMMARY_DATA_STORAGE_KEY, JSON.stringify(summaryData));
-    }
-  }, [summaryData]);
-
   const generateSummaryData = useCallback(() => {
     setSummaryData(null); 
     const { live, config } = state;
@@ -583,76 +262,6 @@ export default function ResumenPage() {
     }, 500);
 };
 
-  
-  const handleOpenAddPenalty = (team: Team, periodText?: string) => {
-    setPenaltyContext({ team, periodText });
-    setIsAddPenaltyDialogOpen(true);
-  };
-  
-  const handleConfirmAddPenalty = (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs: number, periodText: string) => {
-    if (!summaryData) return;
-    
-    const penaltyDef = state.config.penaltyTypes.find(p => p.id === penaltyTypeId);
-    if (!penaltyDef) return;
-
-    const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
-    const teamData = selectedTournament?.teams.find(t => t.name === summaryData[`${team}TeamName`] && t.category === summaryData.selectedMatchCategory);
-    const playerDetails = teamData?.players.find(p => p.number === playerNumber);
-
-    const newPenaltyLog: PenaltyLog = {
-        id: safeUUID(), team, playerNumber, playerName: playerDetails?.name, penaltyName: penaltyDef.name,
-        initialDuration: penaltyDef.duration, reducesPlayerCount: penaltyDef.reducesPlayerCount,
-        clearsOnGoal: penaltyDef.clearsOnGoal, isBenchPenalty: penaltyDef.isBenchPenalty,
-        addTimestamp: Date.now(), addGameTime: gameTimeCs, addPeriodText: periodText,
-    };
-
-    setSummaryData(prev => {
-        if (!prev) return null;
-        const newSummary: SummaryData = JSON.parse(JSON.stringify(prev));
-        
-        if (!newSummary.statsByPeriod[periodText]) {
-            newSummary.statsByPeriod[periodText] = { 
-                home: { goals: [], penalties: [], playerStats: [] }, 
-                away: { goals: [], penalties: [], playerStats: [] } 
-            };
-        } else if (!newSummary.statsByPeriod[periodText][team]) {
-             newSummary.statsByPeriod[periodText][team] = { goals: [], penalties: [], playerStats: [] };
-        }
-        
-        if (!newSummary.statsByPeriod[periodText][team].penalties) newSummary.statsByPeriod[periodText][team].penalties = [];
-        if (!newSummary.statsByPeriod[periodText][team].goals) newSummary.statsByPeriod[periodText][team].goals = [];
-        if (!newSummary.statsByPeriod[periodText][team].playerStats) newSummary.statsByPeriod[periodText][team].playerStats = [];
-
-        newSummary.statsByPeriod[periodText][team].penalties.push(newPenaltyLog);
-        newSummary.statsByPeriod[periodText][team].penalties.sort((a: PenaltyLog, b: PenaltyLog) => a.addTimestamp - b.addTimestamp);
-        return newSummary;
-    });
-    
-    toast({ title: "Penalidad Añadida", description: "La penalidad se ha agregado al resumen."});
-    setIsAddPenaltyDialogOpen(false);
-    setPenaltyContext(null);
-  };
-
-  const handlePrepareDeletePenalty = (team: Team, periodText: string, logId: string) => {
-      setPenaltyToDelete({ team, periodText, logId });
-  };
-  
-  const handleConfirmDeletePenalty = () => {
-      if (penaltyToDelete && summaryData) {
-        setSummaryData(prev => {
-            if (!prev) return null;
-            const { team, periodText, logId } = penaltyToDelete;
-            const newSummary: SummaryData = JSON.parse(JSON.stringify(prev));
-            if (newSummary.statsByPeriod[periodText]) {
-              newSummary.statsByPeriod[periodText][team].penalties = newSummary.statsByPeriod[periodText][team].penalties.filter((p: PenaltyLog) => p.id !== logId);
-            }
-            return newSummary;
-        });
-        toast({ title: "Penalidad Eliminada", variant: "destructive" });
-        setPenaltyToDelete(null);
-      }
-  };
-
   const handleStatsChange = (team: Team, newStats: SummaryPlayerStats[], period: string) => {
     setSummaryData(prev => {
         if (!prev) return null;
@@ -680,7 +289,7 @@ export default function ResumenPage() {
     };
     
     const periods = new Set(Object.keys(summaryData.statsByPeriod));
-    if (summaryData.shootout && summaryData.shootout.isActive) {
+    if (summaryData.shootout && (summaryData.shootout.homeAttempts.length > 0 || summaryData.shootout.awayAttempts.length > 0)) {
         periods.add("Shootout");
     }
 
@@ -711,13 +320,11 @@ export default function ResumenPage() {
         </div>
 
         {!summaryData ? (
-             <Card className="text-center py-20">
-                <CardContent>
-                    <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <h2 className="text-xl font-semibold">Resumen no generado</h2>
-                    <p className="text-muted-foreground">Haz clic en "Recargar Datos" para cargar las estadísticas del partido actual.</p>
-                </CardContent>
-            </Card>
+             <div className="text-center py-20 border-2 border-dashed rounded-lg bg-card/50">
+                <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <h2 className="text-xl font-semibold">Resumen no generado</h2>
+                <p className="text-muted-foreground">Haz clic en "Recargar Datos" para cargar las estadísticas del partido actual.</p>
+            </div>
         ) : (
             <>
                 <div className="grid grid-cols-2 text-center my-2">
@@ -734,28 +341,23 @@ export default function ResumenPage() {
                         <ScrollArea className="h-[calc(100vh-22rem)]">
                             <div className="space-y-6 pr-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <GoalsSection teamName={summaryData.homeTeamName} goals={homeAggregatedStats.goals} />
-                                    <GoalsSection teamName={summaryData.awayTeamName} goals={awayAggregatedStats.goals} />
+                                    <GoalsSection team="home" teamName={summaryData.homeTeamName} goals={homeAggregatedStats.goals} />
+                                    <GoalsSection team="away" teamName={summaryData.awayTeamName} goals={awayAggregatedStats.goals} />
                                 </div>
-                                <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                      <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={homeAggregatedStats.penalties} />
                                      <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={awayAggregatedStats.penalties} />
                                 </div>
                                 
-                                {summaryData.shootout && summaryData.shootout.isActive && (
-                                    <>
-                                        <Separator />
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <ShootoutSection teamName={summaryData.homeTeamName} attempts={summaryData.shootout.homeAttempts} />
-                                            <ShootoutSection teamName={summaryData.awayTeamName} attempts={summaryData.shootout.awayAttempts} />
-                                        </div>
-                                    </>
+                                {summaryData.shootout && (summaryData.shootout.homeAttempts.length > 0 || summaryData.shootout.awayAttempts.length > 0) && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <ShootoutSection teamName={summaryData.homeTeamName} attempts={summaryData.shootout.homeAttempts} />
+                                        <ShootoutSection teamName={summaryData.awayTeamName} attempts={summaryData.shootout.awayAttempts} />
+                                    </div>
                                 )}
-                                <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <PlayerStatsSection team="home" teamName={summaryData.homeTeamName} playerStats={homeAggregatedStats.playerStats} editable={false} />
-                                    <PlayerStatsSection team="away" teamName={summaryData.awayTeamName} playerStats={awayAggregatedStats.playerStats} editable={false} />
+                                    <PlayerStatsSection team="home" teamName={summaryData.homeTeamName} playerStats={homeAggregatedStats.playerStats} attendance={summaryData.attendance.home} editable={false} />
+                                    <PlayerStatsSection team="away" teamName={summaryData.awayTeamName} playerStats={awayAggregatedStats.playerStats} attendance={summaryData.attendance.away} editable={false} />
                                 </div>
                             </div>
                         </ScrollArea>
@@ -765,7 +367,7 @@ export default function ResumenPage() {
                             <Accordion type="single" collapsible className="w-full pr-4">
                                 {allPeriodTexts.map(periodText => {
                                     if (periodText.toUpperCase() === 'SHOOTOUT') {
-                                        if (!summaryData.shootout || !summaryData.shootout.isActive) return null;
+                                        if (!summaryData.shootout || (summaryData.shootout.homeAttempts.length === 0 && summaryData.shootout.awayAttempts.length === 0)) return null;
                                         return (
                                             <AccordionItem value="shootout" key="shootout">
                                                 <AccordionTrigger className="text-xl hover:no-underline">Shootout</AccordionTrigger>
@@ -790,18 +392,11 @@ export default function ResumenPage() {
                                             <AccordionContent>
                                                 <div className="space-y-8 pl-2">
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                        <GoalsSection teamName={summaryData.homeTeamName} goals={periodStats.home.goals} />
-                                                        <GoalsSection teamName={summaryData.awayTeamName} goals={periodStats.away.goals} />
-                                                    </div>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                        <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={periodStats.home.penalties} onAdd={() => handleOpenAddPenalty('home', periodText)} onDelete={(logId) => handlePrepareDeletePenalty('home', periodText, logId)} />
-                                                        <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={periodStats.away.penalties} onAdd={() => handleOpenAddPenalty('away', periodText)} onDelete={(logId) => handlePrepareDeletePenalty('away', periodText, logId)} />
-                                                    </div>
-                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                         <PlayerStatsSection 
                                                             team="home" 
                                                             teamName={summaryData.homeTeamName} 
                                                             playerStats={periodStats.home.playerStats} 
+                                                            attendance={summaryData.attendance.home}
                                                             editable={true} 
                                                             onStatsChange={handleStatsChange}
                                                             periodText={periodText}
@@ -810,6 +405,7 @@ export default function ResumenPage() {
                                                             team="away" 
                                                             teamName={summaryData.awayTeamName} 
                                                             playerStats={periodStats.away.playerStats} 
+                                                            attendance={summaryData.attendance.away}
                                                             editable={true} 
                                                             onStatsChange={handleStatsChange}
                                                             periodText={periodText}
@@ -825,48 +421,6 @@ export default function ResumenPage() {
                     </TabsContent>
                 </Tabs>
             </>
-        )}
-
-        {isAddPenaltyDialogOpen && penaltyContext && (
-            <Dialog open={isAddPenaltyDialogOpen} onOpenChange={setIsAddPenaltyDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Añadir Penalidad</DialogTitle>
-                        <DialogDescription>
-                            Registra una nueva penalidad para el {penaltyContext.team === 'home' ? summaryData?.homeTeamName : summaryData?.awayTeamName}
-                            {penaltyContext.periodText ? ` en el período ${penaltyContext.periodText}` : ''}.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <AddPenaltyForm
-                        homeTeamName={summaryData?.homeTeamName || 'Local'}
-                        awayTeamName={summaryData?.awayTeamName || 'Visitante'}
-                        penaltyTypes={state.config.penaltyTypes || []}
-                        defaultPenaltyTypeId={state.config.defaultPenaltyTypeId || null}
-                        onPenaltySent={(team, playerNumber, penaltyTypeId, gameTimeCs, periodText) => handleConfirmAddPenalty(team, playerNumber, penaltyTypeId, gameTimeCs!, periodText!)}
-                        preselectedTeam={penaltyContext.team}
-                        showTimeInput={true}
-                        availablePeriods={allPeriodTexts.filter(p => p !== 'Shootout')}
-                        preselectedPeriod={penaltyContext.periodText}
-                    />
-                </DialogContent>
-            </Dialog>
-        )}
-
-        {penaltyToDelete && (
-            <AlertDialog open={!!penaltyToDelete} onOpenChange={() => setPenaltyToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertTitle>Confirmar Eliminación</AlertTitle>
-                    <AlertDialogDesc>
-                        ¿Estás seguro de que quieres eliminar esta penalidad? Esta acción no se puede deshacer.
-                    </AlertDialogDesc>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setPenaltyToDelete(null)}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmDeletePenalty} className="bg-destructive hover:bg-destructive/90">
-                            Eliminar
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         )}
         
         {overwriteConfirm && (
