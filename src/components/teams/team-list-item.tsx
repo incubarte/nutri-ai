@@ -21,7 +21,9 @@ interface TeamListItemProps {
 
 export function TeamListItem({ team, isSelectionMode = false, isSelected = false, onToggleSelection }: TeamListItemProps) {
   const { state } = useGameState();
-  const categoryName = getCategoryNameById(team.category, state.config.availableCategories);
+
+  const tournament = (state.config.tournaments || []).find(t => t.teams.some(tm => tm.id === team.id));
+  const categoryName = getCategoryNameById(team.category, tournament?.categories);
 
   const handleCardInteraction = (e: React.MouseEvent) => {
     if (isSelectionMode && onToggleSelection) {
