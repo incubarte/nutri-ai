@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -1611,12 +1612,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'UPDATE_PLAYER_IN_TEAM': {
       const { teamId, playerId, updates } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
       break;
     }
     case 'REMOVE_PLAYER_FROM_TEAM': {
       const { teamId, playerId } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
       break;
     }
     case 'LOAD_TEAMS_FROM_FILE': { // Legacy: no longer used directly.
@@ -1692,6 +1693,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         });
         newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
         break;
+    }
+    case 'SAVE_MATCH_SUMMARY': {
+      const { matchId, summary } = action.payload;
+      const tournamentId = state.config.selectedTournamentId;
+      if (!tournamentId) break;
+
+      const newTournaments = state.config.tournaments.map(t => {
+        if (t.id === tournamentId) {
+          const newMatches = t.matches.map(m =>
+            m.id === matchId ? { ...m, summary } : m
+          );
+          return { ...t, matches: newMatches };
+        }
+        return t;
+      });
+      newState = { ...state, config: { ...state.config, tournaments: newTournaments }};
+      break;
     }
      case 'UPDATE_LIVE_STATE':
         newState = { ...state, live: { ...state.live, ...action.payload } };
@@ -2002,4 +2020,3 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
-

@@ -1,7 +1,26 @@
 {
-  "id": "8a422a4c-1953-4abd-acae-bf5cd358ef9c",
-  "name": "Clausura",
-  "status": "active",
+  "categories": [
+    {
+      "id": "89e25708-38d4-446f-bb29-c4d2c923e48d",
+      "name": "A"
+    },
+    {
+      "id": "6fd778ac-7682-4740-99af-131551aff7a2",
+      "name": "B"
+    },
+    {
+      "id": "953bcf73-ee22-4c87-baa7-43b9529420e0",
+      "name": "C"
+    },
+    {
+      "id": "d15ece86-af44-4011-b767-32e0138aa937",
+      "name": "Menores"
+    },
+    {
+      "id": "52bf1baa-73bb-45e2-9ed2-1014aa89c4ef",
+      "name": "Damas"
+    }
+  ],
   "teams": [
     {
       "id": "29c7d1a8-3a07-44be-92b6-66237bfb0d23",
@@ -1788,54 +1807,6 @@
           "id": "e5f46afc-dcb2-4322-87be-e7f9cbb480d2"
         }
       ]
-    }
-  ],
-  "categories": [
-    {
-      "id": "89e25708-38d4-446f-bb29-c4d2c923e48d",
-      "name": "A"
-    },
-    {
-      "id": "6fd778ac-7682-4740-99af-131551aff7a2",
-      "name": "B"
-    },
-    {
-      "id": "953bcf73-ee22-4c87-baa7-43b9529420e0",
-      "name": "C"
-    },
-    {
-      "id": "d15ece86-af44-4011-b767-32e0138aa937",
-      "name": "Menores"
-    },
-    {
-      "id": "52bf1baa-73bb-45e2-9ed2-1014aa89c4ef",
-      "name": "Damas"
-    }
-  ],
-  "matches": [
-    {
-      "date": "2025-10-29T03:00:00.000Z",
-      "categoryId": "89e25708-38d4-446f-bb29-c4d2c923e48d",
-      "homeTeamId": "29c7d1a8-3a07-44be-92b6-66237bfb0d23",
-      "awayTeamId": "05cdef97-f34a-4266-be05-373cc337429e",
-      "playersPerTeam": 5,
-      "id": "d8de7f32-0c74-4f59-af9e-43b93818c816"
-    },
-    {
-      "date": "2025-10-29T10:00:00.000Z",
-      "categoryId": "89e25708-38d4-446f-bb29-c4d2c923e48d",
-      "homeTeamId": "05cdef97-f34a-4266-be05-373cc337429e",
-      "awayTeamId": "215ab8d6-c94f-4649-9a38-dae011bba6a8",
-      "playersPerTeam": 5,
-      "id": "5574b45d-2acd-4b9b-8eff-f9becb9202e7"
-    },
-    {
-      "date": "2025-10-31T08:00:00.000Z",
-      "categoryId": "6fd778ac-7682-4740-99af-131551aff7a2",
-      "homeTeamId": "a3a33ad9-1227-4336-8d16-2a565095597c",
-      "awayTeamId": "01c108c7-6733-4db5-83f4-0fb3d8b258cf",
-      "playersPerTeam": 5,
-      "id": "784d97b8-5d35-4184-8e75-15c4534891e6"
     }
   ]
 }

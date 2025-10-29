@@ -353,7 +353,7 @@ const ShootoutSection = ({ teamName, attempts }: { teamName: string; attempts: S
 
 
 export default function ResumenPage() {
-  const { state: liveGameState, isLoading } = useGameState();
+  const { state, dispatch, isLoading } = useGameState();
   const { toast } = useToast();
   
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
@@ -384,7 +384,7 @@ export default function ResumenPage() {
 
   const generateSummaryData = useCallback(() => {
     setSummaryData(null); 
-    const { live, config } = liveGameState;
+    const { live, config } = state;
     if (!live || !config) return;
     
     const { gameSummary, shootout } = live;
@@ -458,27 +458,29 @@ export default function ResumenPage() {
         processTeamPeriod('away');
     });
 
+    const selectedTournament = config.tournaments.find(t => t.id === config.selectedTournamentId);
+    
     const newSummaryData: SummaryData = {
         homeTeamName: live.homeTeamName,
         awayTeamName: live.awayTeamName,
         homeScore: live.score.home,
         awayScore: live.score.away,
-        categoryName: getCategoryNameById(config.selectedMatchCategory, config.availableCategories) || 'N/A',
+        categoryName: getCategoryNameById(config.selectedMatchCategory, selectedTournament?.categories) || 'N/A',
         attendance: gameSummary.attendance,
         statsByPeriod,
         shootout: shootout.isActive ? shootout : undefined,
-        availableCategories: config.availableCategories,
-        teams: config.teams,
+        availableCategories: selectedTournament?.categories || [],
+        teams: selectedTournament?.teams || [],
         selectedMatchCategory: config.selectedMatchCategory,
     };
     setSummaryData(newSummaryData);
     toast({ title: "Resumen Generado", description: "Se han cargado los datos del partido actual." });
 
-  }, [liveGameState, toast]);
+  }, [state, toast]);
 
   const handleGenerateSummaryClick = () => {
-    const unassignedHome = liveGameState.live.gameSummary.attendance.home.filter(p => !p.number).map(p => p.name);
-    const unassignedAway = liveGameState.live.gameSummary.attendance.away.filter(p => !p.number).map(p => p.name);
+    const unassignedHome = state.live.gameSummary.attendance.home.filter(p => !p.number).map(p => p.name);
+    const unassignedAway = state.live.gameSummary.attendance.away.filter(p => !p.number).map(p => p.name);
     const allUnassigned = [...unassignedHome, ...unassignedAway];
 
     const confirmAndGenerate = () => {
@@ -534,74 +536,51 @@ export default function ResumenPage() {
   const awayAggregatedStats = useMemo(() => getAggregateStats('away'), [getAggregateStats, summaryData]);
 
   const handleSaveAndExport = async () => {
-    if (!summaryData) {
+    if (!summaryData || !state.live.matchId) {
         toast({
-            title: "No hay resumen",
-            description: "Genera un resumen antes de guardarlo o exportarlo.",
+            title: "No hay resumen o partido activo",
+            description: "Genera un resumen y asegúrate de que el partido se inició desde el fixture.",
             variant: "destructive"
         });
         return;
     }
 
     setIsSaving(true);
-    toast({ title: "Procesando...", description: "Guardando resúmenes y generando PDF." });
+    toast({ title: "Guardando Resumen...", description: "Por favor, espera." });
 
-    // 1. Export PDF
-    const pdfFilename = exportGameSummaryPDF(summaryData, homeAggregatedStats, awayAggregatedStats, liveGameState);
-
-    // 2. Prepare data and save CSVs
-    const getResult = (teamScore: number, opponentScore: number): "Ganó" | "Perdió" | "Empató" => {
-        if (teamScore > opponentScore) return "Ganó";
-        if (teamScore < opponentScore) return "Perdió";
-        return "Empató";
+    const finalSummary: GameSummary = {
+        home: {
+            goals: homeAggregatedStats.goals,
+            penalties: homeAggregatedStats.penalties,
+            playerStats: homeAggregatedStats.playerStats,
+            homeShotsLog: state.live.gameSummary.home.homeShotsLog,
+        },
+        away: {
+            goals: awayAggregatedStats.goals,
+            penalties: awayAggregatedStats.penalties,
+            playerStats: awayAggregatedStats.playerStats,
+            awayShotsLog: state.live.gameSummary.away.awayShotsLog,
+        },
+        attendance: summaryData.attendance,
+        shootout: summaryData.shootout
     };
 
-    const homeCsvPayload = {
-        teamName: summaryData.homeTeamName,
-        categoryName: summaryData.categoryName,
-        gameResult: getResult(summaryData.homeScore, summaryData.awayScore),
-        goalsFor: summaryData.homeScore,
-        goalsAgainst: summaryData.awayScore,
-        playerStats: homeAggregatedStats.playerStats.map(p => ({
-            number: p.number, name: p.name, goals: p.goals, assists: p.assists, shots: p.shots
-        }))
-    };
-    
-    const awayCsvPayload = {
-        teamName: summaryData.awayTeamName,
-        categoryName: summaryData.categoryName,
-        gameResult: getResult(summaryData.awayScore, summaryData.homeScore),
-        goalsFor: summaryData.awayScore,
-        goalsAgainst: summaryData.homeScore,
-        playerStats: awayAggregatedStats.playerStats.map(p => ({
-            number: p.number, name: p.name, goals: p.goals, assists: p.assists, shots: p.shots
-        }))
-    };
-
-    try {
-        const [homeResult, awayResult] = await Promise.all([
-            saveTeamCsvSummary(homeCsvPayload),
-            saveTeamCsvSummary(awayCsvPayload)
-        ]);
-
-        if (homeResult.success && awayResult.success) {
-            toast({
-                title: "Éxito",
-                description: `PDF generado (${pdfFilename}) y resúmenes CSV guardados en el servidor.`,
-            });
-        } else {
-            throw new Error(`CSV Home: ${homeResult.message}, CSV Away: ${awayResult.message}`);
+    dispatch({
+        type: 'SAVE_MATCH_SUMMARY',
+        payload: {
+            matchId: state.live.matchId,
+            summary: finalSummary
         }
-    } catch (error) {
-        console.error("Error saving summaries:", error);
-        toast({
-            title: "Error al Guardar CSVs",
-            description: "El PDF se generó, pero hubo un error al guardar los archivos CSV en el servidor.",
-            variant: "destructive"
-        });
-    } finally {
+    });
+
+    // Let the state update propagate, then toast
+    setTimeout(() => {
         setIsSaving(false);
-    }
+        toast({
+            title: "Resumen Guardado",
+            description: "El resumen del partido se ha guardado en la base de datos.",
+        });
+    }, 500);
 };
 
   
@@ -613,10 +592,11 @@ export default function ResumenPage() {
   const handleConfirmAddPenalty = (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs: number, periodText: string) => {
     if (!summaryData) return;
     
-    const penaltyDef = liveGameState.config.penaltyTypes.find(p => p.id === penaltyTypeId);
+    const penaltyDef = state.config.penaltyTypes.find(p => p.id === penaltyTypeId);
     if (!penaltyDef) return;
 
-    const teamData = (liveGameState.config.tournaments.find(t => t.id === liveGameState.config.selectedTournamentId)?.teams || []).find(t => t.name === summaryData[`${team}TeamName`] && t.category === summaryData.categoryName);
+    const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+    const teamData = selectedTournament?.teams.find(t => t.name === summaryData[`${team}TeamName`] && t.category === summaryData.selectedMatchCategory);
     const playerDetails = teamData?.players.find(p => p.number === playerNumber);
 
     const newPenaltyLog: PenaltyLog = {
@@ -693,7 +673,7 @@ export default function ResumenPage() {
         if (periodText.toUpperCase().startsWith('OT')) {
             const numPart = periodText.replace(/\D/g, '');
             const otNumber = numPart ? parseInt(numPart, 10) : 1;
-            return (liveGameState.config?.numberOfRegularPeriods || 0) + otNumber;
+            return (state.config?.numberOfRegularPeriods || 0) + otNumber;
         }
         const num = parseInt(periodText.replace(/\D/g, ''), 10);
         return isNaN(num) ? 999 : num;
@@ -705,7 +685,7 @@ export default function ResumenPage() {
     }
 
     return Array.from(periods).sort((a, b) => getPeriodSortValue(a) - getPeriodSortValue(b));
-  }, [summaryData, liveGameState.config?.numberOfRegularPeriods]);
+  }, [summaryData, state.config?.numberOfRegularPeriods]);
 
 
   if (isLoading) {
@@ -723,9 +703,9 @@ export default function ResumenPage() {
             <h1 className="text-3xl font-bold text-primary-foreground">Resumen del Partido</h1>
             <div className="flex gap-2">
                 <Button onClick={handleGenerateSummaryClick} variant="outline"><RefreshCw className="mr-2 h-4 w-4"/> Recargar Datos del Partido</Button>
-                <Button onClick={handleSaveAndExport} disabled={!summaryData || isSaving}>
+                <Button onClick={handleSaveAndExport} disabled={!summaryData || isSaving || !state.live.matchId}>
                     {isSaving ? <HockeyPuckSpinner className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4"/>}
-                    Guardar y Exportar Resumen
+                    Guardar Resumen en DB
                 </Button>
             </div>
         </div>
@@ -860,8 +840,8 @@ export default function ResumenPage() {
                     <AddPenaltyForm
                         homeTeamName={summaryData?.homeTeamName || 'Local'}
                         awayTeamName={summaryData?.awayTeamName || 'Visitante'}
-                        penaltyTypes={liveGameState.config.penaltyTypes || []}
-                        defaultPenaltyTypeId={liveGameState.config.defaultPenaltyTypeId || null}
+                        penaltyTypes={state.config.penaltyTypes || []}
+                        defaultPenaltyTypeId={state.config.defaultPenaltyTypeId || null}
                         onPenaltySent={(team, playerNumber, penaltyTypeId, gameTimeCs, periodText) => handleConfirmAddPenalty(team, playerNumber, penaltyTypeId, gameTimeCs!, periodText!)}
                         preselectedTeam={penaltyContext.team}
                         showTimeInput={true}
@@ -933,8 +913,3 @@ export default function ResumenPage() {
     </div>
   );
 }
-    
-
-    
-
-    

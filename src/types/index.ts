@@ -47,6 +47,7 @@ export interface MatchData {
   homeTeamId: string;
   awayTeamId: string;
   playersPerTeam: number;
+  summary?: GameSummary;
 }
 
 
@@ -431,7 +432,8 @@ export type GameAction =
   | { type: 'ADD_MATCH_TO_TOURNAMENT'; payload: { tournamentId: string; match: Omit<MatchData, 'id'> } }
   | { type: 'UPDATE_MATCH_IN_TOURNAMENT'; payload: { tournamentId: string; match: MatchData } }
   | { type: 'DELETE_MATCH_FROM_TOURNAMENT'; payload: { tournamentId: string; matchId: string } }
-  | { type: 'HYDRATE_FROM_STORAGE'; payload: Partial<GameState> }
+  | { type: 'SAVE_MATCH_SUMMARY'; payload: { matchId: string; summary: GameSummary; } }
+  | { type: 'HYDRATE_FROM_SERVER'; payload: GameState }
   | { type: 'SET_STATE_FROM_LOCAL_BROADCAST'; payload: GameState }
   | { type: 'UPDATE_LIVE_STATE', payload: Partial<LiveState> }
   | { type: 'RESET_CONFIG_TO_DEFAULTS' }

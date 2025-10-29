@@ -119,7 +119,7 @@
     }
   ],
   "selectedScoreboardLayoutProfileId": "default-layout-profile",
-  "selectedMatchCategory": "",
+  "selectedMatchCategory": "89e25708-38d4-446f-bb29-c4d2c923e48d",
   "selectedTournamentId": "8a422a4c-1953-4abd-acae-bf5cd358ef9c",
   "tunnel": {
     "subdomain": "icevision-fs",
@@ -128,6 +128,64 @@
     "url": null,
     "lastMessage": null
   },
+  "id": "default-profile",
+  "name": "Predeterminado (App)",
+  "defaultWarmUpDuration": 30000,
+  "defaultPeriodDuration": 120000,
+  "defaultOTPeriodDuration": 30000,
+  "defaultBreakDuration": 12000,
+  "defaultPreOTBreakDuration": 6000,
+  "defaultTimeoutDuration": 3000,
+  "autoStartWarmUp": true,
+  "autoStartBreaks": true,
+  "autoStartPreOTBreaks": false,
+  "autoStartTimeouts": true,
+  "numberOfRegularPeriods": 2,
+  "numberOfOvertimePeriods": 1,
+  "maxConcurrentPenalties": 2,
+  "playersPerTeamOnIce": 5,
+  "enableMaxPenaltiesLimit": true,
+  "maxPenaltiesPerPlayer": 3,
+  "gameTimeMode": "stopped",
+  "autoActivatePuckPenalties": true,
+  "enableStoppedTimeAlert": false,
+  "stoppedTimeAlertGoalDiff": 1,
+  "stoppedTimeAlertTimeRemaining": 2,
+  "penaltyTypes": [
+    {
+      "id": "menor-2",
+      "name": "Menor",
+      "duration": 120,
+      "reducesPlayerCount": true,
+      "clearsOnGoal": true,
+      "isBenchPenalty": false
+    },
+    {
+      "id": "mayor-5",
+      "name": "Mayor",
+      "duration": 300,
+      "reducesPlayerCount": true,
+      "clearsOnGoal": false,
+      "isBenchPenalty": false
+    },
+    {
+      "id": "mala-conducta-10",
+      "name": "Mala Conducta",
+      "duration": 600,
+      "reducesPlayerCount": false,
+      "clearsOnGoal": false,
+      "isBenchPenalty": false
+    },
+    {
+      "id": "banco-2",
+      "name": "Penalidad de Banco",
+      "duration": 120,
+      "reducesPlayerCount": true,
+      "clearsOnGoal": true,
+      "isBenchPenalty": true
+    }
+  ],
+  "defaultPenaltyTypeId": "menor-2",
   "tournaments": [
     {
       "id": "8a422a4c-1953-4abd-acae-bf5cd358ef9c",
@@ -143,6 +201,11 @@
       "id": "0a30bca0-b3c9-4127-94b2-6f45504cc54e",
       "name": "Clausura 2024",
       "status": "finished"
+    },
+    {
+      "id": "7a921ab0-84a7-4cbf-9de3-9fcf57bae21f",
+      "name": "pepe",
+      "status": "inactive"
     }
   ]
 }

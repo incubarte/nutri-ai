@@ -2,9 +2,9 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { NextResponse } from 'next/server';
-import type { GameState, ConfigState, Tournament } from '@/types';
+import type { GameState, ConfigState, Tournament, TeamData, CategoryData, MatchData } from '@/types';
 
-const DATA_DIR = path.join(process.cwd(), 'src', 'data');
+const DATA_DIR = path.join(process.cwd(), 'src/data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 const TOURNAMENTS_DIR = path.join(DATA_DIR, 'tournaments');
 
@@ -14,8 +14,21 @@ async function readConfig(): Promise<ConfigState> {
         const data = await fs.readFile(CONFIG_PATH, 'utf-8');
         return JSON.parse(data);
     } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            // Config file doesn't exist, return a default structure
+            return {
+                formatAndTimingsProfiles: [],
+                selectedFormatAndTimingsProfileId: null,
+                scoreboardLayout: {} as any, 
+                scoreboardLayoutProfiles: [],
+                selectedScoreboardLayoutProfileId: null,
+                tournaments: [],
+                selectedTournamentId: null,
+                selectedMatchCategory: '',
+                // Add other required fields from ConfigState with default values
+            } as ConfigState;
+        }
         console.error("Could not read config.json:", error);
-        // This could be customized to return a default state if the file is missing/corrupt
         throw new Error("Failed to read database file.");
     }
 }
@@ -30,25 +43,52 @@ async function writeConfig(config: ConfigState): Promise<void> {
     }
 }
 
-async function readTournament(id: string): Promise<Tournament | null> {
-    const filePath = path.join(TOURNAMENTS_DIR, `${id}.json`);
+async function readTournament(tournamentId: string): Promise<Partial<Tournament> | null> {
+    const tournamentDir = path.join(TOURNAMENTS_DIR, tournamentId);
+    const teamsFilePath = path.join(tournamentDir, 'teams.json');
+    const fixtureFilePath = path.join(tournamentDir, 'fixture.json');
+
     try {
-        await fs.mkdir(TOURNAMENTS_DIR, { recursive: true });
-        const data = await fs.readFile(filePath, 'utf-8');
-        return JSON.parse(data);
+        await fs.access(tournamentDir); // Check if directory exists
+
+        const teamsData: { categories: CategoryData[], teams: TeamData[] } = JSON.parse(await fs.readFile(teamsFilePath, 'utf-8'));
+        const fixtureData: { matches: MatchData[] } = JSON.parse(await fs.readFile(fixtureFilePath, 'utf-8'));
+        
+        return {
+            ...teamsData,
+            ...fixtureData,
+        };
     } catch (error) {
-        // It's okay if a tournament file doesn't exist, just return null.
+        // If directory or files don't exist, it's okay, just return null.
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            return null;
+        }
+        console.error(`Error reading tournament ${tournamentId}:`, error);
         return null;
     }
 }
 
 async function writeTournament(tournament: Tournament): Promise<void> {
-    const filePath = path.join(TOURNAMENTS_DIR, `${tournament.id}.json`);
+    const tournamentDir = path.join(TOURNAMENTS_DIR, tournament.id);
+    const teamsFilePath = path.join(tournamentDir, 'teams.json');
+    const fixtureFilePath = path.join(tournamentDir, 'fixture.json');
+
     try {
-        await fs.mkdir(TOURNAMENTS_DIR, { recursive: true });
-        await fs.writeFile(filePath, JSON.stringify(tournament, null, 2), 'utf-8');
+        await fs.mkdir(tournamentDir, { recursive: true });
+
+        const teamsData = {
+            categories: tournament.categories || [],
+            teams: tournament.teams || [],
+        };
+        const fixtureData = {
+            matches: tournament.matches || [],
+        };
+
+        await fs.writeFile(teamsFilePath, JSON.stringify(teamsData, null, 2), 'utf-8');
+        await fs.writeFile(fixtureFilePath, JSON.stringify(fixtureData, null, 2), 'utf-8');
+
     } catch (error) {
-         console.error(`Could not write to tournament file ${tournament.id}.json:`, error);
+         console.error(`Could not write to tournament files for ${tournament.id}:`, error);
         throw new Error("Failed to write tournament file.");
     }
 }
@@ -58,21 +98,28 @@ export async function GET(request: Request) {
   try {
     const config = await readConfig();
     
-    const tournamentPromises = config.tournaments.map(t => readTournament(t.id));
-    const tournamentDetails = await Promise.all(tournamentPromises);
+    if (!config.tournaments) {
+        config.tournaments = [];
+    }
 
+    const tournamentPromises = config.tournaments.map(async (meta) => {
+        const tournamentDetails = await readTournament(meta.id);
+        return {
+            ...meta,
+            ...(tournamentDetails || { teams: [], categories: [], matches: [] }),
+        };
+    });
+
+    const fullTournaments = await Promise.all(tournamentPromises);
+    
     const fullConfig: ConfigState = {
         ...config,
-        tournaments: config.tournaments.map((meta, index) => ({
-            ...meta,
-            ...(tournamentDetails[index] || {}), // Merge details, keeping meta if file is missing
-        }))
+        tournaments: fullTournaments,
     };
     
-    // We construct a full GameState object for the client
     const initialState: GameState = {
       config: fullConfig,
-      live: {} as any, // Live state is managed by the client, not persisted this way.
+      live: {} as any, 
       _initialConfigLoadComplete: true,
     }
 
@@ -95,12 +142,10 @@ export async function POST(request: Request) {
 
     const { tournaments, ...baseConfig } = config;
 
-    // Create metadata for the main config file
     const tournamentMetas = tournaments.map(t => ({ id: t.id, name: t.name, status: t.status }));
     const configToSave: ConfigState = { ...baseConfig, tournaments: tournamentMetas as any };
     await writeConfig(configToSave);
 
-    // Write each tournament to its own file
     const tournamentWritePromises = tournaments.map(t => writeTournament(t));
     await Promise.all(tournamentWritePromises);
 
@@ -112,4 +157,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'An unknown server error occurred.'}, { status: 500 });
   }
 }
-
