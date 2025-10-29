@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from "@/hooks/use-auth";
 import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
 import { useRouter } from "next/navigation";
-import { GAME_STATE_STORAGE_KEY, TEAMS_STORAGE_KEY, useGameState } from "@/contexts/game-state-context";
+import { useGameState } from "@/contexts/game-state-context";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
@@ -136,29 +136,26 @@ function ScoreboardToolsCard() {
 export default function AdminPage() {
   const { toast } = useToast();
   const { authStatus } = useAuth();
+  const { dispatch } = useGameState();
   const router = useRouter();
 
   const handleClearConfigOnly = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(GAME_STATE_STORAGE_KEY);
-      toast({
-        title: "Configuración Eliminada",
-        description: "Se ha limpiado la configuración del juego. Los equipos se han mantenido. La página se recargará.",
-      });
-      setTimeout(() => window.location.reload(), 1500);
-    }
+    dispatch({ type: 'RESET_CONFIG_TO_DEFAULTS' });
+    toast({
+      title: "Configuración Restablecida",
+      description: "Se han restablecido los perfiles y configuraciones. Los equipos se mantienen.",
+    });
   };
 
   const handleClearAllData = () => {
-     if (typeof window !== 'undefined') {
-      localStorage.removeItem(GAME_STATE_STORAGE_KEY);
-      localStorage.removeItem(TEAMS_STORAGE_KEY);
-      toast({
-        title: "Todos los Datos Eliminados",
-        description: "Se ha limpiado toda la configuración y los equipos. La página se recargará.",
-      });
-      setTimeout(() => window.location.reload(), 1500);
-    }
+    dispatch({ type: 'RESET_CONFIG_TO_DEFAULTS' });
+    dispatch({ type: 'LOAD_TEAMS_FROM_FILE', payload: [] });
+    toast({
+      title: "Todos los Datos Eliminados",
+      description: "Se ha limpiado toda la configuración y los equipos. La página se recargará.",
+      variant: 'destructive',
+    });
+    setTimeout(() => window.location.reload(), 1500);
   }
 
   if (authStatus === 'loading') {
@@ -216,7 +213,7 @@ export default function AdminPage() {
                           <AlertDialogHeader>
                           <AlertDialogTitle>Confirmar Limpieza de Configuración</AlertDialogTitle>
                           <AlertDialogDescription>
-                              Esta acción eliminará la configuración de perfiles, sonido, display, etc., y el estado del juego actual. <strong>Tus equipos y jugadores guardados NO serán eliminados.</strong> ¿Estás seguro de que quieres continuar?
+                              Esta acción eliminará la configuración de perfiles, sonido, display, etc. <strong>Tus equipos y jugadores guardados NO serán eliminados.</strong> ¿Estás seguro de que quieres continuar?
                           </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
