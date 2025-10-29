@@ -148,33 +148,35 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
               </div>
               <Separator />
               {/* Desglose por período */}
-              <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="periods">
-                      <AccordionTrigger className="text-xl">Detalle por Período</AccordionTrigger>
-                      <AccordionContent className="space-y-6 pl-2">
-                          {allPeriodTexts.map(periodText => {
-                              const periodStats = match.summary!.statsByPeriod![periodText];
-                              return (
-                                  <div key={periodText} className="space-y-4 border-l-2 pl-4 ml-2">
-                                      <h3 className="text-lg font-semibold">{periodText}</h3>
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                          <div className="space-y-4">
-                                              <GoalsSection goals={periodStats.home.goals} />
-                                              <PenaltiesSection penalties={periodStats.home.penalties} />
-                                              <PlayerStatsSection playerStats={periodStats.home.playerStats} attendance={homeAttendance} />
-                                          </div>
-                                          <div className="space-y-4">
-                                              <GoalsSection goals={periodStats.away.goals} />
-                                              <PenaltiesSection penalties={periodStats.away.penalties} />
-                                              <PlayerStatsSection playerStats={periodStats.away.playerStats} attendance={awayAttendance} />
-                                          </div>
-                                      </div>
-                                  </div>
-                              )
-                          })}
-                      </AccordionContent>
-                  </AccordionItem>
-              </Accordion>
+              {allPeriodTexts.length > 0 && (
+                <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="periods">
+                        <AccordionTrigger className="text-xl">Detalle por Período</AccordionTrigger>
+                        <AccordionContent className="space-y-6 pl-2">
+                            {allPeriodTexts.map(periodText => {
+                                const periodStats = match.summary!.statsByPeriod![periodText];
+                                return (
+                                    <div key={periodText} className="space-y-4 border-l-2 pl-4 ml-2">
+                                        <h3 className="text-lg font-semibold">{periodText}</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-4">
+                                                <GoalsSection goals={periodStats.home.goals} />
+                                                <PenaltiesSection penalties={periodStats.home.penalties} />
+                                                <PlayerStatsSection playerStats={periodStats.home.playerStats} attendance={homeAttendance} />
+                                            </div>
+                                            <div className="space-y-4">
+                                                <GoalsSection goals={periodStats.away.goals} />
+                                                <PenaltiesSection penalties={periodStats.away.penalties} />
+                                                <PlayerStatsSection playerStats={periodStats.away.playerStats} attendance={awayAttendance} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+              )}
           </div>
         </ScrollArea>
         <DialogFooter>
@@ -186,5 +188,3 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
     </Dialog>
   );
 }
-
-    
