@@ -510,6 +510,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             absoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
             _liveAbsoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
         };
+        // Explicitly sync to server when clock stops
+        saveDataOnServer({ config: state.config, live: { ...state.live, clock: { ...state.live.clock, ...newClockState } } });
+
       } else { // Starting the clock
         if (currentTime > 0) {
             newClockState = {
@@ -1043,6 +1046,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'TICK': {
+      if (!state.live?.clock) return state; // Safety guard
       let hasChanged = false;
       let significantChangeOccurred = false;
       const { clock, penalties, gameSummary } = state.live;
@@ -1174,6 +1178,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         return { ...state, live: { ...state.live, clock: { ...state.live.clock, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs }}};
       }
       
+      // Do not mark TICK as an originator to prevent server sync on every tick
       newState._lastActionOriginator = significantChangeOccurred ? TAB_ID : undefined;
       newState._lastUpdatedTimestamp = significantChangeOccurred ? newTimestamp : state._lastUpdatedTimestamp;
       return newState;
@@ -1896,6 +1901,8 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
     if (state._lastActionOriginator === TAB_ID) {
       try {
         channelRef.current?.postMessage(state);
+        // Do not sync on every state change, only significant ones.
+        // The TICK action does not set _lastActionOriginator, so this won't fire on tick.
         syncToServer(state); 
       } catch (error) {
         console.error("Error broadcasting or saving state:", error);
@@ -1906,11 +1913,11 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
     const tickInterval = state.config.tickIntervalMs || 200;
-    if (state.live && state.live.clock && (state.live.clock.isClockRunning || state.live.clock.isFlashingZero) && isPageVisible && !isLoading) {
+    if (state.live?.clock && (state.live.clock.isClockRunning || state.live.clock.isFlashingZero) && isPageVisible && !isLoading) {
         timerId = setInterval(() => dispatch({ type: 'TICK' }), tickInterval);
     }
     return () => clearInterval(timerId);
-  }, [state.live?.clock?.isClockRunning, state.live?.clock?.isFlashingZero, isPageVisible, isLoading, state.config.tickIntervalMs]);
+  }, [state.live?.clock, isPageVisible, isLoading, state.config.tickIntervalMs]);
   
 
   return (
@@ -2034,4 +2041,5 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
 
