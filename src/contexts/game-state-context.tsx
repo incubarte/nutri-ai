@@ -453,22 +453,27 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newState = { ...state, live: { ...state.live, overlayMessage: null } };
       break;
     case 'HYDRATE_FROM_SERVER': {
-      const serverState = action.payload;
-      if (!serverState.config) {
-          console.error("Hydration from server failed: config is missing.");
-          return state; // Return current state if server data is incomplete
-      }
-      
-      let finalState: GameState = {
-        ...getInitialState(), // Start with a clean slate
-        config: serverState.config, // Overwrite with server config
-        _initialConfigLoadComplete: true,
-      };
+        const serverState = action.payload;
+        if (!serverState.config) {
+            console.error("Hydration from server failed: config is missing.");
+            return state; // Return current state if server data is incomplete
+        }
+        
+        // Start with a clean slate, but keep config and potentially live state
+        let finalState: GameState = {
+            ...getInitialState(), 
+            config: serverState.config,
+            _initialConfigLoadComplete: true,
+        };
 
-      // Ensure the correct profiles are applied upon hydration
-      newState = applyFormatAndTimingsProfileToState(finalState, finalState.config.selectedFormatAndTimingsProfileId);
-      newState = applyScoreboardLayoutProfileToState(newState, newState.config.selectedScoreboardLayoutProfileId);
-      break;
+        if (serverState.live && serverState.live.clock) {
+            finalState.live = serverState.live;
+        }
+
+        // Ensure the correct profiles are applied upon hydration
+        newState = applyFormatAndTimingsProfileToState(finalState, finalState.config.selectedFormatAndTimingsProfileId);
+        newState = applyScoreboardLayoutProfileToState(newState, newState.config.selectedScoreboardLayoutProfileId);
+        break;
     }
     case 'SET_STATE_FROM_LOCAL_BROADCAST': {
         const incomingTimestamp = action.payload._lastUpdatedTimestamp;
@@ -1746,27 +1751,38 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'RESET_GAME_STATE': {
       const { defaultWarmUpDuration, autoStartWarmUp } = state.config;
-      if (typeof localStorage !== 'undefined') {
-        localStorage.removeItem(SUMMARY_DATA_STORAGE_KEY);
-      }
-      newState = { ...state, live: {
-        score: { home: 0, away: 0, homeShots: 0, awayShots: 0, homeGoals: [], awayGoals: [], },
-        penalties: { home: [], away: [], },
+      
+      const resetLiveState: LiveState = {
+        score: { home: 0, away: 0, homeShots: 0, awayShots: 0, homeGoals: [], awayGoals: [] },
+        penalties: { home: [], away: [] },
         clock: {
-          currentTime: defaultWarmUpDuration, currentPeriod: 0, isClockRunning: autoStartWarmUp && defaultWarmUpDuration > 0,
-          periodDisplayOverride: 'Warm-up', preTimeoutState: null,
+          currentTime: defaultWarmUpDuration,
+          currentPeriod: 0,
+          isClockRunning: autoStartWarmUp && defaultWarmUpDuration > 0,
+          periodDisplayOverride: 'Warm-up',
+          preTimeoutState: null,
           clockStartTimeMs: (autoStartWarmUp && defaultWarmUpDuration > 0) ? Date.now() : null,
           remainingTimeAtStartCs: (autoStartWarmUp && defaultWarmUpDuration > 0) ? defaultWarmUpDuration : null,
-          absoluteElapsedTimeCs: 0, _liveAbsoluteElapsedTimeCs: 0,
+          absoluteElapsedTimeCs: 0,
+          _liveAbsoluteElapsedTimeCs: 0,
         },
         shootout: INITIAL_SHOOTOUT_STATE,
-        homeTeamName: 'Local', homeTeamSubName: undefined, awayTeamName: 'Visitante', awayTeamSubName: undefined,
+        homeTeamName: 'Local',
+        homeTeamSubName: undefined,
+        awayTeamName: 'Visitante',
+        awayTeamSubName: undefined,
         gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
-        playHornTrigger: state.live.playHornTrigger, playPenaltyBeepTrigger: state.live.playPenaltyBeepTrigger,
+        playHornTrigger: state.live.playHornTrigger,
+        playPenaltyBeepTrigger: state.live.playPenaltyBeepTrigger,
         pendingPowerPlayGoal: null,
         overlayMessage: null,
-        matchId: null,
-      }};
+        matchId: state.live.matchId, // Preserve the matchId
+      };
+
+      // Save the reset live state to the server immediately
+      saveDataOnServer({ config: state.config, live: resetLiveState });
+
+      newState = { ...state, live: resetLiveState };
       break;
     }
   }
@@ -1802,7 +1818,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
 
   const syncToServer = useCallback(async (stateToSync: GameState) => {
     try {
-        await saveDataOnServer({ config: stateToSync.config });
+        await saveDataOnServer({ config: stateToSync.config, live: stateToSync.live });
     } catch (error) {
       showToast({
         title: "Error de Sincronización",
@@ -1879,10 +1895,8 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
 
     if (state._lastActionOriginator === TAB_ID) {
       try {
-        // Broadcast the full state, other tabs will receive it
         channelRef.current?.postMessage(state);
-        // Save only config changes to the server
-        syncToServer({ config: state.config, live: state.live, _initialConfigLoadComplete: true }); 
+        syncToServer(state); 
       } catch (error) {
         console.error("Error broadcasting or saving state:", error);
       }
@@ -1892,11 +1906,11 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
     const tickInterval = state.config.tickIntervalMs || 200;
-    if ((state.live.clock.isClockRunning || state.live.clock.isFlashingZero) && isPageVisible && !isLoading) {
+    if (state.live && state.live.clock && (state.live.clock.isClockRunning || state.live.clock.isFlashingZero) && isPageVisible && !isLoading) {
         timerId = setInterval(() => dispatch({ type: 'TICK' }), tickInterval);
     }
     return () => clearInterval(timerId);
-  }, [state.live.clock.isClockRunning, state.live.clock.isFlashingZero, isPageVisible, isLoading, state.config.tickIntervalMs]);
+  }, [state.live?.clock?.isClockRunning, state.live?.clock?.isFlashingZero, isPageVisible, isLoading, state.config.tickIntervalMs]);
   
 
   return (
@@ -2020,3 +2034,4 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
