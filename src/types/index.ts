@@ -183,6 +183,11 @@ export interface AttendedPlayerInfo {
   name: string;
 }
 
+export interface PeriodStats {
+  home: { goals: GoalLog[]; penalties: PenaltyLog[]; playerStats: SummaryPlayerStats[]; };
+  away: { goals: GoalLog[]; penalties: PenaltyLog[]; playerStats: SummaryPlayerStats[]; };
+}
+
 export interface GameSummary {
   home: {
     goals: GoalLog[];
@@ -201,6 +206,7 @@ export interface GameSummary {
     away: AttendedPlayerInfo[]; 
   };
   shootout?: ShootoutState;
+  statsByPeriod?: Record<string, PeriodStats>;
 }
 
 export interface TunnelState {

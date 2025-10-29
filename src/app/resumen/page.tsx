@@ -24,7 +24,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { safeUUID } from "@/lib/utils";
 import type { PenaltyLog } from "@/types";
-import { saveGameSummary, saveTeamCsvSummary } from "@/ai/flows/file-operations";
 
 
 // --- Modelos de Datos para la Página de Resumen ---
@@ -547,7 +546,7 @@ export default function ResumenPage() {
 
     setIsSaving(true);
     toast({ title: "Guardando Resumen...", description: "Por favor, espera." });
-
+    
     const finalSummary: GameSummary = {
         home: {
             goals: homeAggregatedStats.goals,
@@ -562,7 +561,8 @@ export default function ResumenPage() {
             awayShotsLog: state.live.gameSummary.away.awayShotsLog,
         },
         attendance: summaryData.attendance,
-        shootout: summaryData.shootout
+        shootout: summaryData.shootout,
+        statsByPeriod: summaryData.statsByPeriod,
     };
 
     dispatch({

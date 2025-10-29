@@ -5,10 +5,10 @@ import React, { useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter as UiTableFooter } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Goal, Siren, BarChart3, X } from "lucide-react";
-import type { MatchData, Tournament, GameSummary, GoalLog, PenaltyLog } from "@/types";
+import type { MatchData, Tournament, GoalLog, PenaltyLog, SummaryPlayerStats } from "@/types";
 import { formatTime, getCategoryNameById, getEndReasonText } from "@/contexts/game-state-context";
 
 interface FixtureMatchSummaryDialogProps {
@@ -58,7 +58,7 @@ const PenaltiesSection = ({ penalties }: { penalties: PenaltyLog[] }) => {
     );
 };
 
-const PlayerStatsSection = ({ playerStats, attendance }: { playerStats: any, attendance: any[] }) => {
+const PlayerStatsSection = ({ playerStats, attendance }: { playerStats: SummaryPlayerStats[], attendance: any[] }) => {
     const statsArray = useMemo(() => {
         if (!attendance) return [];
         return attendance.map(p => ({
