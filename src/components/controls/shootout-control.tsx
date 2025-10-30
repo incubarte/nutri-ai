@@ -44,7 +44,9 @@ const ShooterSelector = ({
   const justSelectedPlayerRef = useRef(false);
   
   const teamData = useMemo(() => {
-    return state.config.teams.find(t =>
+    const selectedTournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
+    if (!selectedTournament) return null;
+    return selectedTournament.teams.find(t =>
         t.name === state.live[`${team}TeamName`] &&
         (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) &&
         t.category === state.config.selectedMatchCategory
@@ -258,7 +260,8 @@ export const ShootoutControl = () => {
             return;
         }
 
-        const teamData = state.config.teams.find(t =>
+        const selectedTournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
+        const teamData = selectedTournament?.teams.find(t =>
             t.name === state.live[`${team}TeamName`] &&
             (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) &&
             t.category === state.config.selectedMatchCategory

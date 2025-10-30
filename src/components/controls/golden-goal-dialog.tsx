@@ -23,8 +23,18 @@ export function GoldenGoalDialog({ isOpen, onOpenChange }: GoldenGoalDialogProps
   const [scorerNumber, setScorerNumber] = useState('');
   const [assistNumber, setAssistNumber] = useState('');
 
-  const homeTeamData = useMemo(() => state.config.teams.find(t => t.name === state.live.homeTeamName && (t.subName || undefined) === (state.live.homeTeamSubName || undefined) && t.category === state.config.selectedMatchCategory), [state]);
-  const awayTeamData = useMemo(() => state.config.teams.find(t => t.name === state.live.awayTeamName && (t.subName || undefined) === (state.live.awayTeamSubName || undefined) && t.category === state.config.selectedMatchCategory), [state]);
+  const homeTeamData = useMemo(() => {
+    const selectedTournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
+    if (!selectedTournament) return null;
+    return selectedTournament.teams.find(t => t.name === state.live.homeTeamName && (t.subName || undefined) === (state.live.homeTeamSubName || undefined) && t.category === state.config.selectedMatchCategory);
+  }, [state]);
+
+  const awayTeamData = useMemo(() => {
+    const selectedTournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
+    if (!selectedTournament) return null;
+    return selectedTournament.teams.find(t => t.name === state.live.awayTeamName && (t.subName || undefined) === (state.live.awayTeamSubName || undefined) && t.category === state.config.selectedMatchCategory);
+  }, [state]);
+
 
   const selectedTeamData = selectedTeam === 'home' ? homeTeamData : awayTeamData;
   const scorerPlayer = useMemo(() => selectedTeamData?.players.find(p => p.number === scorerNumber), [selectedTeamData, scorerNumber]);
@@ -59,7 +69,7 @@ export function GoldenGoalDialog({ isOpen, onOpenChange }: GoldenGoalDialogProps
         team: selectedTeam,
         timestamp: Date.now(),
         gameTime: state.live.clock.currentTime,
-        periodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods),
+        periodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout),
         scorer: {
           playerNumber: trimmedScorerNumber,
           playerName: scorerPlayer?.name,
