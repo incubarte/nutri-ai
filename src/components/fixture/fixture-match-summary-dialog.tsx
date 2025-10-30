@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
@@ -38,7 +37,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
       setLocalSummary(match?.summary);
       setIsEditing(false);
       setEditedShots({});
-      setRefreshKey(0);
+      setRefreshKey(k => k + 1);
     }
   }, [isOpen, match]);
   
@@ -149,7 +148,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   };
 
   const handleShotInputChange = (period: string, playerId: string, value: string) => {
-    if (/^\\d*$/.test(value)) {
+    if (/^\d*$/.test(value)) {
         setEditedShots(prev => ({
             ...prev,
             [period]: {
