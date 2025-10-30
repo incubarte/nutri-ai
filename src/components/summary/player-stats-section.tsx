@@ -74,9 +74,9 @@ export const PlayerStatsSection = ({
                                         {editable ? (
                                             <Input
                                                 type="number"
-                                                value={editedShots?.[player.id] || String(player.shots || '0')}
+                                                value={editedShots?.[player.id] ?? String(player.shots || '0')}
                                                 onChange={(e) => onShotChange?.(player.id, e.target.value)}
-                                                className="h-7 w-14 text-center"
+                                                className="h-7 w-14 text-center mx-auto"
                                             />
                                         ) : (
                                             <span className="font-mono">{player.shots || 0}</span>

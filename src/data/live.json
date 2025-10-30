@@ -277,7 +277,21 @@
           "id": "18248af1-e797-4c87-a660-f3f0653f6ef1"
         }
       ],
-      "penalties": [],
+      "penalties": [
+        {
+          "id": "84696b04-e7f4-499b-b70c-a70306519aef",
+          "team": "away",
+          "playerNumber": "3",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1761789384032,
+          "addGameTime": 18300,
+          "addPeriodText": "1ST"
+        }
+      ],
       "playerStats": [
         {
           "id": "2e8c0519-5592-4b60-84bb-f89db002d1ae",

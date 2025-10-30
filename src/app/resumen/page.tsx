@@ -17,7 +17,7 @@ import { ShootoutSection } from "@/components/summary/shootout-section";
 import { getPeriodText } from "@/contexts/game-state-context";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AddPenaltyForm } from "@/components/shared/add-penalty-form";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { safeUUID } from "@/lib/utils";
 
 // --- Modelos de Datos para la Página de Resumen ---
@@ -97,7 +97,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
         awayTeamName: live.awayTeamName,
         homeScore: live.score.home,
         awayScore: live.score.away,
-        categoryName: getCategoryNameById(config.selectedMatchCategory, selectedTournament?.categories) || 'N/A',
+        categoryName: getCategoryNameById(config.selectedMatchCategory, selectedTournament?.categories || []) || 'N/A',
         statsByPeriod,
         shootout: shootout.isActive ? shootout : undefined,
     };
@@ -181,6 +181,16 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
     dispatch({ type: 'DELETE_PENALTY_LOG', payload: { team, logId } });
   };
   
+  const handleShotInputChange = (period: string, playerId: string, value: string) => {
+    setEditedShots(prev => ({
+        ...prev,
+        [period]: {
+            ...prev[period],
+            [playerId]: value
+        }
+    }));
+  };
+
   const handleSaveNewPenalty = (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs?: number, periodText?: string) => {
     if (!gameTimeCs || !periodText) {
        toast({ title: "Error", description: "El tiempo y el período son requeridos para añadir una penalidad desde el resumen.", variant: "destructive"});
@@ -280,8 +290,8 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
                                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={periodStats.away.penalties} onAdd={() => handleAddPenalty('away', periodText)} onDelete={(logId) => handleDeletePenalty('away', logId)} />
                                                 </div>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                     <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={periodStats.home.playerStats} editable={isEditingShots} onEdit={() => {}} />
-                                                     <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={periodStats.away.playerStats} editable={isEditingShots} onEdit={() => {}} />
+                                                     <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={periodStats.home.playerStats} editable={isEditingShots} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
+                                                     <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={periodStats.away.playerStats} editable={isEditingShots} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
                                                 </div>
                                             </AccordionContent>
                                         </AccordionItem>
