@@ -1685,7 +1685,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PLAYER_TO_TEAM': {
       const { teamId, player } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
       toastMessage = { title: "Jugador Añadido", description: `Jugador ${player.number ? `#${player.number} ` : ''}${player.name} añadido.` };
       break;
     }
@@ -1696,7 +1696,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'REMOVE_PLAYER_FROM_TEAM': {
       const { teamId, playerId } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
       break;
     }
     case 'LOAD_TEAMS_FROM_FILE': { // Legacy: no longer used directly.
@@ -1890,7 +1890,14 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     
     // Add all periods that were actually played
     const totalPeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
-    const lastPlayedPeriod = live.clock.periodDisplayOverride === 'End of Game' ? live.clock.currentPeriod : totalPeriods;
+    let lastPlayedPeriod = live.clock.currentPeriod;
+
+    if (live.clock.periodDisplayOverride === 'End of Game' || live.clock.periodDisplayOverride === 'Shootout' || live.clock.periodDisplayOverride === 'AwaitingDecision') {
+        lastPlayedPeriod = live.clock.currentPeriod;
+    } else {
+        lastPlayedPeriod = totalPeriods;
+    }
+    
     for (let i = 1; i <= lastPlayedPeriod && i <= totalPeriods; i++) {
         const periodText = getPeriodText(i, config.numberOfRegularPeriods);
         playedPeriods.add(periodText);
