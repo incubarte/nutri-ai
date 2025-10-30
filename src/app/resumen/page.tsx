@@ -46,7 +46,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
   const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
   const [addPenaltyContext, setAddPenaltyContext] = useState<{team: Team, period: string} | null>(null);
 
-  const generateSummaryData = useCallback(() => {
+  const generateSummaryData = () => {
     setSummaryData(null);
     const { live, config } = state;
     if (!live || !config) return;
@@ -56,7 +56,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
     const statsByPeriod: SummaryData['statsByPeriod'] = {};
     
     const playedPeriodTexts = new Set<string>();
-    [...gameSummary.home.goals, ...gameSummary.away.goals, ...gameSummary.home.penalties, ...gameSummary.away.penalties].forEach(event => {
+    [...(gameSummary.home.goals || []), ...(gameSummary.away.goals || []), ...(gameSummary.home.penalties || []), ...(gameSummary.away.penalties || [])].forEach(event => {
         const periodText = (event as GoalLog).periodText || (event as PenaltyLog).addPeriodText;
         if (periodText && !periodText.toLowerCase().includes('warm-up') && !periodText.toLowerCase().includes('break')) {
              playedPeriodTexts.add(periodText);
@@ -75,8 +75,8 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
         statsByPeriod[period] = { home: { goals: [], penalties: [], playerStats: [] }, away: { goals: [], penalties: [], playerStats: [] } };
         ['home', 'away'].forEach(team => {
             const teamKey = team as Team;
-            const teamGoals = gameSummary[teamKey].goals.filter(g => g.periodText === period);
-            const teamPenalties = gameSummary[teamKey].penalties.filter(p => p.addPeriodText === period);
+            const teamGoals = (gameSummary[teamKey].goals || []).filter(g => g.periodText === period);
+            const teamPenalties = (gameSummary[teamKey].penalties || []).filter(p => p.addPeriodText === period);
 
             const teamShotsInPeriod = (gameSummary[teamKey][`${teamKey}ShotsLog`] || []).filter(s => s.periodText === period);
 
@@ -91,7 +91,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
         });
     });
 
-    const selectedTournament = config.tournaments.find(t => t.id === config.selectedTournamentId);
+    const selectedTournament = (config.tournaments || []).find(t => t.id === config.selectedTournamentId);
     
     const newSummaryData: SummaryData = {
         homeTeamName: live.homeTeamName,
@@ -106,12 +106,9 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
 
     if (live.matchId) {
         dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: live.matchId, summary: gameSummary } });
-        toast({ title: "Resumen Guardado", description: "El resumen del partido se ha guardado automáticamente." });
-    } else {
-        toast({ title: "Resumen Generado", description: "Se han cargado los datos del partido actual." });
     }
-  }, [state, toast, dispatch]);
-
+  };
+  
   const handleGenerateSummaryClick = () => {
     if (summaryData) {
       setOverwriteConfirm({ onConfirm: generateSummaryData });
@@ -166,7 +163,6 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
         if(!isNaN(shotCount)) {
             const team = state.live.gameSummary.attendance.home.some(p => p.id === playerId) ? 'home' : 'away';
             
-            // Find the original shot count to see if it changed
             const originalPlayerStat = summaryData?.statsByPeriod[periodText]?.[team]?.playerStats.find(p => p.id === playerId);
             const originalShotCount = originalPlayerStat?.shots || 0;
 
@@ -180,6 +176,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
 
     if (hasChanges) {
       toast({ title: "Tiros Actualizados", description: "Los cambios se han guardado."});
+      generateSummaryData();
       setRefreshKey(k => k + 1); // Force re-calculation of aggregated stats
     } else {
       toast({ title: "Sin Cambios", description: "No se detectaron modificaciones en los tiros." });
