@@ -5,7 +5,7 @@ import React, { useMemo } from 'react';
 import { useGameState } from '@/contexts/game-state-context';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy } from 'lucide-react';
+import { Trophy, Info } from 'lucide-react';
 import type { TeamData, Team } from '@/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
@@ -101,7 +101,8 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
         return a.pj - b.pj;
       });
 
-      const rankedStats = stats.map((team, index) => {
+      const rankedStats: (TeamStats & { rank: number })[] = [];
+      stats.forEach((team, index) => {
           let rank = index + 1;
           if (index > 0) {
             const prevTeam = stats[index - 1];
@@ -111,7 +112,7 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
               rank = rankedStats[index - 1].rank;
             }
           }
-          return { ...team, rank };
+          rankedStats.push({ ...team, rank });
         });
 
       return rankedStats;
