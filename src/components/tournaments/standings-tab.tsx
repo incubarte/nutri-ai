@@ -91,18 +91,19 @@ export function StandingsTab() {
         return a.pj - b.pj;
       });
 
-      const rankedStats = stats.map((team, index) => {
+      const rankedStats: (TeamStats & { rank: number })[] = [];
+      stats.forEach((team, index) => {
           let rank = index + 1;
           if (index > 0) {
             const prevTeam = stats[index - 1];
             const diffA = team.gf - team.gc;
             const diffB = prevTeam.gf - prevTeam.gc;
+            // Check if the current team should have the same rank as the previous one
             if (team.puntos === prevTeam.puntos && team.pj === prevTeam.pj && diffA === diffB && team.gf === prevTeam.gf) {
-              // Find the rank of the previous team in the final array to handle multi-way ties
               rank = rankedStats[index - 1].rank;
             }
           }
-          return { ...team, rank };
+          rankedStats.push({ ...team, rank });
         });
 
       return {
@@ -118,7 +119,7 @@ export function StandingsTab() {
     <div className="space-y-8">
         <div className="flex items-start gap-2 p-3 text-sm border rounded-lg bg-muted/50 text-muted-foreground">
             <Info className="h-5 w-5 mt-0.5 shrink-0"/>
-            <p>El sistema de puntos es: 3 por victoria, 2 por victoria en OT/Penales, 1 por derrota en OT/Penales, y 1 por empate (si aplica).</p>
+            <p>El sistema de puntos es: 3 por victoria, 2 por victoria en OT/Penales, 1 por derrota en OT/Penales, y 1 por empate.</p>
         </div>
 
         {standingsByCat.map(({ categoryName, stats }) => (
