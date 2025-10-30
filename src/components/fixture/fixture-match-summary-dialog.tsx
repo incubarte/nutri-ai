@@ -33,11 +33,9 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (isOpen) {
-      setLocalSummary(match?.summary);
+    if (isOpen && match?.summary) {
+      setLocalSummary(match.summary);
       setIsEditing(false);
-      setEditedShots({});
-      setRefreshKey(k => k + 1);
     }
   }, [isOpen, match]);
   
@@ -117,13 +115,17 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
     let hasChanges = false;
     const newSummary = JSON.parse(JSON.stringify(localSummary));
 
-    for (const period in editedShots) {
+    for (const periodText in editedShots) {
         for (const team of ['home', 'away'] as const) {
-            (newSummary.statsByPeriod[period][team].playerStats as SummaryPlayerStats[]).forEach(pStat => {
-                const newShotCountStr = editedShots[period]?.[pStat.id];
+            const originalStats = localSummary.statsByPeriod?.[periodText]?.[team]?.playerStats || [];
+            
+            (newSummary.statsByPeriod[periodText][team].playerStats as SummaryPlayerStats[]).forEach(pStat => {
+                const newShotCountStr = editedShots[periodText]?.[pStat.id];
                 if (newShotCountStr !== undefined) {
-                    const newShotCount = parseInt(newShotCountStr, 10);
-                    if (!isNaN(newShotCount) && newShotCount !== pStat.shots) {
+                    const newShotCount = parseInt(newShotCountStr, 10) || 0;
+                    const originalShotCount = originalStats.find(p => p.id === pStat.id)?.shots || 0;
+                    
+                    if (newShotCount !== originalShotCount) {
                         pStat.shots = newShotCount;
                         hasChanges = true;
                     }

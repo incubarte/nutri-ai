@@ -64,7 +64,11 @@ export const PlayerStatsSection = ({
             if (player.attended) {
                 acc.goals += player.goals || 0;
                 acc.assists += player.assists || 0;
-                const shotsValue = editable && editedShots ? (parseInt(editedShots[player.id], 10) || 0) : (player.shots || 0);
+                
+                let shotsValue = player.shots || 0;
+                if (editable && editedShots && editedShots[player.id] !== undefined) {
+                    shotsValue = parseInt(editedShots[player.id], 10) || 0;
+                }
                 acc.shots += shotsValue;
             }
             return acc;
@@ -89,27 +93,31 @@ export const PlayerStatsSection = ({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {sortedPlayersWithStats.map(player => (
-                                <TableRow key={player.id} className={cn(!player.attended && "text-muted-foreground opacity-60")}>
-                                    <TableCell className="font-semibold">{player.number || 'S/N'}</TableCell>
-                                    <TableCell className="text-xs">{player.name}</TableCell>
-                                    <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
-                                    <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
-                                    <TableCell className="text-center">
-                                    {editable ? (
-                                        <Input
-                                            type="number"
-                                            value={editedShots?.[player.id] ?? ''}
-                                            onChange={(e) => onShotChange?.(player.id, e.target.value)}
-                                            className="h-7 w-14 text-center mx-auto"
-                                            disabled={!player.attended}
-                                        />
-                                    ) : (
-                                        <span className="font-mono">{player.shots || 0}</span>
-                                    )}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                            {sortedPlayersWithStats.map(player => {
+                                const currentShots = editable && editedShots ? (editedShots[player.id] ?? String(player.shots || 0)) : String(player.shots || 0);
+
+                                return (
+                                    <TableRow key={player.id} className={cn(!player.attended && "text-muted-foreground opacity-60")}>
+                                        <TableCell className="font-semibold">{player.number || 'S/N'}</TableCell>
+                                        <TableCell className="text-xs">{player.name}</TableCell>
+                                        <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
+                                        <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
+                                        <TableCell className="text-center">
+                                        {editable ? (
+                                            <Input
+                                                type="number"
+                                                value={currentShots}
+                                                onChange={(e) => onShotChange?.(player.id, e.target.value)}
+                                                className="h-7 w-14 text-center mx-auto"
+                                                disabled={!player.attended}
+                                            />
+                                        ) : (
+                                            <span className="font-mono">{player.shots || 0}</span>
+                                        )}
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            )}
                         </TableBody>
                         <UiTableFooter>
                             <TableRow>

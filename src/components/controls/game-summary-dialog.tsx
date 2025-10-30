@@ -114,21 +114,22 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
   
   const handleSaveClick = () => {
     let changesMade = false;
-    allPeriodTexts.forEach(periodText => {
+    for (const periodText of allPeriodTexts) {
         for (const team of ['home', 'away'] as const) {
-            const playerStats = getPlayerStatsForPeriod(periodText, team);
-            playerStats.forEach(pStat => {
+            const originalPlayerStats = getPlayerStatsForPeriod(periodText, team);
+            originalPlayerStats.forEach(pStat => {
                 const newShotCountStr = editedShots[periodText]?.[pStat.id];
                 if (newShotCountStr !== undefined) {
-                    const newShotCount = parseInt(newShotCountStr, 10);
-                    if (!isNaN(newShotCount) && newShotCount !== pStat.shots) {
+                    const newShotCount = parseInt(newShotCountStr, 10) || 0; // Default to 0 if NaN
+                    const originalShots = pStat.shots || 0;
+                    if (newShotCount !== originalShots) {
                          dispatch({ type: 'SET_PLAYER_SHOTS', payload: { team, playerId: pStat.id, periodText, shotCount: newShotCount }});
                          changesMade = true;
                     }
                 }
             });
         }
-    });
+    }
 
     if (changesMade) {
         toast({ title: "Tiros Actualizados", description: "Se han guardado los cambios en los tiros por período." });
