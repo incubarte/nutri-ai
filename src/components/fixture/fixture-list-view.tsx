@@ -176,13 +176,11 @@ export function FixtureListView() {
               sortedMatches.map(match => {
                 const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
                 const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
-                const hasSummary = !!match.summary;
-                const score = hasSummary ? `${match.summary.home.goals.length} - ${match.summary.away.goals.length}` : '-';
-                const wentToOTOrShootout = hasSummary && (
-                    (match.summary.statsByPeriod && Object.keys(match.summary.statsByPeriod).some(p => p.startsWith('OT'))) ||
-                    (match.summary.shootout && (match.summary.shootout.homeAttempts.length > 0 || match.summary.shootout.awayAttempts.length > 0))
-                );
-
+                
+                const score = (match.homeScore !== undefined && match.awayScore !== undefined)
+                    ? `${match.homeScore} - ${match.awayScore}`
+                    : '-';
+                
                 return (
                   <TableRow key={match.id}>
                     <TableCell>{format(new Date(match.date), "dd/MM/yy HH:mm", { locale: es })}</TableCell>
@@ -190,10 +188,10 @@ export function FixtureListView() {
                     <TableCell>{homeTeam?.name || 'Equipo no encontrado'}</TableCell>
                     <TableCell>{awayTeam?.name || 'Equipo no encontrado'}</TableCell>
                     <TableCell className="text-center font-mono font-bold">{score}</TableCell>
-                    <TableCell className="text-center">{wentToOTOrShootout && <CheckIcon className="h-4 w-4 mx-auto text-green-500"/>}</TableCell>
+                    <TableCell className="text-center">{match.isOT && <CheckIcon className="h-4 w-4 mx-auto text-green-500"/>}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-1 justify-end">
-                        {hasSummary && (
+                        {match.summary && (
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMatchToShowSummary(match)}>
                                 <FileText className="h-4 w-4 text-blue-400" />
                             </Button>

@@ -47,6 +47,9 @@ export interface MatchData {
   awayTeamId: string;
   playersPerTeam: number;
   summary?: GameSummary;
+  homeScore?: number;
+  awayScore?: number;
+  isOT?: boolean;
 }
 
 
@@ -206,6 +209,7 @@ export interface GameSummary {
   };
   shootout?: ShootoutState;
   statsByPeriod?: Record<string, PeriodStats>;
+  isOT?: boolean;
 }
 
 export interface TunnelState {
@@ -452,7 +456,7 @@ export type GameAction =
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } }
-  | { type: 'SET_ACTIVE_MATCH'; payload: { matchId: string | null } };
+  | { type: 'SET_PLAYER_SHOTS', payload: { team: Team; playerId: string; periodText: string; shotCount: number } };
 
 
 export interface GameState {
