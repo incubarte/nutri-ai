@@ -1814,41 +1814,19 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     const playedPeriods = new Set<string>();
 
     const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
-    let lastPlayedPeriod = live.clock.currentPeriod;
-    if (live.clock.periodDisplayOverride === 'Break' || live.clock.periodDisplayOverride === 'Pre-OT Break') {
-        // If we are in a break, the last *completed* period is the current one.
-        lastPlayedPeriod = live.clock.currentPeriod;
-    } else if (live.clock.periodDisplayOverride === 'End of Game' || live.clock.periodDisplayOverride === 'AwaitingDecision' || live.clock.periodDisplayOverride === 'Shootout') {
-        // Game has ended, so all configured periods were potentially played.
-        lastPlayedPeriod = totalGamePeriods;
-    } else if(live.clock.periodDisplayOverride === null){
-        // We are in a running period.
-        lastPlayedPeriod = live.clock.currentPeriod;
+
+    // Determine the last period that was actually played or is in progress
+    let lastPlayedPeriodNumber = 0;
+    if (live.clock.periodDisplayOverride === 'End of Game' || live.clock.periodDisplayOverride === 'AwaitingDecision' || live.clock.periodDisplayOverride === 'Shootout') {
+      lastPlayedPeriodNumber = live.clock.currentPeriod;
+    } else {
+      lastPlayedPeriodNumber = live.clock.currentPeriod;
     }
     
-    // Iterate from period 1 up to the last played period to ensure all are included
-    for (let i = 1; i <= lastPlayedPeriod; i++) {
-        if (i > totalGamePeriods && !live.gameSummary.home.goals.some(g => getPeriodText(i, config.numberOfRegularPeriods) === g.periodText) && !live.gameSummary.away.goals.some(g => getPeriodText(i, config.numberOfRegularPeriods) === g.periodText)) {
-            continue; // Skip extra OTs that were not played
-        }
-        const periodText = getPeriodText(i, config.numberOfRegularPeriods);
-        playedPeriods.add(periodText);
+    // Add all periods from 1 up to the last played one
+    for (let i = 1; i <= lastPlayedPeriodNumber; i++) {
+        playedPeriods.add(getPeriodText(i, config.numberOfRegularPeriods));
     }
-    
-    const allEvents = [
-        ...summary.home.goals.map(e => ({ ...e, type: 'goal' as const, team: 'home' as const })),
-        ...summary.away.goals.map(e => ({ ...e, type: 'goal' as const, team: 'away' as const })),
-        ...summary.home.penalties.map(e => ({ ...e, type: 'penalty' as const, team: 'home' as const })),
-        ...summary.away.penalties.map(e => ({ ...e, type: 'penalty' as const, team: 'away' as const })),
-        ...(summary.home.homeShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'home' as const })),
-        ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'away' as const })),
-    ];
-    
-    // Also add periods from events, in case game ends abruptly in an unconfigured OT
-    allEvents.forEach(event => {
-        const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
-        if (periodText && !periodText.toLowerCase().includes('warm-up')) playedPeriods.add(periodText);
-    });
 
     if (live.shootout.isActive || live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0) {
         playedPeriods.add('SHOOTOUT');
@@ -1862,6 +1840,15 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
             };
         }
     });
+
+    const allEvents = [
+        ...summary.home.goals.map(e => ({ ...e, type: 'goal' as const, team: 'home' as const })),
+        ...summary.away.goals.map(e => ({ ...e, type: 'goal' as const, team: 'away' as const })),
+        ...summary.home.penalties.map(e => ({ ...e, type: 'penalty' as const, team: 'home' as const })),
+        ...summary.away.penalties.map(e => ({ ...e, type: 'penalty' as const, team: 'away' as const })),
+        ...(summary.home.homeShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'home' as const })),
+        ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'away' as const })),
+    ];
 
     allEvents.forEach(event => {
         const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
@@ -1916,8 +1903,7 @@ const GameStateObserver = () => {
     const { state, dispatch } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
-    const prevPeriodDisplayOverrideRef = useRef<PeriodDisplayOverrideType>();
-
+    
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
             toast(state._lastToastMessage);
@@ -1925,27 +1911,6 @@ const GameStateObserver = () => {
         }
     }, [state._lastToastMessage, toast]);
     
-    useEffect(() => {
-        const currentOverride = state.live?.clock?.periodDisplayOverride;
-
-        if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && currentOverride === 'End of Game' && state.live.matchId) {
-             const summary = generateSummaryData(state);
-            if (summary) {
-                dispatch({
-                    type: 'SAVE_MATCH_SUMMARY',
-                    payload: { matchId: state.live.matchId, summary }
-                });
-                toast({
-                    title: "Resumen Guardado",
-                    description: "El resumen del partido finalizado se ha guardado automáticamente."
-                });
-            }
-        }
-
-        prevPeriodDisplayOverrideRef.current = currentOverride;
-    }, [state.live?.clock?.periodDisplayOverride, state.live?.matchId, state, dispatch, toast]);
-
-
     return null;
 }
 
@@ -2174,6 +2139,7 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
 
 
 
