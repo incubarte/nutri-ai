@@ -1,5 +1,4 @@
 
-
 export interface PlayerStats {
   name: string;
   shots: number;
@@ -383,7 +382,6 @@ export type GameAction =
   | { type: 'EDIT_GOAL'; payload: { goalId: string; updates: Partial<GoalLog> } }
   | { type: 'DELETE_GOAL'; payload: { goalId: string } }
   | { type: 'ADD_PLAYER_SHOT'; payload: { team: Team; playerNumber: string } }
-  | { type: 'SET_PLAYER_SHOTS', payload: { team: Team; playerId: string; periodText: string; shotCount: number } }
   | { type: 'FINISH_GAME_WITH_OT_GOAL'; payload: Omit<GoalLog, 'id'> }
   | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; penaltyTypeId: string; }, addGameTime?: number, addPeriodText?: string } }
   | { type: 'REMOVE_PENALTY'; payload: { team: Team; penaltyId: string } }

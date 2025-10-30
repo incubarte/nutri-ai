@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -763,51 +762,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'SET_PLAYER_SHOTS': {
-        const { team, playerId, periodText, shotCount } = action.payload;
-        const { live } = state;
-        const { gameSummary } = live;
-
-        const attendedPlayer = gameSummary.attendance[team].find(p => p.id === playerId);
-        if (!attendedPlayer) break;
-
-        const shotsLogKey = `${team}ShotsLog` as const;
-        const otherShots = (gameSummary[team]?.[shotsLogKey] || []).filter((shot: ShotLog) => shot.playerId !== playerId || shot.periodText !== periodText);
-        
-        const newShotsForPeriod: ShotLog[] = Array.from({ length: shotCount }, (_, i) => ({
-            id: safeUUID(),
-            team,
-            timestamp: Date.now() + i,
-            gameTime: 0,
-            periodText,
-            playerId: attendedPlayer.id,
-            playerNumber: attendedPlayer.number,
-            playerName: attendedPlayer.name
-        }));
-
-        const newGameSummary = JSON.parse(JSON.stringify(gameSummary));
-        newGameSummary[team][shotsLogKey] = [...otherShots, ...newShotsForPeriod];
-        
-        const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
-
-        newState = {
-            ...state,
-            live: {
-                ...live,
-                score: {
-                    ...live.score,
-                    homeShots: homeTotalShots,
-                    awayShots: awayTotalShots
-                },
-                gameSummary: {
-                    ...newGameSummary,
-                    home: { ...newGameSummary.home, playerStats: homePlayerStats },
-                    away: { ...newGameSummary.away, playerStats: awayPlayerStats },
-                }
-            }
-        };
-        // This is a significant change, trigger sync
-        newState._lastActionOriginator = TAB_ID;
-        break;
+      newState = { ...state };
+      newState._lastActionOriginator = TAB_ID; // Mark as significant change
+      break;
     }
     case 'FINISH_GAME_WITH_OT_GOAL': {
       const newGoal: GoalLog = { ...action.payload, id: safeUUID() };

@@ -262,14 +262,7 @@ export default function ResumenPage() {
 };
 
   const handleStatsChange = (team: Team, newStats: SummaryPlayerStats[], period: string) => {
-    setSummaryData(prev => {
-        if (!prev) return null;
-        const newSummary: SummaryData = JSON.parse(JSON.stringify(prev));
-        if (newSummary.statsByPeriod[period]) {
-            newSummary.statsByPeriod[period][team].playerStats = newStats;
-        }
-        return newSummary;
-    });
+    // This function will now be a NO-OP as editing is handled inside the Fixture Dialog
   };
 
   const allPeriodTexts = useMemo(() => {
@@ -340,8 +333,8 @@ export default function ResumenPage() {
                         <ScrollArea className="h-[calc(100vh-22rem)]">
                             <div className="space-y-6 pr-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <GoalsSection team="home" teamName={summaryData.homeTeamName} goals={homeAggregatedStats.goals} />
-                                    <GoalsSection team="away" teamName={summaryData.awayTeamName} goals={awayAggregatedStats.goals} />
+                                    <GoalsSection teamName={summaryData.homeTeamName} goals={homeAggregatedStats.goals} />
+                                    <GoalsSection teamName={summaryData.awayTeamName} goals={awayAggregatedStats.goals} />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                      <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={homeAggregatedStats.penalties} />
@@ -355,8 +348,8 @@ export default function ResumenPage() {
                                     </div>
                                 )}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <PlayerStatsSection team="home" teamName={summaryData.homeTeamName} playerStats={homeAggregatedStats.playerStats} attendance={summaryData.attendance.home} editable={false} />
-                                    <PlayerStatsSection team="away" teamName={summaryData.awayTeamName} playerStats={awayAggregatedStats.playerStats} attendance={summaryData.attendance.away} editable={false} />
+                                    <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={homeAggregatedStats.playerStats} />
+                                    <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={awayAggregatedStats.playerStats} />
                                 </div>
                             </div>
                         </ScrollArea>
@@ -392,22 +385,12 @@ export default function ResumenPage() {
                                                 <div className="space-y-8 pl-2">
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                         <PlayerStatsSection 
-                                                            team="home" 
                                                             teamName={summaryData.homeTeamName} 
-                                                            playerStats={periodStats.home.playerStats} 
-                                                            attendance={summaryData.attendance.home}
-                                                            editable={true} 
-                                                            onStatsChange={handleStatsChange}
-                                                            periodText={periodText}
+                                                            playerStats={periodStats.home.playerStats}
                                                         />
                                                         <PlayerStatsSection 
-                                                            team="away" 
                                                             teamName={summaryData.awayTeamName} 
-                                                            playerStats={periodStats.away.playerStats} 
-                                                            attendance={summaryData.attendance.away}
-                                                            editable={true} 
-                                                            onStatsChange={handleStatsChange}
-                                                            periodText={periodText}
+                                                            playerStats={periodStats.away.playerStats}
                                                         />
                                                     </div>
                                                 </div>

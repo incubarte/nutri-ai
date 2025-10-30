@@ -1,18 +1,20 @@
 
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X } from "lucide-react";
-import type { MatchData, Tournament } from "@/types";
-import { getCategoryNameById } from "@/contexts/game-state-context";
+import { X, Edit3, Check, XCircle } from "lucide-react";
+import type { MatchData, Tournament, GameSummary, Team, SummaryPlayerStats, AttendedPlayerInfo } from "@/types";
+import { useGameState, getCategoryNameById } from "@/contexts/game-state-context";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { GoalsSection } from "../summary/goals-section";
 import { PenaltiesSection } from "../summary/penalties-section";
 import { PlayerStatsSection } from "../summary/player-stats-section";
 import { ShootoutSection } from "../summary/shootout-section";
+import { useToast } from "@/hooks/use-toast";
+import { Input } from "../ui/input";
 
 interface FixtureMatchSummaryDialogProps {
   isOpen: boolean;
@@ -22,79 +24,137 @@ interface FixtureMatchSummaryDialogProps {
 }
 
 export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournament }: FixtureMatchSummaryDialogProps) {
-  const [refreshKey, setRefreshKey] = useState(0);
+  const { dispatch } = useGameState();
+  const { toast } = useToast();
+  
+  const [localSummary, setLocalSummary] = useState<GameSummary | undefined>(match?.summary);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedShots, setEditedShots] = useState<Record<string, Record<string, string>>>({}); // { [period]: { [playerId]: count } }
 
+  useEffect(() => {
+    if (isOpen) {
+      setLocalSummary(match?.summary);
+      setIsEditing(false);
+      setEditedShots({});
+    }
+  }, [isOpen, match]);
+  
   const homeTeam = useMemo(() => tournament?.teams.find(t => t.id === match?.homeTeamId), [tournament, match]);
   const awayTeam = useMemo(() => tournament?.teams.find(t => t.id === match?.awayTeamId), [tournament, match]);
   const categoryName = useMemo(() => getCategoryNameById(match?.categoryId || '', tournament?.categories), [match, tournament]);
 
   const allPeriodTexts = useMemo(() => {
-    if (!match?.summary?.statsByPeriod) return [];
-    const periods = Object.keys(match.summary.statsByPeriod);
-    
-    // This is a simplified sort; a more complex one might be needed if OT periods are not named sequentially
+    if (!localSummary?.statsByPeriod) return [];
+    const periods = Object.keys(localSummary.statsByPeriod);
     return periods.sort((a, b) => {
-        if (a.startsWith('OT') && !b.startsWith('OT')) return 1;
-        if (!a.startsWith('OT') && b.startsWith('OT')) return -1;
-        return a.localeCompare(b);
+      if (a.startsWith('OT') && !b.startsWith('OT')) return 1;
+      if (!a.startsWith('OT') && b.startsWith('OT')) return -1;
+      return a.localeCompare(b);
     });
-  }, [match?.summary?.statsByPeriod]);
+  }, [localSummary]);
 
-  // Aggregate stats need to react to changes.
   const aggregatedStats = useMemo(() => {
     const calculateTotals = (team: 'home' | 'away') => {
-      const allGoals = match?.summary?.[team]?.goals || [];
-      const allPenalties = match?.summary?.[team]?.penalties || [];
-      
-      const playerStatsMap = new Map<string, { shots: number; goals: number; assists: number }>();
-      
-      (match?.summary?.attendance?.[team] || []).forEach(p => {
-        playerStatsMap.set(p.id, { shots: 0, goals: 0, assists: 0 });
-      });
+        if (!localSummary) return { goals: [], penalties: [], playerStats: [] };
+        
+        const allGoals = localSummary[team]?.goals || [];
+        const allPenalties = localSummary[team]?.penalties || [];
+        
+        const playerStatsMap = new Map<string, SummaryPlayerStats>();
+        
+        (localSummary.attendance?.[team] || []).forEach(p => {
+            playerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 });
+        });
 
-      Object.values(match?.summary?.statsByPeriod || {}).forEach(period => {
-          (period[team]?.playerStats || []).forEach(pStat => {
-              if (playerStatsMap.has(pStat.id)) {
-                  const current = playerStatsMap.get(pStat.id)!;
-                  current.shots += pStat.shots || 0;
-                  current.goals += pStat.goals || 0;
-                  current.assists += pStat.assists || 0;
-              }
-          });
-      });
+        Object.values(localSummary.statsByPeriod || {}).forEach(period => {
+            (period[team]?.playerStats || []).forEach(pStat => {
+                const player = playerStatsMap.get(pStat.id);
+                if (player) {
+                    player.goals += pStat.goals || 0;
+                    player.assists += pStat.assists || 0;
+                    player.shots += pStat.shots || 0;
+                }
+            });
+        });
 
-      const finalPlayerStats = (match?.summary?.attendance?.[team] || []).map(p => {
-          const stats = playerStatsMap.get(p.id);
-          return { ...p, ...stats };
-      });
-
-      return {
-          goals: allGoals,
-          penalties: allPenalties,
-          playerStats: finalPlayerStats
-      };
+        return {
+            goals: allGoals,
+            penalties: allPenalties,
+            playerStats: Array.from(playerStatsMap.values()),
+        };
     };
 
     return {
       home: calculateTotals('home'),
       away: calculateTotals('away'),
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [match?.summary, refreshKey]);
+  }, [localSummary]);
 
-
-  if (!match || !tournament) return null;
+  const handleEditClick = () => {
+    if (!localSummary?.statsByPeriod) return;
+    const initialShots: Record<string, Record<string, string>> = {};
+    for (const period in localSummary.statsByPeriod) {
+        initialShots[period] = {};
+        for(const team of ['home', 'away'] as const) {
+            localSummary.statsByPeriod[period][team].playerStats.forEach(p => {
+                initialShots[period][p.id] = String(p.shots || 0);
+            });
+        }
+    }
+    setEditedShots(initialShots);
+    setIsEditing(true);
+  };
   
-  const homeGoals = aggregatedStats.home.goals;
-  const awayGoals = aggregatedStats.away.goals;
-  const homePenalties = aggregatedStats.home.penalties;
-  const awayPenalties = aggregatedStats.away.penalties;
-  const homePlayerStats = aggregatedStats.home.playerStats;
-  const awayPlayerStats = aggregatedStats.away.playerStats;
-  const homeAttendance = match.summary?.attendance?.home || [];
-  const awayAttendance = match.summary?.attendance?.away || [];
-  const shootout = match.summary?.shootout;
+  const handleCancelClick = () => setIsEditing(false);
 
+  const handleSaveClick = () => {
+    if (!localSummary || !match || !tournament) return;
+    
+    let hasChanges = false;
+    const newSummary = JSON.parse(JSON.stringify(localSummary));
+
+    for (const period in editedShots) {
+        for (const team of ['home', 'away'] as const) {
+            (newSummary.statsByPeriod[period][team].playerStats as SummaryPlayerStats[]).forEach(pStat => {
+                const newShotCountStr = editedShots[period]?.[pStat.id];
+                if (newShotCountStr !== undefined) {
+                    const newShotCount = parseInt(newShotCountStr, 10);
+                    if (!isNaN(newShotCount) && newShotCount !== pStat.shots) {
+                        pStat.shots = newShotCount;
+                        hasChanges = true;
+                    }
+                }
+            });
+        }
+    }
+
+    if(hasChanges) {
+        dispatch({
+            type: 'SAVE_MATCH_SUMMARY',
+            payload: { matchId: match.id, summary: newSummary }
+        });
+        setLocalSummary(newSummary);
+        toast({ title: "Resumen Guardado", description: "Los cambios en los tiros han sido guardados."});
+    } else {
+        toast({ title: "Sin Cambios", description: "No se detectaron modificaciones en los tiros."});
+    }
+
+    setIsEditing(false);
+  };
+
+  const handleShotInputChange = (period: string, playerId: string, value: string) => {
+    setEditedShots(prev => ({
+        ...prev,
+        [period]: {
+            ...prev[period],
+            [playerId]: value,
+        }
+    }));
+  };
+
+
+  if (!match || !tournament || !localSummary) return null;
+  
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
@@ -106,67 +166,59 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
         </DialogHeader>
 
         <div className="grid grid-cols-2 text-center my-2">
-            <h3 className="text-2xl font-bold text-primary">{homeTeam?.name} - <span className="text-accent">{homeGoals.length}</span></h3>
-            <h3 className="text-2xl font-bold text-primary">{awayTeam?.name} - <span className="text-accent">{awayGoals.length}</span></h3>
+            <h3 className="text-2xl font-bold text-primary">{homeTeam?.name} - <span className="text-accent">{aggregatedStats.home.goals.length}</span></h3>
+            <h3 className="text-2xl font-bold text-primary">{awayTeam?.name} - <span className="text-accent">{aggregatedStats.away.goals.length}</span></h3>
         </div>
 
         <ScrollArea className="flex-grow my-2 border-t pt-4 pr-6 -mr-6">
           <div className="space-y-6">
-              {/* Totales */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-4">
-                      <GoalsSection teamName={homeTeam?.name || ''} goals={homeGoals} />
-                      <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={homePenalties} />
-                      <PlayerStatsSection team="home" teamName={homeTeam?.name || ''} playerStats={homePlayerStats} attendance={homeAttendance} />
+                      <GoalsSection teamName={homeTeam?.name || ''} goals={aggregatedStats.home.goals} />
+                      <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={aggregatedStats.home.penalties} />
+                      <PlayerStatsSection teamName={homeTeam?.name || ''} playerStats={aggregatedStats.home.playerStats} />
                   </div>
                   <div className="space-y-4">
-                       <GoalsSection teamName={awayTeam?.name || ''} goals={awayGoals} />
-                       <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={awayPenalties} />
-                       <PlayerStatsSection team="away" teamName={awayTeam?.name || ''} playerStats={awayPlayerStats} attendance={awayAttendance} />
+                       <GoalsSection teamName={awayTeam?.name || ''} goals={aggregatedStats.away.goals} />
+                       <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={aggregatedStats.away.penalties} />
+                       <PlayerStatsSection teamName={awayTeam?.name || ''} playerStats={aggregatedStats.away.playerStats} />
                   </div>
               </div>
               
-               {shootout && (shootout.homeAttempts.length > 0 || shootout.awayAttempts.length > 0) && (
+               {localSummary.shootout && (localSummary.shootout.homeAttempts.length > 0 || localSummary.shootout.awayAttempts.length > 0) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <ShootoutSection teamName={homeTeam?.name || ''} attempts={shootout.homeAttempts} />
-                        <ShootoutSection teamName={awayTeam?.name || ''} attempts={shootout.awayAttempts} />
+                        <ShootoutSection teamName={homeTeam?.name || ''} attempts={localSummary.shootout.homeAttempts} />
+                        <ShootoutSection teamName={awayTeam?.name || ''} attempts={localSummary.shootout.awayAttempts} />
                     </div>
                 )}
               
-              {/* Desglose por período */}
               {allPeriodTexts.length > 0 && (
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="periods">
-                        <AccordionTrigger className="text-xl">Detalle por Período</AccordionTrigger>
+                        <AccordionTrigger className="text-xl">
+                             <div className="flex items-center justify-between w-full pr-2">
+                                <span>Detalle por Período</span>
+                                {isEditing ? (
+                                    <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveClick}><Check className="h-5 w-5" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><XCircle className="h-5 w-5" /></Button>
+                                    </div>
+                                ) : (
+                                    <Button variant="outline" size="sm" onClick={e => {e.stopPropagation(); handleEditClick();}}>
+                                        <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
+                                    </Button>
+                                )}
+                            </div>
+                        </AccordionTrigger>
                         <AccordionContent className="space-y-6 pl-2">
                             {allPeriodTexts.map(periodText => {
-                                const periodStats = match.summary!.statsByPeriod![periodText];
+                                const periodStats = localSummary.statsByPeriod![periodText];
                                 return (
                                     <div key={periodText} className="space-y-4 border-l-2 pl-4 ml-2">
                                         <h3 className="text-lg font-semibold">{periodText}</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-4">
-                                                <PlayerStatsSection 
-                                                    team="home" 
-                                                    teamName={homeTeam?.name || ''} 
-                                                    playerStats={periodStats.home.playerStats} 
-                                                    attendance={homeAttendance} 
-                                                    editable={true} 
-                                                    periodText={periodText}
-                                                    onEdit={() => setRefreshKey(k => k + 1)} 
-                                                />
-                                            </div>
-                                            <div className="space-y-4">
-                                                <PlayerStatsSection 
-                                                    team="away" 
-                                                    teamName={awayTeam?.name || ''} 
-                                                    playerStats={periodStats.away.playerStats} 
-                                                    attendance={awayAttendance} 
-                                                    editable={true} 
-                                                    periodText={periodText} 
-                                                    onEdit={() => setRefreshKey(k => k + 1)}
-                                                />
-                                            </div>
+                                            <PlayerStatsSection teamName={homeTeam?.name || ''} playerStats={periodStats.home.playerStats} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
+                                            <PlayerStatsSection teamName={awayTeam?.name || ''} playerStats={periodStats.away.playerStats} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
                                         </div>
                                     </div>
                                 )
