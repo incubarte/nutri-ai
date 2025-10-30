@@ -1,85 +1,63 @@
 {
   "score": {
-    "home": 6,
+    "home": 4,
     "away": 1,
     "homeGoals": [
       {
         "team": "home",
-        "timestamp": 1761786745460,
-        "gameTime": 28856,
-        "periodText": "Warm-up",
-        "scorer": {
-          "playerNumber": "2",
-          "playerName": "BOIX CRITIAN"
-        },
-        "id": "285a05af-6d18-43a5-be02-cfd6be304912"
-      },
-      {
-        "team": "home",
-        "timestamp": 1761786747698,
-        "gameTime": 28641,
-        "periodText": "Warm-up",
-        "scorer": {
-          "playerNumber": "2",
-          "playerName": "BOIX CRITIAN"
-        },
-        "id": "c7a1c73f-00b2-4dee-b6cc-696b6d9d416c"
-      },
-      {
-        "team": "home",
-        "timestamp": 1761786749474,
-        "gameTime": 28448,
-        "periodText": "Warm-up",
-        "scorer": {
-          "playerNumber": "2",
-          "playerName": "BOIX CRITIAN"
-        },
-        "id": "3e281f93-df6e-4740-82f5-e9869557e470"
-      },
-      {
-        "team": "home",
-        "timestamp": 1761786752600,
-        "gameTime": 28143,
-        "periodText": "Warm-up",
-        "scorer": {
-          "playerNumber": "7",
-          "playerName": "BOIX BAUTI"
-        },
-        "id": "4817acdc-39c6-4492-bc0b-fdd6d80d21db"
-      },
-      {
-        "team": "home",
-        "timestamp": 1761786857244,
-        "gameTime": 0,
-        "periodText": "FINALIZADO",
-        "scorer": {
-          "playerNumber": "6",
-          "playerName": "MARINELLI EDUARDO"
-        },
-        "id": "0c1dc94c-a6f6-48dd-bbaf-19a97ad9f7d2"
-      },
-      {
-        "team": "home",
-        "timestamp": 1761787121728,
+        "timestamp": 1761788332087,
         "gameTime": 120000,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "2",
+          "playerName": "BOIX CRITIAN"
+        },
+        "id": "e65167f4-5e79-4e5e-8af7-f407c11fa336"
+      },
+      {
+        "team": "home",
+        "timestamp": 1761788334423,
+        "gameTime": 120000,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "2",
+          "playerName": "BOIX CRITIAN"
+        },
+        "id": "f742f841-b14d-4ab0-b643-4330082e5c97"
+      },
+      {
+        "team": "home",
+        "timestamp": 1761788338828,
+        "gameTime": 119674,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "2",
+          "playerName": "BOIX CRITIAN"
+        },
+        "id": "3c98a7b6-a011-4ed0-ae5f-85b1bb8d9cde"
+      },
+      {
+        "team": "home",
+        "timestamp": 1761788375210,
+        "gameTime": 119802,
         "periodText": "2ND",
         "scorer": {
-          "playerNumber": "6",
-          "playerName": "MARINELLI EDUARDO"
+          "playerNumber": "4"
         },
-        "id": "767a2353-1090-4ac7-afde-3cfdbd0fb93b"
+        "id": "5303c2b9-e007-4c1d-94aa-14565017051e"
       }
     ],
     "awayGoals": [
       {
         "team": "away",
-        "timestamp": 1761786739677,
-        "gameTime": 29428,
-        "periodText": "Warm-up",
+        "timestamp": 1761788353149,
+        "gameTime": 118241,
+        "periodText": "1ST",
         "scorer": {
-          "playerNumber": "4"
+          "playerNumber": "11",
+          "playerName": "ARTUROVICH NARULIN ROMAN"
         },
-        "id": "0e85c1f4-9fc6-4180-a2d1-b02d16991f47"
+        "id": "18248af1-e797-4c87-a660-f3f0653f6ef1"
       }
     ],
     "homeShots": 0,
@@ -90,15 +68,15 @@
     "away": []
   },
   "clock": {
-    "currentTime": 120000,
+    "currentTime": 0,
     "currentPeriod": 2,
     "isClockRunning": false,
-    "periodDisplayOverride": null,
+    "periodDisplayOverride": "End of Game",
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 120000,
-    "_liveAbsoluteElapsedTimeCs": 120000
+    "absoluteElapsedTimeCs": 240000,
+    "_liveAbsoluteElapsedTimeCs": 240000
   },
   "shootout": {
     "isActive": false,
@@ -114,107 +92,65 @@
       "goals": [
         {
           "team": "home",
-          "timestamp": 1761786745460,
-          "gameTime": 28856,
-          "periodText": "Warm-up",
-          "scorer": {
-            "playerNumber": "2",
-            "playerName": "BOIX CRITIAN"
-          },
-          "id": "285a05af-6d18-43a5-be02-cfd6be304912"
-        },
-        {
-          "team": "home",
-          "timestamp": 1761786747698,
-          "gameTime": 28641,
-          "periodText": "Warm-up",
-          "scorer": {
-            "playerNumber": "2",
-            "playerName": "BOIX CRITIAN"
-          },
-          "id": "c7a1c73f-00b2-4dee-b6cc-696b6d9d416c"
-        },
-        {
-          "team": "home",
-          "timestamp": 1761786749474,
-          "gameTime": 28448,
-          "periodText": "Warm-up",
-          "scorer": {
-            "playerNumber": "2",
-            "playerName": "BOIX CRITIAN"
-          },
-          "id": "3e281f93-df6e-4740-82f5-e9869557e470"
-        },
-        {
-          "team": "home",
-          "timestamp": 1761786752600,
-          "gameTime": 28143,
-          "periodText": "Warm-up",
-          "scorer": {
-            "playerNumber": "7",
-            "playerName": "BOIX BAUTI"
-          },
-          "id": "4817acdc-39c6-4492-bc0b-fdd6d80d21db"
-        },
-        {
-          "team": "home",
-          "timestamp": 1761786857244,
-          "gameTime": 0,
-          "periodText": "FINALIZADO",
-          "scorer": {
-            "playerNumber": "6",
-            "playerName": "MARINELLI EDUARDO"
-          },
-          "id": "0c1dc94c-a6f6-48dd-bbaf-19a97ad9f7d2"
-        },
-        {
-          "team": "home",
-          "timestamp": 1761787121728,
+          "timestamp": 1761788332087,
           "gameTime": 120000,
+          "periodText": "1ST",
+          "scorer": {
+            "playerNumber": "2",
+            "playerName": "BOIX CRITIAN"
+          },
+          "id": "e65167f4-5e79-4e5e-8af7-f407c11fa336"
+        },
+        {
+          "team": "home",
+          "timestamp": 1761788334423,
+          "gameTime": 120000,
+          "periodText": "1ST",
+          "scorer": {
+            "playerNumber": "2",
+            "playerName": "BOIX CRITIAN"
+          },
+          "id": "f742f841-b14d-4ab0-b643-4330082e5c97"
+        },
+        {
+          "team": "home",
+          "timestamp": 1761788338828,
+          "gameTime": 119674,
+          "periodText": "1ST",
+          "scorer": {
+            "playerNumber": "2",
+            "playerName": "BOIX CRITIAN"
+          },
+          "id": "3c98a7b6-a011-4ed0-ae5f-85b1bb8d9cde"
+        },
+        {
+          "team": "home",
+          "timestamp": 1761788375210,
+          "gameTime": 119802,
           "periodText": "2ND",
           "scorer": {
-            "playerNumber": "6",
-            "playerName": "MARINELLI EDUARDO"
+            "playerNumber": "4"
           },
-          "id": "767a2353-1090-4ac7-afde-3cfdbd0fb93b"
+          "id": "5303c2b9-e007-4c1d-94aa-14565017051e"
         }
       ],
       "penalties": [
         {
-          "id": "83f7181b-6a75-47a7-8330-0b5f30af633c",
+          "id": "e7d283a2-acdc-43e8-8ee5-4f624894cf1f",
           "team": "home",
-          "playerNumber": "23",
-          "playerName": "BOIX. CONTU",
+          "playerNumber": "77",
+          "playerName": "CLARET AGUSTIN",
           "penaltyName": "Menor",
           "initialDuration": 120,
           "reducesPlayerCount": true,
           "clearsOnGoal": true,
           "isBenchPenalty": false,
-          "addTimestamp": 1761786755550,
-          "addGameTime": 27859,
-          "addPeriodText": "Warm-up",
-          "endTimestamp": 1761786769805,
-          "endGameTime": 108000,
-          "endPeriodText": "1ST",
-          "endReason": "completed",
-          "timeServed": 120
-        },
-        {
-          "id": "b4e241f2-5b5a-43cc-8535-5f8d53480f8f",
-          "team": "home",
-          "playerNumber": "7",
-          "playerName": "BOIX BAUTI",
-          "penaltyName": "Menor",
-          "initialDuration": 120,
-          "reducesPlayerCount": true,
-          "clearsOnGoal": true,
-          "isBenchPenalty": false,
-          "addTimestamp": 1761786780082,
-          "addGameTime": 9451,
+          "addTimestamp": 1761788356406,
+          "addGameTime": 117917,
           "addPeriodText": "1ST",
-          "endTimestamp": 1761786787723,
-          "endGameTime": 117430,
-          "endPeriodText": "2ND",
+          "endTimestamp": 1761788363453,
+          "endGameTime": 105894,
+          "endPeriodText": "1ST",
           "endReason": "completed",
           "timeServed": 120
         }
@@ -241,7 +177,7 @@
           "name": "MARINELLI EDUARDO",
           "number": "6",
           "shots": 0,
-          "goals": 2,
+          "goals": 0,
           "assists": 0
         },
         {
@@ -281,7 +217,7 @@
           "name": "BOIX BAUTI",
           "number": "7",
           "shots": 0,
-          "goals": 1,
+          "goals": 0,
           "assists": 0
         },
         {
@@ -331,13 +267,14 @@
       "goals": [
         {
           "team": "away",
-          "timestamp": 1761786739677,
-          "gameTime": 29428,
-          "periodText": "Warm-up",
+          "timestamp": 1761788353149,
+          "gameTime": 118241,
+          "periodText": "1ST",
           "scorer": {
-            "playerNumber": "4"
+            "playerNumber": "11",
+            "playerName": "ARTUROVICH NARULIN ROMAN"
           },
-          "id": "0e85c1f4-9fc6-4180-a2d1-b02d16991f47"
+          "id": "18248af1-e797-4c87-a660-f3f0653f6ef1"
         }
       ],
       "penalties": [],
@@ -411,7 +348,7 @@
           "name": "ARTUROVICH NARULIN ROMAN",
           "number": "11",
           "shots": 0,
-          "goals": 0,
+          "goals": 1,
           "assists": 0
         },
         {
@@ -599,7 +536,7 @@
       ]
     }
   },
-  "playHornTrigger": 2,
+  "playHornTrigger": 3,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,

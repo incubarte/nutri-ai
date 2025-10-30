@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, Edit3, Check, XCircle } from "lucide-react";
-import type { MatchData, Tournament, GameSummary, Team, SummaryPlayerStats, AttendedPlayerInfo } from "@/types";
+import type { MatchData, Tournament, GameSummary, SummaryPlayerStats } from "@/types";
 import { useGameState, getCategoryNameById } from "@/contexts/game-state-context";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { GoalsSection } from "../summary/goals-section";
@@ -29,9 +29,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   
   const [localSummary, setLocalSummary] = useState<GameSummary | undefined>(match?.summary);
   const [isEditing, setIsEditing] = useState(false);
-  const [editedShots, setEditedShots] = useState<Record<string, Record<string, string>>>({}); // { [period]: { [playerId]: count } }
-  
-  // This state is used to force a re-render of the aggregate stats when shots are edited.
+  const [editedShots, setEditedShots] = useState<Record<string, Record<string, string>>>({});
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -39,7 +37,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
       setLocalSummary(match?.summary);
       setIsEditing(false);
       setEditedShots({});
-      setRefreshKey(0); // Reset refresh key on open
+      setRefreshKey(0);
     }
   }, [isOpen, match]);
   
@@ -139,7 +137,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
             payload: { matchId: match.id, summary: newSummary }
         });
         setLocalSummary(newSummary);
-        setRefreshKey(k => k + 1); // Force recalculation of aggregate stats
+        setRefreshKey(k => k + 1);
         toast({ title: "Resumen Guardado", description: "Los cambios en los tiros han sido guardados."});
     } else {
         toast({ title: "Sin Cambios", description: "No se detectaron modificaciones en los tiros."});
@@ -149,7 +147,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   };
 
   const handleShotInputChange = (period: string, playerId: string, value: string) => {
-    if (/^\d*$/.test(value)) { // Only allow digits
+    if (/^\d*$/.test(value)) {
         setEditedShots(prev => ({
             ...prev,
             [period]: {
@@ -203,9 +201,11 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
               {allPeriodTexts.length > 0 && (
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="periods">
-                         <AccordionTrigger className="text-xl flex-grow hover:no-underline">
-                            Detalle por Período
-                        </AccordionTrigger>
+                        <div className="flex justify-between items-center pr-2">
+                            <AccordionTrigger className="text-xl flex-grow hover:no-underline">
+                                Detalle por Período
+                            </AccordionTrigger>
+                        </div>
                         <AccordionContent className="space-y-6 pl-2">
                              <div className="flex justify-end pr-2">
                                 {isEditing ? (
