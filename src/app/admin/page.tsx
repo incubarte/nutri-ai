@@ -152,6 +152,7 @@ function MatchStatusCard() {
     }
 
     const matchId = state.live?.matchId;
+    const playedPeriods = state.live?.playedPeriods || [];
 
     return (
         <Card>
@@ -163,7 +164,7 @@ function MatchStatusCard() {
                     Información de debug sobre el partido actual en juego.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
                 {matchId ? (
                     <div>
                         <p className="text-sm font-semibold text-green-400">Partido del Fixture Activo:</p>
@@ -172,6 +173,12 @@ function MatchStatusCard() {
                 ) : (
                     <p className="text-sm text-muted-foreground">No hay un partido del fixture activo.</p>
                 )}
+                 <div>
+                    <p className="text-sm font-semibold text-blue-400">Períodos Jugados Registrados:</p>
+                    <p className="text-xs font-mono text-muted-foreground mt-1 bg-muted p-2 rounded-md">
+                        {playedPeriods.length > 0 ? playedPeriods.join(', ') : 'Ninguno'}
+                    </p>
+                </div>
             </CardContent>
         </Card>
     );
@@ -287,8 +294,7 @@ export default function AdminPage() {
                           <AlertDialogHeader>
                           <AlertDialogTitle>¡Confirmación Final!</AlertDialogTitle>
                           <AlertDialogDescription>
-                              Esta acción eliminará permanentemente TODA la configuración y TODOS los equipos y jugadores guardados. Esta acción es irreversible. ¿Estás seguro de que quieres borrar absolutamente todo?
-                          </AlertDialogDescription>
+                              Esta acción eliminará permanentemente TODA la configuración y TODOS los equipos y jugadores guardados. Esta acción es irreversible. ¿Estás seguro de que quieres borrar absolutamente todo?</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -308,3 +314,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    

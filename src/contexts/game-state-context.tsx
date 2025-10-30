@@ -479,7 +479,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
         // Ensure the correct profiles are applied upon hydration
         newState = applyFormatAndTimingsProfileToState(finalState, finalState.config.selectedFormatAndTimingsProfileId);
-        newState = applyScoreboardLayoutProfileToState(newState, newState.config.selectedScoreboardLayoutProfileId);
+        newState = applyScoreboardLayoutProfileToState(newState, finalState.config.selectedScoreboardLayoutProfileId);
         break;
     }
     case 'SET_STATE_FROM_LOCAL_BROADCAST': {
@@ -1741,7 +1741,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'UPDATE_PLAYER_IN_TEAM': {
       const { teamId, playerId, updates } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
       break;
     }
     case 'REMOVE_PLAYER_FROM_TEAM': {
@@ -1838,7 +1838,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             }
             return m;
           });
-          return { ...t, matches: newMatches };
+          return { ...t, matches };
         }
         return t;
       });
@@ -1931,8 +1931,7 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     const summary: GameSummary = JSON.parse(JSON.stringify(live.gameSummary));
     const statsByPeriod: Record<string, PeriodStats> = {};
 
-    // Use the definitive list of played periods
-    const playedPeriods = new Set<string>(live.playedPeriods || []);
+    const { playedPeriods } = live;
 
     playedPeriods.forEach(periodText => {
         if (!statsByPeriod[periodText]) {
@@ -2004,9 +2003,10 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
 
 
 const GameStateObserver = () => {
-    const { state, dispatch } = useGameState();
+    const { state } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
+    const prevPeriodDisplayOverrideRef = useRef<PeriodDisplayOverrideType>();
 
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
@@ -2244,3 +2244,6 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
 
+
+
+    
