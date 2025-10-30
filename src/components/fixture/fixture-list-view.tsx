@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -166,6 +167,7 @@ export function FixtureListView() {
               <TableHead>Equipo Local</TableHead>
               <TableHead>Equipo Visitante</TableHead>
               <TableHead>Jugadores</TableHead>
+              <TableHead>Resultado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -175,6 +177,7 @@ export function FixtureListView() {
                 const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
                 const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
                 const hasSummary = !!match.summary;
+                const score = hasSummary ? `${match.summary.home.goals.length} - ${match.summary.away.goals.length}` : '-';
 
                 return (
                   <TableRow key={match.id}>
@@ -183,6 +186,7 @@ export function FixtureListView() {
                     <TableCell>{homeTeam?.name || 'Equipo no encontrado'}</TableCell>
                     <TableCell>{awayTeam?.name || 'Equipo no encontrado'}</TableCell>
                     <TableCell>{match.playersPerTeam} vs {match.playersPerTeam}</TableCell>
+                    <TableCell className="font-mono font-bold">{score}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-1 justify-end">
                         {hasSummary && (
@@ -203,7 +207,7 @@ export function FixtureListView() {
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   {isAnyFilterActive ? "No se encontraron partidos con los filtros aplicados." : "No hay partidos programados."}
                 </TableCell>
               </TableRow>
