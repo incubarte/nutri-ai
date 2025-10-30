@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
@@ -6,6 +5,7 @@ import { useGameState, type GameAction } from '@/contexts/game-state-context';
 import { CompactHeaderScoreboard } from './compact-header-scoreboard';
 import { PenaltiesDisplay } from './penalties-display';
 import { ShootoutDisplay, MAX_DISPLAY_SLOTS } from './shootout-display';
+import { StandingsDisplay } from './standings-display'; // Importar el nuevo componente
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -62,7 +62,7 @@ export function FullScoreboard({ className }: { className?: string }) {
     return null;
   }
 
-  const { penalties, homeTeamName, awayTeamName, shootout } = live;
+  const { penalties, homeTeamName, awayTeamName, shootout, matchId, clock } = live;
 
   const homeAttempts = shootout?.homeAttempts || [];
   const awayAttempts = shootout?.awayAttempts || [];
@@ -74,8 +74,12 @@ export function FullScoreboard({ className }: { className?: string }) {
     ? Math.max(homeAttempts.length, awayAttempts.length) + (homeAttempts.length === awayAttempts.length ? 1 : 0)
     : 1;
 
-  const showMainScoreboard = live.clock.periodDisplayOverride !== 'Shootout';
+  const showMainScoreboard = clock.periodDisplayOverride !== 'Shootout';
 
+  // Determinar si mostrar la tabla de posiciones
+  const isWarmup = clock.periodDisplayOverride === 'Warm-up';
+  const isFixtureMatch = !!matchId;
+  const showStandings = isWarmup && isFixtureMatch;
 
   return (
     <div 
@@ -114,14 +118,19 @@ export function FullScoreboard({ className }: { className?: string }) {
           )}
         </AnimatePresence>
         
-        {/* Penalties/Shootout content positioned within the transparent container */}
+        {/* Penalties/Shootout/Standings content positioned within the transparent container */}
         <div className="relative z-0 h-full">
-          {live.clock.periodDisplayOverride !== 'Shootout' ? (
+          {showStandings ? (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
+                <StandingsDisplay teamContext="home" />
+                <StandingsDisplay teamContext="away" />
+             </div>
+          ) : clock.periodDisplayOverride !== 'Shootout' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
-              <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
-              <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
+                <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
+                <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
               </div>
-          ) : live.clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
+          ) : clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
               <div className="flex flex-col items-center gap-4">
               <h1 
                   className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
