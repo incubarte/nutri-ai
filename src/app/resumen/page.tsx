@@ -41,6 +41,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
   const [overwriteConfirm, setOverwriteConfirm] = useState<{ onConfirm: () => void } | null>(null);
   const [isEditingShots, setIsEditingShots] = useState(false);
   const [editedShots, setEditedShots] = useState<Record<string, Record<string, string>>>({});
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
   const [addPenaltyContext, setAddPenaltyContext] = useState<{team: Team, period: string} | null>(null);
@@ -125,7 +126,8 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
       penalties: state.live.gameSummary.home.penalties.sort((a, b) => a.addTimestamp - b.addTimestamp),
       playerStats: state.live.gameSummary.home.playerStats,
     }
-  }, [state.live.gameSummary.home]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.live.gameSummary.home, refreshKey]);
 
   const awayAggregatedStats = useMemo(() => {
     return {
@@ -133,7 +135,8 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
       penalties: state.live.gameSummary.away.penalties.sort((a, b) => a.addTimestamp - b.addTimestamp),
       playerStats: state.live.gameSummary.away.playerStats,
     }
-  }, [state.live.gameSummary.away]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.live.gameSummary.away, refreshKey]);
 
   const allPeriodTexts = useMemo(() => {
     if (!summaryData?.statsByPeriod) return [];
@@ -156,19 +159,31 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
   };
   
   const handleSaveShotsClick = () => {
-    if (!summaryData) return;
-    
+    let hasChanges = false;
     Object.entries(editedShots).forEach(([periodText, playerShots]) => {
       Object.entries(playerShots).forEach(([playerId, shotCountStr]) => {
         const shotCount = parseInt(shotCountStr, 10);
         if(!isNaN(shotCount)) {
-            const team = state.live.gameSummary.home.playerStats.some(p => p.id === playerId) ? 'home' : 'away';
-             dispatch({ type: 'SET_PLAYER_SHOTS', payload: { team, playerId, periodText, shotCount } });
+            const team = state.live.gameSummary.attendance.home.some(p => p.id === playerId) ? 'home' : 'away';
+            
+            // Find the original shot count to see if it changed
+            const originalPlayerStat = summaryData?.statsByPeriod[periodText]?.[team]?.playerStats.find(p => p.id === playerId);
+            const originalShotCount = originalPlayerStat?.shots || 0;
+
+            if (shotCount !== originalShotCount) {
+              hasChanges = true;
+              dispatch({ type: 'SET_PLAYER_SHOTS', payload: { team, playerId, periodText, shotCount } });
+            }
         }
       })
     });
 
-    toast({ title: "Tiros Actualizados", description: "Los cambios se han guardado."});
+    if (hasChanges) {
+      toast({ title: "Tiros Actualizados", description: "Los cambios se han guardado."});
+      setRefreshKey(k => k + 1); // Force re-calculation of aggregated stats
+    } else {
+      toast({ title: "Sin Cambios", description: "No se detectaron modificaciones en los tiros." });
+    }
     setIsEditingShots(false);
   };
 
