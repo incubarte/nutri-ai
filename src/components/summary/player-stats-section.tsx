@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useMemo } from "react";
@@ -11,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 export const PlayerStatsSection = ({ 
     teamName, 
-    allPlayers, // Now receives all players of the team
+    allPlayers,
     playerStats, 
     attendance,
     editable,
@@ -19,7 +20,7 @@ export const PlayerStatsSection = ({
     onShotChange
 }: { 
     teamName: string; 
-    allPlayers?: PlayerData[]; // Full roster
+    allPlayers?: PlayerData[];
     playerStats?: SummaryPlayerStats[]; 
     attendance?: AttendedPlayerInfo[];
     editable?: boolean;
@@ -99,7 +100,7 @@ export const PlayerStatsSection = ({
                                     {editable ? (
                                         <Input
                                             type="number"
-                                            value={editedShots?.[player.id] ?? String(player.shots || '0')}
+                                            value={editedShots?.[player.id] ?? ''}
                                             onChange={(e) => onShotChange?.(player.id, e.target.value)}
                                             className="h-7 w-14 text-center mx-auto"
                                             disabled={!player.attended}
