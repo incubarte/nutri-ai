@@ -1628,7 +1628,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'REMOVE_PLAYER_FROM_TEAM': {
       const { teamId, playerId } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
       break;
     }
     case 'LOAD_TEAMS_FROM_FILE': { // Legacy: no longer used directly.
@@ -1910,6 +1910,11 @@ const GameStateObserver = () => {
     }, [state._lastToastMessage, toast]);
     
     useEffect(() => {
+        // Do not run this effect until the initial state is fully loaded from the server
+        if (!state._initialConfigLoadComplete) {
+            return;
+        }
+
         const currentOverride = state.live?.clock?.periodDisplayOverride;
 
         // This check ensures the action only fires when the state TRANSITIONS to 'End of Game'
@@ -1929,7 +1934,7 @@ const GameStateObserver = () => {
 
         // Update the ref for the next render AFTER the check
         prevPeriodDisplayOverrideRef.current = currentOverride;
-    }, [state.live?.clock?.periodDisplayOverride, state.live?.matchId, state, dispatch, toast]);
+    }, [state.live?.clock?.periodDisplayOverride, state.live?.matchId, state, dispatch, toast, state._initialConfigLoadComplete]);
 
 
     return null;
