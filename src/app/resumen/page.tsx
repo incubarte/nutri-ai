@@ -46,21 +46,22 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
     const { gameSummary, shootout } = live;
 
     const statsByPeriod: SummaryData['statsByPeriod'] = {};
-    const playedPeriodNumbers = new Set<number>();
-    const lastPlayedPeriodNumber = live.clock.currentPeriod;
-    if (lastPlayedPeriodNumber > 0) {
-      for (let i = 1; i <= lastPlayedPeriodNumber; i++) playedPeriodNumbers.add(i);
-    }
-    
+    const playedPeriodTexts = new Set<string>();
+
     [...gameSummary.home.goals, ...gameSummary.away.goals, ...gameSummary.home.penalties, ...gameSummary.away.penalties].forEach(event => {
         const periodText = (event as GoalLog).periodText || (event as PenaltyLog).addPeriodText;
         if (periodText && !periodText.toLowerCase().includes('warm-up') && !periodText.toLowerCase().includes('break')) {
-             const periodNum = parseInt(periodText.replace(/\D/g, ''), 10);
-             if (!isNaN(periodNum) && periodNum > 0) playedPeriodNumbers.add(periodNum);
+             playedPeriodTexts.add(periodText);
         }
     });
 
-    const allPeriodTexts = Array.from(playedPeriodNumbers).sort((a,b) => a-b).map(num => getPeriodText(num, config.numberOfRegularPeriods));
+    const allPeriodTexts = Array.from(playedPeriodTexts).sort((a, b) => {
+        const getPeriodNumber = (text: string) => {
+            if (text.startsWith('OT')) return (config.numberOfRegularPeriods || 2) + parseInt(text.replace('OT', '') || '1', 10);
+            return parseInt(text.replace(/\D/g, ''), 10);
+        };
+        return getPeriodNumber(a) - getPeriodNumber(b);
+    });
 
     allPeriodTexts.forEach(period => {
         statsByPeriod[period] = { home: { goals: [], penalties: [], playerStats: [] }, away: { goals: [], penalties: [], playerStats: [] } };
@@ -68,7 +69,17 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
             const teamKey = team as Team;
             const teamGoals = gameSummary[teamKey].goals.filter(g => g.periodText === period);
             const teamPenalties = gameSummary[teamKey].penalties.filter(p => p.addPeriodText === period);
-            statsByPeriod[period][teamKey] = { goals: teamGoals, penalties: teamPenalties, playerStats: [] }; // Player stats will be aggregated later
+
+            const teamShotsInPeriod = (gameSummary[teamKey][`${teamKey}ShotsLog`] || []).filter(s => s.periodText === period);
+
+            const playerStatsForPeriod = (gameSummary.attendance[teamKey] || []).map(attendedPlayer => {
+                const goals = teamGoals.filter(g => g.scorer?.playerNumber === attendedPlayer.number).length;
+                const assists = teamGoals.filter(g => g.assist?.playerNumber === attendedPlayer.number).length;
+                const shots = teamShotsInPeriod.filter(s => s.playerId === attendedPlayer.id).length;
+                return { id: attendedPlayer.id, number: attendedPlayer.number, name: attendedPlayer.name, shots, goals, assists };
+            });
+
+            statsByPeriod[period][teamKey] = { goals: teamGoals, penalties: teamPenalties, playerStats: playerStatsForPeriod };
         });
     });
 
@@ -124,6 +135,12 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
       playerStats: state.live.gameSummary.away.playerStats,
     }
   }, [state.live.gameSummary.away]);
+
+  const allPeriodTexts = useMemo(() => {
+    if (!summaryData?.statsByPeriod) return [];
+    return Object.keys(summaryData.statsByPeriod);
+  }, [summaryData]);
+
 
   if (state.isLoading) {
     return (
@@ -183,6 +200,36 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
                                 </div>
                             </div>
                         </ScrollArea>
+                    </TabsContent>
+                    <TabsContent value="periods" className="mt-6">
+                        {allPeriodTexts.length > 0 ? (
+                           <Accordion type="single" collapsible className="w-full">
+                                {allPeriodTexts.map(periodText => {
+                                    const periodStats = summaryData.statsByPeriod![periodText];
+                                    return (
+                                        <AccordionItem value={periodText} key={periodText}>
+                                            <AccordionTrigger className="text-xl hover:no-underline">{periodText}</AccordionTrigger>
+                                            <AccordionContent className="space-y-6 pl-2">
+                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <GoalsSection teamName={summaryData.homeTeamName} goals={periodStats.home.goals} />
+                                                    <GoalsSection teamName={summaryData.awayTeamName} goals={periodStats.away.goals} />
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={periodStats.home.penalties} />
+                                                    <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={periodStats.away.penalties} />
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                     <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={periodStats.home.playerStats} />
+                                                     <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={periodStats.away.playerStats} />
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    )
+                                })}
+                           </Accordion>
+                        ) : (
+                            <p className="text-center text-muted-foreground py-10">No hay datos por período para mostrar.</p>
+                        )}
                     </TabsContent>
                 </Tabs>
             </>
