@@ -1,9 +1,10 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData, PeriodStats } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { saveDataOnServer } from '@/app/actions';
@@ -762,9 +763,50 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'SET_PLAYER_SHOTS': {
-      newState = { ...state };
-      newState._lastActionOriginator = TAB_ID; // Mark as significant change
-      break;
+        const { team, playerId, periodText, shotCount } = action.payload;
+        const { live } = state;
+        const { gameSummary } = live;
+
+        const attendedPlayer = gameSummary.attendance[team].find(p => p.id === playerId);
+        if (!attendedPlayer) break;
+
+        const shotsLogKey = `${team}ShotsLog` as const;
+        const otherShots = (gameSummary[team]?.[shotsLogKey] || []).filter((shot: ShotLog) => shot.playerId !== playerId || shot.periodText !== periodText);
+        
+        const newShotsForPeriod: ShotLog[] = Array.from({ length: shotCount }, (_, i) => ({
+            id: safeUUID(),
+            team,
+            timestamp: Date.now() + i,
+            gameTime: 0,
+            periodText,
+            playerId: attendedPlayer.id,
+            playerNumber: attendedPlayer.number,
+            playerName: attendedPlayer.name
+        }));
+
+        const newGameSummary = JSON.parse(JSON.stringify(gameSummary));
+        newGameSummary[team][shotsLogKey] = [...otherShots, ...newShotsForPeriod];
+        
+        const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
+
+        newState = {
+            ...state,
+            live: {
+                ...live,
+                score: {
+                    ...live.score,
+                    homeShots: homeTotalShots,
+                    awayShots: awayTotalShots
+                },
+                gameSummary: {
+                    ...newGameSummary,
+                    home: { ...newGameSummary.home, playerStats: homePlayerStats },
+                    away: { ...newGameSummary.away, playerStats: awayPlayerStats },
+                }
+            }
+        };
+        newState._lastActionOriginator = TAB_ID; // Mark as significant change
+        break;
     }
     case 'FINISH_GAME_WITH_OT_GOAL': {
       const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
@@ -1670,9 +1712,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       const newTournaments = state.config.tournaments.map(t => {
         if (t.id === tournamentId) {
-          const newMatches = t.matches.map(m =>
-            m.id === matchId ? { ...m, summary } : m
-          );
+          const newMatches = t.matches.map(m => {
+            if (m.id === matchId) {
+              const homeScore = summary.home.goals.length;
+              const awayScore = summary.away.goals.length;
+              return { ...m, summary, homeScore, awayScore, overTimeOrShootouts: summary.overTimeOrShootouts };
+            }
+            return m;
+          });
           return { ...t, matches: newMatches };
         }
         return t;
@@ -1763,32 +1810,57 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     if (!live || !config) return null;
 
     const summary: GameSummary = JSON.parse(JSON.stringify(live.gameSummary));
-
     const statsByPeriod: Record<string, PeriodStats> = {};
+    const playedPeriods = new Set<string>();
+
+    const totalPeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
+    let lastPlayedPeriod = live.clock.currentPeriod;
+    if (live.clock.periodDisplayOverride === 'Break' || live.clock.periodDisplayOverride === 'Pre-OT Break') {
+      lastPlayedPeriod = live.clock.currentPeriod;
+    } else if (live.clock.periodDisplayOverride) {
+      lastPlayedPeriod = live.clock.currentPeriod; 
+    }
+    
+    for (let i = 1; i <= lastPlayedPeriod; i++) {
+        if (i > totalPeriods && !Object.keys(live.gameSummary).some(k => (live.gameSummary as any).goals.some((g: GoalLog) => g.periodText === getPeriodText(i, config.numberOfRegularPeriods)))) {
+            continue;
+        }
+        playedPeriods.add(getPeriodText(i, config.numberOfRegularPeriods));
+    }
+    if (live.shootout.isActive || live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0) {
+        playedPeriods.add('SHOOTOUT');
+    }
 
     const allEvents = [
-        ...summary.home.goals.map(e => ({ ...e, type: 'goal', team: 'home' as const })),
-        ...summary.away.goals.map(e => ({ ...e, type: 'goal', team: 'away' as const })),
-        ...summary.home.penalties.map(e => ({ ...e, type: 'penalty', team: 'home' as const })),
-        ...summary.away.penalties.map(e => ({ ...e, type: 'penalty', team: 'away' as const })),
-        ...(summary.home.homeShotsLog || []).map(e => ({ ...e, type: 'shot', team: 'home' as const })),
-        ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot', team: 'away' as const })),
+        ...summary.home.goals.map(e => ({ ...e, type: 'goal' as const, team: 'home' as const })),
+        ...summary.away.goals.map(e => ({ ...e, type: 'goal' as const, team: 'away' as const })),
+        ...summary.home.penalties.map(e => ({ ...e, type: 'penalty' as const, team: 'home' as const })),
+        ...summary.away.penalties.map(e => ({ ...e, type: 'penalty' as const, team: 'away' as const })),
+        ...(summary.home.homeShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'home' as const })),
+        ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'away' as const })),
     ];
-
+    
     allEvents.forEach(event => {
         const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
-        if (!periodText || periodText.toLowerCase().includes('warm-up')) return;
+        if (periodText) playedPeriods.add(periodText);
+    });
 
+    playedPeriods.forEach(periodText => {
+        if (periodText.toLowerCase().includes('warm-up')) return;
         if (!statsByPeriod[periodText]) {
             statsByPeriod[periodText] = {
                 home: { goals: [], penalties: [], playerStats: [] },
                 away: { goals: [], penalties: [], playerStats: [] }
             };
         }
+    });
 
+    allEvents.forEach(event => {
+        const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
+        if (!periodText || !statsByPeriod[periodText]) return;
         const teamStats = statsByPeriod[periodText][event.team];
-        if (event.type === 'goal') teamStats.goals.push(event);
-        if (event.type === 'penalty') teamStats.penalties.push(event);
+        if (event.type === 'goal') teamStats.goals.push(event as GoalLog);
+        if (event.type === 'penalty') teamStats.penalties.push(event as PenaltyLog);
     });
 
     for (const period in statsByPeriod) {
@@ -2094,3 +2166,4 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
