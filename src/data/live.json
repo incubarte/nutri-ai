@@ -12,15 +12,15 @@
     "away": []
   },
   "clock": {
-    "currentTime": 0,
+    "currentTime": 120000,
     "currentPeriod": 2,
     "isClockRunning": false,
-    "periodDisplayOverride": "End of Game",
+    "periodDisplayOverride": null,
     "preTimeoutState": null,
-    "clockStartTimeMs": 1761844299514,
-    "remainingTimeAtStartCs": 65200,
-    "absoluteElapsedTimeCs": 174800,
-    "_liveAbsoluteElapsedTimeCs": 174800
+    "clockStartTimeMs": null,
+    "remainingTimeAtStartCs": null,
+    "absoluteElapsedTimeCs": 120000,
+    "_liveAbsoluteElapsedTimeCs": 120000
   },
   "shootout": {
     "isActive": false,
