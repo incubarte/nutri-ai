@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -5,7 +6,6 @@ import { MiniScoreboard } from '@/components/controls/mini-scoreboard';
 import { PenaltyControlCard } from '@/components/controls/penalty-control-card';
 import { GoalManagementDialog } from '@/components/controls/goal-management-dialog';
 import { GoldenGoalDialog } from '@/components/controls/golden-goal-dialog';
-import { GameSetupDialog } from '@/components/controls/game-setup-dialog';
 import { ShootoutControl } from '@/components/controls/shootout-control';
 import { useGameState, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getActualPeriodText, formatTime, type GameState } from '@/contexts/game-state-context';
 import type { PlayerData, RemoteCommand, AccessRequest, TunnelState, MatchData } from '@/types';
@@ -22,8 +22,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '@/hooks/use-auth';
-import { isToday, format } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 const CONTROLS_LOCK_KEY = 'icevision-controls-lock-id';
 const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
@@ -297,39 +295,11 @@ export default function ControlsPage() {
   const [localPort, setLocalPort] = useState<string>('');
   const [isConnectingTunnel, setIsConnectingTunnel] = useState(false);
   const [isShootoutConfirmOpen, setIsShootoutConfirmOpen] = useState(false);
-  const [isEndGameSummaryDialogOpen, setIsEndGameSummaryDialogOpen] = useState(false);
   
-  const prevPeriodDisplayOverrideRef = useRef<string | null>();
-  const isInitialMount = useRef(true);
-
-  // Ref to hold the latest state for use in the EventSource callback
   const stateRef = useRef(state);
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
-
-  useEffect(() => {
-    if (isGameStateLoading || !state.live || !state.config) return;
-
-    if (isInitialMount.current) {
-        isInitialMount.current = false;
-        prevPeriodDisplayOverrideRef.current = state.live.clock.periodDisplayOverride;
-        return;
-    }
-
-    if (pageDisplayState !== 'Primary') {
-        prevPeriodDisplayOverrideRef.current = state.live.clock.periodDisplayOverride;
-        return;
-    }
-
-    if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && state.live.clock.periodDisplayOverride === 'End of Game') {
-        setIsEndGameSummaryDialogOpen(true);
-    }
-
-    prevPeriodDisplayOverrideRef.current = state.live.clock.periodDisplayOverride;
-
-  }, [state.live, state.config, isGameStateLoading, pageDisplayState, toast]);
-
 
   useEffect(() => {
     setInstanceId(safeUUID());
@@ -369,45 +339,36 @@ export default function ControlsPage() {
       localStorage.setItem(CONTROLS_LOCK_KEY, instanceId);
       setCurrentLockHolderId(instanceId);
       setPageDisplayState('Primary');
-      console.log(`Instance ${instanceId.slice(-6)} took lock (no prior lock). State: Primary`);
     } else if (lockIdFromStorage === instanceId) {
       setPageDisplayState('Primary');
       setCurrentLockHolderId(instanceId);
-      console.log(`Instance ${instanceId.slice(-6)} confirmed lock. State: Primary`);
     } else {
       setPageDisplayState('Secondary');
       setCurrentLockHolderId(lockIdFromStorage);
-      console.log(`Instance ${instanceId.slice(-6)} found lock by ${lockIdFromStorage.slice(-6)}. State: Secondary`);
     }
   }, [instanceId, setPageDisplayState, setCurrentLockHolderId]);
 
 
   useEffect(() => {
     if (!instanceId) return; 
-    console.log(`ControlsPage Effect: Instance ${instanceId.slice(-6)} mounting/updating. Current state: ${pageDisplayState}`);
     
     setPageDisplayState('Checking'); 
 
     if (!channelRef.current) {
       channelRef.current = new BroadcastChannel(CONTROLS_CHANNEL_NAME);
-      console.log(`Instance ${instanceId.slice(-6)} created BroadcastChannel.`);
     }
 
     const handleChannelMessage = (message: MessageEvent) => {
       if (!instanceId) return;
-      console.log(`Instance ${instanceId.slice(-6)} received channel message:`, message.data);
       if (message.data?.type === 'TAKEOVER_COMMAND') {
         if (message.data.newPrimaryId !== instanceId) {
-          console.log(`Instance ${instanceId.slice(-6)} received TAKEOVER by ${message.data.newPrimaryId.slice(-6)}, navigating to /`);
           router.push('/');
         } else {
-          console.log(`Instance ${instanceId.slice(-6)} is the new primary from TAKEOVER_COMMAND.`);
           setPageDisplayState('Primary');
           setCurrentLockHolderId(instanceId);
         }
       } else if (message.data?.type === 'LOCK_RELEASED') {
         if (message.data.releasedBy !== instanceId) {
-          console.log(`Instance ${instanceId.slice(-6)} detected LOCK_RELEASED by ${message.data.releasedBy.slice(-6)}, re-checking lock.`);
           checkLockStatus();
         }
       }
@@ -417,7 +378,6 @@ export default function ControlsPage() {
     const handleStorageChange = (event: StorageEvent) => {
       if (!instanceId) return;
       if (event.key === CONTROLS_LOCK_KEY) {
-        console.log(`Instance ${instanceId.slice(-6)} detected storage change for ${CONTROLS_LOCK_KEY}. New value: ${event.newValue?.slice(-6)}, Old value: ${event.oldValue?.slice(-6)}`);
         checkLockStatus();
       }
     };
@@ -428,7 +388,6 @@ export default function ControlsPage() {
       const currentLockIdInStorage = localStorage.getItem(CONTROLS_LOCK_KEY);
       if (currentLockIdInStorage === instanceId) {
         localStorage.removeItem(CONTROLS_LOCK_KEY);
-        console.log(`Instance ${instanceId.slice(-6)} released lock on beforeunload.`);
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -437,7 +396,6 @@ export default function ControlsPage() {
 
     return () => {
       if (!instanceId) return;
-      console.log(`ControlsPage Cleanup: Instance ${instanceId.slice(-6)} unmounting. Current lock holder in storage: ${localStorage.getItem(CONTROLS_LOCK_KEY)?.slice(-6)}`);
       
       const currentLockIdInStorage = localStorage.getItem(CONTROLS_LOCK_KEY);
       if (currentLockIdInStorage === instanceId) {
@@ -445,13 +403,11 @@ export default function ControlsPage() {
         if (channelRef.current) { 
              channelRef.current.postMessage({ type: 'LOCK_RELEASED', releasedBy: instanceId });
         }
-        console.log(`Instance ${instanceId.slice(-6)} released lock via useEffect cleanup.`);
       }
       
       if (channelRef.current) {
         channelRef.current.close(); 
         channelRef.current = null;
-        console.log(`Instance ${instanceId.slice(-6)} closed BroadcastChannel.`);
       }
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -482,7 +438,6 @@ export default function ControlsPage() {
             return;
         }
 
-        console.log("Remote command received:", command);
         if (command.type === 'ADD_GOAL') {
           const { team, scorerNumber, assistNumber } = command.payload;
           
@@ -579,7 +534,6 @@ export default function ControlsPage() {
       toast({ title: "Error", description: "No se pudo obtener el ID de la instancia. Intenta recargar.", variant: "destructive" });
       return;
     }
-    console.log(`Instance ${instanceId.slice(-6)} attempting to take over.`);
     localStorage.setItem(CONTROLS_LOCK_KEY, instanceId);
     if (channelRef.current) {
       channelRef.current.postMessage({ type: 'TAKEOVER_COMMAND', newPrimaryId: instanceId });
@@ -766,6 +720,16 @@ export default function ControlsPage() {
       });
   };
 
+  const finishedFixtureMatch = useMemo(() => {
+      if (state.live.clock.periodDisplayOverride !== 'End of Game' || !state.live.matchId) {
+          return null;
+      }
+      const tournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+      if (!tournament) return null;
+      return tournament.matches.find(m => m.id === state.live.matchId);
+  }, [state.live.clock.periodDisplayOverride, state.live.matchId, state.config.tournaments, state.config.selectedTournamentId]);
+
+
   if (authStatus === 'loading' || isGameStateLoading || !state.live || !state.config || !state.live.penalties) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
@@ -836,6 +800,17 @@ export default function ControlsPage() {
       )}
       <MiniScoreboard onScoreClick={handleScoreClick} />
       
+      {finishedFixtureMatch && (
+         <div className="my-4 flex justify-center">
+            <Button 
+                onClick={() => router.push(`/tournaments/${state.config.selectedTournamentId}?tab=fixture`)}
+                size="lg"
+            >
+                <FileText className="mr-2 h-5 w-5" /> Ver Resumen del Partido
+            </Button>
+        </div>
+      )}
+
       {isShootoutActive && <ShootoutControl />}
 
       {shouldShowPendingPuckButton && (
@@ -1022,33 +997,8 @@ export default function ControlsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-      {isEndGameSummaryDialogOpen && (
-        <AlertDialog open={isEndGameSummaryDialogOpen} onOpenChange={setIsEndGameSummaryDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                <Trophy className="h-6 w-6 text-amber-500" />
-                Partido Finalizado
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                El partido ha concluido. ¿Deseas generar el resumen ahora?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setIsEndGameSummaryDialogOpen(false)}>Cerrar</AlertDialogCancel>
-              <AlertDialogAction onClick={() => {
-                setIsEndGameSummaryDialogOpen(false);
-                router.push('/resumen');
-              }}>
-                <FileText className="mr-2 h-4 w-4" />
-                Sí, generar resumen
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-
     </div>
   );
 }
+
+    

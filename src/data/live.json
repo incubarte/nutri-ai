@@ -34,14 +34,14 @@
   },
   "clock": {
     "currentTime": 0,
-    "currentPeriod": 2,
+    "currentPeriod": 3,
     "isClockRunning": false,
     "periodDisplayOverride": "End of Game",
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 240000,
-    "_liveAbsoluteElapsedTimeCs": 240000
+    "absoluteElapsedTimeCs": 270000,
+    "_liveAbsoluteElapsedTimeCs": 270000
   },
   "shootout": {
     "isActive": false,
@@ -505,7 +505,7 @@
       ]
     }
   },
-  "playHornTrigger": 5,
+  "playHornTrigger": 6,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,

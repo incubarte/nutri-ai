@@ -1,7 +1,8 @@
+
 "use client";
 
-import React, { useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useGameState } from '@/contexts/game-state-context';
 import { Button } from '@/components/ui/button';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
@@ -16,16 +17,26 @@ import { Separator } from '@/components/ui/separator';
 export default function TournamentDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { state, isLoading: isGameStateLoading } = useGameState();
 
   const tournamentId = typeof params.tournamentId === 'string' ? params.tournamentId : undefined;
-
+  const initialTab = searchParams.get('tab') === 'fixture' ? 'fixture' : 'teamsAndCategories';
+  
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [isCategoryDirty, setIsCategoryDirty] = useState(false);
   
   const selectedTournament = useMemo(() => {
     if (!tournamentId) return null;
     return (state.config.tournaments || []).find(t => t.id === tournamentId);
   }, [state.config.tournaments, tournamentId]);
+  
+  useEffect(() => {
+    const newTab = searchParams.get('tab');
+    if (newTab === 'fixture' || newTab === 'teamsAndCategories') {
+      setActiveTab(newTab);
+    }
+  }, [searchParams]);
 
   if (isGameStateLoading) {
     return (
@@ -64,7 +75,7 @@ export default function TournamentDetailPage() {
 
       <Separator />
 
-      <Tabs defaultValue="teamsAndCategories" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="teamsAndCategories">Equipos y Categorías</TabsTrigger>
           <TabsTrigger value="fixture">Fixture</TabsTrigger>
@@ -99,3 +110,5 @@ export default function TournamentDetailPage() {
     </div>
   );
 }
+
+    
