@@ -1813,16 +1813,24 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     const statsByPeriod: Record<string, PeriodStats> = {};
     const playedPeriods = new Set<string>();
 
-    const totalPeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
+    const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
     let lastPlayedPeriod = live.clock.currentPeriod;
     if (live.clock.periodDisplayOverride === 'Break' || live.clock.periodDisplayOverride === 'Pre-OT Break') {
-      lastPlayedPeriod = live.clock.currentPeriod;
-    } else if (live.clock.periodDisplayOverride) {
-      lastPlayedPeriod = live.clock.currentPeriod; 
+        // If we are in a break, the last *completed* period is the current one.
+        lastPlayedPeriod = live.clock.currentPeriod;
+    } else if (live.clock.periodDisplayOverride === 'End of Game' || live.clock.periodDisplayOverride === 'AwaitingDecision' || live.clock.periodDisplayOverride === 'Shootout') {
+        // Game has ended, so all configured periods were potentially played.
+        lastPlayedPeriod = totalGamePeriods;
+    } else if(live.clock.periodDisplayOverride === null){
+        // We are in a running period.
+        lastPlayedPeriod = live.clock.currentPeriod;
     }
     
     // Iterate from period 1 up to the last played period to ensure all are included
     for (let i = 1; i <= lastPlayedPeriod; i++) {
+        if (i > totalGamePeriods && !live.gameSummary.home.goals.some(g => getPeriodText(i, config.numberOfRegularPeriods) === g.periodText) && !live.gameSummary.away.goals.some(g => getPeriodText(i, config.numberOfRegularPeriods) === g.periodText)) {
+            continue; // Skip extra OTs that were not played
+        }
         const periodText = getPeriodText(i, config.numberOfRegularPeriods);
         playedPeriods.add(periodText);
     }
@@ -1836,6 +1844,7 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'away' as const })),
     ];
     
+    // Also add periods from events, in case game ends abruptly in an unconfigured OT
     allEvents.forEach(event => {
         const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
         if (periodText && !periodText.toLowerCase().includes('warm-up')) playedPeriods.add(periodText);
@@ -1896,7 +1905,7 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     }
 
     summary.statsByPeriod = statsByPeriod;
-    const overTimeOrShootouts = (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) || Object.keys(summary.statsByPeriod).some(p => p.startsWith('OT'));
+    const overTimeOrShootouts = (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) || Object.keys(summary.statsByPeriod || {}).some(p => p.startsWith('OT'));
     summary.overTimeOrShootouts = overTimeOrShootouts;
 
     return summary;
@@ -2165,5 +2174,6 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
 
 
