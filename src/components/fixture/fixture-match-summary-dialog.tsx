@@ -30,6 +30,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   const [localSummary, setLocalSummary] = useState<GameSummary | undefined>(match?.summary);
   const [isEditing, setIsEditing] = useState(false);
   const [editedShots, setEditedShots] = useState<Record<string, Record<string, string>>>({}); // { [period]: { [playerId]: count } }
+  const [refreshKey, setRefreshKey] = useState(0);
+
 
   useEffect(() => {
     if (isOpen) {
@@ -195,21 +197,21 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
               {allPeriodTexts.length > 0 && (
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="periods">
-                        <AccordionTrigger className="text-xl">
-                             <div className="flex items-center justify-between w-full pr-2">
-                                <span>Detalle por Período</span>
-                                {isEditing ? (
-                                    <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveClick}><Check className="h-5 w-5" /></Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><XCircle className="h-5 w-5" /></Button>
-                                    </div>
-                                ) : (
-                                    <Button variant="outline" size="sm" onClick={e => {e.stopPropagation(); handleEditClick();}}>
-                                        <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
-                                    </Button>
-                                )}
-                            </div>
-                        </AccordionTrigger>
+                         <div className="flex justify-between items-center pr-2">
+                            <AccordionTrigger className="text-xl flex-grow hover:no-underline">
+                                Detalle por Período
+                            </AccordionTrigger>
+                            {isEditing ? (
+                                <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveClick}><Check className="h-5 w-5" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><XCircle className="h-5 w-5" /></Button>
+                                </div>
+                            ) : (
+                                <Button variant="outline" size="sm" onClick={e => {e.stopPropagation(); handleEditClick();}}>
+                                    <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
+                                </Button>
+                            )}
+                        </div>
                         <AccordionContent className="space-y-6 pl-2">
                             {allPeriodTexts.map(periodText => {
                                 const periodStats = localSummary.statsByPeriod![periodText];
