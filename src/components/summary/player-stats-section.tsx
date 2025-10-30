@@ -10,8 +10,70 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useGameState } from "@/contexts/game-state-context";
+import { useToast } from "@/hooks/use-toast";
 
-export const PlayerStatsSection = ({ team, teamName, playerStats, attendance, onStatsChange, editable, periodText }: { team: Team; teamName: string; playerStats?: SummaryPlayerStats[]; attendance?: AttendedPlayerInfo[]; editable?: boolean; periodText?: string, onStatsChange?: (team: Team, newStats: SummaryPlayerStats[], period: string) => void }) => {
+
+const EditableShotCell = ({ team, periodText, player, onSave }: { team: Team, periodText: string, player: PlayerData & { shots: number }, onSave: () => void }) => {
+    const { dispatch } = useGameState();
+    const [isEditing, setIsEditing] = useState(false);
+    const [shotValue, setShotValue] = useState(String(player.shots));
+    const { toast } = useToast();
+
+    useEffect(() => {
+        setShotValue(String(player.shots));
+    }, [player.shots]);
+
+    const handleSave = () => {
+        const newShotCount = parseInt(shotValue, 10);
+        if (isNaN(newShotCount) || newShotCount < 0) {
+            toast({ title: "Valor inválido", description: "El número de tiros debe ser un número positivo.", variant: "destructive" });
+            return;
+        }
+
+        dispatch({
+            type: 'SET_PLAYER_SHOTS',
+            payload: {
+                team,
+                playerId: player.id,
+                periodText,
+                shotCount: newShotCount
+            }
+        });
+        toast({ title: "Tiros actualizados", description: `Tiros para #${player.number} en ${periodText} establecidos a ${newShotCount}.` });
+        setIsEditing(false);
+        onSave();
+    };
+
+    if (isEditing) {
+        return (
+            <div className="flex items-center gap-1 justify-center">
+                <Input
+                    type="number"
+                    value={shotValue}
+                    onChange={(e) => setShotValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSave() }}
+                    className="h-7 w-14 text-center"
+                    autoFocus
+                />
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-green-500" onClick={handleSave}><Check className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setIsEditing(false)}><XCircle className="h-4 w-4" /></Button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex items-center justify-center gap-1">
+            <span className="font-mono">{player.shots || 0}</span>
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground opacity-50 hover:opacity-100" onClick={() => setIsEditing(true)}>
+                <Edit3 className="h-3 w-3" />
+            </Button>
+        </div>
+    );
+};
+
+
+export const PlayerStatsSection = ({ team, teamName, playerStats, attendance, editable, periodText, onEdit }: { team: Team; teamName: string; playerStats?: SummaryPlayerStats[]; attendance?: AttendedPlayerInfo[]; editable?: boolean; periodText?: string, onEdit?: () => void }) => {
     
     const [isEditing, setIsEditing] = useState(false);
     const [editedShots, setEditedShots] = useState<Record<string, string>>({});
@@ -83,26 +145,12 @@ export const PlayerStatsSection = ({ team, teamName, playerStats, attendance, on
     const handleCancelClick = () => setIsEditing(false);
 
     const handleSaveClick = () => {
-        if (!onStatsChange || !periodText || !playerStats) return;
-
-        const newPlayerStats = playerStats.map(player => {
-            const newShotCountStr = editedShots[player.id];
-            if (newShotCountStr !== undefined) {
-                const newShotCount = parseInt(newShotCountStr, 10);
-                if (!isNaN(newShotCount)) {
-                    return { ...player, shots: newShotCount };
-                }
-            }
-            return player;
-        });
-        onStatsChange(team, newPlayerStats, periodText);
+        if (!onEdit) return;
+        
+        // The actual dispatch is handled in EditableShotCell,
+        // we just need to signal the parent to refresh.
+        onEdit();
         setIsEditing(false);
-    };
-
-    const handleShotChange = (playerId: string, value: string) => {
-        if (/^\d*$/.test(value)) {
-            setEditedShots(prev => ({ ...prev, [playerId]: value }));
-        }
     };
     
     return (
@@ -147,17 +195,11 @@ export const PlayerStatsSection = ({ team, teamName, playerStats, attendance, on
                                             <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
                                             <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
                                             <TableCell className="text-center">
-                                            {isEditing && editable ? (
+                                            {isEditing && editable && periodText ? (
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
                                                         <div className="w-full h-full flex items-center justify-center">
-                                                            <Input
-                                                                type="number"
-                                                                value={isEditDisabledForThisRow ? String(player.shots || 0) : editedShots[player.id]}
-                                                                onChange={(e) => !isEditDisabledForThisRow && handleShotChange(player.id, e.target.value)}
-                                                                className={cn("h-7 w-16 mx-auto text-center", isEditDisabledForThisRow && "cursor-not-allowed")}
-                                                                disabled={isEditDisabledForThisRow}
-                                                            />
+                                                            <EditableShotCell team={team} player={player} periodText={periodText} onSave={onEdit || (() => {})} />
                                                         </div>
                                                     </TooltipTrigger>
                                                     {isEditDisabledForThisRow && (
