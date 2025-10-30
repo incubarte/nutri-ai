@@ -10,7 +10,7 @@ export const ShootoutSection = ({ teamName, attempts }: { teamName: string; atte
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl"><Swords className="h-5 w-5" />Tiros de Penal (Shootout)</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-xl"><Swords className="h-5 w-5" />Tiros de Penal (Shootout) - {teamName}</CardTitle>
             </CardHeader>
             <CardContent>
                 {attempts.length > 0 ? (
@@ -37,7 +37,7 @@ export const ShootoutSection = ({ teamName, attempts }: { teamName: string; atte
                     ))}
                     </TableBody>
                 </Table>
-                ) : <p className="text-sm text-muted-foreground">Sin tiros de penal registrados.</p>}
+                ) : <p className="text-sm text-muted-foreground">Sin tiros de penal registrados para este equipo.</p>}
             </CardContent>
         </Card>
     );

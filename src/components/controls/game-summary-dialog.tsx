@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { GoalsSection } from "../summary/goals-section";
 import { PenaltiesSection } from "../summary/penalties-section";
 import { PlayerStatsSection } from "../summary/player-stats-section";
+import { ShootoutSection } from "../summary/shootout-section";
 
 interface GameSummaryDialogProps {
   isOpen: boolean;
@@ -42,47 +43,44 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     return { homeTeam: home, awayTeam: away };
   }, [selectedTournament, state.live.homeTeamName, state.live.awayTeamName, state.live.homeTeamSubName, state.live.awayTeamSubName, state.config.selectedMatchCategory]);
 
-  const allHomeGoals = useMemo(() => [...(state.live.score?.homeGoals || [])].sort((a, b) => a.timestamp - b.timestamp), [state.live.score]);
-  const allAwayGoals = useMemo(() => [...(state.live.score?.awayGoals || [])].sort((a, b) => a.timestamp - b.timestamp), [state.live.score]);
-  const allHomePenalties = useMemo(() => [...state.live.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp), [state.live.gameSummary.home]);
-  const allAwayPenalties = useMemo(() => [...state.live.gameSummary.away.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp), [state.live.gameSummary.away]);
+  const allHomeGoals = useMemo(() => [...(state.live.score?.homeGoals || [])].sort((a, b) => a.timestamp - b.timestamp), [state.live.score, refreshKey]);
+  const allAwayGoals = useMemo(() => [...(state.live.score?.awayGoals || [])].sort((a, b) => a.timestamp - b.timestamp), [state.live.score, refreshKey]);
+  const allHomePenalties = useMemo(() => [...state.live.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp), [state.live.gameSummary.home, refreshKey]);
+  const allAwayPenalties = useMemo(() => [...state.live.gameSummary.away.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp), [state.live.gameSummary.away, refreshKey]);
   
   const allPeriodTexts = useMemo(() => {
-    if (!state.config) return [];
-    const playedPeriods = new Set<string>();
-
-    const totalPeriods = state.config.numberOfRegularPeriods + state.config.numberOfOvertimePeriods;
-    let lastPlayedPeriod = state.live.clock.currentPeriod;
-
-    if (state.live.clock.periodDisplayOverride === 'End of Game') {
-        // If game ended, the last period might be stored in the preTimeoutState if it ended from a timeout
-        lastPlayedPeriod = state.live.clock.preTimeoutState?.period || state.live.clock.currentPeriod;
-    } else if (state.live.clock.periodDisplayOverride) {
-        lastPlayedPeriod = state.live.clock.currentPeriod;
-    }
-    
-    for (let i = 1; i <= lastPlayedPeriod && i <= totalPeriods; i++) {
-        playedPeriods.add(getPeriodText(i, state.config.numberOfRegularPeriods));
-    }
-    
-    const allEvents = [...allHomeGoals, ...allAwayGoals, ...allHomePenalties, ...allAwayPenalties, ...(state.live.gameSummary.home.homeShotsLog || []), ...(state.live.gameSummary.away.awayShotsLog || [])];
+    const periodSet = new Set<string>();
+    const allEvents = [
+        ...state.live.score.homeGoals,
+        ...state.live.score.awayGoals,
+        ...state.live.gameSummary.home.penalties,
+        ...state.live.gameSummary.away.penalties,
+        ...(state.live.gameSummary.home.homeShotsLog || []),
+        ...(state.live.gameSummary.away.awayShotsLog || []),
+    ];
     allEvents.forEach(event => {
         const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
         if (periodText && !periodText.toLowerCase().includes('warm-up')) {
-            playedPeriods.add(periodText);
+            periodSet.add(periodText);
         }
     });
-
-    const sortedPeriods = Array.from(playedPeriods);
+    
+    // Add shootout if it exists
+    if(state.live.shootout.homeAttempts.length > 0 || state.live.shootout.awayAttempts.length > 0) {
+        periodSet.add("SHOOTOUT");
+    }
+    
+    const sortedPeriods = Array.from(periodSet);
 
     return sortedPeriods.sort((a, b) => {
         const getPeriodNumber = (text: string) => {
-            if (text.startsWith('OT')) return (state.config?.numberOfRegularPeriods || 2) + parseInt(text.replace('OT', ''), 10);
+            if (text === 'SHOOTOUT') return (state.config.numberOfRegularPeriods || 2) + (state.config.numberOfOvertimePeriods || 0) + 1;
+            if (text.startsWith('OT')) return (state.config.numberOfRegularPeriods || 2) + parseInt(text.replace('OT', ''), 10);
             return parseInt(text.replace(/\D/g, ''), 10);
         };
         return getPeriodNumber(a) - getPeriodNumber(b);
     });
-}, [allHomeGoals, allAwayGoals, allHomePenalties, allAwayPenalties, state.config, state.live.clock, state.live.gameSummary]);
+  }, [state.live, state.config.numberOfRegularPeriods, state.config.numberOfOvertimePeriods]);
 
 
   const escapeCsvCell = (cellData: any): string => {
@@ -98,7 +96,11 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
   };
   
   const handleExportPDF = () => {
-    // ... PDF export logic remains the same ...
+    const filename = exportGameSummaryPDF(state);
+    toast({
+        title: "Resumen Descargado",
+        description: `El archivo ${filename} se ha guardado.`,
+    });
   };
   
   const handleEditClick = () => {
@@ -119,24 +121,24 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
   const handleCancelClick = () => setIsEditing(false);
   
   const handleSaveClick = () => {
-    let changesMade = false;
+    let hasChanges = false;
     for (const periodText in editedShots) {
       for (const team of ['home', 'away'] as const) {
         const teamPlayers = team === 'home' ? (homeTeam?.players || []) : (awayTeam?.players || []);
         teamPlayers.forEach(player => {
             const newShotCountStr = editedShots[periodText]?.[player.id];
             if (newShotCountStr !== undefined) {
-                const newShotCount = parseInt(newShotCountStr, 10) || 0;
-                dispatch({ type: 'SET_PLAYER_SHOTS', payload: { team, playerId: player.id, periodText, shotCount: newShotCount }});
-                changesMade = true;
+                 const newShotCount = parseInt(newShotCountStr, 10) || 0;
+                 dispatch({ type: 'SET_PLAYER_SHOTS', payload: { team, playerId: player.id, periodText, shotCount: newShotCount }});
+                 hasChanges = true;
             }
         });
       }
     }
 
-    if (changesMade) {
+    if (hasChanges) {
         toast({ title: "Tiros Actualizados", description: "Se han guardado los cambios en los tiros por período." });
-        setRefreshKey(k => k + 1); // Force re-aggregation
+        setRefreshKey(k => k + 1);
     } else {
         toast({ title: "Sin Cambios", description: "No se detectaron modificaciones." });
     }
@@ -212,6 +214,16 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
                 <PlayerStatsSection key={`home-total-${refreshKey}`} teamName={state.live.homeTeamName} allPlayers={homeTeam?.players} playerStats={state.live.gameSummary.home.playerStats} attendance={state.live.gameSummary.attendance.home} />
                 <PlayerStatsSection key={`away-total-${refreshKey}`} teamName={state.live.awayTeamName} allPlayers={awayTeam?.players} playerStats={state.live.gameSummary.away.playerStats} attendance={state.live.gameSummary.attendance.away} />
             </div>
+            
+            {(state.live.shootout.homeAttempts.length > 0 || state.live.shootout.awayAttempts.length > 0) && (
+              <>
+                <Separator />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <ShootoutSection teamName={state.live.homeTeamName} attempts={state.live.shootout.homeAttempts} />
+                    <ShootoutSection teamName={state.live.awayTeamName} attempts={state.live.shootout.awayAttempts} />
+                </div>
+              </>
+            )}
 
             <Separator />
 

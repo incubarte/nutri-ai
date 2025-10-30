@@ -1,6 +1,6 @@
 {
   "score": {
-    "home": 0,
+    "home": 1,
     "away": 0,
     "homeShots": 0,
     "awayShots": 0,
@@ -12,22 +12,39 @@
     "away": []
   },
   "clock": {
-    "currentTime": 30000,
-    "currentPeriod": 7,
+    "currentTime": 0,
+    "currentPeriod": 2,
     "isClockRunning": false,
-    "periodDisplayOverride": null,
+    "periodDisplayOverride": "End of Game",
     "preTimeoutState": null,
-    "clockStartTimeMs": null,
-    "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 360000,
-    "_liveAbsoluteElapsedTimeCs": 360000
+    "clockStartTimeMs": 1761844299514,
+    "remainingTimeAtStartCs": 65200,
+    "absoluteElapsedTimeCs": 174800,
+    "_liveAbsoluteElapsedTimeCs": 175064
   },
   "shootout": {
     "isActive": false,
     "rounds": 5,
-    "homeAttempts": [],
-    "awayAttempts": [],
-    "initiator": null
+    "homeAttempts": [
+      {
+        "id": "6d6fa2c5-7f9e-41db-844b-d6b32e2dc17d",
+        "round": 1,
+        "playerId": "7c2b9f49-8e9a-4ca7-a985-c64d5e613c57",
+        "playerNumber": "18",
+        "playerName": "DE LA VEGA FLAVIA MICHELLE",
+        "isGoal": true
+      }
+    ],
+    "awayAttempts": [
+      {
+        "id": "b378736d-5471-42d5-9a24-0c461a7334ed",
+        "round": 1,
+        "playerId": "unknown-4",
+        "playerNumber": "4",
+        "isGoal": false
+      }
+    ],
+    "initiator": "home"
   },
   "homeTeamName": "Hazard white",
   "homeTeamSubName": "white",
@@ -36,7 +53,27 @@
   "gameSummary": {
     "home": {
       "goals": [],
-      "penalties": [],
+      "penalties": [
+        {
+          "id": "16ac12ff-721f-4a8f-9455-5d2b92ff5200",
+          "team": "home",
+          "playerNumber": "25",
+          "playerName": "SCOTTO DI CARLO NATALIA",
+          "penaltyName": "Menor",
+          "initialDuration": 120,
+          "reducesPlayerCount": true,
+          "clearsOnGoal": true,
+          "isBenchPenalty": false,
+          "addTimestamp": 1761844293501,
+          "addGameTime": 119538,
+          "addPeriodText": "2ND",
+          "endTimestamp": 1761844299745,
+          "endGameTime": 107516,
+          "endPeriodText": "2ND",
+          "endReason": "completed",
+          "timeServed": 120
+        }
+      ],
       "playerStats": [],
       "homeShotsLog": []
     },
