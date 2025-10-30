@@ -8,8 +8,7 @@
       "playersPerTeam": 5,
       "id": "d8de7f32-0c74-4f59-af9e-43b93818c816",
       "homeScore": 1,
-      "awayScore": 3,
-      "overTimeOrShootouts": false
+      "awayScore": 3
     },
     {
       "date": "2025-10-29T10:00:00.000Z",
@@ -19,8 +18,7 @@
       "playersPerTeam": 5,
       "id": "5574b45d-2acd-4b9b-8eff-f9becb9202e7",
       "homeScore": 4,
-      "awayScore": 1,
-      "overTimeOrShootouts": false
+      "awayScore": 1
     },
     {
       "date": "2025-10-31T08:00:00.000Z",
@@ -38,8 +36,7 @@
       "playersPerTeam": 5,
       "id": "2a610a49-7b09-4628-b988-1002fcea0c1c",
       "homeScore": 0,
-      "awayScore": 2,
-      "overTimeOrShootouts": false
+      "awayScore": 2
     },
     {
       "date": "2025-10-30T03:00:00.000Z",
@@ -49,8 +46,7 @@
       "playersPerTeam": 4,
       "id": "7383c563-57a5-426a-be7d-d3a744143572",
       "homeScore": 1,
-      "awayScore": 0,
-      "overTimeOrShootouts": true
+      "awayScore": 0
     },
     {
       "date": "2025-10-30T03:00:00.000Z",
