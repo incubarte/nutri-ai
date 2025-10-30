@@ -1696,7 +1696,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'REMOVE_PLAYER_FROM_TEAM': {
       const { teamId, playerId } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
       break;
     }
     case 'LOAD_TEAMS_FROM_FILE': { // Legacy: no longer used directly.
@@ -1888,22 +1888,24 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'away' as const, periodText: e.periodText })),
     ];
     
-    // Add all periods that were actually played
-    const totalPeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
-    let lastPlayedPeriod = live.clock.currentPeriod;
+    // Determine the last period that was actually part of the game
+    let lastPlayedPeriod = 0;
+    const totalConfiguredPeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
 
     if (live.clock.periodDisplayOverride === 'End of Game' || live.clock.periodDisplayOverride === 'Shootout' || live.clock.periodDisplayOverride === 'AwaitingDecision') {
         lastPlayedPeriod = live.clock.currentPeriod;
     } else {
-        lastPlayedPeriod = totalPeriods;
+        // Fallback for games that might not be formally "ended" but have progressed
+        lastPlayedPeriod = Math.min(live.clock.currentPeriod, totalConfiguredPeriods);
     }
     
-    for (let i = 1; i <= lastPlayedPeriod && i <= totalPeriods; i++) {
+    // Add all periods from 1 up to the last played period
+    for (let i = 1; i <= lastPlayedPeriod && i <= totalConfiguredPeriods; i++) {
         const periodText = getPeriodText(i, config.numberOfRegularPeriods);
         playedPeriods.add(periodText);
     }
-    
-    // Also add any periods that had events, just in case
+
+    // Also add any periods that had events, just in case (e.g., if a goal was manually added to a period not covered above)
     allEvents.forEach(event => {
         const periodText = event.periodText;
         if (periodText && !periodText.toLowerCase().includes('warm-up') && !periodText.toLowerCase().includes('break')) {
