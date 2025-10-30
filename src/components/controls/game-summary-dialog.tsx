@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
@@ -123,27 +124,20 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
   const handleCancelClick = () => setIsEditing(false);
   
   const handleSaveClick = () => {
-    let hasChanges = false;
     for (const periodText in editedShots) {
       for (const team of ['home', 'away'] as const) {
         const teamPlayers = team === 'home' ? (homeTeam?.players || []) : (awayTeam?.players || []);
         teamPlayers.forEach(player => {
-            const newShotCountStr = editedShots[periodText]?.[player.id];
-            if (newShotCountStr !== undefined) {
-                 const newShotCount = parseInt(newShotCountStr, 10) || 0;
+            if (editedShots[periodText]?.[player.id] !== undefined) {
+                 const newShotCount = parseInt(editedShots[periodText][player.id], 10) || 0;
                  dispatch({ type: 'SET_PLAYER_SHOTS', payload: { team, playerId: player.id, periodText, shotCount: newShotCount }});
-                 hasChanges = true;
             }
         });
       }
     }
 
-    if (hasChanges) {
-        toast({ title: "Tiros Actualizados", description: "Se han guardado los cambios en los tiros por período." });
-        setRefreshKey(k => k + 1);
-    } else {
-        toast({ title: "Sin Cambios", description: "No se detectaron modificaciones." });
-    }
+    toast({ title: "Tiros Actualizados", description: "Se han guardado los cambios en los tiros por período." });
+    setRefreshKey(k => k + 1);
     setIsEditing(false);
   };
 
@@ -283,3 +277,5 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     </Dialog>
   );
 }
+
+    

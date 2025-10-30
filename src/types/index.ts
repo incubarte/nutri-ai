@@ -1,4 +1,5 @@
 
+
 export interface PlayerStats {
   name: string;
   shots: number;
@@ -186,8 +187,8 @@ export interface AttendedPlayerInfo {
 }
 
 export interface PeriodStats {
-  home: { goals: GoalLog[]; penalties: PenaltyLog[]; playerStats: SummaryPlayerStats[]; };
-  away: { goals: GoalLog[]; penalties: PenaltyLog[]; playerStats: SummaryPlayerStats[]; };
+  home: { goals: GoalLog[]; playerStats: SummaryPlayerStats[]; };
+  away: { goals: GoalLog[]; playerStats: SummaryPlayerStats[]; };
 }
 
 export interface GameSummary {
@@ -482,3 +483,5 @@ export interface SummaryPlayerStats {
   assists: number;
   shots: number;
 }
+
+    

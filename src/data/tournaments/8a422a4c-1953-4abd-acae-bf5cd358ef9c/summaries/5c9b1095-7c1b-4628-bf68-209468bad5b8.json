@@ -152,10 +152,7 @@
       }
     ]
   },
-  "statsByPeriod": {
-    "1ST": { "home": { "goals": [], "penalties": [], "playerStats": [] }, "away": { "goals": [], "penalties": [], "playerStats": [] }},
-    "2ND": { "home": { "goals": [], "penalties": [], "playerStats": [] }, "away": { "goals": [], "penalties": [], "playerStats": [] }}
-  },
+  "statsByPeriod": {},
   "shootout": {
     "isActive": false,
     "rounds": 5,
@@ -180,6 +177,5 @@
       }
     ],
     "initiator": "home"
-  },
-  "overTimeOrShootouts": true
+  }
 }

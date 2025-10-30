@@ -763,50 +763,50 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'SET_PLAYER_SHOTS': {
-        const { team, playerId, periodText, shotCount } = action.payload;
-        const { live } = state;
-        const { gameSummary } = live;
+      const { team, playerId, periodText, shotCount } = action.payload;
+      const { live } = state;
+      const { gameSummary } = live;
 
-        const attendedPlayer = gameSummary.attendance[team].find(p => p.id === playerId);
-        if (!attendedPlayer) break;
+      const attendedPlayer = gameSummary.attendance[team].find(p => p.id === playerId);
+      if (!attendedPlayer) break;
 
-        const shotsLogKey = `${team}ShotsLog` as const;
-        const otherShots = (gameSummary[team]?.[shotsLogKey] || []).filter((shot: ShotLog) => shot.playerId !== playerId || shot.periodText !== periodText);
-        
-        const newShotsForPeriod: ShotLog[] = Array.from({ length: shotCount }, (_, i) => ({
-            id: safeUUID(),
-            team,
-            timestamp: Date.now() + i,
-            gameTime: 0,
-            periodText,
-            playerId: attendedPlayer.id,
-            playerNumber: attendedPlayer.number,
-            playerName: attendedPlayer.name
-        }));
+      const shotsLogKey = `${team}ShotsLog` as const;
+      const otherShots = (gameSummary[team]?.[shotsLogKey] || []).filter((shot: ShotLog) => shot.playerId !== playerId || shot.periodText !== periodText);
+      
+      const newShotsForPeriod: ShotLog[] = Array.from({ length: shotCount }, (_, i) => ({
+          id: safeUUID(),
+          team,
+          timestamp: Date.now() + i,
+          gameTime: 0,
+          periodText,
+          playerId: attendedPlayer.id,
+          playerNumber: attendedPlayer.number,
+          playerName: attendedPlayer.name
+      }));
 
-        const newGameSummary = JSON.parse(JSON.stringify(gameSummary));
-        newGameSummary[team][shotsLogKey] = [...otherShots, ...newShotsForPeriod];
-        
-        const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
+      const newGameSummary = JSON.parse(JSON.stringify(gameSummary));
+      newGameSummary[team][shotsLogKey] = [...otherShots, ...newShotsForPeriod];
+      
+      const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
 
-        newState = {
-            ...state,
-            live: {
-                ...live,
-                score: {
-                    ...live.score,
-                    homeShots: homeTotalShots,
-                    awayShots: awayTotalShots
-                },
-                gameSummary: {
-                    ...newGameSummary,
-                    home: { ...newGameSummary.home, playerStats: homePlayerStats },
-                    away: { ...newGameSummary.away, playerStats: awayPlayerStats },
-                }
-            }
-        };
-        newState._lastActionOriginator = TAB_ID; // Mark as significant change to trigger server sync
-        break;
+      newState = {
+          ...state,
+          live: {
+              ...live,
+              score: {
+                  ...live.score,
+                  homeShots: homeTotalShots,
+                  awayShots: awayTotalShots
+              },
+              gameSummary: {
+                  ...newGameSummary,
+                  home: { ...newGameSummary.home, playerStats: homePlayerStats },
+                  away: { ...newGameSummary.away, playerStats: awayPlayerStats },
+              }
+          }
+      };
+      newState._lastActionOriginator = TAB_ID; // Mark as significant change to trigger server sync
+      break;
     }
     case 'FINISH_GAME_WITH_OT_GOAL': {
       const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
@@ -1830,32 +1830,25 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         }
     });
 
-    // Also ensure all played regular/OT periods are included, even if they had no events
-    const lastPlayedPeriod = live.clock.currentPeriod;
-    const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
-
-    for (let i = 1; i <= Math.min(lastPlayedPeriod, totalGamePeriods); i++) {
-      if (live.clock.periodDisplayOverride !== 'Break' && live.clock.periodDisplayOverride !== 'Pre-OT Break' && live.clock.periodDisplayOverride !== 'Warm-up') {
-        playedPeriods.add(getPeriodText(i, config.numberOfRegularPeriods));
-      }
-    }
-
-
     playedPeriods.forEach(periodText => {
         if (!statsByPeriod[periodText]) {
             statsByPeriod[periodText] = {
-                home: { goals: [], penalties: [], playerStats: [] },
-                away: { goals: [], penalties: [], playerStats: [] }
+                home: { goals: [], playerStats: [] },
+                away: { goals: [], playerStats: [] }
             };
         }
     });
 
-    allEvents.forEach(event => {
-        const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
-        if (!periodText || !statsByPeriod[periodText]) return;
-        const teamStats = statsByPeriod[periodText][event.team];
-        if (event.type === 'goal') teamStats.goals.push(event as GoalLog);
-        if (event.type === 'penalty') teamStats.penalties.push(event as PenaltyLog);
+    // Populate goals for each period
+    summary.home.goals.forEach(goal => {
+        if (goal.periodText && statsByPeriod[goal.periodText]) {
+            statsByPeriod[goal.periodText].home.goals.push(goal);
+        }
+    });
+    summary.away.goals.forEach(goal => {
+        if (goal.periodText && statsByPeriod[goal.periodText]) {
+            statsByPeriod[goal.periodText].away.goals.push(goal);
+        }
     });
 
     for (const period in statsByPeriod) {
@@ -1894,6 +1887,10 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     summary.statsByPeriod = statsByPeriod;
     const overTimeOrShootouts = (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) || Object.keys(summary.statsByPeriod || {}).some(p => p.startsWith('OT'));
     summary.overTimeOrShootouts = overTimeOrShootouts;
+
+    if (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) {
+        summary.shootout = live.shootout;
+    }
 
     return summary;
 };
@@ -2164,7 +2161,4 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
 
 
 
-
-
-
-
+    

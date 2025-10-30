@@ -1,4 +1,5 @@
 
+
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatTime, getCategoryNameById, getEndReasonText, type GameState, getPeriodText } from '@/contexts/game-state-context';
@@ -178,19 +179,11 @@ export const exportGameSummaryPDF = (state: GameState) => {
 
         const homeGoalsInPeriod = allHomeGoals.filter(g => g.periodText === periodText);
         const awayGoalsInPeriod = allAwayGoals.filter(g => g.periodText === periodText);
-        const homePenaltiesInPeriod = allHomePenalties.filter(p => p.addPeriodText === periodText);
-        const awayPenaltiesInPeriod = allAwayPenalties.filter(p => p.addPeriodText === periodText);
         
         currentY = addTable(doc, `${live.homeTeamName} - Goles`, currentY, ['Tiempo', 'Gol', 'Asistencia'], homeGoalsInPeriod.map(g => [formatTime(g.gameTime), `#${g.scorer?.playerNumber || 'S/N'} ${g.scorer?.playerName || ''}`.trim(), g.assist ? `#${g.assist.playerNumber} ${g.assist.playerName || ''}`.trim() : '---']), { showTotal: true });
         currentY = checkPageBreak(doc, currentY);
         
         currentY = addTable(doc, `${live.awayTeamName} - Goles`, currentY, ['Tiempo', 'Gol', 'Asistencia'], awayGoalsInPeriod.map(g => [formatTime(g.gameTime), `#${g.scorer?.playerNumber || 'S/N'} ${g.scorer?.playerName || ''}`.trim(), g.assist ? `#${g.assist.playerNumber} ${g.assist.playerName || ''}`.trim() : '---']), { showTotal: true });
-        currentY = checkPageBreak(doc, currentY);
-        
-        currentY = addTable(doc, `${live.homeTeamName} - Penalidades`, currentY, ['Tiempo', 'Jugador', 'Tipo'], homePenaltiesInPeriod.map(p => [formatTime(p.addGameTime), p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber} ${p.playerName || ''}`.trim(), p.penaltyName || '---']), { headFillColor: [231, 76, 60], showTotal: true });
-        currentY = checkPageBreak(doc, currentY);
-        
-        currentY = addTable(doc, `${live.awayTeamName} - Penalidades`, currentY, ['Tiempo', 'Jugador', 'Tipo'], awayPenaltiesInPeriod.map(p => [formatTime(p.addGameTime), p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber} ${p.playerName || ''}`.trim(), p.penaltyName || '---']), { headFillColor: [231, 76, 60], showTotal: true });
         currentY = checkPageBreak(doc, currentY);
     }
 
@@ -198,3 +191,5 @@ export const exportGameSummaryPDF = (state: GameState) => {
     
     return filename;
 };
+
+    

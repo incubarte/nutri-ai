@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
@@ -98,17 +99,16 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
 
   const handleEditClick = () => {
     const initialShots: Record<string, Record<string, string>> = {};
-    if (!localSummary?.statsByPeriod) {
-        setIsEditing(true);
-        return;
-    }
-    
-    for (const period in localSummary.statsByPeriod) {
-        initialShots[period] = {};
-        for(const team of ['home', 'away'] as const) {
-            localSummary.statsByPeriod[period][team].playerStats.forEach(p => {
-                initialShots[period][p.id] = String(p.shots || 0);
-            });
+    if (localSummary?.statsByPeriod) {
+        for (const period in localSummary.statsByPeriod) {
+            initialShots[period] = {};
+            for(const team of ['home', 'away'] as const) {
+                const playersForTeam = team === 'home' ? homeTeam?.players : awayTeam?.players;
+                playersForTeam?.forEach(p => {
+                    const stat = localSummary.statsByPeriod![period][team].playerStats.find(ps => ps.id === p.id);
+                    initialShots[period][p.id] = String(stat?.shots || 0);
+                });
+            }
         }
     }
     setEditedShots(initialShots);
@@ -120,18 +120,17 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   const handleSaveClick = () => {
     if (!localSummary || !match || !tournament) return;
     
-    let hasChanges = false;
     const newSummary = JSON.parse(JSON.stringify(localSummary));
 
     for (const periodText in editedShots) {
         for (const team of ['home', 'away'] as const) {
             const teamPlayers = team === 'home' ? (homeTeam?.players || []) : (awayTeam?.players || []);
             teamPlayers.forEach(player => {
-                const newShotCountStr = editedShots[periodText]?.[player.id];
-                if (newShotCountStr !== undefined) {
-                    const newShotCount = parseInt(newShotCountStr, 10) || 0;
+                if (editedShots[periodText]?.[player.id] !== undefined) {
+                    const newShotCount = parseInt(editedShots[periodText][player.id], 10) || 0;
+                    
                     if (!newSummary.statsByPeriod[periodText]) {
-                         newSummary.statsByPeriod[periodText] = { home: { goals:[], penalties:[], playerStats:[] }, away: { goals:[], penalties:[], playerStats:[] } };
+                         newSummary.statsByPeriod[periodText] = { home: { goals:[], playerStats:[] }, away: { goals:[], playerStats:[] } };
                     }
                     let periodStats = newSummary.statsByPeriod[periodText][team].playerStats as SummaryPlayerStats[];
                     let playerStat = periodStats.find(p => p.id === player.id);
@@ -140,23 +139,18 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                     } else {
                         periodStats.push({ id: player.id, name: player.name, number: player.number, shots: newShotCount, goals: 0, assists: 0 });
                     }
-                    hasChanges = true;
                 }
             });
         }
     }
 
-    if(hasChanges) {
-        dispatch({
-            type: 'SAVE_MATCH_SUMMARY',
-            payload: { matchId: match.id, summary: newSummary }
-        });
-        setLocalSummary(newSummary);
-        setRefreshKey(k => k + 1);
-        toast({ title: "Resumen Guardado", description: "Los cambios en los tiros han sido guardados."});
-    } else {
-        toast({ title: "Sin Cambios", description: "No se detectaron modificaciones en los tiros."});
-    }
+    dispatch({
+        type: 'SAVE_MATCH_SUMMARY',
+        payload: { matchId: match.id, summary: newSummary }
+    });
+    setLocalSummary(newSummary);
+    setRefreshKey(k => k + 1);
+    toast({ title: "Resumen Guardado", description: "Los cambios en los tiros han sido guardados."});
 
     setIsEditing(false);
   };
@@ -209,10 +203,13 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
               </div>
               
                {localSummary.shootout && (localSummary.shootout.homeAttempts.length > 0 || localSummary.shootout.awayAttempts.length > 0) && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <ShootoutSection teamName={homeTeam?.name || ''} attempts={localSummary.shootout.homeAttempts} />
-                        <ShootoutSection teamName={awayTeam?.name || ''} attempts={localSummary.shootout.awayAttempts} />
-                    </div>
+                    <>
+                      <Separator />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <ShootoutSection teamName={homeTeam?.name || ''} attempts={localSummary.shootout.homeAttempts} />
+                          <ShootoutSection teamName={awayTeam?.name || ''} attempts={localSummary.shootout.awayAttempts} />
+                      </div>
+                    </>
                 )}
               
               {allPeriodTexts.length > 0 && (
@@ -263,3 +260,5 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
     </Dialog>
   );
 }
+
+    
