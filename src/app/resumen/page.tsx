@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
@@ -49,7 +50,8 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
 
     const summaryData = useMemo(() => {
         return generateSummaryData(state);
-    }, [state, refreshKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state.live.gameSummary, refreshKey]);
 
     const homeAggregatedStats = useMemo(() => {
         if (!summaryData) return [];
@@ -92,7 +94,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
                 const shotCount = parseInt(shotCountStr, 10);
                 if (!isNaN(shotCount)) {
                     const team = state.live.gameSummary.attendance.home.some(p => p.id === playerId) ? 'home' : 'away';
-                    const originalShotCount = state.live.gameSummary[`${team}ShotsLog` as const]?.filter(s => s.playerId === playerId && s.periodText === periodText).length || 0;
+                    const originalShotCount = (state.live.gameSummary[`${team}ShotsLog` as const] || []).filter(s => s.playerId === playerId && s.periodText === periodText).length || 0;
                     
                     if (shotCount !== originalShotCount) {
                         hasChanges = true;
@@ -144,7 +146,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
 
     if (state.isLoading || !summaryData) {
         return (
-            <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
+            <div className="flex flex-col justify-center items-center min-h-[calc(100vh-20rem)] text-center p-4">
                 <HockeyPuckSpinner className="h-24 w-24 text-primary mb-4" />
                 <p className="text-xl text-foreground">Cargando Resumen...</p>
             </div>
@@ -193,7 +195,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
                     </ScrollArea>
                 </TabsContent>
                 <TabsContent value="periods" className="mt-6">
-                    {summaryData.allPeriodTexts.length > 0 ? (
+                    {summaryData.allPeriodTexts && summaryData.allPeriodTexts.length > 0 ? (
                        <Accordion type="single" collapsible className="w-full">
                             <AccordionItem value="periods-details">
                                 <AccordionTrigger className="text-xl flex-grow hover:no-underline">
@@ -237,10 +239,11 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
         
             {isAddPenaltyDialogOpen && addPenaltyContext && (
                 <Dialog open={isAddPenaltyDialogOpen} onOpenChange={setIsAddPenaltyDialogOpen}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Añadir Penalidad al Resumen</DialogTitle>
-                        </DialogHeader>
+                    <DialogHeader>
+                        <DialogTitle>Añadir Penalidad al Resumen</DialogTitle>
+                        <DialogDescription>Añade una penalidad que ocurrió durante el partido pero no fue registrada en vivo.</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
                         <AddPenaltyForm
                             homeTeamName={summaryData?.homeTeamName || 'Local'}
                             awayTeamName={summaryData?.awayTeamName || 'Visitante'}
@@ -252,7 +255,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
                             availablePeriods={summaryData.allPeriodTexts}
                             preselectedPeriod={addPenaltyContext.period !== 'general' ? addPenaltyContext.period : undefined}
                         />
-                    </DialogContent>
+                    </div>
                 </Dialog>
             )}
         </div>
@@ -272,7 +275,7 @@ export default function ResumenPage() {
         );
     }
     
-    if (!state.live.matchId && !state.live.gameSummary.home.goals.length && !state.live.gameSummary.away.goals.length) {
+    if (!state.live.gameSummary || (!state.live.gameSummary.home.goals.length && !state.live.gameSummary.away.goals.length && !state.live.gameSummary.home.penalties.length && !state.live.gameSummary.away.penalties.length)) {
        return (
             <div className="w-full max-w-6xl mx-auto space-y-6 text-center">
                  <h1 className="text-3xl font-bold text-primary-foreground">Resumen del Partido</h1>
