@@ -11,9 +11,11 @@ interface TeamStats {
   id: string;
   name: string;
   pj: number; // Partidos Jugados
-  pg: number; // Partidos Ganados
+  pg: number; // Partidos Ganados en tiempo regular
   pe: number; // Partidos Empatados
-  pp: number; // Partidos Perdidos
+  pp: number; // Partidos Perdidos en tiempo regular
+  pg_ot: number; // Partidos Ganados en OT
+  pp_ot: number; // Partidos Perdidos en OT
   gf: number; // Goles a Favor
   gc: number; // Goles en Contra
   puntos: number;
@@ -39,7 +41,7 @@ export function StandingsTab() {
         const teamStats: TeamStats = {
           id: team.id,
           name: team.name,
-          pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, puntos: 0
+          pj: 0, pg: 0, pe: 0, pp: 0, pg_ot: 0, pp_ot: 0, gf: 0, gc: 0, puntos: 0
         };
 
         finishedMatches
@@ -48,32 +50,43 @@ export function StandingsTab() {
             teamStats.pj++;
             const homeScore = match.summary?.home.goals.length || 0;
             const awayScore = match.summary?.away.goals.length || 0;
+            const wentToOT = match.summary?.statsByPeriod && Object.keys(match.summary.statsByPeriod).some(p => p.startsWith('OT'));
             
             if (match.homeTeamId === team.id) {
               teamStats.gf += homeScore;
               teamStats.gc += awayScore;
-              if (homeScore > awayScore) teamStats.pg++;
-              else if (homeScore < awayScore) teamStats.pp++;
-              else teamStats.pe++;
+              if (homeScore > awayScore) {
+                if (wentToOT) teamStats.pg_ot++; else teamStats.pg++;
+              } else if (homeScore < awayScore) {
+                if (wentToOT) teamStats.pp_ot++; else teamStats.pp++;
+              } else {
+                teamStats.pe++;
+              }
             } else { // Away team
               teamStats.gf += awayScore;
               teamStats.gc += homeScore;
-              if (awayScore > homeScore) teamStats.pg++;
-              else if (awayScore < homeScore) teamStats.pp++;
-              else teamStats.pe++;
+              if (awayScore > homeScore) {
+                if (wentToOT) teamStats.pg_ot++; else teamStats.pg++;
+              } else if (awayScore < homeScore) {
+                if (wentToOT) teamStats.pp_ot++; else teamStats.pp++;
+              } else {
+                teamStats.pe++;
+              }
             }
           });
         
-        teamStats.puntos = (teamStats.pg * 3) + (teamStats.pe * 1);
+        teamStats.puntos = (teamStats.pg * 3) + (teamStats.pe * 1) + (teamStats.pg_ot * 2) + (teamStats.pp_ot * 1);
         return teamStats;
       });
 
       // Sort stats
       stats.sort((a, b) => {
         if (b.puntos !== a.puntos) return b.puntos - a.puntos;
+        const diffA = a.gf - a.gc;
+        const diffB = b.gf - b.gc;
+        if(diffB !== diffA) return diffB - diffA;
         if (a.pj !== b.pj) return a.pj - b.pj;
-        if (b.gf !== a.gf) return b.gf - a.gf;
-        return a.gc - b.gc;
+        return b.gf - a.gf;
       });
 
       return {
@@ -89,7 +102,7 @@ export function StandingsTab() {
     <div className="space-y-8">
         <div className="flex items-start gap-2 p-3 text-sm border rounded-lg bg-muted/50 text-muted-foreground">
             <Info className="h-5 w-5 mt-0.5 shrink-0"/>
-            <p>Observación: La tabla de posiciones actual no considera puntos extra por partidos ganados en tiempo extra (overtime) o tandas de penales (shootouts).</p>
+            <p>Observación: La tabla de posiciones otorga 3 puntos por victoria en tiempo regular, 2 puntos por victoria en tiempo extra/penales, 1 punto por derrota en tiempo extra/penales y 1 punto por empate.</p>
         </div>
 
         {standingsByCat.map(({ categoryName, stats }) => (
@@ -119,9 +132,9 @@ export function StandingsTab() {
                                 <TableRow key={team.id}>
                                     <TableCell className="font-medium">{team.name}</TableCell>
                                     <TableCell className="text-center">{team.pj}</TableCell>
-                                    <TableCell className="text-center">{team.pg}</TableCell>
+                                    <TableCell className="text-center">{team.pg + team.pg_ot}</TableCell>
                                     <TableCell className="text-center">{team.pe}</TableCell>
-                                    <TableCell className="text-center">{team.pp}</TableCell>
+                                    <TableCell className="text-center">{team.pp + team.pp_ot}</TableCell>
                                     <TableCell className="text-center">{team.gf}</TableCell>
                                     <TableCell className="text-center">{team.gc}</TableCell>
                                     <TableCell className="text-center font-bold text-lg">{team.puntos}</TableCell>

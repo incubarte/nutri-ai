@@ -6,7 +6,7 @@ import { useGameState, getCategoryNameById } from '@/contexts/game-state-context
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Edit, Trash2, FileText, Search, ListFilter, Calendar as CalendarIcon, X } from 'lucide-react';
+import { Edit, Trash2, FileText, Search, ListFilter, Calendar as CalendarIcon, X, Check as CheckIcon } from 'lucide-react';
 import { format, parseISO, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AddEditMatchDialog } from './add-edit-match-dialog';
@@ -166,8 +166,8 @@ export function FixtureListView() {
               <TableHead>Categoría</TableHead>
               <TableHead>Equipo Local</TableHead>
               <TableHead>Equipo Visitante</TableHead>
-              <TableHead>Jugadores</TableHead>
-              <TableHead>Resultado</TableHead>
+              <TableHead className="text-center">Resultado</TableHead>
+              <TableHead className="text-center">OT</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -178,6 +178,7 @@ export function FixtureListView() {
                 const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
                 const hasSummary = !!match.summary;
                 const score = hasSummary ? `${match.summary.home.goals.length} - ${match.summary.away.goals.length}` : '-';
+                const wentToOT = hasSummary && match.summary.statsByPeriod && Object.keys(match.summary.statsByPeriod).some(p => p.startsWith('OT'));
 
                 return (
                   <TableRow key={match.id}>
@@ -185,8 +186,8 @@ export function FixtureListView() {
                     <TableCell>{getCategoryNameById(match.categoryId, selectedTournament?.categories) || 'N/A'}</TableCell>
                     <TableCell>{homeTeam?.name || 'Equipo no encontrado'}</TableCell>
                     <TableCell>{awayTeam?.name || 'Equipo no encontrado'}</TableCell>
-                    <TableCell>{match.playersPerTeam} vs {match.playersPerTeam}</TableCell>
-                    <TableCell className="font-mono font-bold">{score}</TableCell>
+                    <TableCell className="text-center font-mono font-bold">{score}</TableCell>
+                    <TableCell className="text-center">{wentToOT && <CheckIcon className="h-4 w-4 mx-auto text-green-500"/>}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-1 justify-end">
                         {hasSummary && (
