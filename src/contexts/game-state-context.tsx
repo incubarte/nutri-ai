@@ -183,6 +183,7 @@ const getInitialState = (): GameState => {
       pendingPowerPlayGoal: null,
       overlayMessage: null,
       matchId: null,
+      playedPeriods: [],
     },
     _initialConfigLoadComplete: false,
   };
@@ -273,6 +274,12 @@ const handleAutoTransition = (currentState: GameState): GameState => {
       const newAbsoluteTime = calculateAbsoluteTimeForPeriod(currentPeriod, 0, currentState);
       newGameStateAfterTransition.live.clock.absoluteElapsedTimeCs = newAbsoluteTime;
       newGameStateAfterTransition.live.clock._liveAbsoluteElapsedTimeCs = newAbsoluteTime;
+
+      // Add the just-finished period to the played periods list
+      const finishedPeriodText = getPeriodText(currentPeriod, numberOfRegularPeriods);
+      if (!newGameStateAfterTransition.live.playedPeriods.includes(finishedPeriodText)) {
+          newGameStateAfterTransition.live.playedPeriods.push(finishedPeriodText);
+      }
 
       // Check for end of regulation or last OT
       if (currentPeriod >= totalGamePeriods) {
@@ -827,6 +834,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
       
+      const finishedPeriodText = getPeriodText(state.live.clock.currentPeriod, state.config.numberOfRegularPeriods);
+      const playedPeriods = [...state.live.playedPeriods];
+      if (!playedPeriods.includes(finishedPeriodText)) {
+          playedPeriods.push(finishedPeriodText);
+      }
+      
       newState = { ...state, live: { ...state.live, 
         score: newScore,
         clock: {
@@ -840,6 +853,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           remainingTimeAtStartCs: null,
           preTimeoutState: null,
         },
+        playedPeriods,
         gameSummary: {
           ...gameSummary,
           home: { ...gameSummary.home, playerStats: homePlayerStats },
@@ -1214,7 +1228,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'START_BREAK': {
         const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
         const autoStart = state.config.autoStartBreaks && state.config.defaultBreakDuration > 0;
-        newState = { ...state, live: { ...state.live, clock: { ...state.live.clock,
+        const finishedPeriodText = getPeriodText(state.live.clock.currentPeriod, state.config.numberOfRegularPeriods);
+        const playedPeriods = [...state.live.playedPeriods];
+        if (!playedPeriods.includes(finishedPeriodText)) {
+            playedPeriods.push(finishedPeriodText);
+        }
+        newState = { ...state, live: { ...state.live,
+            playedPeriods, 
+            clock: { ...state.live.clock,
             currentTime: state.config.defaultBreakDuration, periodDisplayOverride: 'Break', isClockRunning: autoStart, preTimeoutState: null,
             clockStartTimeMs: autoStart ? Date.now() : null, remainingTimeAtStartCs: autoStart ? state.config.defaultBreakDuration : null,
             absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
@@ -1224,7 +1245,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'START_PRE_OT_BREAK': {
         const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
         const autoStart = state.config.autoStartPreOTBreaks && state.config.defaultPreOTBreakDuration > 0;
-        newState = { ...state, live: { ...state.live, clock: { ...state.live.clock,
+        const finishedPeriodText = getPeriodText(state.live.clock.currentPeriod, state.config.numberOfRegularPeriods);
+        const playedPeriods = [...state.live.playedPeriods];
+        if (!playedPeriods.includes(finishedPeriodText)) {
+            playedPeriods.push(finishedPeriodText);
+        }
+        newState = { ...state, live: { ...state.live, 
+            playedPeriods,
+            clock: { ...state.live.clock,
             currentTime: state.config.defaultPreOTBreakDuration, periodDisplayOverride: 'Pre-OT Break', isClockRunning: autoStart, preTimeoutState: null,
             clockStartTimeMs: autoStart ? Date.now() : null, remainingTimeAtStartCs: autoStart ? state.config.defaultPreOTBreakDuration : null,
             absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
@@ -1284,11 +1312,19 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const { live, config } = state;
         const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
 
+        // If we are in a running period, add it to playedPeriods before ending it
+        if (live.clock.periodDisplayOverride === null) {
+            const finishedPeriodText = getPeriodText(live.clock.currentPeriod, config.numberOfRegularPeriods);
+            if (!live.playedPeriods.includes(finishedPeriodText)) {
+                newState.live.playedPeriods = [...live.playedPeriods, finishedPeriodText];
+            }
+        }
+        
         // If it's the end of a regular period AND the game is NOT tied, end the game.
         if (live.clock.currentPeriod >= config.numberOfRegularPeriods && live.score.home !== live.score.away) {
             const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
-            newState = { ...state, live: { ...live,
-                clock: { ...live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
+            newState = { ...newState, live: { ...newState.live,
+                clock: { ...newState.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
                     absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
                     clockStartTimeMs: null, remainingTimeAtStartCs: null, preTimeoutState: null,
                 },
@@ -1299,20 +1335,20 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         else if (live.clock.currentPeriod < totalGamePeriods && live.clock.periodDisplayOverride === null) {
             const isPreOT = live.clock.currentPeriod >= config.numberOfRegularPeriods;
             const breakType = isPreOT ? 'START_PRE_OT_BREAK' : 'START_BREAK';
-            return gameReducer(state, { type: breakType });
+            return gameReducer(newState, { type: breakType }); // Recurse with the updated state
         }
         // If it's a TIE at the end of regulation or OT.
         else if (live.score.home === live.score.away) {
-            newState = { ...state, live: { ...live,
-                clock: { ...live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
+            newState = { ...newState, live: { ...newState.live,
+                clock: { ...newState.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
                 shootout: { ...live.shootout, isActive: false }
             }};
         }
         // Fallback to just end the game (e.g., end of final OT with no winner yet).
         else {
              const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
-            newState = { ...state, live: { ...live,
-                clock: { ...live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
+            newState = { ...newState, live: { ...newState.live,
+                clock: { ...newState.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
                     absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
                     clockStartTimeMs: null, remainingTimeAtStartCs: null, preTimeoutState: null,
                 },
@@ -1350,6 +1386,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
       const autoStart = config.autoStartPreOTBreaks && config.defaultPreOTBreakDuration > 0;
+      
+      const finishedPeriodText = getPeriodText(live.clock.currentPeriod, config.numberOfRegularPeriods);
+      const playedPeriods = [...live.playedPeriods];
+      if (!playedPeriods.includes(finishedPeriodText)) {
+          playedPeriods.push(finishedPeriodText);
+      }
 
       newState = {
         ...state,
@@ -1359,6 +1401,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         },
         live: {
           ...live,
+          playedPeriods,
           clock: {
             ...live.clock,
             currentPeriod: live.clock.currentPeriod,
@@ -1377,7 +1420,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'START_SHOOTOUT': {
       if (state.live.clock.periodDisplayOverride !== 'AwaitingDecision') break;
+      const finishedPeriodText = getPeriodText(state.live.clock.currentPeriod, state.config.numberOfRegularPeriods);
+      const playedPeriods = [...state.live.playedPeriods];
+      if (!playedPeriods.includes(finishedPeriodText)) {
+          playedPeriods.push(finishedPeriodText);
+      }
+      
       newState = { ...state, live: { ...state.live, 
+        playedPeriods,
         shootout: {
           ...INITIAL_SHOOTOUT_STATE,
           isActive: true,
@@ -1856,6 +1906,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         pendingPowerPlayGoal: null,
         overlayMessage: null,
         matchId: state.live.matchId, // Preserve the matchId
+        playedPeriods: [],
       };
 
       // Save the reset live state to the server immediately
@@ -1879,39 +1930,9 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
 
     const summary: GameSummary = JSON.parse(JSON.stringify(live.gameSummary));
     const statsByPeriod: Record<string, PeriodStats> = {};
-    const playedPeriods = new Set<string>();
 
-    const allEvents = [
-        ...summary.home.goals.map(e => ({ ...e, type: 'goal' as const, team: 'home' as const, periodText: e.periodText })),
-        ...summary.away.goals.map(e => ({ ...e, type: 'goal' as const, team: 'away' as const, periodText: e.periodText })),
-        ...(summary.home.homeShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'home' as const, periodText: e.periodText })),
-        ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'away' as const, periodText: e.periodText })),
-    ];
-    
-    // Determine the last period that was actually part of the game
-    let lastPlayedPeriod = 0;
-    const totalConfiguredPeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
-
-    if (live.clock.periodDisplayOverride === 'End of Game' || live.clock.periodDisplayOverride === 'Shootout' || live.clock.periodDisplayOverride === 'AwaitingDecision') {
-        lastPlayedPeriod = live.clock.currentPeriod;
-    } else {
-        // Fallback for games that might not be formally "ended" but have progressed
-        lastPlayedPeriod = Math.min(live.clock.currentPeriod, totalConfiguredPeriods);
-    }
-    
-    // Add all periods from 1 up to the last played period
-    for (let i = 1; i <= lastPlayedPeriod && i <= totalConfiguredPeriods; i++) {
-        const periodText = getPeriodText(i, config.numberOfRegularPeriods);
-        playedPeriods.add(periodText);
-    }
-
-    // Also add any periods that had events, just in case (e.g., if a goal was manually added to a period not covered above)
-    allEvents.forEach(event => {
-        const periodText = event.periodText;
-        if (periodText && !periodText.toLowerCase().includes('warm-up') && !periodText.toLowerCase().includes('break')) {
-            playedPeriods.add(periodText);
-        }
-    });
+    // Use the definitive list of played periods
+    const playedPeriods = new Set<string>(live.playedPeriods || []);
 
     playedPeriods.forEach(periodText => {
         if (!statsByPeriod[periodText]) {
@@ -1934,6 +1955,7 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         }
     });
 
+    // Calculate player stats for each played period
     for (const period in statsByPeriod) {
         const homeAttendance = summary.attendance.home || [];
         const awayAttendance = summary.attendance.away || [];
@@ -2221,6 +2243,4 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
-
-
 

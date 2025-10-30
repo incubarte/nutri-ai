@@ -5,13 +5,13 @@
     "homeGoals": [
       {
         "team": "home",
-        "timestamp": 1761855834972,
-        "gameTime": 30000,
-        "periodText": "OT",
+        "timestamp": 1761859412176,
+        "gameTime": 120000,
+        "periodText": "1ST",
         "scorer": {
-          "playerNumber": "6"
+          "playerNumber": "1"
         },
-        "id": "1534fac1-8477-4aaf-b757-5e5d0f7a0256"
+        "id": "a5bbdc84-af4f-491d-a08f-8fea2b9c5624"
       }
     ],
     "awayGoals": [],
@@ -24,14 +24,14 @@
   },
   "clock": {
     "currentTime": 0,
-    "currentPeriod": 3,
+    "currentPeriod": 2,
     "isClockRunning": false,
     "periodDisplayOverride": "End of Game",
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 270000,
-    "_liveAbsoluteElapsedTimeCs": 270000
+    "absoluteElapsedTimeCs": 240000,
+    "_liveAbsoluteElapsedTimeCs": 240000
   },
   "shootout": {
     "isActive": false,
@@ -48,13 +48,13 @@
       "goals": [
         {
           "team": "home",
-          "timestamp": 1761855834972,
-          "gameTime": 30000,
-          "periodText": "OT",
+          "timestamp": 1761859412176,
+          "gameTime": 120000,
+          "periodText": "1ST",
           "scorer": {
-            "playerNumber": "6"
+            "playerNumber": "1"
           },
-          "id": "1534fac1-8477-4aaf-b757-5e5d0f7a0256"
+          "id": "a5bbdc84-af4f-491d-a08f-8fea2b9c5624"
         }
       ],
       "penalties": [],
@@ -453,7 +453,7 @@
       ]
     }
   },
-  "playHornTrigger": 18,
+  "playHornTrigger": 19,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,

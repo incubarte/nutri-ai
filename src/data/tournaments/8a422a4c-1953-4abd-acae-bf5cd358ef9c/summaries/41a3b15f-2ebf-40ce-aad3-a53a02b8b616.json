@@ -3,13 +3,13 @@
     "goals": [
       {
         "team": "home",
-        "timestamp": 1761855834972,
-        "gameTime": 30000,
-        "periodText": "OT",
+        "timestamp": 1761859412176,
+        "gameTime": 120000,
+        "periodText": "1ST",
         "scorer": {
-          "playerNumber": "6"
+          "playerNumber": "1"
         },
-        "id": "1534fac1-8477-4aaf-b757-5e5d0f7a0256"
+        "id": "a5bbdc84-af4f-491d-a08f-8fea2b9c5624"
       }
     ],
     "penalties": [],
@@ -408,18 +408,18 @@
     ]
   },
   "statsByPeriod": {
-    "OT": {
+    "1ST": {
       "home": {
         "goals": [
           {
             "team": "home",
-            "timestamp": 1761855834972,
-            "gameTime": 30000,
-            "periodText": "OT",
+            "timestamp": 1761859412176,
+            "gameTime": 120000,
+            "periodText": "1ST",
             "scorer": {
-              "playerNumber": "6"
+              "playerNumber": "1"
             },
-            "id": "1534fac1-8477-4aaf-b757-5e5d0f7a0256"
+            "id": "a5bbdc84-af4f-491d-a08f-8fea2b9c5624"
           }
         ],
         "playerStats": [
@@ -664,5 +664,5 @@
       }
     }
   },
-  "overTimeOrShootouts": true
+  "overTimeOrShootouts": false
 }

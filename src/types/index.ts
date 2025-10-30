@@ -333,6 +333,7 @@ export interface LiveState {
     awayTeamId: string;
   };
   matchId: string | null;
+  playedPeriods: string[];
 }
 
 export interface LiveGameState extends LiveState {
@@ -483,5 +484,3 @@ export interface SummaryPlayerStats {
   assists: number;
   shots: number;
 }
-
-    

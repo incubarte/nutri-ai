@@ -97,8 +97,7 @@
       "playersPerTeam": 5,
       "id": "41a3b15f-2ebf-40ce-aad3-a53a02b8b616",
       "homeScore": 1,
-      "awayScore": 0,
-      "overTimeOrShootouts": true
+      "awayScore": 0
     }
   ]
 }
