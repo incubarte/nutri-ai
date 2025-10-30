@@ -17,7 +17,7 @@ import { ShootoutSection } from "@/components/summary/shootout-section";
 import { getPeriodText } from "@/contexts/game-state-context";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AddPenaltyForm } from "@/components/shared/add-penalty-form";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { safeUUID } from "@/lib/utils";
 
 // --- Modelos de Datos para la Página de Resumen ---
