@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '@/hooks/use-auth';
+import { format as formatDate } from 'date-fns';
 
 const CONTROLS_LOCK_KEY = 'icevision-controls-lock-id';
 const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
@@ -801,9 +802,12 @@ export default function ControlsPage() {
       <MiniScoreboard onScoreClick={handleScoreClick} />
       
       {finishedFixtureMatch && (
-         <div className="my-4 flex justify-center">
-            <Button 
-                onClick={() => router.push(`/tournaments/${state.config.selectedTournamentId}?tab=fixture`)}
+        <div className="my-4 flex justify-center">
+            <Button
+                onClick={() => {
+                    const matchDate = formatDate(new Date(finishedFixtureMatch.date), 'yyyy-MM-dd');
+                    router.push(`/tournaments/${state.config.selectedTournamentId}?tab=fixture&view=list&date=${matchDate}`);
+                }}
                 size="lg"
             >
                 <FileText className="mr-2 h-5 w-5" /> Ver Resumen del Partido
