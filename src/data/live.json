@@ -51,7 +51,7 @@
       }
     ],
     "homeShots": 0,
-    "awayShots": 0
+    "awayShots": 2
   },
   "penalties": {
     "home": [],
@@ -319,7 +319,7 @@
           "id": "f076fbf7-44de-4006-a93d-839527ad54db",
           "name": "BOIX CRITIAN",
           "number": "2",
-          "shots": 0,
+          "shots": 2,
           "goals": 3,
           "assists": 0
         },
@@ -388,7 +388,28 @@
           "assists": 0
         }
       ],
-      "awayShotsLog": []
+      "awayShotsLog": [
+        {
+          "id": "779ba66d-3043-41b0-959a-eac83ebdabd7",
+          "team": "away",
+          "timestamp": 1761784243844,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "f076fbf7-44de-4006-a93d-839527ad54db",
+          "playerNumber": "2",
+          "playerName": "BOIX CRITIAN"
+        },
+        {
+          "id": "063dd25d-ff48-4054-a340-b30e6e704691",
+          "team": "away",
+          "timestamp": 1761784243845,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "f076fbf7-44de-4006-a93d-839527ad54db",
+          "playerNumber": "2",
+          "playerName": "BOIX CRITIAN"
+        }
+      ]
     },
     "attendance": {
       "home": [
