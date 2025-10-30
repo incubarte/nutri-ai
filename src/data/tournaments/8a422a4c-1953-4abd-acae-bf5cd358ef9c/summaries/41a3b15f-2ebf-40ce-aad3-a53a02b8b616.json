@@ -3,14 +3,13 @@
     "goals": [
       {
         "team": "home",
-        "timestamp": 1761855000157,
+        "timestamp": 1761855834972,
         "gameTime": 30000,
         "periodText": "OT",
         "scorer": {
-          "playerNumber": "5",
-          "playerName": "PAPPALARDO MAXIMILIANO"
+          "playerNumber": "6"
         },
-        "id": "0901d05d-353e-436c-bfee-3e248b849e07"
+        "id": "1534fac1-8477-4aaf-b757-5e5d0f7a0256"
       }
     ],
     "penalties": [],
@@ -76,7 +75,7 @@
         "name": "PAPPALARDO MAXIMILIANO",
         "number": "5",
         "shots": 0,
-        "goals": 1,
+        "goals": 0,
         "assists": 0
       },
       {
@@ -414,14 +413,13 @@
         "goals": [
           {
             "team": "home",
-            "timestamp": 1761855000157,
+            "timestamp": 1761855834972,
             "gameTime": 30000,
             "periodText": "OT",
             "scorer": {
-              "playerNumber": "5",
-              "playerName": "PAPPALARDO MAXIMILIANO"
+              "playerNumber": "6"
             },
-            "id": "0901d05d-353e-436c-bfee-3e248b849e07"
+            "id": "1534fac1-8477-4aaf-b757-5e5d0f7a0256"
           }
         ],
         "playerStats": [
@@ -486,7 +484,7 @@
             "name": "PAPPALARDO MAXIMILIANO",
             "number": "5",
             "shots": 0,
-            "goals": 1,
+            "goals": 0,
             "assists": 0
           },
           {

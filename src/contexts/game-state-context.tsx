@@ -1982,7 +1982,7 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
 
 
 const GameStateObserver = () => {
-    const { state } = useGameState();
+    const { state, dispatch } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
 
