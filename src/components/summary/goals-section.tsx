@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,13 +7,14 @@ import type { GoalLog } from "@/types";
 import { Goal } from "lucide-react";
 
 export const GoalsSection = ({ teamName, goals }: { teamName: string; goals: GoalLog[] }) => {
+    const safeGoals = goals || [];
     return (
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xl"><Goal className="h-5 w-5" />Goles</CardTitle>
             </CardHeader>
             <CardContent>
-                {goals.length > 0 ? (
+                {safeGoals.length > 0 ? (
                 <Table>
                     <TableHeader>
                     <TableRow>
@@ -24,7 +24,7 @@ export const GoalsSection = ({ teamName, goals }: { teamName: string; goals: Goa
                     </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {goals.map(goal => (
+                    {safeGoals.map(goal => (
                         <TableRow key={goal.id}>
                         <TableCell>
                             <div className="font-mono text-sm">{formatTime(goal.gameTime)}</div>
@@ -47,7 +47,7 @@ export const GoalsSection = ({ teamName, goals }: { teamName: string; goals: Goa
                     </TableBody>
                     <UiTableFooter>
                         <TableRow>
-                            <TableCell colSpan={3} className="text-right font-bold">Total Goles: {goals.length}</TableCell>
+                            <TableCell colSpan={3} className="text-right font-bold">Total Goles: {safeGoals.length}</TableCell>
                         </TableRow>
                     </UiTableFooter>
                 </Table>

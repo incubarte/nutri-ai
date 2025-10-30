@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle, Trash2, Siren } from "lucide-react";
 
 export const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }: { team: Team; teamName: string; penalties: PenaltyLog[]; onAdd?: () => void; onDelete?: (logId: string) => void; }) => {
+    const safePenalties = penalties || [];
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -20,7 +20,7 @@ export const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }:
                 )}
             </CardHeader>
             <CardContent>
-                {penalties.length > 0 ? (
+                {safePenalties.length > 0 ? (
                 <Table>
                     <TableHeader>
                     <TableRow>
@@ -33,7 +33,7 @@ export const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }:
                     </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {penalties.map(p => (
+                    {safePenalties.map(p => (
                         <TableRow key={p.id}>
                         <TableCell>
                             <div className="font-mono text-sm">{formatTime(p.addGameTime)}</div>
@@ -61,7 +61,7 @@ export const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }:
                     </TableBody>
                      <UiTableFooter>
                         <TableRow>
-                            <TableCell colSpan={onDelete ? 6 : 5} className="text-right font-bold">Total Penalidades: {penalties.length}</TableCell>
+                            <TableCell colSpan={onDelete ? 6 : 5} className="text-right font-bold">Total Penalidades: {safePenalties.length}</TableCell>
                         </TableRow>
                     </UiTableFooter>
                 </Table>

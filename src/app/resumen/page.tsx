@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
@@ -19,26 +18,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { AddPenaltyForm } from "@/components/shared/add-penalty-form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { safeUUID } from "@/lib/utils";
-
-// --- Modelos de Datos para la Página de Resumen ---
-interface SummaryData {
-  homeTeamName: string;
-  awayTeamName: string;
-  homeScore: number;
-  awayScore: number;
-  categoryName: string;
-  homeGoals: GoalLog[];
-  awayGoals: GoalLog[];
-  homePenalties: PenaltyLog[];
-  awayPenalties: PenaltyLog[];
-  homeAggregatedStats: SummaryPlayerStats[];
-  awayAggregatedStats: SummaryPlayerStats[];
-  shootout?: ShootoutState;
-  allPeriodTexts: string[];
-  statsByPeriod?: Record<string, any>;
-}
-// --- Fin de Modelos de Datos ---
-
 
 const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, dispatch: React.Dispatch<any>, toast: any }) => {
     const [isEditingShots, setIsEditingShots] = useState(false);
