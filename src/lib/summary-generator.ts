@@ -57,16 +57,13 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
 
     const summary: GameSummary = JSON.parse(JSON.stringify(live.gameSummary));
     
-    // Recalculate final aggregated stats from logs before building the period breakdown
     const { homePlayerStats, awayPlayerStats } = recalculateAllStatsFromLogs(summary);
     summary.home.playerStats = homePlayerStats;
     summary.away.playerStats = awayPlayerStats;
 
     const statsByPeriod: Record<string, PeriodStats> = {};
-
     const { playedPeriods } = live;
 
-    // 1. Ensure all played periods have an entry in statsByPeriod
     (playedPeriods || []).forEach(periodText => {
         if (!statsByPeriod[periodText]) {
             statsByPeriod[periodText] = {
@@ -74,57 +71,47 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
                 away: { goals: [], playerStats: [] }
             };
         }
-    });
-
-    // 2. Populate goals for each period
-    summary.home.goals.forEach(goal => {
-        if (goal.periodText && statsByPeriod[goal.periodText]) {
-            statsByPeriod[goal.periodText].home.goals.push(goal);
-        }
-    });
-    summary.away.goals.forEach(goal => {
-        if (goal.periodText && statsByPeriod[goal.periodText]) {
-            statsByPeriod[goal.periodText].away.goals.push(goal);
-        }
-    });
-
-    // 3. Calculate player stats for each played period
-    for (const period in statsByPeriod) {
+        
+        // --- Home Team Stats for the Period ---
         const homeAttendance = summary.attendance.home || [];
-        const awayAttendance = summary.attendance.away || [];
         const homePlayerStatsMap = new Map<string, SummaryPlayerStats>();
-        const awayPlayerStatsMap = new Map<string, SummaryPlayerStats>();
-
         homeAttendance.forEach(p => homePlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
-        awayAttendance.forEach(p => awayPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
 
-        // Goals and Assists for the period
-        statsByPeriod[period].home.goals.forEach((goal: GoalLog) => {
+        const homeGoalsInPeriod = summary.home.goals.filter(g => g.periodText === periodText);
+        homeGoalsInPeriod.forEach(goal => {
+            statsByPeriod[periodText].home.goals.push(goal);
             const scorerId = homeAttendance.find(p => p.number === goal.scorer?.playerNumber)?.id;
             if (scorerId && homePlayerStatsMap.has(scorerId)) homePlayerStatsMap.get(scorerId)!.goals++;
             const assistId = homeAttendance.find(p => p.number === goal.assist?.playerNumber)?.id;
             if (assistId && homePlayerStatsMap.has(assistId)) homePlayerStatsMap.get(assistId)!.assists++;
         });
-        statsByPeriod[period].away.goals.forEach((goal: GoalLog) => {
+        (summary.home.homeShotsLog || []).filter(s => s.periodText === periodText).forEach(shot => {
+             if (shot.playerId && homePlayerStatsMap.has(shot.playerId)) homePlayerStatsMap.get(shot.playerId)!.shots++;
+        });
+        statsByPeriod[periodText].home.playerStats = Array.from(homePlayerStatsMap.values());
+
+
+        // --- Away Team Stats for the Period ---
+        const awayAttendance = summary.attendance.away || [];
+        const awayPlayerStatsMap = new Map<string, SummaryPlayerStats>();
+        awayAttendance.forEach(p => awayPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
+
+        const awayGoalsInPeriod = summary.away.goals.filter(g => g.periodText === periodText);
+        awayGoalsInPeriod.forEach(goal => {
+            statsByPeriod[periodText].away.goals.push(goal);
             const scorerId = awayAttendance.find(p => p.number === goal.scorer?.playerNumber)?.id;
             if (scorerId && awayPlayerStatsMap.has(scorerId)) awayPlayerStatsMap.get(scorerId)!.goals++;
             const assistId = awayAttendance.find(p => p.number === goal.assist?.playerNumber)?.id;
             if (assistId && awayPlayerStatsMap.has(assistId)) awayPlayerStatsMap.get(assistId)!.assists++;
         });
-
-        // Shots for the period
-        (summary.home.homeShotsLog || []).filter(s => s.periodText === period).forEach(shot => {
-             if (shot.playerId && homePlayerStatsMap.has(shot.playerId)) homePlayerStatsMap.get(shot.playerId)!.shots++;
-        });
-        (summary.away.awayShotsLog || []).filter(s => s.periodText === period).forEach(shot => {
+        (summary.away.awayShotsLog || []).filter(s => s.periodText === periodText).forEach(shot => {
              if (shot.playerId && awayPlayerStatsMap.has(shot.playerId)) awayPlayerStatsMap.get(shot.playerId)!.shots++;
         });
-        
-        statsByPeriod[period].home.playerStats = Array.from(homePlayerStatsMap.values());
-        statsByPeriod[period].away.playerStats = Array.from(awayPlayerStatsMap.values());
-    }
+        statsByPeriod[periodText].away.playerStats = Array.from(awayPlayerStatsMap.values());
+    });
 
     summary.statsByPeriod = statsByPeriod;
+    
     const overTimeOrShootouts = (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) || Object.keys(summary.statsByPeriod || {}).some(p => p.startsWith('OT'));
     summary.overTimeOrShootouts = overTimeOrShootouts;
 
@@ -132,7 +119,6 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         const { isActive, rounds, ...shootoutSummary } = live.shootout;
         summary.shootout = shootoutSummary;
     }
-
 
     return summary;
 };
