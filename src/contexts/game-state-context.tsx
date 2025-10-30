@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -890,7 +889,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       const remainingTimeCs = penaltyToRemove.expirationTime !== undefined ? Math.max(0, penaltyToRemove.expirationTime - state.live.clock._liveAbsoluteElapsedTimeCs) : penaltyToRemove.initialDuration * 100;
       const timeServed = penaltyToRemove.initialDuration - Math.round(remainingTimeCs / 100);
-
+      
       newState = { ...state, live: { ...state.live,
         penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId))},
         gameSummary: { ...state.live.gameSummary, [team]: { ...state.live.gameSummary[team], penalties: state.live.gameSummary[team].penalties.map(p =>
@@ -1759,9 +1758,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 };
 
 const GameStateObserver = () => {
-    const { state } = useGameState();
+    const { state, dispatch } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
+    const prevPeriodDisplayOverrideRef = useRef<PeriodDisplayOverrideType>();
 
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
@@ -1769,6 +1769,27 @@ const GameStateObserver = () => {
             lastToastRef.current = state._lastToastMessage;
         }
     }, [state._lastToastMessage, toast]);
+    
+    useEffect(() => {
+        const currentOverride = state.live?.clock?.periodDisplayOverride;
+
+        if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && currentOverride === 'End of Game' && state.live.matchId) {
+             const summary = generateSummaryData(state);
+            if (summary) {
+                dispatch({
+                    type: 'SAVE_MATCH_SUMMARY',
+                    payload: { matchId: state.live.matchId, summary }
+                });
+                toast({
+                    title: "Resumen Guardado",
+                    description: "El resumen del partido finalizado se ha guardado automáticamente."
+                });
+            }
+        }
+
+        prevPeriodDisplayOverrideRef.current = currentOverride;
+    }, [state.live?.clock?.periodDisplayOverride, state.live?.matchId, state, dispatch, toast]);
+
 
     return null;
 }
@@ -1995,6 +2016,80 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
   if (!Array.isArray(availableCategories)) return undefined;
   const category = availableCategories.find(cat => cat && typeof cat === 'object' && cat.id === categoryId);
   return category ? category.name : undefined;
+};
+
+export const generateSummaryData = (state: GameState): GameSummary | null => {
+    const { live, config } = state;
+    if (!live || !config) return null;
+
+    const summary: GameSummary = JSON.parse(JSON.stringify(live.gameSummary));
+
+    const statsByPeriod: Record<string, any> = {};
+
+    const allEvents = [
+        ...summary.home.goals.map(e => ({ ...e, type: 'goal', team: 'home' })),
+        ...summary.away.goals.map(e => ({ ...e, type: 'goal', team: 'away' })),
+        ...summary.home.penalties.map(e => ({ ...e, type: 'penalty', team: 'home' })),
+        ...summary.away.penalties.map(e => ({ ...e, type: 'penalty', team: 'away' })),
+        ...(summary.home.homeShotsLog || []).map(e => ({ ...e, type: 'shot', team: 'home' })),
+        ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot', team: 'away' })),
+    ];
+
+    allEvents.forEach(event => {
+        const periodText = event.periodText || event.addPeriodText;
+        if (!periodText || periodText.toLowerCase().includes('warm-up')) return;
+
+        if (!statsByPeriod[periodText]) {
+            statsByPeriod[periodText] = {
+                home: { goals: [], penalties: [], playerStats: [] },
+                away: { goals: [], penalties: [], playerStats: [] }
+            };
+        }
+
+        const teamStats = statsByPeriod[periodText][event.team];
+        if (event.type === 'goal') teamStats.goals.push(event);
+        if (event.type === 'penalty') teamStats.penalties.push(event);
+    });
+
+    for (const period in statsByPeriod) {
+        const homeAttendance = summary.attendance.home || [];
+        const awayAttendance = summary.attendance.away || [];
+        const homePlayerStatsMap = new Map<string, SummaryPlayerStats>();
+        const awayPlayerStatsMap = new Map<string, SummaryPlayerStats>();
+
+        homeAttendance.forEach(p => homePlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
+        awayAttendance.forEach(p => awayPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
+
+        statsByPeriod[period].home.goals.forEach((goal: GoalLog) => {
+            const scorerId = homeAttendance.find(p => p.number === goal.scorer?.playerNumber)?.id;
+            if (scorerId && homePlayerStatsMap.has(scorerId)) homePlayerStatsMap.get(scorerId)!.goals++;
+            const assistId = homeAttendance.find(p => p.number === goal.assist?.playerNumber)?.id;
+            if (assistId && homePlayerStatsMap.has(assistId)) homePlayerStatsMap.get(assistId)!.assists++;
+        });
+         statsByPeriod[period].away.goals.forEach((goal: GoalLog) => {
+            const scorerId = awayAttendance.find(p => p.number === goal.scorer?.playerNumber)?.id;
+            if (scorerId && awayPlayerStatsMap.has(scorerId)) awayPlayerStatsMap.get(scorerId)!.goals++;
+            const assistId = awayAttendance.find(p => p.number === goal.assist?.playerNumber)?.id;
+            if (assistId && awayPlayerStatsMap.has(assistId)) awayPlayerStatsMap.get(assistId)!.assists++;
+        });
+
+        (summary.home.homeShotsLog || []).filter(s => s.periodText === period).forEach(shot => {
+             if (shot.playerId && homePlayerStatsMap.has(shot.playerId)) homePlayerStatsMap.get(shot.playerId)!.shots++;
+        });
+         (summary.away.awayShotsLog || []).filter(s => s.periodText === period).forEach(shot => {
+             if (shot.playerId && awayPlayerStatsMap.has(shot.playerId)) awayPlayerStatsMap.get(shot.playerId)!.shots++;
+        });
+        
+        statsByPeriod[period].home.playerStats = Array.from(homePlayerStatsMap.values());
+        statsByPeriod[period].away.playerStats = Array.from(awayPlayerStatsMap.values());
+    }
+
+    summary.statsByPeriod = statsByPeriod;
+    if(live.shootout && live.shootout.homeAttempts.length > 0) {
+        summary.shootout = live.shootout;
+    }
+
+    return summary;
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
