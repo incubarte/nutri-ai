@@ -1825,21 +1825,14 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     
     // Add all periods from 1 up to the last played one
     for (let i = 1; i <= lastPlayedPeriodNumber; i++) {
-        playedPeriods.add(getPeriodText(i, config.numberOfRegularPeriods));
+        if (i <= totalGamePeriods) {
+            playedPeriods.add(getPeriodText(i, config.numberOfRegularPeriods));
+        }
     }
 
     if (live.shootout.isActive || live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0) {
         playedPeriods.add('SHOOTOUT');
     }
-
-    playedPeriods.forEach(periodText => {
-        if (!statsByPeriod[periodText]) {
-            statsByPeriod[periodText] = {
-                home: { goals: [], penalties: [], playerStats: [] },
-                away: { goals: [], penalties: [], playerStats: [] }
-            };
-        }
-    });
 
     const allEvents = [
         ...summary.home.goals.map(e => ({ ...e, type: 'goal' as const, team: 'home' as const })),
@@ -1849,6 +1842,24 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         ...(summary.home.homeShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'home' as const })),
         ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'away' as const })),
     ];
+    
+    // Also add periods from events, in case game ends early but event was added for a later period
+    allEvents.forEach(event => {
+        const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
+        if (periodText && !periodText.toLowerCase().includes('warm-up')) {
+            playedPeriods.add(periodText);
+        }
+    });
+
+    playedPeriods.forEach(periodText => {
+        if (periodText.toLowerCase().includes('warm-up')) return;
+        if (!statsByPeriod[periodText]) {
+            statsByPeriod[periodText] = {
+                home: { goals: [], penalties: [], playerStats: [] },
+                away: { goals: [], penalties: [], playerStats: [] }
+            };
+        }
+    });
 
     allEvents.forEach(event => {
         const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
@@ -2139,6 +2150,7 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
 
 
 
