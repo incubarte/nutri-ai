@@ -167,7 +167,7 @@ export function FixtureListView() {
               <TableHead>Equipo Local</TableHead>
               <TableHead>Equipo Visitante</TableHead>
               <TableHead className="text-center">Resultado</TableHead>
-              <TableHead className="text-center">OT</TableHead>
+              <TableHead className="text-center">OT/Penales</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -178,7 +178,10 @@ export function FixtureListView() {
                 const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
                 const hasSummary = !!match.summary;
                 const score = hasSummary ? `${match.summary.home.goals.length} - ${match.summary.away.goals.length}` : '-';
-                const wentToOT = hasSummary && match.summary.statsByPeriod && Object.keys(match.summary.statsByPeriod).some(p => p.startsWith('OT'));
+                const wentToOTOrShootout = hasSummary && (
+                    (match.summary.statsByPeriod && Object.keys(match.summary.statsByPeriod).some(p => p.startsWith('OT'))) ||
+                    (match.summary.shootout && (match.summary.shootout.homeAttempts.length > 0 || match.summary.shootout.awayAttempts.length > 0))
+                );
 
                 return (
                   <TableRow key={match.id}>
@@ -187,7 +190,7 @@ export function FixtureListView() {
                     <TableCell>{homeTeam?.name || 'Equipo no encontrado'}</TableCell>
                     <TableCell>{awayTeam?.name || 'Equipo no encontrado'}</TableCell>
                     <TableCell className="text-center font-mono font-bold">{score}</TableCell>
-                    <TableCell className="text-center">{wentToOT && <CheckIcon className="h-4 w-4 mx-auto text-green-500"/>}</TableCell>
+                    <TableCell className="text-center">{wentToOTOrShootout && <CheckIcon className="h-4 w-4 mx-auto text-green-500"/>}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-1 justify-end">
                         {hasSummary && (

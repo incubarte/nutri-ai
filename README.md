@@ -1,4 +1,4 @@
-gir T# Firebase Studio
+pointsgir T# Firebase Studio
 
 This is a NextJS starter in Firebase Studio.
 
