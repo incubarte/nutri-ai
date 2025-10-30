@@ -1628,7 +1628,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'REMOVE_PLAYER_FROM_TEAM': {
       const { teamId, playerId } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
       break;
     }
     case 'LOAD_TEAMS_FROM_FILE': { // Legacy: no longer used directly.
@@ -1910,14 +1910,16 @@ const GameStateObserver = () => {
     }, [state._lastToastMessage, toast]);
     
     useEffect(() => {
-        // Do not run this effect until the initial state is fully loaded from the server
-        if (!state._initialConfigLoadComplete) {
+        const currentOverride = state.live?.clock?.periodDisplayOverride;
+
+        // On the very first render, prevPeriodDisplayOverrideRef.current will be undefined.
+        // We do not want to trigger the save logic on this initial render.
+        if (prevPeriodDisplayOverrideRef.current === undefined) {
+            prevPeriodDisplayOverrideRef.current = currentOverride;
             return;
         }
 
-        const currentOverride = state.live?.clock?.periodDisplayOverride;
-
-        // This check ensures the action only fires when the state TRANSITIONS to 'End of Game'
+        // This check now only fires on actual state *transitions* to 'End of Game'.
         if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && currentOverride === 'End of Game' && state.live.matchId) {
              const summary = generateSummaryData(state);
             if (summary) {
@@ -1934,7 +1936,7 @@ const GameStateObserver = () => {
 
         // Update the ref for the next render AFTER the check
         prevPeriodDisplayOverrideRef.current = currentOverride;
-    }, [state.live?.clock?.periodDisplayOverride, state.live?.matchId, state, dispatch, toast, state._initialConfigLoadComplete]);
+    }, [state.live?.clock?.periodDisplayOverride, state.live?.matchId, state, dispatch, toast]);
 
 
     return null;
