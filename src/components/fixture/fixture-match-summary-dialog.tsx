@@ -203,22 +203,22 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
               {allPeriodTexts.length > 0 && (
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="periods">
-                         <div className="flex justify-between items-center pr-2">
-                            <AccordionTrigger className="text-xl flex-grow hover:no-underline">
-                                Detalle por Período
-                            </AccordionTrigger>
-                            {isEditing ? (
-                                <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveClick}><Check className="h-5 w-5" /></Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><XCircle className="h-5 w-5" /></Button>
-                                </div>
-                            ) : (
-                                <Button variant="outline" size="sm" onClick={e => {e.stopPropagation(); handleEditClick();}}>
-                                    <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
-                                </Button>
-                            )}
-                        </div>
+                         <AccordionTrigger className="text-xl flex-grow hover:no-underline">
+                            Detalle por Período
+                        </AccordionTrigger>
                         <AccordionContent className="space-y-6 pl-2">
+                             <div className="flex justify-end pr-2">
+                                {isEditing ? (
+                                    <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveClick}><Check className="h-5 w-5" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><XCircle className="h-5 w-5" /></Button>
+                                    </div>
+                                ) : (
+                                    <Button variant="outline" size="sm" onClick={e => {e.stopPropagation(); handleEditClick();}}>
+                                        <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
+                                    </Button>
+                                )}
+                            </div>
                             {allPeriodTexts.map(periodText => {
                                 const periodStats = localSummary.statsByPeriod![periodText];
                                 if(!periodStats) return null;
@@ -248,4 +248,3 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
     </Dialog>
   );
 }
-
