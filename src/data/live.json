@@ -202,6 +202,9 @@
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
   "matchId": "41a3b15f-2ebf-40ce-aad3-a53a02b8b616",
-  "playedPeriods": []
+  "playedPeriods": [
+    "1ST",
+    "2ND",
+    "OT"
+  ]
 }
-    

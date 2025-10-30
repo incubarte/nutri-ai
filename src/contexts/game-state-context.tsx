@@ -1311,20 +1311,21 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'MANUAL_END_GAME': {
         const { live, config } = state;
         const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
+        let tempLive = { ...live };
 
         // If we are in a running period, add it to playedPeriods before ending it
-        if (live.clock.periodDisplayOverride === null) {
-            const finishedPeriodText = getPeriodText(live.clock.currentPeriod, config.numberOfRegularPeriods);
-            if (!live.playedPeriods.includes(finishedPeriodText)) {
-                newState.live.playedPeriods = [...live.playedPeriods, finishedPeriodText];
+        if (tempLive.clock.periodDisplayOverride === null) {
+            const finishedPeriodText = getPeriodText(tempLive.clock.currentPeriod, config.numberOfRegularPeriods);
+            if (!tempLive.playedPeriods.includes(finishedPeriodText)) {
+                tempLive.playedPeriods = [...tempLive.playedPeriods, finishedPeriodText];
             }
         }
         
         // If it's the end of a regular period AND the game is NOT tied, end the game.
-        if (live.clock.currentPeriod >= config.numberOfRegularPeriods && live.score.home !== live.score.away) {
-            const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
-            newState = { ...newState, live: { ...newState.live,
-                clock: { ...newState.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
+        if (tempLive.clock.currentPeriod >= config.numberOfRegularPeriods && tempLive.score.home !== tempLive.score.away) {
+            const newAbsoluteTime = calculateAbsoluteTimeForPeriod(tempLive.clock.currentPeriod, 0, state);
+            newState = { ...state, live: { ...tempLive,
+                clock: { ...tempLive.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
                     absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
                     clockStartTimeMs: null, remainingTimeAtStartCs: null, preTimeoutState: null,
                 },
@@ -1332,23 +1333,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             }};
         }
         // If we are in a running period before the last total period.
-        else if (live.clock.currentPeriod < totalGamePeriods && live.clock.periodDisplayOverride === null) {
-            const isPreOT = live.clock.currentPeriod >= config.numberOfRegularPeriods;
+        else if (tempLive.clock.currentPeriod < totalGamePeriods && tempLive.clock.periodDisplayOverride === null) {
+            const isPreOT = tempLive.clock.currentPeriod >= config.numberOfRegularPeriods;
             const breakType = isPreOT ? 'START_PRE_OT_BREAK' : 'START_BREAK';
-            return gameReducer(newState, { type: breakType }); // Recurse with the updated state
+            return gameReducer({ ...state, live: tempLive }, { type: breakType });
         }
         // If it's a TIE at the end of regulation or OT.
-        else if (live.score.home === live.score.away) {
-            newState = { ...newState, live: { ...newState.live,
-                clock: { ...newState.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
-                shootout: { ...live.shootout, isActive: false }
+        else if (tempLive.score.home === tempLive.score.away) {
+            newState = { ...state, live: { ...tempLive,
+                clock: { ...tempLive.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
+                shootout: { ...tempLive.shootout, isActive: false }
             }};
         }
         // Fallback to just end the game (e.g., end of final OT with no winner yet).
         else {
-             const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
-            newState = { ...newState, live: { ...newState.live,
-                clock: { ...newState.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
+             const newAbsoluteTime = calculateAbsoluteTimeForPeriod(tempLive.clock.currentPeriod, 0, state);
+            newState = { ...state, live: { ...tempLive,
+                clock: { ...tempLive.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
                     absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
                     clockStartTimeMs: null, remainingTimeAtStartCs: null, preTimeoutState: null,
                 },
@@ -1741,7 +1742,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'UPDATE_PLAYER_IN_TEAM': {
       const { teamId, playerId, updates } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
       break;
     }
     case 'REMOVE_PLAYER_FROM_TEAM': {
@@ -2006,7 +2007,6 @@ const GameStateObserver = () => {
     const { state } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
-    const prevPeriodDisplayOverrideRef = useRef<PeriodDisplayOverrideType>();
 
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
