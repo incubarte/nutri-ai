@@ -848,6 +848,28 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         playHornTrigger: state.live.playHornTrigger + 1,
       }};
       toastMessage = { title: "¡Partido Finalizado!", description: "Gol de oro registrado exitosamente." };
+
+      if (newState.live.matchId) {
+        const summary = generateSummaryData(newState);
+        const matchId = newState.live.matchId;
+        if (summary) {
+          const tournamentId = newState.config.selectedTournamentId;
+          const tournaments = newState.config.tournaments.map(t => {
+            if (t.id === tournamentId) {
+              const matches = t.matches.map(m => {
+                if (m.id === matchId) {
+                  return { ...m, summary };
+                }
+                return m;
+              });
+              return { ...t, matches };
+            }
+            return t;
+          });
+          newState.config = { ...newState.config, tournaments };
+          toastMessage = { title: "Resumen Guardado", description: "El resumen del partido finalizado se ha guardado automáticamente." };
+        }
+      }
       break;
     }
     case 'ADD_PENALTY': {
@@ -1297,6 +1319,27 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             }};
         }
         
+        if (newState.live.clock.periodDisplayOverride === 'End of Game' && newState.live.matchId) {
+            const summary = generateSummaryData(newState);
+            const matchId = newState.live.matchId;
+            if (summary) {
+              const tournamentId = newState.config.selectedTournamentId;
+              const tournaments = newState.config.tournaments.map(t => {
+                if (t.id === tournamentId) {
+                  const matches = t.matches.map(m => {
+                    if (m.id === matchId) {
+                      return { ...m, summary };
+                    }
+                    return m;
+                  });
+                  return { ...t, matches };
+                }
+                return t;
+              });
+              newState.config = { ...newState.config, tournaments };
+              toastMessage = { title: "Resumen Guardado", description: "El resumen del partido finalizado se ha guardado automáticamente." };
+            }
+        }
         break;
     }
     case 'ADD_EXTRA_OVERTIME': {
@@ -1436,6 +1479,28 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         },
       };
       toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
+      
+      if (newState.live.matchId) {
+        const summary = generateSummaryData(newState);
+        const matchId = newState.live.matchId;
+        if (summary) {
+          const tournamentId = newState.config.selectedTournamentId;
+          const tournaments = newState.config.tournaments.map(t => {
+            if (t.id === tournamentId) {
+              const matches = t.matches.map(m => {
+                if (m.id === matchId) {
+                  return { ...m, summary };
+                }
+                return m;
+              });
+              return { ...t, matches };
+            }
+            return t;
+          });
+          newState.config = { ...newState.config, tournaments };
+          toastMessage = { title: "Resumen Guardado", description: "El resumen del partido finalizado se ha guardado automáticamente." };
+        }
+      }
       break;
     }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
@@ -1618,7 +1683,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PLAYER_TO_TEAM': {
       const { teamId, player } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
       toastMessage = { title: "Jugador Añadido", description: `Jugador ${player.number ? `#${player.number} ` : ''}${player.name} añadido.` };
       break;
     }
@@ -1888,7 +1953,7 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     summary.overTimeOrShootouts = overTimeOrShootouts;
 
     if (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) {
-        const { ...shootoutSummary } = live.shootout;
+        const { isActive, rounds, ...shootoutSummary } = live.shootout;
         summary.shootout = shootoutSummary;
     }
 
@@ -1898,11 +1963,10 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
 
 
 const GameStateObserver = () => {
-    const { state, dispatch } = useGameState();
+    const { state } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
-    const prevPeriodDisplayOverrideRef = useRef<PeriodDisplayOverrideType>();
-
+    
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
             toast(state._lastToastMessage);
@@ -1910,31 +1974,6 @@ const GameStateObserver = () => {
         }
     }, [state._lastToastMessage, toast]);
     
-    useEffect(() => {
-        if (prevPeriodDisplayOverrideRef.current === undefined) {
-            prevPeriodDisplayOverrideRef.current = state.live?.clock?.periodDisplayOverride;
-            return;
-        }
-        
-        const currentOverride = state.live?.clock?.periodDisplayOverride;
-        if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && currentOverride === 'End of Game' && state.live.matchId) {
-             const summary = generateSummaryData(state);
-            if (summary) {
-                dispatch({
-                    type: 'SAVE_MATCH_SUMMARY',
-                    payload: { matchId: state.live.matchId, summary }
-                });
-                toast({
-                    title: "Resumen Guardado",
-                    description: "El resumen del partido finalizado se ha guardado automáticamente."
-                });
-            }
-        }
-
-        prevPeriodDisplayOverrideRef.current = currentOverride;
-    }, [state.live?.clock?.periodDisplayOverride, state.live?.matchId, state, dispatch, toast]);
-
-
     return null;
 }
 

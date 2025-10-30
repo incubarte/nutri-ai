@@ -12,15 +12,15 @@
     "away": []
   },
   "clock": {
-    "currentTime": 120000,
+    "currentTime": 0,
     "currentPeriod": 2,
     "isClockRunning": false,
-    "periodDisplayOverride": null,
+    "periodDisplayOverride": "End of Game",
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 120000,
-    "_liveAbsoluteElapsedTimeCs": 120000
+    "absoluteElapsedTimeCs": 240000,
+    "_liveAbsoluteElapsedTimeCs": 240000
   },
   "shootout": {
     "isActive": false,
@@ -245,7 +245,7 @@
       ]
     }
   },
-  "playHornTrigger": 12,
+  "playHornTrigger": 13,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
