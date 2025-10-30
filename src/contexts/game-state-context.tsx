@@ -1825,9 +1825,8 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     }
 
     summary.statsByPeriod = statsByPeriod;
-    if(live.shootout && live.shootout.homeAttempts.length > 0) {
-        summary.shootout = live.shootout;
-    }
+    const overTimeOrShootouts = (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) || Object.keys(summary.statsByPeriod).some(p => p.startsWith('OT'));
+    summary.overTimeOrShootouts = overTimeOrShootouts;
 
     return summary;
 };
