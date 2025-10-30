@@ -236,10 +236,10 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
                                         <AccordionTrigger className="text-xl hover:no-underline">{periodText}</AccordionTrigger>
                                         <AccordionContent className="space-y-6 pl-2">
                                             <div className="flex justify-end pr-2">
-                                                {isEditing ? (
+                                                {isEditingShots ? (
                                                     <div className="flex gap-2">
                                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveShotsClick}><Check className="h-5 w-5" /></Button>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setIsEditing(false)}><XCircle className="h-5 w-5" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setIsEditingShots(false)}><XCircle className="h-5 w-5" /></Button>
                                                     </div>
                                                 ) : (
                                                     <Button variant="outline" size="sm" onClick={handleEditShotsClick}>
@@ -256,8 +256,8 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
                                                 <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={awayPenaltiesInPeriod} onAdd={() => handleAddPenalty('away', periodText)} onDelete={(logId) => handleDeletePenalty('away', logId)} />
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={homePlayerStatsInPeriod} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
-                                                <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={awayPlayerStatsInPeriod} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
+                                                <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={homePlayerStatsInPeriod} editable={isEditingShots} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
+                                                <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={awayPlayerStatsInPeriod} editable={isEditingShots} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
                                             </div>
                                         </AccordionContent>
                                     </AccordionItem>
