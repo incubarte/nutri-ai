@@ -167,20 +167,24 @@
     "1ST": {
       "home": {
         "goals": [],
+        "penalties": [],
         "playerStats": []
       },
       "away": {
         "goals": [],
+        "penalties": [],
         "playerStats": []
       }
     },
     "2ND": {
       "home": {
         "goals": [],
+        "penalties": [],
         "playerStats": []
       },
       "away": {
         "goals": [],
+        "penalties": [],
         "playerStats": []
       }
     },
@@ -198,10 +202,12 @@
             "id": "2393ab51-1ae1-4998-8da7-6d2bf0261d71"
           }
         ],
+        "penalties": [],
         "playerStats": []
       },
       "away": {
         "goals": [],
+        "penalties": [],
         "playerStats": []
       }
     }

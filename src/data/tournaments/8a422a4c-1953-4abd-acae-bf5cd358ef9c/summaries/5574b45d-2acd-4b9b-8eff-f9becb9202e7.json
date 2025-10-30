@@ -283,6 +283,28 @@
             "type": "goal"
           }
         ],
+        "penalties": [
+          {
+            "id": "e7d283a2-acdc-43e8-8ee5-4f624894cf1f",
+            "team": "home",
+            "playerNumber": "77",
+            "playerName": "CLARET AGUSTIN",
+            "penaltyName": "Menor",
+            "initialDuration": 120,
+            "reducesPlayerCount": true,
+            "clearsOnGoal": true,
+            "isBenchPenalty": false,
+            "addTimestamp": 1761788356406,
+            "addGameTime": 117917,
+            "addPeriodText": "1ST",
+            "endTimestamp": 1761788363453,
+            "endGameTime": 105894,
+            "endPeriodText": "1ST",
+            "endReason": "completed",
+            "timeServed": 120,
+            "type": "penalty"
+          }
+        ],
         "playerStats": []
       },
       "away": {
@@ -298,6 +320,22 @@
             },
             "id": "18248af1-e797-4c87-a660-f3f0653f6ef1",
             "type": "goal"
+          }
+        ],
+        "penalties": [
+          {
+            "id": "84696b04-e7f4-499b-b70c-a70306519aef",
+            "team": "away",
+            "playerNumber": "3",
+            "penaltyName": "Menor",
+            "initialDuration": 120,
+            "reducesPlayerCount": true,
+            "clearsOnGoal": true,
+            "isBenchPenalty": false,
+            "addTimestamp": 1761789384032,
+            "addGameTime": 18300,
+            "addPeriodText": "1ST",
+            "type": "penalty"
           }
         ],
         "playerStats": [
@@ -327,10 +365,12 @@
             "type": "goal"
           }
         ],
+        "penalties": [],
         "playerStats": []
       },
       "away": {
         "goals": [],
+        "penalties": [],
         "playerStats": [
           {
             "id": "07dd987f-7542-4e59-a71b-7946d655d23c",

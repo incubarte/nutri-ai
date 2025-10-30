@@ -192,28 +192,7 @@
       }
     ]
   },
-  "statsByPeriod": {
-    "1ST": {
-      "home": {
-        "goals": [],
-        "playerStats": []
-      },
-      "away": {
-        "goals": [],
-        "playerStats": []
-      }
-    },
-    "2ND": {
-      "home": {
-        "goals": [],
-        "playerStats": []
-      },
-      "away": {
-        "goals": [],
-        "playerStats": []
-      }
-    }
-  },
+  "statsByPeriod": {},
   "overTimeOrShootouts": true,
   "shootout": {
     "homeAttempts": [

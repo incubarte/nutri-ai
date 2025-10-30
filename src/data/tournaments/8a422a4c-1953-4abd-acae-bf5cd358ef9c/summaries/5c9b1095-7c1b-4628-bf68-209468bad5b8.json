@@ -154,6 +154,8 @@
   },
   "statsByPeriod": {},
   "shootout": {
+    "isActive": false,
+    "rounds": 5,
     "homeAttempts": [
       {
         "id": "8c0898b5-098a-4492-8475-66a02629e953",
@@ -175,6 +177,5 @@
       }
     ],
     "initiator": "home"
-  },
-  "overTimeOrShootouts": true
+  }
 }
