@@ -805,7 +805,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 }
             }
         };
-        newState._lastActionOriginator = TAB_ID; // Mark as significant change
+        newState._lastActionOriginator = TAB_ID; // Mark as significant change to trigger server sync
         break;
     }
     case 'FINISH_GAME_WITH_OT_GOAL': {
@@ -1623,7 +1623,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'UPDATE_PLAYER_IN_TEAM': {
       const { teamId, playerId, updates } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
       break;
     }
     case 'REMOVE_PLAYER_FROM_TEAM': {
@@ -1831,11 +1831,13 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     });
 
     // Also ensure all played regular/OT periods are included, even if they had no events
-    const lastPlayedPeriod = live.clock.currentPeriod > 0 ? live.clock.currentPeriod : 1;
+    const lastPlayedPeriod = live.clock.currentPeriod;
     const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
 
-    for(let i=1; i <= Math.min(lastPlayedPeriod, totalGamePeriods); i++) {
+    for (let i = 1; i <= Math.min(lastPlayedPeriod, totalGamePeriods); i++) {
+      if (live.clock.periodDisplayOverride !== 'Break' && live.clock.periodDisplayOverride !== 'Pre-OT Break' && live.clock.periodDisplayOverride !== 'Warm-up') {
         playedPeriods.add(getPeriodText(i, config.numberOfRegularPeriods));
+      }
     }
 
 
@@ -1901,7 +1903,8 @@ const GameStateObserver = () => {
     const { state, dispatch } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
-    
+    const prevPeriodDisplayOverrideRef = useRef<PeriodDisplayOverrideType>();
+
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
             toast(state._lastToastMessage);
@@ -1909,6 +1912,27 @@ const GameStateObserver = () => {
         }
     }, [state._lastToastMessage, toast]);
     
+    useEffect(() => {
+        const currentOverride = state.live?.clock?.periodDisplayOverride;
+
+        if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && currentOverride === 'End of Game' && state.live.matchId) {
+             const summary = generateSummaryData(state);
+            if (summary) {
+                dispatch({
+                    type: 'SAVE_MATCH_SUMMARY',
+                    payload: { matchId: state.live.matchId, summary }
+                });
+                toast({
+                    title: "Resumen Guardado",
+                    description: "El resumen del partido finalizado se ha guardado automáticamente."
+                });
+            }
+        }
+
+        prevPeriodDisplayOverrideRef.current = currentOverride;
+    }, [state.live?.clock?.periodDisplayOverride, state.live?.matchId, state, dispatch, toast]);
+
+
     return null;
 }
 
@@ -2137,6 +2161,7 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
 
 
 

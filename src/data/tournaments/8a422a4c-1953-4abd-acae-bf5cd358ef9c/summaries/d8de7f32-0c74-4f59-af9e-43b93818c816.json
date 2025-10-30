@@ -240,16 +240,16 @@
       }
     },
     "2ND": {
-        "home": {
-            "goals": [],
-            "penalties": [],
-            "playerStats": []
-        },
-        "away": {
-            "goals": [],
-            "penalties": [],
-            "playerStats": []
-        }
+      "home": {
+        "goals": [],
+        "penalties": [],
+        "playerStats": []
+      },
+      "away": {
+        "goals": [],
+        "penalties": [],
+        "playerStats": []
+      }
     }
   },
   "overTimeOrShootouts": false

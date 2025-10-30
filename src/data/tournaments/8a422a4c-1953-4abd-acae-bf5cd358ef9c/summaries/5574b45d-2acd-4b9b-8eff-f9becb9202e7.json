@@ -338,7 +338,16 @@
             "type": "penalty"
           }
         ],
-        "playerStats": []
+        "playerStats": [
+          {
+            "id": "07dd987f-7542-4e59-a71b-7946d655d23c",
+            "name": "NOZHNOV ANDREY",
+            "number": "9",
+            "shots": 7,
+            "goals": 0,
+            "assists": 0
+          }
+        ]
       }
     },
     "2ND": {
@@ -362,7 +371,16 @@
       "away": {
         "goals": [],
         "penalties": [],
-        "playerStats": []
+        "playerStats": [
+          {
+            "id": "07dd987f-7542-4e59-a71b-7946d655d23c",
+            "name": "NOZHNOV ANDREY",
+            "number": "9",
+            "shots": 1,
+            "goals": 0,
+            "assists": 0
+          }
+        ]
       }
     }
   },
