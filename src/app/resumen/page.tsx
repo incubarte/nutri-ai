@@ -3,10 +3,10 @@
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useGameState, getCategoryNameById, type GameState } from "@/contexts/game-state-context";
-import type { SummaryPlayerStats, GameSummary, ShootoutState, CategoryData, TeamData, MatchData } from "@/types";
+import type { SummaryPlayerStats, GameSummary, ShootoutState, CategoryData, TeamData, MatchData, GoalLog, PenaltyLog, Team } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Save, Info, RefreshCw, AlertTriangle } from "lucide-react";
+import { Save, Info, RefreshCw, AlertTriangle, Edit3, Check, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
@@ -16,7 +16,9 @@ import { PlayerStatsSection } from "@/components/summary/player-stats-section";
 import { ShootoutSection } from "@/components/summary/shootout-section";
 import { getPeriodText } from "@/contexts/game-state-context";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import type { Team, GoalLog, PenaltyLog } from "@/types";
+import { AddPenaltyForm } from "@/components/shared/add-penalty-form";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { safeUUID } from "@/lib/utils";
 
 // --- Modelos de Datos para la Página de Resumen ---
 interface SummaryData {
@@ -37,6 +39,11 @@ interface SummaryData {
 const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, dispatch: React.Dispatch<any>, toast: any }) => {
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
   const [overwriteConfirm, setOverwriteConfirm] = useState<{ onConfirm: () => void } | null>(null);
+  const [isEditingShots, setIsEditingShots] = useState(false);
+  const [editedShots, setEditedShots] = useState<Record<string, Record<string, string>>>({});
+
+  const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
+  const [addPenaltyContext, setAddPenaltyContext] = useState<{team: Team, period: string} | null>(null);
 
   const generateSummaryData = useCallback(() => {
     setSummaryData(null);
@@ -46,8 +53,8 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
     const { gameSummary, shootout } = live;
 
     const statsByPeriod: SummaryData['statsByPeriod'] = {};
+    
     const playedPeriodTexts = new Set<string>();
-
     [...gameSummary.home.goals, ...gameSummary.away.goals, ...gameSummary.home.penalties, ...gameSummary.away.penalties].forEach(event => {
         const periodText = (event as GoalLog).periodText || (event as PenaltyLog).addPeriodText;
         if (periodText && !periodText.toLowerCase().includes('warm-up') && !periodText.toLowerCase().includes('break')) {
@@ -96,19 +103,11 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
     };
     setSummaryData(newSummaryData);
 
-    // Automatic Save Logic
     if (live.matchId) {
-        const finalSummary: GameSummary = {
-            home: { goals: live.score.homeGoals, penalties: live.gameSummary.home.penalties, playerStats: live.gameSummary.home.playerStats, homeShotsLog: live.gameSummary.home.homeShotsLog },
-            away: { goals: live.score.awayGoals, penalties: live.gameSummary.away.penalties, playerStats: live.gameSummary.away.playerStats, awayShotsLog: live.gameSummary.away.awayShotsLog },
-            attendance: live.gameSummary.attendance,
-            shootout: live.shootout,
-            statsByPeriod: newSummaryData.statsByPeriod
-        };
-        dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: live.matchId, summary: finalSummary } });
+        dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: live.matchId, summary: gameSummary } });
         toast({ title: "Resumen Guardado", description: "El resumen del partido se ha guardado automáticamente." });
     } else {
-        toast({ title: "Resumen Generado", description: "Se han cargado los datos del partido actual (no se guardará sin un partido del fixture activo)." });
+        toast({ title: "Resumen Generado", description: "Se han cargado los datos del partido actual." });
     }
   }, [state, toast, dispatch]);
 
@@ -140,7 +139,57 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
     if (!summaryData?.statsByPeriod) return [];
     return Object.keys(summaryData.statsByPeriod);
   }, [summaryData]);
+  
+  const handleEditShotsClick = () => {
+    if (!summaryData?.statsByPeriod) return;
+    const initialShots: Record<string, Record<string, string>> = {};
+    for (const period in summaryData.statsByPeriod) {
+        initialShots[period] = {};
+        for(const team of ['home', 'away'] as const) {
+            summaryData.statsByPeriod[period][team].playerStats.forEach(p => {
+                initialShots[period][p.id] = String(p.shots || 0);
+            });
+        }
+    }
+    setEditedShots(initialShots);
+    setIsEditingShots(true);
+  };
+  
+  const handleSaveShotsClick = () => {
+    if (!summaryData) return;
+    
+    Object.entries(editedShots).forEach(([periodText, playerShots]) => {
+      Object.entries(playerShots).forEach(([playerId, shotCountStr]) => {
+        const shotCount = parseInt(shotCountStr, 10);
+        if(!isNaN(shotCount)) {
+            const team = state.live.gameSummary.home.playerStats.some(p => p.id === playerId) ? 'home' : 'away';
+             dispatch({ type: 'SET_PLAYER_SHOTS', payload: { team, playerId, periodText, shotCount } });
+        }
+      })
+    });
 
+    toast({ title: "Tiros Actualizados", description: "Los cambios se han guardado."});
+    setIsEditingShots(false);
+  };
+
+  const handleAddPenalty = (team: Team, period: string) => {
+    setAddPenaltyContext({ team, period });
+    setIsAddPenaltyDialogOpen(true);
+  };
+
+  const handleDeletePenalty = (team: Team, logId: string) => {
+    dispatch({ type: 'DELETE_PENALTY_LOG', payload: { team, logId } });
+  };
+  
+  const handleSaveNewPenalty = (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs?: number, periodText?: string) => {
+    if (!gameTimeCs || !periodText) {
+       toast({ title: "Error", description: "El tiempo y el período son requeridos para añadir una penalidad desde el resumen.", variant: "destructive"});
+       return;
+    }
+    dispatch({ type: 'ADD_PENALTY', payload: { team, penalty: { playerNumber, penaltyTypeId }, addGameTime: gameTimeCs, addPeriodText: periodText }});
+    toast({ title: "Penalidad Añadida", description: "La penalidad se ha añadido al resumen."});
+    setIsAddPenaltyDialogOpen(false);
+  };
 
   if (state.isLoading) {
     return (
@@ -184,8 +233,8 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
                                     <GoalsSection teamName={summaryData.awayTeamName} goals={awayAggregatedStats.goals} />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={homeAggregatedStats.penalties} />
-                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={awayAggregatedStats.penalties} />
+                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={homeAggregatedStats.penalties} onAdd={() => handleAddPenalty('home', 'general')} onDelete={(logId) => handleDeletePenalty('home', logId)} />
+                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={awayAggregatedStats.penalties} onAdd={() => handleAddPenalty('away', 'general')} onDelete={(logId) => handleDeletePenalty('away', logId)}/>
                                 </div>
                                 
                                 {summaryData.shootout && (summaryData.shootout.homeAttempts.length > 0 || summaryData.shootout.awayAttempts.length > 0) && (
@@ -210,17 +259,29 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
                                         <AccordionItem value={periodText} key={periodText}>
                                             <AccordionTrigger className="text-xl hover:no-underline">{periodText}</AccordionTrigger>
                                             <AccordionContent className="space-y-6 pl-2">
+                                                <div className="flex justify-end pr-2">
+                                                {isEditingShots ? (
+                                                    <div className="flex gap-2">
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveShotsClick}><Check className="h-5 w-5" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setIsEditingShots(false)}><XCircle className="h-5 w-5" /></Button>
+                                                    </div>
+                                                ) : (
+                                                    <Button variant="outline" size="sm" onClick={handleEditShotsClick}>
+                                                        <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
+                                                    </Button>
+                                                )}
+                                                </div>
                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <GoalsSection teamName={summaryData.homeTeamName} goals={periodStats.home.goals} />
                                                     <GoalsSection teamName={summaryData.awayTeamName} goals={periodStats.away.goals} />
                                                 </div>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={periodStats.home.penalties} />
-                                                    <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={periodStats.away.penalties} />
+                                                    <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={periodStats.home.penalties} onAdd={() => handleAddPenalty('home', periodText)} onDelete={(logId) => handleDeletePenalty('home', logId)} />
+                                                    <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={periodStats.away.penalties} onAdd={() => handleAddPenalty('away', periodText)} onDelete={(logId) => handleDeletePenalty('away', logId)} />
                                                 </div>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                     <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={periodStats.home.playerStats} />
-                                                     <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={periodStats.away.playerStats} />
+                                                     <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={periodStats.home.playerStats} editable={isEditingShots} onEdit={() => {}} />
+                                                     <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={periodStats.away.playerStats} editable={isEditingShots} onEdit={() => {}} />
                                                 </div>
                                             </AccordionContent>
                                         </AccordionItem>
@@ -252,6 +313,26 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+        )}
+        {isAddPenaltyDialogOpen && addPenaltyContext && (
+            <Dialog open={isAddPenaltyDialogOpen} onOpenChange={setIsAddPenaltyDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Añadir Penalidad al Resumen</DialogTitle>
+                    </DialogHeader>
+                    <AddPenaltyForm
+                        homeTeamName={summaryData?.homeTeamName || 'Local'}
+                        awayTeamName={summaryData?.awayTeamName || 'Visitante'}
+                        penaltyTypes={state.config.penaltyTypes || []}
+                        defaultPenaltyTypeId={state.config.defaultPenaltyTypeId}
+                        onPenaltySent={(team, playerNumber, penaltyTypeId, gameTimeCs, periodText) => handleSaveNewPenalty(team, playerNumber, penaltyTypeId, gameTimeCs, periodText)}
+                        preselectedTeam={addPenaltyContext.team}
+                        showTimeInput={true}
+                        availablePeriods={allPeriodTexts}
+                        preselectedPeriod={addPenaltyContext.period !== 'general' ? addPenaltyContext.period : undefined}
+                    />
+                </DialogContent>
+            </Dialog>
         )}
     </div>
   );
