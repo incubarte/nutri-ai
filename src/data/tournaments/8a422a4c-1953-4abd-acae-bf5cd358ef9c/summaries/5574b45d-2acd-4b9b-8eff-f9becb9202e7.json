@@ -1,0 +1,20 @@
+{
+    "home": {
+        "goals": [],
+        "penalties": [],
+        "playerStats": [],
+        "homeShotsLog": []
+    },
+    "away": {
+        "goals": [],
+        "penalties": [],
+        "playerStats": [],
+        "awayShotsLog": []
+    },
+    "attendance": {
+        "home": [],
+        "away": []
+    },
+    "statsByPeriod": {},
+    "isOT": false
+}

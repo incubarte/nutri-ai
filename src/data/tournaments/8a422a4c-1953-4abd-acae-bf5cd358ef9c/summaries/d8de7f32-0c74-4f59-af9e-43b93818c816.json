@@ -1,0 +1,110 @@
+{
+  "home": {
+    "goals": [
+      {
+        "team": "home",
+        "timestamp": 1761766893202,
+        "gameTime": 118235,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "17",
+          "playerName": "SAVCHUK ROMAN"
+        },
+        "id": "a249a3a9-fa05-41c7-992a-3eb6ca161382"
+      }
+    ],
+    "penalties": [
+      {
+        "id": "d303acd2-4ad0-427e-94f3-c2de43a867c5",
+        "team": "home",
+        "playerNumber": "18",
+        "playerName": "CLEMENTINO RENZO",
+        "penaltyName": "Menor",
+        "initialDuration": 120,
+        "reducesPlayerCount": true,
+        "clearsOnGoal": true,
+        "isBenchPenalty": false,
+        "addTimestamp": 1761766885832,
+        "addGameTime": 118987,
+        "addPeriodText": "1ST",
+        "endTimestamp": 1761766889099,
+        "endGameTime": 118659,
+        "endPeriodText": "1ST",
+        "endReason": "goal_on_pp",
+        "timeServed": 3
+      }
+    ],
+    "playerStats": [],
+    "homeShotsLog": []
+  },
+  "away": {
+    "goals": [
+      {
+        "team": "away",
+        "timestamp": 1761766878688,
+        "gameTime": 119688,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "2",
+          "playerName": "BOIX CRITIAN"
+        },
+        "id": "bf3722d1-acde-45c8-9538-08ab5fcddfc8"
+      },
+      {
+        "team": "away",
+        "timestamp": 1761766880780,
+        "gameTime": 119492,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "2",
+          "playerName": "BOIX CRITIAN"
+        },
+        "id": "61084fc3-4354-465d-8fd1-6602578a7005"
+      },
+      {
+        "team": "away",
+        "timestamp": 1761766887697,
+        "gameTime": 118790,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "2",
+          "playerName": "BOIX CRITIAN"
+        },
+        "id": "01f955d1-3f30-4ecc-94ae-df01cb609ac5"
+        }
+      ],
+      "penalties": [],
+      "playerStats": [],
+      "awayShotsLog": []
+    },
+    "attendance": {
+      "home": [],
+      "away": []
+    },
+    "statsByPeriod": {
+      "1ST": {
+        "home": {
+          "goals": [],
+          "penalties": [],
+          "playerStats": []
+        },
+        "away": {
+          "goals": [],
+          "penalties": [],
+          "playerStats": []
+        }
+      },
+      "2ND": {
+        "home": {
+          "goals": [],
+          "penalties": [],
+          "playerStats": []
+        },
+        "away": {
+          "goals": [],
+          "penalties": [],
+          "playerStats": []
+        }
+      }
+    }
+  }

@@ -1,0 +1,27 @@
+{
+    "home": {
+        "goals": [],
+        "penalties": [],
+        "playerStats": [],
+        "homeShotsLog": []
+    },
+    "away": {
+        "goals": [],
+        "penalties": [],
+        "playerStats": [],
+        "awayShotsLog": []
+    },
+    "attendance": {
+        "home": [],
+        "away": []
+    },
+    "statsByPeriod": {},
+    "shootout": {
+        "isActive": false,
+        "rounds": 5,
+        "homeAttempts": [],
+        "awayAttempts": [],
+        "initiator": "home"
+    },
+    "isOT": true
+}
