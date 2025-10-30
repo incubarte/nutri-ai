@@ -192,7 +192,6 @@
     "1ST": {
       "home": {
         "goals": [],
-        "penalties": [],
         "playerStats": []
       },
       "away": {
@@ -220,40 +219,16 @@
             "type": "goal"
           }
         ],
-        "penalties": [],
         "playerStats": []
       }
     },
     "2ND": {
       "home": {
         "goals": [],
-        "penalties": [
-          {
-            "id": "099be3f8-1699-4c15-ae1c-9bd22d9d348f",
-            "team": "home",
-            "playerNumber": "17",
-            "playerName": "SAVCHUK ROMAN",
-            "penaltyName": "Menor",
-            "initialDuration": 120,
-            "reducesPlayerCount": true,
-            "clearsOnGoal": true,
-            "isBenchPenalty": false,
-            "addTimestamp": 1761792949137,
-            "addGameTime": 119845,
-            "addPeriodText": "2ND",
-            "endTimestamp": 1761792955635,
-            "endGameTime": 107825,
-            "endPeriodText": "2ND",
-            "endReason": "completed",
-            "timeServed": 120,
-            "type": "penalty"
-          }
-        ],
         "playerStats": []
       },
       "away": {
         "goals": [],
-        "penalties": [],
         "playerStats": []
       }
     }
