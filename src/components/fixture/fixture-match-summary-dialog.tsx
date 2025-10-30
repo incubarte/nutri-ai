@@ -117,18 +117,19 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
 
     for (const periodText in editedShots) {
         for (const team of ['home', 'away'] as const) {
-            const originalStats = localSummary.statsByPeriod?.[periodText]?.[team]?.playerStats || [];
-            
-            (newSummary.statsByPeriod[periodText][team].playerStats as SummaryPlayerStats[]).forEach(pStat => {
-                const newShotCountStr = editedShots[periodText]?.[pStat.id];
+            const teamPlayers = team === 'home' ? (homeTeam?.players || []) : (awayTeam?.players || []);
+            teamPlayers.forEach(player => {
+                const newShotCountStr = editedShots[periodText]?.[player.id];
                 if (newShotCountStr !== undefined) {
                     const newShotCount = parseInt(newShotCountStr, 10) || 0;
-                    const originalShotCount = originalStats.find(p => p.id === pStat.id)?.shots || 0;
-                    
-                    if (newShotCount !== originalShotCount) {
-                        pStat.shots = newShotCount;
-                        hasChanges = true;
+                    let periodStats = newSummary.statsByPeriod[periodText][team].playerStats as SummaryPlayerStats[];
+                    let playerStat = periodStats.find(p => p.id === player.id);
+                    if (playerStat) {
+                        playerStat.shots = newShotCount;
+                    } else {
+                        periodStats.push({ id: player.id, name: player.name, number: player.number, shots: newShotCount, goals: 0, assists: 0 });
                     }
+                    hasChanges = true;
                 }
             });
         }

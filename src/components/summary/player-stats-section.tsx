@@ -94,7 +94,7 @@ export const PlayerStatsSection = ({
                         </TableHeader>
                         <TableBody>
                             {sortedPlayersWithStats.map(player => {
-                                const currentShots = editable && editedShots ? (editedShots[player.id] ?? String(player.shots || 0)) : String(player.shots || 0);
+                                const currentShots = editable && editedShots ? (editedShots[player.id] !== undefined ? editedShots[player.id] : String(player.shots || 0)) : String(player.shots || 0);
 
                                 return (
                                     <TableRow key={player.id} className={cn(!player.attended && "text-muted-foreground opacity-60")}>

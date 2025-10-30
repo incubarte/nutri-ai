@@ -52,18 +52,24 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     const playedPeriods = new Set<string>();
 
     const totalPeriods = state.config.numberOfRegularPeriods + state.config.numberOfOvertimePeriods;
-    const lastPlayedPeriod = state.live.clock.currentPeriod;
+    let lastPlayedPeriod = state.live.clock.currentPeriod;
+
+    if (state.live.clock.periodDisplayOverride === 'End of Game') {
+        // If game ended, the last period might be stored in the preTimeoutState if it ended from a timeout
+        lastPlayedPeriod = state.live.clock.preTimeoutState?.period || state.live.clock.currentPeriod;
+    } else if (state.live.clock.periodDisplayOverride) {
+        lastPlayedPeriod = state.live.clock.currentPeriod;
+    }
     
-    for(let i=1; i <= lastPlayedPeriod; i++) {
-        if (i > totalPeriods) break;
+    for (let i = 1; i <= lastPlayedPeriod && i <= totalPeriods; i++) {
         playedPeriods.add(getPeriodText(i, state.config.numberOfRegularPeriods));
     }
     
-    const allEvents = [...allHomeGoals, ...allAwayGoals, ...allHomePenalties, ...allAwayPenalties];
+    const allEvents = [...allHomeGoals, ...allAwayGoals, ...allHomePenalties, ...allAwayPenalties, ...(state.live.gameSummary.home.homeShotsLog || []), ...(state.live.gameSummary.away.awayShotsLog || [])];
     allEvents.forEach(event => {
-        const period = event.periodText || event.addPeriodText;
-        if (period && !period.toLowerCase().includes('warm-up') && !period.toLowerCase().includes('break')) {
-            playedPeriods.add(period);
+        const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
+        if (periodText && !periodText.toLowerCase().includes('warm-up')) {
+            playedPeriods.add(periodText);
         }
     });
 
@@ -76,7 +82,7 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
         };
         return getPeriodNumber(a) - getPeriodNumber(b);
     });
-}, [allHomeGoals, allAwayGoals, allHomePenalties, allAwayPenalties, state.config, state.live.clock.currentPeriod]);
+}, [allHomeGoals, allAwayGoals, allHomePenalties, allAwayPenalties, state.config, state.live.clock, state.live.gameSummary]);
 
 
   const escapeCsvCell = (cellData: any): string => {
@@ -114,21 +120,18 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
   
   const handleSaveClick = () => {
     let changesMade = false;
-    for (const periodText of allPeriodTexts) {
-        for (const team of ['home', 'away'] as const) {
-            const originalPlayerStats = getPlayerStatsForPeriod(periodText, team);
-            originalPlayerStats.forEach(pStat => {
-                const newShotCountStr = editedShots[periodText]?.[pStat.id];
-                if (newShotCountStr !== undefined) {
-                    const newShotCount = parseInt(newShotCountStr, 10) || 0; // Default to 0 if NaN
-                    const originalShots = pStat.shots || 0;
-                    if (newShotCount !== originalShots) {
-                         dispatch({ type: 'SET_PLAYER_SHOTS', payload: { team, playerId: pStat.id, periodText, shotCount: newShotCount }});
-                         changesMade = true;
-                    }
-                }
-            });
-        }
+    for (const periodText in editedShots) {
+      for (const team of ['home', 'away'] as const) {
+        const teamPlayers = team === 'home' ? (homeTeam?.players || []) : (awayTeam?.players || []);
+        teamPlayers.forEach(player => {
+            const newShotCountStr = editedShots[periodText]?.[player.id];
+            if (newShotCountStr !== undefined) {
+                const newShotCount = parseInt(newShotCountStr, 10) || 0;
+                dispatch({ type: 'SET_PLAYER_SHOTS', payload: { team, playerId: player.id, periodText, shotCount: newShotCount }});
+                changesMade = true;
+            }
+        });
+      }
     }
 
     if (changesMade) {
