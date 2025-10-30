@@ -847,8 +847,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         },
         playHornTrigger: state.live.playHornTrigger + 1,
       }};
-      toastMessage = { title: "¡Partido Finalizado!", description: "Gol de oro registrado exitosamente." };
-
+      
       if (newState.live.matchId) {
         const summary = generateSummaryData(newState);
         const matchId = newState.live.matchId;
@@ -869,6 +868,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           newState.config = { ...newState.config, tournaments };
           toastMessage = { title: "Resumen Guardado", description: "El resumen del partido finalizado se ha guardado automáticamente." };
         }
+      } else {
+        toastMessage = { title: "¡Partido Finalizado!", description: "Gol de oro registrado exitosamente." };
       }
       break;
     }
@@ -1684,7 +1685,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PLAYER_TO_TEAM': {
       const { teamId, player } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
       toastMessage = { title: "Jugador Añadido", description: `Jugador ${player.number ? `#${player.number} ` : ''}${player.name} añadido.` };
       break;
     }
@@ -2211,7 +2212,6 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
-
 
 
 
