@@ -805,6 +805,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 }
             }
         };
+        // This is a significant change, trigger sync
+        newState._lastActionOriginator = TAB_ID;
         break;
     }
     case 'FINISH_GAME_WITH_OT_GOAL': {
@@ -1901,9 +1903,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
     if (state._lastActionOriginator === TAB_ID) {
       try {
         channelRef.current?.postMessage(state);
-        // Do not sync on every state change, only significant ones.
-        // The TICK action does not set _lastActionOriginator, so this won't fire on tick.
-        syncToServer(state); 
+        syncToServer(state);
       } catch (error) {
         console.error("Error broadcasting or saving state:", error);
       }
@@ -2041,5 +2041,3 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
-
-

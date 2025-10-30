@@ -51,7 +51,7 @@
       }
     ],
     "homeShots": 0,
-    "awayShots": 12
+    "awayShots": 14
   },
   "penalties": {
     "home": [],
@@ -295,7 +295,7 @@
           "id": "7682a261-e668-4f8a-b927-ddbd063110bd",
           "name": "GARCIA FABCISCO",
           "number": "1",
-          "shots": 5,
+          "shots": 6,
           "goals": 0,
           "assists": 0
         },
@@ -303,7 +303,7 @@
           "id": "5b4b40f0-ca37-4af4-94d7-8dd71f7bca93",
           "name": "MARINELLI EDUARDO",
           "number": "6",
-          "shots": 1,
+          "shots": 2,
           "goals": 0,
           "assists": 0
         },
@@ -390,26 +390,6 @@
       ],
       "awayShotsLog": [
         {
-          "id": "779ba66d-3043-41b0-959a-eac83ebdabd7",
-          "team": "away",
-          "timestamp": 1761784243844,
-          "gameTime": 0,
-          "periodText": "1ST",
-          "playerId": "f076fbf7-44de-4006-a93d-839527ad54db",
-          "playerNumber": "2",
-          "playerName": "BOIX CRITIAN"
-        },
-        {
-          "id": "063dd25d-ff48-4054-a340-b30e6e704691",
-          "team": "away",
-          "timestamp": 1761784243845,
-          "gameTime": 0,
-          "periodText": "1ST",
-          "playerId": "f076fbf7-44de-4006-a93d-839527ad54db",
-          "playerNumber": "2",
-          "playerName": "BOIX CRITIAN"
-        },
-        {
           "id": "d5bab697-aef6-4176-b829-32985320acc0",
           "team": "away",
           "timestamp": 1761784450861,
@@ -490,9 +470,9 @@
           "playerName": "GARCIA FABCISCO"
         },
         {
-          "id": "a2a7775c-ec6d-4553-86f9-3f772962577a",
+          "id": "1982b040-0d90-4371-8e32-2322227ab0b1",
           "team": "away",
-          "timestamp": 1761784506932,
+          "timestamp": 1761784653044,
           "gameTime": 0,
           "periodText": "1ST",
           "playerId": "7682a261-e668-4f8a-b927-ddbd063110bd",
@@ -500,14 +480,54 @@
           "playerName": "GARCIA FABCISCO"
         },
         {
-          "id": "a541824e-c2a8-4567-8488-f9b456da5b7c",
+          "id": "701f1187-c6ae-438b-8b47-0010d28b86d4",
           "team": "away",
-          "timestamp": 1761784506933,
+          "timestamp": 1761784653045,
           "gameTime": 0,
           "periodText": "1ST",
           "playerId": "7682a261-e668-4f8a-b927-ddbd063110bd",
           "playerNumber": "1",
           "playerName": "GARCIA FABCISCO"
+        },
+        {
+          "id": "24a9c9cf-ff2e-4ed7-8ee6-5e25415b6ec8",
+          "team": "away",
+          "timestamp": 1761784653046,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "7682a261-e668-4f8a-b927-ddbd063110bd",
+          "playerNumber": "1",
+          "playerName": "GARCIA FABCISCO"
+        },
+        {
+          "id": "164734bb-8117-409f-bde3-ec0bd74ddb3a",
+          "team": "away",
+          "timestamp": 1761784653045,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "5b4b40f0-ca37-4af4-94d7-8dd71f7bca93",
+          "playerNumber": "6",
+          "playerName": "MARINELLI EDUARDO"
+        },
+        {
+          "id": "9bded71d-2343-4cde-a98d-9ca2565fa53b",
+          "team": "away",
+          "timestamp": 1761784697137,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "f076fbf7-44de-4006-a93d-839527ad54db",
+          "playerNumber": "2",
+          "playerName": "BOIX CRITIAN"
+        },
+        {
+          "id": "6901604a-33ab-42bc-8d65-40366df9488b",
+          "team": "away",
+          "timestamp": 1761784697138,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "f076fbf7-44de-4006-a93d-839527ad54db",
+          "playerNumber": "2",
+          "playerName": "BOIX CRITIAN"
         }
       ]
     },

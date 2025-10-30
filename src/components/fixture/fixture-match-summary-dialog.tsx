@@ -53,7 +53,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
       });
 
       Object.values(match?.summary?.statsByPeriod || {}).forEach(period => {
-          (period[team].playerStats || []).forEach(pStat => {
+          (period[team]?.playerStats || []).forEach(pStat => {
               if (playerStatsMap.has(pStat.id)) {
                   const current = playerStatsMap.get(pStat.id)!;
                   current.shots += pStat.shots || 0;
