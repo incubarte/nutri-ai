@@ -1,11 +1,22 @@
 {
   "score": {
-    "home": 0,
+    "home": 1,
     "away": 0,
+    "homeGoals": [
+      {
+        "team": "home",
+        "timestamp": 1761867843169,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "2"
+        },
+        "id": "1c54d2ce-6fe1-414b-9ed7-3d44d6293bc9"
+      }
+    ],
+    "awayGoals": [],
     "homeShots": 0,
-    "awayShots": 0,
-    "homeGoals": [],
-    "awayGoals": []
+    "awayShots": 0
   },
   "penalties": {
     "home": [],
@@ -13,7 +24,7 @@
   },
   "clock": {
     "currentTime": 0,
-    "currentPeriod": 3,
+    "currentPeriod": 2,
     "isClockRunning": false,
     "periodDisplayOverride": "End of Game",
     "preTimeoutState": null,
@@ -34,7 +45,18 @@
   "awayTeamSubName": "Corderos",
   "gameSummary": {
     "home": {
-      "goals": [],
+      "goals": [
+        {
+          "team": "home",
+          "timestamp": 1761867843169,
+          "gameTime": 120000,
+          "periodText": "2ND",
+          "scorer": {
+            "playerNumber": "2"
+          },
+          "id": "1c54d2ce-6fe1-414b-9ed7-3d44d6293bc9"
+        }
+      ],
       "penalties": [],
       "playerStats": [],
       "homeShotsLog": []
@@ -50,14 +72,13 @@
       "away": []
     }
   },
-  "playHornTrigger": 20,
+  "playHornTrigger": 23,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
   "matchId": "41a3b15f-2ebf-40ce-aad3-a53a02b8b616",
   "playedPeriods": [
     "1ST",
-    "2ND",
-    "OT"
+    "2ND"
   ]
 }

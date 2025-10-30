@@ -1,6 +1,17 @@
 {
   "home": {
-    "goals": [],
+    "goals": [
+      {
+        "team": "home",
+        "timestamp": 1761867843169,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "2"
+        },
+        "id": "1c54d2ce-6fe1-414b-9ed7-3d44d6293bc9"
+      }
+    ],
     "penalties": [],
     "playerStats": [],
     "homeShotsLog": []
@@ -15,6 +26,28 @@
     "home": [],
     "away": []
   },
-  "statsByPeriod": {},
+  "statsByPeriod": {
+    "2ND": {
+      "home": {
+        "goals": [
+          {
+            "team": "home",
+            "timestamp": 1761867843169,
+            "gameTime": 120000,
+            "periodText": "2ND",
+            "scorer": {
+              "playerNumber": "2"
+            },
+            "id": "1c54d2ce-6fe1-414b-9ed7-3d44d6293bc9"
+          }
+        ],
+        "playerStats": []
+      },
+      "away": {
+        "goals": [],
+        "playerStats": []
+      }
+    }
+  },
   "overTimeOrShootouts": false
 }

@@ -1,4 +1,5 @@
 
+"use client";
 
 import type { GameState, GameSummary, PeriodStats, SummaryPlayerStats, GoalLog, ShotLog, AttendedPlayerInfo, Team } from "@/types";
 import { getPeriodText } from "@/contexts/game-state-context";
@@ -56,7 +57,7 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
 
     const summary: GameSummary = JSON.parse(JSON.stringify(live.gameSummary));
     
-    // **CRITICAL FIX**: Recalculate final aggregated stats from logs before building the period breakdown
+    // Recalculate final aggregated stats from logs before building the period breakdown
     const { homePlayerStats, awayPlayerStats } = recalculateAllStatsFromLogs(summary);
     summary.home.playerStats = homePlayerStats;
     summary.away.playerStats = awayPlayerStats;
