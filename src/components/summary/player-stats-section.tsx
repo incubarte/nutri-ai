@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo } from "react";
@@ -112,7 +113,7 @@ export const PlayerStatsSection = ({
                         </TableBody>
                         <UiTableFooter>
                             <TableRow>
-                                <TableCell colSpan={2} className="text-right font-bold">TOTAL (Asistentes)</TableCell>
+                                <TableCell colSpan={2} className="text-right font-bold">TOTAL</TableCell>
                                 <TableCell className="text-center font-bold font-mono">{totals.goals}</TableCell>
                                 <TableCell className="text-center font-bold font-mono">{totals.assists}</TableCell>
                                 <TableCell className="text-center font-bold font-mono">{totals.shots}</TableCell>

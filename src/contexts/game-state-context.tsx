@@ -1617,7 +1617,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PLAYER_TO_TEAM': {
       const { teamId, player } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
       toastMessage = { title: "Jugador Añadido", description: `Jugador ${player.number ? `#${player.number} ` : ''}${player.name} añadido.` };
       break;
     }
@@ -1813,27 +1813,6 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     const statsByPeriod: Record<string, PeriodStats> = {};
     const playedPeriods = new Set<string>();
 
-    const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
-
-    // Determine the last period that was actually played or is in progress
-    let lastPlayedPeriodNumber = 0;
-    if (live.clock.periodDisplayOverride === 'End of Game' || live.clock.periodDisplayOverride === 'AwaitingDecision' || live.clock.periodDisplayOverride === 'Shootout') {
-      lastPlayedPeriodNumber = live.clock.currentPeriod;
-    } else {
-      lastPlayedPeriodNumber = live.clock.currentPeriod;
-    }
-    
-    // Add all periods from 1 up to the last played one
-    for (let i = 1; i <= lastPlayedPeriodNumber; i++) {
-        if (i <= totalGamePeriods) {
-            playedPeriods.add(getPeriodText(i, config.numberOfRegularPeriods));
-        }
-    }
-
-    if (live.shootout.isActive || live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0) {
-        playedPeriods.add('SHOOTOUT');
-    }
-
     const allEvents = [
         ...summary.home.goals.map(e => ({ ...e, type: 'goal' as const, team: 'home' as const })),
         ...summary.away.goals.map(e => ({ ...e, type: 'goal' as const, team: 'away' as const })),
@@ -1843,7 +1822,7 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'away' as const })),
     ];
     
-    // Also add periods from events, in case game ends early but event was added for a later period
+    // Determine all periods that had events
     allEvents.forEach(event => {
         const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
         if (periodText && !periodText.toLowerCase().includes('warm-up')) {
@@ -1851,8 +1830,16 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         }
     });
 
+    // Also ensure all played regular/OT periods are included, even if they had no events
+    const lastPlayedPeriod = live.clock.currentPeriod > 0 ? live.clock.currentPeriod : 1;
+    const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
+
+    for(let i=1; i <= Math.min(lastPlayedPeriod, totalGamePeriods); i++) {
+        playedPeriods.add(getPeriodText(i, config.numberOfRegularPeriods));
+    }
+
+
     playedPeriods.forEach(periodText => {
-        if (periodText.toLowerCase().includes('warm-up')) return;
         if (!statsByPeriod[periodText]) {
             statsByPeriod[periodText] = {
                 home: { goals: [], penalties: [], playerStats: [] },
@@ -2150,6 +2137,7 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
 
 
 
