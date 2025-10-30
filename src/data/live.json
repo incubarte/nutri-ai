@@ -20,7 +20,7 @@
     "clockStartTimeMs": 1761844299514,
     "remainingTimeAtStartCs": 65200,
     "absoluteElapsedTimeCs": 174800,
-    "_liveAbsoluteElapsedTimeCs": 175064
+    "_liveAbsoluteElapsedTimeCs": 174800
   },
   "shootout": {
     "isActive": false,

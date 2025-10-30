@@ -48,9 +48,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
     if (!localSummary?.statsByPeriod) return [];
     const periods = Object.keys(localSummary.statsByPeriod);
     if (localSummary.shootout && (localSummary.shootout.homeAttempts.length > 0 || localSummary.shootout.awayAttempts.length > 0)) {
-        if (!periods.includes('SHOOTOUT')) {
-            periods.push('SHOOTOUT');
-        }
+       // Shootout is handled separately, not as a period
     }
     return periods.sort((a, b) => {
       if (a.startsWith('OT') && !b.startsWith('OT')) return 1;

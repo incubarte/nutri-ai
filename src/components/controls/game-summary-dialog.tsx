@@ -3,7 +3,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { useGameState, formatTime, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo, getPeriodText } from "@/contexts/game-state-context";
-import type { PlayerData, SummaryPlayerStats } from '@/types';
+import type { PlayerData, SummaryPlayerStats } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -67,7 +67,9 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     
     // Add shootout if it exists
     if(state.live.shootout.homeAttempts.length > 0 || state.live.shootout.awayAttempts.length > 0) {
-        periodSet.add("SHOOTOUT");
+        if (!periodSet.has("SHOOTOUT")) {
+            // periodSet.add("SHOOTOUT"); // Shootout is handled separately now
+        }
     }
     
     const sortedPeriods = Array.from(periodSet);
@@ -200,7 +202,7 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
               <GoalsSection teamName={state.live.homeTeamName} goals={allHomeGoals} />
               <GoalsSection teamName={state.live.awayTeamName} goals={allAwayGoals} />
             </div>
-
+            
             <Separator />
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -211,8 +213,8 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
             <Separator />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <PlayerStatsSection key={`home-total-${refreshKey}`} teamName={state.live.homeTeamName} allPlayers={homeTeam?.players} playerStats={state.live.gameSummary.home.playerStats} attendance={state.live.gameSummary.attendance.home} />
-                <PlayerStatsSection key={`away-total-${refreshKey}`} teamName={state.live.awayTeamName} allPlayers={awayTeam?.players} playerStats={state.live.gameSummary.away.playerStats} attendance={state.live.gameSummary.attendance.away} />
+                <PlayerStatsSection teamName={state.live.homeTeamName} allPlayers={homeTeam?.players} playerStats={state.live.gameSummary.home.playerStats} attendance={state.live.gameSummary.attendance.home} />
+                <PlayerStatsSection teamName={state.live.awayTeamName} allPlayers={awayTeam?.players} playerStats={state.live.gameSummary.away.playerStats} attendance={state.live.gameSummary.attendance.away} />
             </div>
             
             {(state.live.shootout.homeAttempts.length > 0 || state.live.shootout.awayAttempts.length > 0) && (
