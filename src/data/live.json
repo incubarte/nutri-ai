@@ -51,7 +51,7 @@
       }
     ],
     "homeShots": 0,
-    "awayShots": 2
+    "awayShots": 12
   },
   "penalties": {
     "home": [],
@@ -295,7 +295,7 @@
           "id": "7682a261-e668-4f8a-b927-ddbd063110bd",
           "name": "GARCIA FABCISCO",
           "number": "1",
-          "shots": 0,
+          "shots": 5,
           "goals": 0,
           "assists": 0
         },
@@ -303,7 +303,7 @@
           "id": "5b4b40f0-ca37-4af4-94d7-8dd71f7bca93",
           "name": "MARINELLI EDUARDO",
           "number": "6",
-          "shots": 0,
+          "shots": 1,
           "goals": 0,
           "assists": 0
         },
@@ -343,7 +343,7 @@
           "id": "3b99ac24-d251-404e-86a5-ea3af58614cf",
           "name": "BOIX BAUTI",
           "number": "7",
-          "shots": 0,
+          "shots": 4,
           "goals": 0,
           "assists": 0
         },
@@ -408,6 +408,106 @@
           "playerId": "f076fbf7-44de-4006-a93d-839527ad54db",
           "playerNumber": "2",
           "playerName": "BOIX CRITIAN"
+        },
+        {
+          "id": "d5bab697-aef6-4176-b829-32985320acc0",
+          "team": "away",
+          "timestamp": 1761784450861,
+          "gameTime": 0,
+          "periodText": "2ND",
+          "playerId": "5b4b40f0-ca37-4af4-94d7-8dd71f7bca93",
+          "playerNumber": "6",
+          "playerName": "MARINELLI EDUARDO"
+        },
+        {
+          "id": "d7ba38e4-2747-49fe-acc5-3664c50ab63f",
+          "team": "away",
+          "timestamp": 1761784450861,
+          "gameTime": 0,
+          "periodText": "2ND",
+          "playerId": "3b99ac24-d251-404e-86a5-ea3af58614cf",
+          "playerNumber": "7",
+          "playerName": "BOIX BAUTI"
+        },
+        {
+          "id": "d0b75929-29ec-45c4-b264-a92a1812374f",
+          "team": "away",
+          "timestamp": 1761784450862,
+          "gameTime": 0,
+          "periodText": "2ND",
+          "playerId": "3b99ac24-d251-404e-86a5-ea3af58614cf",
+          "playerNumber": "7",
+          "playerName": "BOIX BAUTI"
+        },
+        {
+          "id": "e54a68d9-168c-4163-8553-19f81007469f",
+          "team": "away",
+          "timestamp": 1761784450863,
+          "gameTime": 0,
+          "periodText": "2ND",
+          "playerId": "3b99ac24-d251-404e-86a5-ea3af58614cf",
+          "playerNumber": "7",
+          "playerName": "BOIX BAUTI"
+        },
+        {
+          "id": "10f640b1-bd14-4bbd-b295-a7461243924f",
+          "team": "away",
+          "timestamp": 1761784450864,
+          "gameTime": 0,
+          "periodText": "2ND",
+          "playerId": "3b99ac24-d251-404e-86a5-ea3af58614cf",
+          "playerNumber": "7",
+          "playerName": "BOIX BAUTI"
+        },
+        {
+          "id": "4e415973-8f28-49b0-9c31-f117a71632b8",
+          "team": "away",
+          "timestamp": 1761784490789,
+          "gameTime": 0,
+          "periodText": "2ND",
+          "playerId": "7682a261-e668-4f8a-b927-ddbd063110bd",
+          "playerNumber": "1",
+          "playerName": "GARCIA FABCISCO"
+        },
+        {
+          "id": "f78a2854-c5a9-4bfd-9b8a-cbcc81670699",
+          "team": "away",
+          "timestamp": 1761784490790,
+          "gameTime": 0,
+          "periodText": "2ND",
+          "playerId": "7682a261-e668-4f8a-b927-ddbd063110bd",
+          "playerNumber": "1",
+          "playerName": "GARCIA FABCISCO"
+        },
+        {
+          "id": "812a38b6-10fc-4615-aef9-5b7233e382c2",
+          "team": "away",
+          "timestamp": 1761784490791,
+          "gameTime": 0,
+          "periodText": "2ND",
+          "playerId": "7682a261-e668-4f8a-b927-ddbd063110bd",
+          "playerNumber": "1",
+          "playerName": "GARCIA FABCISCO"
+        },
+        {
+          "id": "a2a7775c-ec6d-4553-86f9-3f772962577a",
+          "team": "away",
+          "timestamp": 1761784506932,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "7682a261-e668-4f8a-b927-ddbd063110bd",
+          "playerNumber": "1",
+          "playerName": "GARCIA FABCISCO"
+        },
+        {
+          "id": "a541824e-c2a8-4567-8488-f9b456da5b7c",
+          "team": "away",
+          "timestamp": 1761784506933,
+          "gameTime": 0,
+          "periodText": "1ST",
+          "playerId": "7682a261-e668-4f8a-b927-ddbd063110bd",
+          "playerNumber": "1",
+          "playerName": "GARCIA FABCISCO"
         }
       ]
     },
