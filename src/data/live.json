@@ -1,6 +1,6 @@
 {
   "score": {
-    "home": 5,
+    "home": 6,
     "away": 1,
     "homeGoals": [
       {
@@ -57,6 +57,17 @@
           "playerName": "MARINELLI EDUARDO"
         },
         "id": "0c1dc94c-a6f6-48dd-bbaf-19a97ad9f7d2"
+      },
+      {
+        "team": "home",
+        "timestamp": 1761787121728,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "6",
+          "playerName": "MARINELLI EDUARDO"
+        },
+        "id": "767a2353-1090-4ac7-afde-3cfdbd0fb93b"
       }
     ],
     "awayGoals": [
@@ -79,15 +90,15 @@
     "away": []
   },
   "clock": {
-    "currentTime": 0,
+    "currentTime": 120000,
     "currentPeriod": 2,
     "isClockRunning": false,
-    "periodDisplayOverride": "End of Game",
+    "periodDisplayOverride": null,
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 240000,
-    "_liveAbsoluteElapsedTimeCs": 240000
+    "absoluteElapsedTimeCs": 120000,
+    "_liveAbsoluteElapsedTimeCs": 120000
   },
   "shootout": {
     "isActive": false,
@@ -155,6 +166,17 @@
             "playerName": "MARINELLI EDUARDO"
           },
           "id": "0c1dc94c-a6f6-48dd-bbaf-19a97ad9f7d2"
+        },
+        {
+          "team": "home",
+          "timestamp": 1761787121728,
+          "gameTime": 120000,
+          "periodText": "2ND",
+          "scorer": {
+            "playerNumber": "6",
+            "playerName": "MARINELLI EDUARDO"
+          },
+          "id": "767a2353-1090-4ac7-afde-3cfdbd0fb93b"
         }
       ],
       "penalties": [
@@ -219,7 +241,7 @@
           "name": "MARINELLI EDUARDO",
           "number": "6",
           "shots": 0,
-          "goals": 1,
+          "goals": 2,
           "assists": 0
         },
         {
