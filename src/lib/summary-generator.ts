@@ -1,3 +1,4 @@
+
 import type { GameState, GameSummary, PeriodStats, SummaryPlayerStats, GoalLog, ShotLog, AttendedPlayerInfo, Team } from "@/types";
 import { getPeriodText } from "@/contexts/game-state-context";
 
@@ -58,7 +59,7 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     const { playedPeriods } = live;
 
     // 1. Ensure all played periods have an entry in statsByPeriod
-    playedPeriods.forEach(periodText => {
+    (playedPeriods || []).forEach(periodText => {
         if (!statsByPeriod[periodText]) {
             statsByPeriod[periodText] = {
                 home: { goals: [], playerStats: [] },
