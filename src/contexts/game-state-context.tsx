@@ -848,6 +848,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         playHornTrigger: state.live.playHornTrigger + 1,
       }};
       toastMessage = { title: "¡Partido Finalizado!", description: "Gol de oro registrado exitosamente." };
+      
+      const finalSummary = generateSummaryData(newState);
+      if (newState.live.matchId && finalSummary) {
+          dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: newState.live.matchId, summary: finalSummary } });
+      }
       break;
     }
     case 'ADD_PENALTY': {
@@ -1296,6 +1301,17 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 playHornTrigger: state.live.playHornTrigger + 1
             }};
         }
+        
+        // This is a new final state, trigger summary save if it's a fixture match.
+        const prevOverride = state.live.clock.periodDisplayOverride;
+        if (prevOverride !== 'End of Game' && newState.live.clock.periodDisplayOverride === 'End of Game' && newState.live.matchId) {
+            const summary = generateSummaryData(newState);
+            if (summary) {
+                dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: newState.live.matchId, summary } });
+                toastMessage = { title: "Resumen Guardado", description: "El resumen del partido finalizado se ha guardado automáticamente." };
+            }
+        }
+        
         break;
     }
     case 'ADD_EXTRA_OVERTIME': {
@@ -1435,6 +1451,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         },
       };
       toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
+      
+      const finalSummary = generateSummaryData(newState);
+      if (newState.live.matchId && finalSummary) {
+          dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: newState.live.matchId, summary: finalSummary } });
+      }
       break;
     }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
@@ -1617,7 +1638,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PLAYER_TO_TEAM': {
       const { teamId, player } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
       toastMessage = { title: "Jugador Añadido", description: `Jugador ${player.number ? `#${player.number} ` : ''}${player.name} añadido.` };
       break;
     }
@@ -1818,11 +1839,13 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         ...summary.away.goals.map(e => ({ ...e, type: 'goal' as const, team: 'away' as const })),
         ...(summary.home.homeShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'home' as const })),
         ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'away' as const })),
+        ...summary.home.penalties.map(e => ({ ...e, type: 'penalty' as const, team: 'home' as const })),
+        ...summary.away.penalties.map(e => ({ ...e, type: 'penalty' as const, team: 'away' as const })),
     ];
     
     // Determine all periods that had events
     allEvents.forEach(event => {
-        const periodText = event.periodText;
+        const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
         if (periodText && !periodText.toLowerCase().includes('warm-up')) {
             playedPeriods.add(periodText);
         }
@@ -1897,10 +1920,9 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
 
 
 const GameStateObserver = () => {
-    const { state, dispatch } = useGameState();
+    const { state } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
-    const prevPeriodDisplayOverrideRef = useRef<PeriodDisplayOverrideType>();
 
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
@@ -1909,36 +1931,6 @@ const GameStateObserver = () => {
         }
     }, [state._lastToastMessage, toast]);
     
-    useEffect(() => {
-        const currentOverride = state.live?.clock?.periodDisplayOverride;
-
-        // On the very first render, prevPeriodDisplayOverrideRef.current will be undefined.
-        // We do not want to trigger the save logic on this initial render.
-        if (prevPeriodDisplayOverrideRef.current === undefined) {
-            prevPeriodDisplayOverrideRef.current = currentOverride;
-            return;
-        }
-
-        // This check now only fires on actual state *transitions* to 'End of Game'.
-        if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && currentOverride === 'End of Game' && state.live.matchId) {
-             const summary = generateSummaryData(state);
-            if (summary) {
-                dispatch({
-                    type: 'SAVE_MATCH_SUMMARY',
-                    payload: { matchId: state.live.matchId, summary }
-                });
-                toast({
-                    title: "Resumen Guardado",
-                    description: "El resumen del partido finalizado se ha guardado automáticamente."
-                });
-            }
-        }
-
-        // Update the ref for the next render AFTER the check
-        prevPeriodDisplayOverrideRef.current = currentOverride;
-    }, [state.live?.clock?.periodDisplayOverride, state.live?.matchId, state, dispatch, toast]);
-
-
     return null;
 }
 
@@ -2167,6 +2159,7 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
 
 
 
