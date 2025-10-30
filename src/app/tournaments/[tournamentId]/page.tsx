@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -22,6 +21,7 @@ export default function TournamentDetailPage() {
 
   const tournamentId = typeof params.tournamentId === 'string' ? params.tournamentId : undefined;
   const initialTab = searchParams.get('tab') === 'fixture' ? 'fixture' : 'teamsAndCategories';
+  const initialFixtureView = searchParams.get('view') === 'list' ? 'list' : 'calendar';
   
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isCategoryDirty, setIsCategoryDirty] = useState(false);
@@ -93,7 +93,7 @@ export default function TournamentDetailPage() {
           </div>
         </TabsContent>
         <TabsContent value="fixture" className="mt-6">
-            <Tabs defaultValue="calendar" className="w-full">
+            <Tabs defaultValue={initialFixtureView} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="calendar">Vista Calendario</TabsTrigger>
                 <TabsTrigger value="list">Vista Lista</TabsTrigger>
@@ -110,5 +110,3 @@ export default function TournamentDetailPage() {
     </div>
   );
 }
-
-    

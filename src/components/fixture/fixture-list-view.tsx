@@ -1,11 +1,12 @@
-
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useGameState, getCategoryNameById } from '@/contexts/game-state-context';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, FileText } from 'lucide-react';
-import { format } from 'date-fns';
+import { Input } from '@/components/ui/input';
+import { Edit, Trash2, FileText, Search, ListFilter, Calendar as CalendarIcon, X } from 'lucide-react';
+import { format, parseISO, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AddEditMatchDialog } from './add-edit-match-dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
@@ -13,10 +14,16 @@ import type { MatchData } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { FixtureMatchSummaryDialog } from './fixture-match-summary-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Checkbox } from '../ui/checkbox';
+import { cn } from '@/lib/utils';
+import { Calendar } from '../ui/calendar';
 
 export function FixtureListView() {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const { selectedTournamentId, tournaments } = state.config;
   
   const [isAddEditDialogOpen, setIsAddEditDialogOpen] = useState(false);
@@ -24,14 +31,51 @@ export function FixtureListView() {
   const [matchToDelete, setMatchToDelete] = useState<MatchData | null>(null);
   const [matchToShowSummary, setMatchToShowSummary] = useState<MatchData | null>(null);
 
+  // Filter states
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [teamSearch, setTeamSearch] = useState('');
+  const [dateFilter, setDateFilter] = useState<Date | undefined>();
+
+  useEffect(() => {
+    const dateParam = searchParams.get('date');
+    if (dateParam) {
+        try {
+            const parsedDate = parseISO(dateParam);
+            setDateFilter(parsedDate);
+        } catch (e) {
+            console.warn("Invalid date in URL parameter", e);
+        }
+    }
+  }, [searchParams]);
+
   const selectedTournament = useMemo(() => {
     return tournaments.find(t => t.id === selectedTournamentId);
   }, [tournaments, selectedTournamentId]);
 
   const sortedMatches = useMemo(() => {
     if (!selectedTournament?.matches) return [];
-    return [...selectedTournament.matches].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [selectedTournament?.matches]);
+    
+    let filtered = [...selectedTournament.matches];
+
+    if (categoryFilter.length > 0) {
+        filtered = filtered.filter(match => categoryFilter.includes(match.categoryId));
+    }
+
+    if (teamSearch.trim()) {
+        const lowerCaseSearch = teamSearch.toLowerCase();
+        filtered = filtered.filter(match => {
+            const homeTeam = selectedTournament.teams.find(t => t.id === match.homeTeamId);
+            const awayTeam = selectedTournament.teams.find(t => t.id === match.awayTeamId);
+            return homeTeam?.name.toLowerCase().includes(lowerCaseSearch) || awayTeam?.name.toLowerCase().includes(lowerCaseSearch);
+        });
+    }
+    
+    if (dateFilter) {
+        filtered = filtered.filter(match => isSameDay(new Date(match.date), dateFilter));
+    }
+
+    return filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [selectedTournament, categoryFilter, teamSearch, dateFilter]);
 
   const handleEditMatch = (match: MatchData) => {
     setMatchToEdit(match);
@@ -45,10 +89,74 @@ export function FixtureListView() {
     setMatchToDelete(null);
   };
 
+  const clearFilters = () => {
+    setCategoryFilter([]);
+    setTeamSearch('');
+    setDateFilter(undefined);
+  };
+  
+  const isAnyFilterActive = categoryFilter.length > 0 || teamSearch.trim() !== '' || dateFilter;
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Lista de Partidos</h2>
       
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-auto justify-start">
+                    <ListFilter className="mr-2 h-4 w-4" />
+                    Categorías ({categoryFilter.length || 'Todas'})
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-0" align="start">
+                <Command>
+                    <CommandInput placeholder="Buscar categoría..." />
+                    <CommandList>
+                        <CommandEmpty>No se encontraron categorías.</CommandEmpty>
+                        <CommandGroup>
+                        {(selectedTournament?.categories || []).map(cat => (
+                            <CommandItem key={cat.id} onSelect={() => {
+                                setCategoryFilter(prev => 
+                                    prev.includes(cat.id) ? prev.filter(id => id !== cat.id) : [...prev, cat.id]
+                                );
+                            }}>
+                                <Checkbox checked={categoryFilter.includes(cat.id)} className="mr-2" />
+                                <span>{cat.name}</span>
+                            </CommandItem>
+                        ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+        <div className="relative flex-grow">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+                placeholder="Buscar por equipo..." 
+                value={teamSearch}
+                onChange={(e) => setTeamSearch(e.target.value)}
+                className="pl-10"
+            />
+        </div>
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-full sm:w-auto justify-start text-left font-normal", !dateFilter && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateFilter ? format(dateFilter, "PPP", { locale: es }) : <span>Filtrar por fecha</span>}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+                <Calendar mode="single" selected={dateFilter} onSelect={setDateFilter} initialFocus locale={es} />
+            </PopoverContent>
+        </Popover>
+         {isAnyFilterActive && (
+            <Button variant="ghost" onClick={clearFilters} className="text-destructive hover:text-destructive">
+                <X className="mr-2 h-4 w-4" /> Limpiar Filtros
+            </Button>
+         )}
+      </div>
+
       <div className="border rounded-md">
         <Table>
           <TableHeader>
@@ -96,7 +204,7 @@ export function FixtureListView() {
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">
-                  No hay partidos programados.
+                  {isAnyFilterActive ? "No se encontraron partidos con los filtros aplicados." : "No hay partidos programados."}
                 </TableCell>
               </TableRow>
             )}
