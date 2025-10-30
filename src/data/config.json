@@ -141,7 +141,7 @@
   "autoStartPreOTBreaks": false,
   "autoStartTimeouts": true,
   "numberOfRegularPeriods": 2,
-  "numberOfOvertimePeriods": 1,
+  "numberOfOvertimePeriods": 2,
   "maxConcurrentPenalties": 2,
   "playersPerTeamOnIce": 5,
   "enableMaxPenaltiesLimit": true,

@@ -800,8 +800,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         },
         gameSummary: {
           ...gameSummary,
-          home: { ...newGameSummary.home, playerStats: homePlayerStats },
-          away: { ...newGameSummary.away, playerStats: awayPlayerStats },
+          home: { ...gameSummary.home, playerStats: homePlayerStats },
+          away: { ...gameSummary.away, playerStats: awayPlayerStats },
         },
         playHornTrigger: state.live.playHornTrigger + 1,
       }};
