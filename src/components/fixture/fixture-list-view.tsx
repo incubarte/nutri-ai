@@ -188,7 +188,7 @@ export function FixtureListView() {
                     <TableCell>{homeTeam?.name || 'Equipo no encontrado'}</TableCell>
                     <TableCell>{awayTeam?.name || 'Equipo no encontrado'}</TableCell>
                     <TableCell className="text-center font-mono font-bold">{score}</TableCell>
-                    <TableCell className="text-center">{match.isOT && <CheckIcon className="h-4 w-4 mx-auto text-green-500"/>}</TableCell>
+                    <TableCell className="text-center">{match.overTimeOrShootouts && <CheckIcon className="h-4 w-4 mx-auto text-green-500"/>}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-1 justify-end">
                         {match.summary && (

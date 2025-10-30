@@ -38,19 +38,32 @@ async function readTournament(tournamentId: string): Promise<Partial<Tournament>
     const tournamentDir = path.join(TOURNAMENTS_DIR, tournamentId);
     const teamsFilePath = path.join(tournamentDir, 'teams.json');
     const fixtureFilePath = path.join(tournamentDir, 'fixture.json');
+    const summariesDir = path.join(tournamentDir, 'summaries');
 
     try {
         await fs.access(tournamentDir); // Check if directory exists
 
         const teamsData: { categories: CategoryData[], teams: TeamData[] } = await readData(teamsFilePath);
         const fixtureData: { matches: MatchData[] } = await readData(fixtureFilePath);
+
+        if (fixtureData && fixtureData.matches) {
+            const matchSummaryPromises = fixtureData.matches.map(async (match) => {
+                const summaryPath = path.join(summariesDir, `${match.id}.json`);
+                try {
+                    const summary = await readData(summaryPath);
+                    return { ...match, summary: summary || undefined };
+                } catch {
+                    return match; // Return match without summary if file not found
+                }
+            });
+            fixtureData.matches = await Promise.all(matchSummaryPromises);
+        }
         
         return {
             ...(teamsData || {}),
             ...(fixtureData || {}),
         };
     } catch (error) {
-        // If directory or files don't exist, it's okay, just return null.
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
             return null;
         }
@@ -63,18 +76,42 @@ async function writeTournament(tournament: Tournament): Promise<void> {
     const tournamentDir = path.join(TOURNAMENTS_DIR, tournament.id);
     const teamsFilePath = path.join(tournamentDir, 'teams.json');
     const fixtureFilePath = path.join(tournamentDir, 'fixture.json');
+    const summariesDir = path.join(tournamentDir, 'summaries');
 
     try {
+        await fs.mkdir(summariesDir, { recursive: true });
+
         const teamsData = {
             categories: tournament.categories || [],
             teams: tournament.teams || [],
         };
+        
+        const fixtureMatches: MatchData[] = [];
+        const summaryWritePromises: Promise<void>[] = [];
+
+        (tournament.matches || []).forEach(match => {
+            const { summary, ...matchWithoutSummary } = match;
+            if (summary) {
+                const summaryPath = path.join(summariesDir, `${match.id}.json`);
+                summaryWritePromises.push(writeData(summaryPath, summary));
+                
+                // Add lightweight result fields to the match object in fixture.json
+                matchWithoutSummary.homeScore = summary.home.goals.length;
+                matchWithoutSummary.awayScore = summary.away.goals.length;
+                matchWithoutSummary.overTimeOrShootouts = summary.overTimeOrShootouts || (summary.shootout && (summary.shootout.homeAttempts.length > 0 || summary.shootout.awayAttempts.length > 0));
+            }
+            fixtureMatches.push(matchWithoutSummary);
+        });
+
         const fixtureData = {
-            matches: tournament.matches || [],
+            matches: fixtureMatches,
         };
 
-        await writeData(teamsFilePath, teamsData);
-        await writeData(fixtureFilePath, fixtureData);
+        await Promise.all([
+            writeData(teamsFilePath, teamsData),
+            writeData(fixtureFilePath, fixtureData),
+            ...summaryWritePromises,
+        ]);
 
     } catch (error) {
          console.error(`Could not write to tournament files for ${tournament.id}:`, error);
@@ -95,7 +132,7 @@ export async function GET(request: Request) {
         fullConfig.tournaments = [];
     }
 
-    const tournamentPromises = fullConfig.tournaments.map(async (meta: any) => {
+    const tournamentPromises = (fullConfig.tournaments || []).map(async (meta: any) => {
         const tournamentDetails = await readTournament(meta.id);
         return {
             ...meta,
@@ -128,7 +165,7 @@ export async function POST(request: Request) {
 
     if (config) {
         const { tournaments, ...baseConfig } = config;
-        const tournamentMetas = tournaments.map(t => ({ id: t.id, name: t.name, status: t.status }));
+        const tournamentMetas = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
         const configToSave: Partial<ConfigState> = { ...baseConfig, tournaments: tournamentMetas as any };
         
         await writeData(CONFIG_PATH, configToSave);

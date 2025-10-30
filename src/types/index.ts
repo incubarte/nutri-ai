@@ -49,7 +49,7 @@ export interface MatchData {
   summary?: GameSummary;
   homeScore?: number;
   awayScore?: number;
-  isOT?: boolean;
+  overTimeOrShootouts?: boolean;
 }
 
 
@@ -209,7 +209,7 @@ export interface GameSummary {
   };
   shootout?: ShootoutState;
   statsByPeriod?: Record<string, PeriodStats>;
-  isOT?: boolean;
+  overTimeOrShootouts?: boolean;
 }
 
 export interface TunnelState {
