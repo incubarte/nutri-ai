@@ -93,7 +93,8 @@ export const exportGameSummaryPDF = (state: GameState) => {
     const { config, live } = state;
     const doc = new jsPDF();
     const teamTitle = `${live.homeTeamName} vs ${live.awayTeamName}`;
-    const categoryName = getCategoryNameById(config.selectedMatchCategory, config.availableCategories) || 'N/A';
+    const tournament = (config.tournaments || []).find(t => t.id === config.selectedTournamentId);
+    const categoryName = getCategoryNameById(config.selectedMatchCategory, tournament?.categories) || 'N/A';
     
     const date = new Date();
     const dateString = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
@@ -157,44 +158,42 @@ export const exportGameSummaryPDF = (state: GameState) => {
 
 
     // --- Desglose por Período ---
-    doc.addPage();
-    currentY = addSectionTitle(doc, 'Detalle de Estadísticas por Periodo', 20);
+    const allPeriodTexts = Array.from(new Set([...allHomeGoals, ...allAwayGoals].map(e => e.periodText))).sort((a, b) => {
+        const getPeriodNumber = (text: string) => {
+            if (text.startsWith('OT')) return config.numberOfRegularPeriods + parseInt(text.replace('OT', '') || '1', 10);
+            if (text.toLowerCase().includes('warm-up')) return -1;
+            return parseInt(text.replace(/\D/g, ''), 10);
+        }
+        return getPeriodNumber(a) - getPeriodNumber(b);
+    });
 
-    const getPeriodNumber = (periodText: string): number => {
-        if (periodText.startsWith('OT')) return config.numberOfRegularPeriods + parseInt(periodText.replace('OT', '') || '1', 10);
-        if (periodText.toLowerCase().includes('warm-up')) return -1;
-        return parseInt(periodText.replace(/\D/g, ''), 10);
+    if (allPeriodTexts.some(p => !p.toLowerCase().includes('warm-up'))) {
+        doc.addPage();
+        currentY = addSectionTitle(doc, 'Detalle de Goles por Periodo', 20);
+
+        for (const periodText of allPeriodTexts) {
+            if (!periodText || periodText.toLowerCase().includes('warm-up')) continue;
+            
+            currentY = checkPageBreak(doc, currentY);
+            doc.setFontSize(14);
+            doc.text(`Estadísticas para: ${periodText}`, 14, currentY);
+            currentY += 8;
+
+            const homeGoalsInPeriod = allHomeGoals.filter(g => g.periodText === periodText);
+            const awayGoalsInPeriod = allAwayGoals.filter(g => g.periodText === periodText);
+            
+            currentY = addTable(doc, `${live.homeTeamName} - Goles`, currentY, ['Tiempo', 'Gol', 'Asistencia'], homeGoalsInPeriod.map(g => [formatTime(g.gameTime), `#${g.scorer?.playerNumber || 'S/N'} ${g.scorer?.playerName || ''}`.trim(), g.assist ? `#${g.assist.playerNumber} ${g.assist.playerName || ''}`.trim() : '---']), { showTotal: true });
+            currentY = checkPageBreak(doc, currentY);
+            
+            currentY = addTable(doc, `${live.awayTeamName} - Goles`, currentY, ['Tiempo', 'Gol', 'Asistencia'], awayGoalsInPeriod.map(g => [formatTime(g.gameTime), `#${g.scorer?.playerNumber || 'S/N'} ${g.scorer?.playerName || ''}`.trim(), g.assist ? `#${g.assist.playerNumber} ${g.assist.playerName || ''}`.trim() : '---']), { showTotal: true });
+            currentY = checkPageBreak(doc, currentY);
+        }
     }
-    
-    const allPeriodTexts = Array.from(new Set([...allHomeGoals, ...allAwayGoals, ...allHomePenalties, ...allAwayPenalties].map(e => e.addPeriodText || e.periodText))).sort((a, b) => getPeriodNumber(a) - getPeriodNumber(b));
 
-    for (const periodText of allPeriodTexts) {
-        if (!periodText || periodText.toLowerCase().includes('warm-up')) continue;
-        
-        currentY = checkPageBreak(doc, currentY);
-        doc.setFontSize(14);
-        doc.text(`Estadísticas para: ${periodText}`, 14, currentY);
-        currentY += 8;
-
-        const homeGoalsInPeriod = allHomeGoals.filter(g => g.periodText === periodText);
-        const awayGoalsInPeriod = allAwayGoals.filter(g => g.periodText === periodText);
-        const homePenaltiesInPeriod = allHomePenalties.filter(p => p.addPeriodText === periodText);
-        const awayPenaltiesInPeriod = allAwayPenalties.filter(p => p.addPeriodText === periodText);
-        
-        currentY = addTable(doc, `${live.homeTeamName} - Goles`, currentY, ['Tiempo', 'Gol', 'Asistencia'], homeGoalsInPeriod.map(g => [formatTime(g.gameTime), `#${g.scorer?.playerNumber || 'S/N'} ${g.scorer?.playerName || ''}`.trim(), g.assist ? `#${g.assist.playerNumber} ${g.assist.playerName || ''}`.trim() : '---']), { showTotal: true });
-        currentY = checkPageBreak(doc, currentY);
-        
-        currentY = addTable(doc, `${live.awayTeamName} - Goles`, currentY, ['Tiempo', 'Gol', 'Asistencia'], awayGoalsInPeriod.map(g => [formatTime(g.gameTime), `#${g.scorer?.playerNumber || 'S/N'} ${g.scorer?.playerName || ''}`.trim(), g.assist ? `#${g.assist.playerNumber} ${g.assist.playerName || ''}`.trim() : '---']), { showTotal: true });
-        currentY = checkPageBreak(doc, currentY);
-        
-        currentY = addTable(doc, `${live.homeTeamName} - Penalidades`, currentY, ['Tiempo', 'Jugador', 'Tipo'], homePenaltiesInPeriod.map(p => [formatTime(p.addGameTime), p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber} ${p.playerName || ''}`.trim(), p.penaltyName || '---']), { headFillColor: [231, 76, 60], showTotal: true });
-        currentY = checkPageBreak(doc, currentY);
-        
-        currentY = addTable(doc, `${live.awayTeamName} - Penalidades`, currentY, ['Tiempo', 'Jugador', 'Tipo'], awayPenaltiesInPeriod.map(p => [formatTime(p.addGameTime), p.isBenchPenalty ? `Banco (#${p.playerNumber})` : `#${p.playerNumber} ${p.playerName || ''}`.trim(), p.penaltyName || '---']), { headFillColor: [231, 76, 60], showTotal: true });
-        currentY = checkPageBreak(doc, currentY);
-    }
 
     doc.save(filename);
     
     return filename;
 };
+
+    

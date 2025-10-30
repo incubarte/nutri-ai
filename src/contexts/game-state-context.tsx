@@ -858,7 +858,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             if (t.id === tournamentId) {
               const matches = t.matches.map(m => {
                 if (m.id === matchId) {
-                  return { ...m, summary };
+                  return { ...m, summary, homeScore: summary.home.goals.length, awayScore: summary.away.goals.length, overTimeOrShootouts: summary.overTimeOrShootouts };
                 }
                 return m;
               });
@@ -1328,7 +1328,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 if (t.id === tournamentId) {
                   const matches = t.matches.map(m => {
                     if (m.id === matchId) {
-                      return { ...m, summary };
+                      return { ...m, summary, homeScore: summary.home.goals.length, awayScore: summary.away.goals.length, overTimeOrShootouts: summary.overTimeOrShootouts };
                     }
                     return m;
                   });
@@ -1478,7 +1478,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           clock: { ...state.live.clock, periodDisplayOverride: 'End of Game' },
         },
       };
-      toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
       
       if (newState.live.matchId) {
         const summary = generateSummaryData(newState);
@@ -1489,7 +1488,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             if (t.id === tournamentId) {
               const matches = t.matches.map(m => {
                 if (m.id === matchId) {
-                  return { ...m, summary };
+                  return { ...m, summary, homeScore: summary.home.goals.length, awayScore: summary.away.goals.length, overTimeOrShootouts: summary.overTimeOrShootouts };
                 }
                 return m;
               });
@@ -1500,6 +1499,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           newState.config = { ...newState.config, tournaments };
           toastMessage = { title: "Resumen Guardado", description: "El resumen del partido finalizado se ha guardado automáticamente." };
         }
+      } else {
+         toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
       }
       break;
     }
@@ -1683,7 +1684,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PLAYER_TO_TEAM': {
       const { teamId, player } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
       toastMessage = { title: "Jugador Añadido", description: `Jugador ${player.number ? `#${player.number} ` : ''}${player.name} añadido.` };
       break;
     }
@@ -1897,7 +1898,7 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     // Also add any periods that had events, just in case
     allEvents.forEach(event => {
         const periodText = event.periodText;
-        if (periodText && !periodText.toLowerCase().includes('warm-up')) {
+        if (periodText && !periodText.toLowerCase().includes('warm-up') && !periodText.toLowerCase().includes('break')) {
             playedPeriods.add(periodText);
         }
     });
@@ -1971,10 +1972,9 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
 
 
 const GameStateObserver = () => {
-    const { state, dispatch } = useGameState();
+    const { state } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
-    const prevPeriodDisplayOverrideRef = useRef<PeriodDisplayOverrideType>();
 
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
@@ -1983,32 +1983,6 @@ const GameStateObserver = () => {
         }
     }, [state._lastToastMessage, toast]);
     
-     useEffect(() => {
-        if (!state._initialConfigLoadComplete) {
-            return; // Don't run this logic during initial hydration
-        }
-        
-        const currentOverride = state.live?.clock?.periodDisplayOverride;
-
-        if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && currentOverride === 'End of Game' && state.live.matchId) {
-             const summary = generateSummaryData(state);
-            if (summary) {
-                dispatch({
-                    type: 'SAVE_MATCH_SUMMARY',
-                    payload: { matchId: state.live.matchId, summary }
-                });
-                toast({
-                    title: "Resumen Guardado",
-                    description: "El resumen del partido finalizado se ha guardado automáticamente."
-                });
-            }
-        }
-        
-        // Update the ref *after* the check
-        prevPeriodDisplayOverrideRef.current = currentOverride;
-    }, [state.live?.clock?.periodDisplayOverride, state._initialConfigLoadComplete, state.live?.matchId, state, dispatch, toast]);
-
-
     return null;
 }
 
@@ -2237,6 +2211,7 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
 
 
 
