@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Home, Settings, Wrench, MonitorPlay, Loader2, BarChart3, Trophy, Check, ChevronsUpDown } from 'lucide-react';
+import { Home, Settings, Wrench, MonitorPlay, Loader2, Trophy, ChevronsUpDown } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { FullscreenToggle } from './fullscreen-toggle';
@@ -140,7 +140,6 @@ export function Header() {
     router.prefetch('/');
     router.prefetch('/controls');
     router.prefetch('/config');
-    router.prefetch('/resumen');
     router.prefetch('/tournaments');
   }, [router]);
 
@@ -245,16 +244,6 @@ export function Header() {
           >
             Controles
           </Link>
-           <Link
-            href="/resumen"
-            onClick={(e) => handleNav(e, '/resumen')}
-            className={cn(
-              "transition-colors hover:text-foreground/80",
-              pathname === "/resumen" ? "text-foreground" : "text-foreground/60"
-            )}
-          >
-            Resumen
-          </Link>
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-2">
             <DropdownMenu>
@@ -309,11 +298,6 @@ export function Header() {
             <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/controls" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
               <Link href="/controls" aria-label="Controls" onClick={(e) => handleNav(e, '/controls')}>
                 <Settings className="h-5 w-5" />
-              </Link>
-            </Button>
-             <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/resumen" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
-              <Link href="/resumen" aria-label="Resumen" onClick={(e) => handleNav(e, '/resumen')}>
-                <BarChart3 className="h-5 w-5" />
               </Link>
             </Button>
              <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/config" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
