@@ -30,14 +30,16 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   const [localSummary, setLocalSummary] = useState<GameSummary | undefined>(match?.summary);
   const [isEditing, setIsEditing] = useState(false);
   const [editedShots, setEditedShots] = useState<Record<string, Record<string, string>>>({}); // { [period]: { [playerId]: count } }
+  
+  // This state is used to force a re-render of the aggregate stats when shots are edited.
   const [refreshKey, setRefreshKey] = useState(0);
-
 
   useEffect(() => {
     if (isOpen) {
       setLocalSummary(match?.summary);
       setIsEditing(false);
       setEditedShots({});
+      setRefreshKey(0); // Reset refresh key on open
     }
   }, [isOpen, match]);
   
@@ -90,7 +92,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
       home: calculateTotals('home'),
       away: calculateTotals('away'),
     };
-  }, [localSummary]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localSummary, refreshKey]);
 
   const handleEditClick = () => {
     if (!localSummary?.statsByPeriod) return;
@@ -136,6 +139,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
             payload: { matchId: match.id, summary: newSummary }
         });
         setLocalSummary(newSummary);
+        setRefreshKey(k => k + 1); // Force recalculation of aggregate stats
         toast({ title: "Resumen Guardado", description: "Los cambios en los tiros han sido guardados."});
     } else {
         toast({ title: "Sin Cambios", description: "No se detectaron modificaciones en los tiros."});
@@ -145,13 +149,15 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   };
 
   const handleShotInputChange = (period: string, playerId: string, value: string) => {
-    setEditedShots(prev => ({
-        ...prev,
-        [period]: {
-            ...prev[period],
-            [playerId]: value,
-        }
-    }));
+    if (/^\d*$/.test(value)) { // Only allow digits
+        setEditedShots(prev => ({
+            ...prev,
+            [period]: {
+                ...prev[period],
+                [playerId]: value,
+            }
+        }));
+    }
   };
 
 
@@ -215,6 +221,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                         <AccordionContent className="space-y-6 pl-2">
                             {allPeriodTexts.map(periodText => {
                                 const periodStats = localSummary.statsByPeriod![periodText];
+                                if(!periodStats) return null;
+
                                 return (
                                     <div key={periodText} className="space-y-4 border-l-2 pl-4 ml-2">
                                         <h3 className="text-lg font-semibold">{periodText}</h3>
@@ -240,3 +248,4 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
     </Dialog>
   );
 }
+
