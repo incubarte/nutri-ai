@@ -1617,13 +1617,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PLAYER_TO_TEAM': {
       const { teamId, player } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
       toastMessage = { title: "Jugador Añadido", description: `Jugador ${player.number ? `#${player.number} ` : ''}${player.name} añadido.` };
       break;
     }
     case 'UPDATE_PLAYER_IN_TEAM': {
       const { teamId, playerId, updates } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
       break;
     }
     case 'REMOVE_PLAYER_FROM_TEAM': {
@@ -1816,15 +1816,13 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     const allEvents = [
         ...summary.home.goals.map(e => ({ ...e, type: 'goal' as const, team: 'home' as const })),
         ...summary.away.goals.map(e => ({ ...e, type: 'goal' as const, team: 'away' as const })),
-        ...summary.home.penalties.map(e => ({ ...e, type: 'penalty' as const, team: 'home' as const })),
-        ...summary.away.penalties.map(e => ({ ...e, type: 'penalty' as const, team: 'away' as const })),
         ...(summary.home.homeShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'home' as const })),
         ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'away' as const })),
     ];
     
     // Determine all periods that had events
     allEvents.forEach(event => {
-        const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
+        const periodText = event.periodText;
         if (periodText && !periodText.toLowerCase().includes('warm-up')) {
             playedPeriods.add(periodText);
         }
@@ -1889,8 +1887,10 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     summary.overTimeOrShootouts = overTimeOrShootouts;
 
     if (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) {
-        summary.shootout = live.shootout;
+        const { isActive, rounds, ...shootoutSummary } = live.shootout;
+        summary.shootout = shootoutSummary;
     }
+
 
     return summary;
 };
@@ -1912,6 +1912,7 @@ const GameStateObserver = () => {
     useEffect(() => {
         const currentOverride = state.live?.clock?.periodDisplayOverride;
 
+        // This check ensures the action only fires when the state TRANSITIONS to 'End of Game'
         if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && currentOverride === 'End of Game' && state.live.matchId) {
              const summary = generateSummaryData(state);
             if (summary) {
@@ -1926,6 +1927,7 @@ const GameStateObserver = () => {
             }
         }
 
+        // Update the ref for the next render AFTER the check
         prevPeriodDisplayOverrideRef.current = currentOverride;
     }, [state.live?.clock?.periodDisplayOverride, state.live?.matchId, state, dispatch, toast]);
 
