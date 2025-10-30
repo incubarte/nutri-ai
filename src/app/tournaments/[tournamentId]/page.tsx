@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -12,6 +13,7 @@ import { TeamsManagementTab } from '@/components/config/teams-management-tab';
 import { FixtureCalendarView } from '@/components/fixture/fixture-calendar-view';
 import { FixtureListView } from '@/components/fixture/fixture-list-view';
 import { Separator } from '@/components/ui/separator';
+import { StandingsTab } from '@/components/tournaments/standings-tab';
 
 export default function TournamentDetailPage() {
   const params = useParams();
@@ -20,7 +22,7 @@ export default function TournamentDetailPage() {
   const { state, isLoading: isGameStateLoading } = useGameState();
 
   const tournamentId = typeof params.tournamentId === 'string' ? params.tournamentId : undefined;
-  const initialTab = searchParams.get('tab') === 'fixture' ? 'fixture' : 'teamsAndCategories';
+  const initialTab = searchParams.get('tab') || 'teamsAndCategories';
   const initialFixtureView = searchParams.get('view') === 'list' ? 'list' : 'calendar';
   
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -33,7 +35,7 @@ export default function TournamentDetailPage() {
   
   useEffect(() => {
     const newTab = searchParams.get('tab');
-    if (newTab === 'fixture' || newTab === 'teamsAndCategories') {
+    if (newTab === 'fixture' || newTab === 'teamsAndCategories' || newTab === 'standings') {
       setActiveTab(newTab);
     }
   }, [searchParams]);
@@ -76,9 +78,10 @@ export default function TournamentDetailPage() {
       <Separator />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="teamsAndCategories">Equipos y Categorías</TabsTrigger>
           <TabsTrigger value="fixture">Fixture</TabsTrigger>
+          <TabsTrigger value="standings">Tabla de Posiciones</TabsTrigger>
         </TabsList>
         <TabsContent value="teamsAndCategories" className="mt-6">
           <div className="space-y-8">
@@ -106,7 +109,11 @@ export default function TournamentDetailPage() {
               </TabsContent>
             </Tabs>
         </TabsContent>
+        <TabsContent value="standings" className="mt-6">
+            <StandingsTab />
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
+
