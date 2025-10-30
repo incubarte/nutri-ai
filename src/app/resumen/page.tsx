@@ -209,8 +209,23 @@ export default function ResumenPage() {
     };
   }, [summaryData]);
   
-  const homeAggregatedStats = useMemo(() => getAggregateStats('home'), [getAggregateStats, summaryData]);
-  const awayAggregatedStats = useMemo(() => getAggregateStats('away'), [getAggregateStats, summaryData]);
+  const homeAggregatedStats = useMemo(() => {
+    if (!summaryData) return { goals: [], penalties: [], playerStats: [] };
+    return {
+      goals: state.live.gameSummary.home.goals.sort((a, b) => a.timestamp - b.timestamp),
+      penalties: state.live.gameSummary.home.penalties.sort((a, b) => a.addTimestamp - b.addTimestamp),
+      playerStats: state.live.gameSummary.home.playerStats,
+    }
+  }, [summaryData, state.live.gameSummary]);
+
+  const awayAggregatedStats = useMemo(() => {
+    if (!summaryData) return { goals: [], penalties: [], playerStats: [] };
+    return {
+      goals: state.live.gameSummary.away.goals.sort((a, b) => a.timestamp - b.timestamp),
+      penalties: state.live.gameSummary.away.penalties.sort((a, b) => a.addTimestamp - b.addTimestamp),
+      playerStats: state.live.gameSummary.away.playerStats,
+    }
+  }, [summaryData, state.live.gameSummary]);
 
   const handleSaveAndExport = async () => {
     if (!summaryData || !state.live.matchId) {
