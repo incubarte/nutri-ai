@@ -76,6 +76,16 @@
       "id": "c073d492-7955-4f88-a92c-6efe0c5ece6d",
       "homeScore": 0,
       "awayScore": 0
+    },
+    {
+      "date": "2025-10-30T03:00:00.000Z",
+      "categoryId": "953bcf73-ee22-4c87-baa7-43b9529420e0",
+      "homeTeamId": "a4fceb93-951b-49ad-b23c-dbf4168e5908",
+      "awayTeamId": "394ecaa4-e8dd-45ad-9c25-cfce4a5af537",
+      "playersPerTeam": 5,
+      "id": "66b268ce-8e97-47b6-a755-8823c4388a72",
+      "homeScore": 0,
+      "awayScore": 0
     }
   ]
 }

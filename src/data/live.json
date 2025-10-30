@@ -29,10 +29,9 @@
     "awayAttempts": [],
     "initiator": null
   },
-  "homeTeamName": "Hazard white",
-  "homeTeamSubName": "white",
-  "awayTeamName": "Ovejas Negras Carneros",
-  "awayTeamSubName": "Carneros",
+  "homeTeamName": "CAHHL",
+  "awayTeamName": "Ovejas Negras Corderos",
+  "awayTeamSubName": "Corderos",
   "gameSummary": {
     "home": {
       "goals": [],
@@ -49,161 +48,156 @@
     "attendance": {
       "home": [
         {
-          "id": "a1267a33-140a-4ebb-92ae-67e2f91c5d8c",
-          "number": "25",
-          "name": "SCOTTO DI CARLO NATALIA"
+          "id": "8a0490f7-65d2-47fc-a7e2-d4c6774943fc",
+          "number": "",
+          "name": "LOMBRAÑA LUCIANO"
         },
         {
-          "id": "6522a433-3afe-491a-b0c1-eba803be98f6",
-          "number": "0",
-          "name": "BONVEHI SEBASTIAN"
+          "id": "b76afe4f-3106-4a32-8ff7-bb5a55d4e6cb",
+          "number": "",
+          "name": "RICCIOTTI MILENA"
         },
         {
-          "id": "7d435986-1a05-45ef-97f3-dfea388eb125",
-          "number": "52",
-          "name": "BRAVO LAUTARO HERNAN"
+          "id": "ab5d2182-3208-4544-8bcc-6d6418d703f8",
+          "number": "",
+          "name": "GUITELMAN TIN"
         },
         {
-          "id": "18396ec9-7833-478c-84ff-2dadb5c3fcf5",
-          "number": "33",
-          "name": "CACERES LEON CRISTIAN"
+          "id": "951d6821-7881-42f0-bbba-3cb2e51f36ac",
+          "number": "",
+          "name": "GUITELMAN CIRO"
         },
         {
-          "id": "e9a6ecf0-5ff3-482b-b526-46fc064e47ad",
-          "number": "17",
-          "name": "CARIMATTO JESICA"
+          "id": "bb870dd7-8ec5-413c-8a14-06b8ed3e609f",
+          "number": "",
+          "name": "ALTAMURA MANUELA"
         },
         {
-          "id": "98647fc4-64c8-4745-a892-d1a225c1effa",
-          "number": "72",
-          "name": "CRUSES RAMIRO"
+          "id": "6db9f543-b867-408b-aca1-0044e5c37032",
+          "number": "",
+          "name": "COVERNTON GUILLERMO"
         },
         {
-          "id": "7c2b9f49-8e9a-4ca7-a985-c64d5e613c57",
-          "number": "18",
-          "name": "DE LA VEGA FLAVIA MICHELLE"
+          "id": "455211fb-2226-4246-ab6d-ed191ce35e42",
+          "number": "",
+          "name": "VILLAGRA ROBERTO"
         },
         {
-          "id": "fc7c6551-7d6a-4ac9-9f9b-0862fd9b7d7e",
-          "number": "90",
-          "name": "DUPERRON SANTIAGO"
+          "id": "f0291968-768f-4093-8234-2804bb0de330",
+          "number": "",
+          "name": "VILLAGRA JUANCHI"
         },
         {
-          "id": "2cf39754-9b90-4c24-b893-c23b103c08b1",
-          "number": "30",
-          "name": "GARIBOTTO JULIAN"
+          "id": "458b5282-ac7c-49d9-8618-11d8d5e2e099",
+          "number": "",
+          "name": "BARRIONUEVO ANDREA"
         },
         {
-          "id": "c985a3b3-495b-45e7-bae2-d97037c733bc",
-          "number": "74",
-          "name": "GIULIODORO JUAN CARLOS"
+          "id": "8ba65d82-bf6e-4352-b8ad-1101473ed32d",
+          "number": "",
+          "name": "MARINELLI FRAN"
         },
         {
-          "id": "681bc4ec-d842-4c62-bc3c-14c7d5530e94",
-          "number": "7",
-          "name": "HERRERA JAVIER"
+          "id": "133a2ad7-3048-43d5-a247-ad6319dc8a87",
+          "number": "",
+          "name": "OLIVERA PAULA"
         },
         {
-          "id": "c0027f1f-9458-487d-8624-01b264fc7c07",
-          "number": "70",
-          "name": "SUAREZ PABLO"
+          "id": "d5acd970-a6dc-4ebd-94fe-00545dea8871",
+          "number": "",
+          "name": "STEINER CRISTOFER"
         },
         {
-          "id": "ffb17c2c-59e7-43ad-be02-832968c15a6a",
-          "number": "27",
-          "name": "SANCHEZ MATIAS"
-        },
-        {
-          "id": "1c75df96-8771-4644-a413-204f6021b81c",
-          "number": "22",
-          "name": "PONCE GERMAN"
+          "id": "3fd26c0b-054c-40a4-be87-528df687ce22",
+          "number": "",
+          "name": "FULUGONIO ESTEBAN ARTURO"
         }
       ],
       "away": [
         {
-          "id": "a6bc065e-a0b8-4a40-b567-f03081d20d09",
+          "id": "98e55316-5aef-4974-ac52-4eff59239e8e",
           "number": "",
-          "name": "BOTTERO CARCACCI MERLINA"
+          "name": "ABEID EZEQUIEL"
         },
         {
-          "id": "57ebff8c-a746-4329-b6c3-8b8ea1b2f491",
+          "id": "7eea79ef-5084-4f35-bc76-c7c0b2940304",
           "number": "",
-          "name": "CANITROT VICENTE"
+          "name": "BLANCO LUCAS LEON"
         },
         {
-          "id": "4ce849a2-0084-4fbf-9e7b-5287e8aa72fc",
+          "id": "e16342ae-68ac-4b38-a63b-cda7200a9414",
           "number": "",
-          "name": "DÍAZ DIDIER"
+          "name": "CASTARÉS JULIETA"
         },
         {
-          "id": "6e412465-9077-455b-ac35-eaa35e15edd4",
+          "id": "5efcbf99-7285-47b5-a266-07df7ae98ba4",
           "number": "",
-          "name": "FIGUEROA JUAN MANUEL"
+          "name": "EMERSON AXEL"
         },
         {
-          "id": "69556ada-dc48-4c62-af00-410d566a771d",
+          "id": "446a23f7-128c-491e-a3c7-afe18ecc9a4d",
           "number": "",
-          "name": "GARCIA CANEPA SEBASTIAN"
+          "name": "FERNANDEZ CINTIA"
         },
         {
-          "id": "a28323d5-ee29-41e1-9653-aec18b0cb13d",
+          "id": "18f831b2-5258-4fbf-9c37-32f7ef489f59",
           "number": "",
-          "name": "GIORDANI LIZA"
+          "name": "FONDACARO EZEQUIEL"
         },
         {
-          "id": "148bdb93-4b8d-4212-b993-8fa9c1574e45",
+          "id": "c5133b93-4773-4cae-928d-d6128fc10126",
           "number": "",
-          "name": "GUTIERREZ JIMENEZ FERMIN"
+          "name": "FONDACARO CRISTIAN"
         },
         {
-          "id": "f6c96532-c5cd-4aa0-b3aa-f8da7c7499c5",
+          "id": "55b8c94f-7d89-491b-a0b8-959b17f3f3a4",
           "number": "",
-          "name": "MARTIN ALEJO NICOLÁS"
+          "name": "GALINSKI GUILLERMO EDUARDO"
         },
         {
-          "id": "fe9e4fc1-9e85-4584-a5c2-76e031f24527",
+          "id": "7a1772c8-6c73-4841-865e-7b31c5b5f221",
           "number": "",
-          "name": "MARTINEZ DIAZ PABLO SALVADOR"
+          "name": "GONZALEZ CAMILA"
         },
         {
-          "id": "3ae65bb6-22d3-419f-890f-abce6c415d91",
+          "id": "38612762-112f-46f3-bf4d-dca4f7cabcc8",
           "number": "",
-          "name": "MARTINEZ DIS FERNANDO"
+          "name": "LA TERZA OCTAVIO"
         },
         {
-          "id": "07205c0b-6471-42d4-bb49-15eaa4b520bf",
+          "id": "6cc29b4a-5a7a-4698-8a6a-c9627ea51d08",
           "number": "",
-          "name": "MAZZUCCHELLI CAMILA"
+          "name": "LEGUIZA MATIAS"
         },
         {
-          "id": "41985ed2-0706-4ce2-9a73-42c499bf421b",
+          "id": "6b1224a7-2dcd-40a6-b997-3d2a09792fe2",
           "number": "",
-          "name": "OKIER SEBASTIAN MANUEL"
+          "name": "LESCANO IAN GABRIEL"
         },
         {
-          "id": "29b90776-830c-4bbb-b4e4-b06da28a166a",
+          "id": "3e6ae920-477b-4063-bcdd-97288ec6ffcf",
           "number": "",
-          "name": "PANGIONE NICOLÁS"
+          "name": "LOTO FRANCO BENJAMÍN"
         },
         {
-          "id": "e724ea30-9f6c-40c2-b2c9-312aadbcf534",
+          "id": "618fa542-1faa-4564-8477-92836d3bf240",
           "number": "",
-          "name": "PELUFFO ELIAS"
+          "name": "PEREZ BERNARDI ESTEBAN DANIEL"
         },
         {
-          "id": "7a15a35c-df0f-44a3-a87b-1d63c5024b5a",
+          "id": "995745eb-b867-4ec5-bed7-4f36fb78eb83",
           "number": "",
-          "name": "PUGA NICOLÁS"
+          "name": "TROFIMOV IVÁN"
         },
         {
-          "id": "c1cc3fad-e967-48f5-8d0f-7b72978384ad",
+          "id": "9be33878-1c20-4a55-b0ad-4b5553e4c2fe",
           "number": "",
-          "name": "RAMÍREZ AZUL CAMILA"
+          "name": "VILLAVICENCIO MARIA ANTONELA"
         },
         {
-          "id": "32b5b292-b6c3-4772-9fc7-d723a238cbda",
+          "id": "553b3c30-de53-4b10-9e4d-88ec0f8f43ef",
           "number": "",
-          "name": "ROST AGUSTÍN"
+          "name": "VINCENTI MARIA EUGENIA"
         }
       ]
     }
@@ -212,5 +206,5 @@
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
-  "matchId": "c073d492-7955-4f88-a92c-6efe0c5ece6d"
+  "matchId": "66b268ce-8e97-47b6-a755-8823c4388a72"
 }

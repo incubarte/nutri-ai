@@ -1821,16 +1821,12 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
       lastPlayedPeriod = live.clock.currentPeriod; 
     }
     
+    // Iterate from period 1 up to the last played period to ensure all are included
     for (let i = 1; i <= lastPlayedPeriod; i++) {
-        if (i > totalPeriods && !Object.keys(live.gameSummary).some(k => (live.gameSummary as any).goals.some((g: GoalLog) => g.periodText === getPeriodText(i, config.numberOfRegularPeriods)))) {
-            continue;
-        }
-        playedPeriods.add(getPeriodText(i, config.numberOfRegularPeriods));
+        const periodText = getPeriodText(i, config.numberOfRegularPeriods);
+        playedPeriods.add(periodText);
     }
-    if (live.shootout.isActive || live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0) {
-        playedPeriods.add('SHOOTOUT');
-    }
-
+    
     const allEvents = [
         ...summary.home.goals.map(e => ({ ...e, type: 'goal' as const, team: 'home' as const })),
         ...summary.away.goals.map(e => ({ ...e, type: 'goal' as const, team: 'away' as const })),
@@ -1842,11 +1838,14 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     
     allEvents.forEach(event => {
         const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
-        if (periodText) playedPeriods.add(periodText);
+        if (periodText && !periodText.toLowerCase().includes('warm-up')) playedPeriods.add(periodText);
     });
 
+    if (live.shootout.isActive || live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0) {
+        playedPeriods.add('SHOOTOUT');
+    }
+
     playedPeriods.forEach(periodText => {
-        if (periodText.toLowerCase().includes('warm-up')) return;
         if (!statsByPeriod[periodText]) {
             statsByPeriod[periodText] = {
                 home: { goals: [], penalties: [], playerStats: [] },
@@ -2166,4 +2165,5 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
 
