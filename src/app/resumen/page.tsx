@@ -41,13 +41,11 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
   const [overwriteConfirm, setOverwriteConfirm] = useState<{ onConfirm: () => void } | null>(null);
   const [isEditingShots, setIsEditingShots] = useState(false);
   const [editedShots, setEditedShots] = useState<Record<string, Record<string, string>>>({});
-  const [refreshKey, setRefreshKey] = useState(0);
-
+  
   const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
   const [addPenaltyContext, setAddPenaltyContext] = useState<{team: Team, period: string} | null>(null);
 
-  const generateSummaryData = () => {
-    setSummaryData(null);
+  const generateSummaryData = useCallback(() => {
     const { live, config } = state;
     if (!live || !config) return;
 
@@ -63,7 +61,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
         }
     });
 
-    const allPeriodTexts = Array.from(playedPeriodTexts).sort((a, b) => {
+    const allPeriodTextsSorted = Array.from(playedPeriodTexts).sort((a, b) => {
         const getPeriodNumber = (text: string) => {
             if (text.startsWith('OT')) return (config.numberOfRegularPeriods || 2) + parseInt(text.replace('OT', '') || '1', 10);
             return parseInt(text.replace(/\D/g, ''), 10);
@@ -71,7 +69,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
         return getPeriodNumber(a) - getPeriodNumber(b);
     });
 
-    allPeriodTexts.forEach(period => {
+    allPeriodTextsSorted.forEach(period => {
         statsByPeriod[period] = { home: { goals: [], penalties: [], playerStats: [] }, away: { goals: [], penalties: [], playerStats: [] } };
         ['home', 'away'].forEach(team => {
             const teamKey = team as Team;
@@ -105,9 +103,14 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
     setSummaryData(newSummaryData);
 
     if (live.matchId) {
+        // Automatically save the summary to the match in the tournament structure
         dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: live.matchId, summary: gameSummary } });
     }
-  };
+  }, [state, dispatch]);
+
+  useEffect(() => {
+    generateSummaryData();
+  }, [state.live.gameSummary, generateSummaryData]);
   
   const handleGenerateSummaryClick = () => {
     if (summaryData) {
@@ -123,8 +126,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
       penalties: state.live.gameSummary.home.penalties.sort((a, b) => a.addTimestamp - b.addTimestamp),
       playerStats: state.live.gameSummary.home.playerStats,
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.live.gameSummary.home, refreshKey]);
+  }, [state.live.gameSummary.home]);
 
   const awayAggregatedStats = useMemo(() => {
     return {
@@ -132,8 +134,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
       penalties: state.live.gameSummary.away.penalties.sort((a, b) => a.addTimestamp - b.addTimestamp),
       playerStats: state.live.gameSummary.away.playerStats,
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.live.gameSummary.away, refreshKey]);
+  }, [state.live.gameSummary.away]);
 
   const allPeriodTexts = useMemo(() => {
     if (!summaryData?.statsByPeriod) return [];
@@ -163,8 +164,8 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
         if(!isNaN(shotCount)) {
             const team = state.live.gameSummary.attendance.home.some(p => p.id === playerId) ? 'home' : 'away';
             
-            const originalPlayerStat = summaryData?.statsByPeriod[periodText]?.[team]?.playerStats.find(p => p.id === playerId);
-            const originalShotCount = originalPlayerStat?.shots || 0;
+            const originalShotCount = (state.live.gameSummary[team].homeShotsLog || state.live.gameSummary[team].awayShotsLog || []).filter(s => s.playerId === playerId && s.periodText === periodText).length;
+
 
             if (shotCount !== originalShotCount) {
               hasChanges = true;
@@ -176,8 +177,6 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
 
     if (hasChanges) {
       toast({ title: "Tiros Actualizados", description: "Los cambios se han guardado."});
-      generateSummaryData();
-      setRefreshKey(k => k + 1); // Force re-calculation of aggregated stats
     } else {
       toast({ title: "Sin Cambios", description: "No se detectaron modificaciones en los tiros." });
     }
@@ -256,7 +255,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                      <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={homeAggregatedStats.penalties} onAdd={() => handleAddPenalty('home', 'general')} onDelete={(logId) => handleDeletePenalty('home', logId)} />
-                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={awayAggregatedStats.penalties} onAdd={() => handleAddPenalty('away', 'general')} onDelete={(logId) => handleDeletePenalty('away', logId)}/>
+                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={awayAggregatedStats.penalties} onAdd={() => handleAddPenalty('away', 'general')} onDelete={(logId) => handleDeletePenalty('away', logId)} />
                                 </div>
                                 
                                 {summaryData.shootout && (summaryData.shootout.homeAttempts.length > 0 || summaryData.shootout.awayAttempts.length > 0) && (
@@ -277,6 +276,7 @@ const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, disp
                            <Accordion type="single" collapsible className="w-full">
                                 {allPeriodTexts.map(periodText => {
                                     const periodStats = summaryData.statsByPeriod![periodText];
+                                    if (!periodStats) return null;
                                     return (
                                         <AccordionItem value={periodText} key={periodText}>
                                             <AccordionTrigger className="text-xl hover:no-underline">{periodText}</AccordionTrigger>
@@ -375,3 +375,5 @@ export default function ResumenPage() {
 
     return <SummaryPageContent state={state} dispatch={dispatch} toast={toast} />;
 }
+
+    
