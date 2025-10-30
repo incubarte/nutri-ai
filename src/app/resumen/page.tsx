@@ -6,7 +6,7 @@ import { useGameState, getCategoryNameById, type GameState } from "@/contexts/ga
 import type { SummaryPlayerStats, GameSummary, ShootoutState, CategoryData, TeamData, MatchData, GoalLog, PenaltyLog, Team } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Save, Info, RefreshCw, AlertTriangle, Edit3, Check, XCircle } from "lucide-react";
+import { Save, Info, RefreshCw, AlertTriangle, Edit3, Check, XCircle, FileText, FileDown, PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
@@ -27,337 +27,271 @@ interface SummaryData {
   homeScore: number;
   awayScore: number;
   categoryName: string;
-  statsByPeriod: Record<string, {
-    home: { goals: GoalLog[]; penalties: PenaltyLog[]; playerStats: SummaryPlayerStats[] };
-    away: { goals: GoalLog[]; penalties: PenaltyLog[]; playerStats: SummaryPlayerStats[] };
-  }>;
+  homeGoals: GoalLog[];
+  awayGoals: GoalLog[];
+  homePenalties: PenaltyLog[];
+  awayPenalties: PenaltyLog[];
+  homeAggregatedStats: SummaryPlayerStats[];
+  awayAggregatedStats: SummaryPlayerStats[];
   shootout?: ShootoutState;
+  allPeriodTexts: string[];
 }
 // --- Fin de Modelos de Datos ---
 
 
 const SummaryPageContent = ({ state, dispatch, toast }: { state: GameState, dispatch: React.Dispatch<any>, toast: any }) => {
-  const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
-  const [overwriteConfirm, setOverwriteConfirm] = useState<{ onConfirm: () => void } | null>(null);
-  const [isEditingShots, setIsEditingShots] = useState(false);
-  const [editedShots, setEditedShots] = useState<Record<string, Record<string, string>>>({});
-  
-  const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
-  const [addPenaltyContext, setAddPenaltyContext] = useState<{team: Team, period: string} | null>(null);
-
-  const generateSummaryData = useCallback(() => {
-    const { live, config } = state;
-    if (!live || !config) return;
-
-    const { gameSummary, shootout } = live;
-
-    const statsByPeriod: SummaryData['statsByPeriod'] = {};
+    const [isEditingShots, setIsEditingShots] = useState(false);
+    const [editedShots, setEditedShots] = useState<Record<string, Record<string, string>>>({});
     
-    const playedPeriodTexts = new Set<string>();
-    [...(gameSummary.home.goals || []), ...(gameSummary.away.goals || []), ...(gameSummary.home.penalties || []), ...(gameSummary.away.penalties || [])].forEach(event => {
-        const periodText = (event as GoalLog).periodText || (event as PenaltyLog).addPeriodText;
-        if (periodText && !periodText.toLowerCase().includes('warm-up') && !periodText.toLowerCase().includes('break')) {
-             playedPeriodTexts.add(periodText);
-        }
-    });
+    const [isAddPenaltyDialogOpen, setIsAddPenaltyDialogOpen] = useState(false);
+    const [addPenaltyContext, setAddPenaltyContext] = useState<{team: Team, period: string} | null>(null);
 
-    const allPeriodTextsSorted = Array.from(playedPeriodTexts).sort((a, b) => {
-        const getPeriodNumber = (text: string) => {
-            if (text.startsWith('OT')) return (config.numberOfRegularPeriods || 2) + parseInt(text.replace('OT', '') || '1', 10);
-            return parseInt(text.replace(/\D/g, ''), 10);
-        };
-        return getPeriodNumber(a) - getPeriodNumber(b);
-    });
+    const summaryData = useMemo((): SummaryData | null => {
+        const { live, config } = state;
+        if (!live || !config) return null;
 
-    allPeriodTextsSorted.forEach(period => {
-        statsByPeriod[period] = { home: { goals: [], penalties: [], playerStats: [] }, away: { goals: [], penalties: [], playerStats: [] } };
-        ['home', 'away'].forEach(team => {
-            const teamKey = team as Team;
-            const teamGoals = (gameSummary[teamKey].goals || []).filter(g => g.periodText === period);
-            const teamPenalties = (gameSummary[teamKey].penalties || []).filter(p => p.addPeriodText === period);
+        const { gameSummary, shootout, score } = live;
 
-            const teamShotsInPeriod = (gameSummary[teamKey][`${teamKey}ShotsLog`] || []).filter(s => s.periodText === period);
-
-            const playerStatsForPeriod = (gameSummary.attendance[teamKey] || []).map(attendedPlayer => {
-                const goals = teamGoals.filter(g => g.scorer?.playerNumber === attendedPlayer.number).length;
-                const assists = teamGoals.filter(g => g.assist?.playerNumber === attendedPlayer.number).length;
-                const shots = teamShotsInPeriod.filter(s => s.playerId === attendedPlayer.id).length;
-                return { id: attendedPlayer.id, number: attendedPlayer.number, name: attendedPlayer.name, shots, goals, assists };
-            });
-
-            statsByPeriod[period][teamKey] = { goals: teamGoals, penalties: teamPenalties, playerStats: playerStatsForPeriod };
+        const allPeriodTexts = Array.from(new Set(
+            [
+                ...(gameSummary.home.goals || []),
+                ...(gameSummary.away.goals || []),
+                ...(gameSummary.home.penalties || []),
+                ...(gameSummary.away.penalties || []),
+            ].map(event => event.periodText || event.addPeriodText).filter(Boolean)
+        )).sort((a, b) => {
+            const getPeriodNumber = (text: string) => {
+                if (text.startsWith('OT')) return (config.numberOfRegularPeriods || 2) + parseInt(text.replace('OT', '') || '1', 10);
+                return parseInt(text.replace(/\D/g, ''), 10);
+            };
+            return getPeriodNumber(a) - getPeriodNumber(b);
         });
-    });
 
-    const selectedTournament = (config.tournaments || []).find(t => t.id === config.selectedTournamentId);
-    
-    const newSummaryData: SummaryData = {
-        homeTeamName: live.homeTeamName,
-        awayTeamName: live.awayTeamName,
-        homeScore: live.score.home,
-        awayScore: live.score.away,
-        categoryName: getCategoryNameById(config.selectedMatchCategory, selectedTournament?.categories || []) || 'N/A',
-        statsByPeriod,
-        shootout: shootout.isActive ? shootout : undefined,
-    };
-    setSummaryData(newSummaryData);
+        const selectedTournament = (config.tournaments || []).find(t => t.id === config.selectedTournamentId);
 
-    if (live.matchId) {
-        // Automatically save the summary to the match in the tournament structure
-        dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: live.matchId, summary: gameSummary } });
-    }
-  }, [state, dispatch]);
+        return {
+            homeTeamName: live.homeTeamName,
+            awayTeamName: live.awayTeamName,
+            homeScore: score.home,
+            awayScore: score.away,
+            categoryName: getCategoryNameById(config.selectedMatchCategory, selectedTournament?.categories || []) || 'N/A',
+            homeGoals: [...(gameSummary.home.goals || [])].sort((a, b) => a.timestamp - b.timestamp),
+            awayGoals: [...(gameSummary.away.goals || [])].sort((a, b) => a.timestamp - b.timestamp),
+            homePenalties: [...(gameSummary.home.penalties || [])].sort((a, b) => a.addTimestamp - b.addTimestamp),
+            awayPenalties: [...(gameSummary.away.penalties || [])].sort((a, b) => a.addTimestamp - b.addTimestamp),
+            homeAggregatedStats: gameSummary.home.playerStats || [],
+            awayAggregatedStats: gameSummary.away.playerStats || [],
+            shootout: shootout.isActive ? shootout : undefined,
+            allPeriodTexts,
+        };
+    }, [state]);
 
-  useEffect(() => {
-    generateSummaryData();
-  }, [state.live.gameSummary, generateSummaryData]);
-  
-  const handleGenerateSummaryClick = () => {
-    if (summaryData) {
-      setOverwriteConfirm({ onConfirm: generateSummaryData });
-    } else {
-      generateSummaryData();
-    }
-  };
+    const handleEditShotsClick = () => {
+        const { gameSummary } = state.live;
+        if (!summaryData || !gameSummary) return;
 
-  const homeAggregatedStats = useMemo(() => {
-    return {
-      goals: state.live.gameSummary.home.goals.sort((a, b) => a.timestamp - b.timestamp),
-      penalties: state.live.gameSummary.home.penalties.sort((a, b) => a.addTimestamp - b.addTimestamp),
-      playerStats: state.live.gameSummary.home.playerStats,
-    }
-  }, [state.live.gameSummary.home]);
+        const initialShots: Record<string, Record<string, string>> = {};
+        
+        summaryData.allPeriodTexts.forEach(period => {
+            initialShots[period] = {};
+            ['home', 'away'].forEach(teamStr => {
+                const team = teamStr as Team;
+                const attendance = gameSummary.attendance[team] || [];
+                const shotsLog = team === 'home' ? gameSummary.home.homeShotsLog : gameSummary.away.awayShotsLog;
 
-  const awayAggregatedStats = useMemo(() => {
-    return {
-      goals: state.live.gameSummary.away.goals.sort((a, b) => a.timestamp - b.timestamp),
-      penalties: state.live.gameSummary.away.penalties.sort((a, b) => a.addTimestamp - b.addTimestamp),
-      playerStats: state.live.gameSummary.away.playerStats,
-    }
-  }, [state.live.gameSummary.away]);
-
-  const allPeriodTexts = useMemo(() => {
-    if (!summaryData?.statsByPeriod) return [];
-    return Object.keys(summaryData.statsByPeriod);
-  }, [summaryData]);
-  
-  const handleEditShotsClick = () => {
-    if (!summaryData?.statsByPeriod) return;
-    const initialShots: Record<string, Record<string, string>> = {};
-    for (const period in summaryData.statsByPeriod) {
-        initialShots[period] = {};
-        for(const team of ['home', 'away'] as const) {
-            summaryData.statsByPeriod[period][team].playerStats.forEach(p => {
-                initialShots[period][p.id] = String(p.shots || 0);
+                attendance.forEach(player => {
+                    const shotCount = (shotsLog || []).filter(s => s.playerId === player.id && s.periodText === period).length;
+                    initialShots[period][player.id] = String(shotCount);
+                });
             });
+        });
+
+        setEditedShots(initialShots);
+        setIsEditingShots(true);
+    };
+
+    const handleSaveShotsClick = () => {
+        let hasChanges = false;
+        const { gameSummary } = state.live;
+
+        Object.entries(editedShots).forEach(([periodText, playerShots]) => {
+            Object.entries(playerShots).forEach(([playerId, shotCountStr]) => {
+                const shotCount = parseInt(shotCountStr, 10);
+                if (!isNaN(shotCount)) {
+                    const team = gameSummary.attendance.home.some(p => p.id === playerId) ? 'home' : 'away';
+                    const shotsLog = team === 'home' ? gameSummary.home.homeShotsLog : gameSummary.away.awayShotsLog;
+                    const originalShotCount = (shotsLog || []).filter(s => s.playerId === playerId && s.periodText === periodText).length;
+
+                    if (shotCount !== originalShotCount) {
+                        hasChanges = true;
+                        dispatch({ type: 'SET_PLAYER_SHOTS', payload: { team, playerId, periodText, shotCount } });
+                    }
+                }
+            });
+        });
+
+        if (hasChanges) {
+            toast({ title: "Tiros Actualizados", description: "Los cambios se han guardado." });
+        } else {
+            toast({ title: "Sin Cambios", description: "No se detectaron modificaciones en los tiros." });
         }
-    }
-    setEditedShots(initialShots);
-    setIsEditingShots(true);
-  };
-  
-  const handleSaveShotsClick = () => {
-    let hasChanges = false;
-    Object.entries(editedShots).forEach(([periodText, playerShots]) => {
-      Object.entries(playerShots).forEach(([playerId, shotCountStr]) => {
-        const shotCount = parseInt(shotCountStr, 10);
-        if(!isNaN(shotCount)) {
-            const team = state.live.gameSummary.attendance.home.some(p => p.id === playerId) ? 'home' : 'away';
-            
-            const originalShotCount = (state.live.gameSummary[team].homeShotsLog || state.live.gameSummary[team].awayShotsLog || []).filter(s => s.playerId === playerId && s.periodText === periodText).length;
-
-
-            if (shotCount !== originalShotCount) {
-              hasChanges = true;
-              dispatch({ type: 'SET_PLAYER_SHOTS', payload: { team, playerId, periodText, shotCount } });
-            }
+        setIsEditingShots(false);
+    };
+    
+    const handleShotInputChange = (period: string, playerId: string, value: string) => {
+        if (/^\d*$/.test(value)) {
+            setEditedShots(prev => ({
+                ...prev,
+                [period]: {
+                    ...prev[period],
+                    [playerId]: value,
+                }
+            }));
         }
-      })
-    });
+    };
+    
+    const handleAddPenalty = (team: Team, period: string) => {
+        setAddPenaltyContext({ team, period });
+        setIsAddPenaltyDialogOpen(true);
+    };
 
-    if (hasChanges) {
-      toast({ title: "Tiros Actualizados", description: "Los cambios se han guardado."});
-    } else {
-      toast({ title: "Sin Cambios", description: "No se detectaron modificaciones en los tiros." });
-    }
-    setIsEditingShots(false);
-  };
+    const handleDeletePenalty = (team: Team, logId: string) => {
+        dispatch({ type: 'DELETE_PENALTY_LOG', payload: { team, logId } });
+    };
 
-  const handleAddPenalty = (team: Team, period: string) => {
-    setAddPenaltyContext({ team, period });
-    setIsAddPenaltyDialogOpen(true);
-  };
-
-  const handleDeletePenalty = (team: Team, logId: string) => {
-    dispatch({ type: 'DELETE_PENALTY_LOG', payload: { team, logId } });
-  };
-  
-  const handleShotInputChange = (period: string, playerId: string, value: string) => {
-    setEditedShots(prev => ({
-        ...prev,
-        [period]: {
-            ...prev[period],
-            [playerId]: value
+    const handleSaveNewPenalty = (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs?: number, periodText?: string) => {
+        if (!gameTimeCs || !periodText) {
+            toast({ title: "Error", description: "El tiempo y el período son requeridos para añadir una penalidad desde el resumen.", variant: "destructive"});
+            return;
         }
-    }));
-  };
+        dispatch({ type: 'ADD_PENALTY', payload: { team, penalty: { playerNumber, penaltyTypeId }, addGameTime: gameTimeCs, addPeriodText: periodText } });
+        toast({ title: "Penalidad Añadida", description: "La penalidad se ha añadido al resumen."});
+        setIsAddPenaltyDialogOpen(false);
+    };
 
-  const handleSaveNewPenalty = (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs?: number, periodText?: string) => {
-    if (!gameTimeCs || !periodText) {
-       toast({ title: "Error", description: "El tiempo y el período son requeridos para añadir una penalidad desde el resumen.", variant: "destructive"});
-       return;
-    }
-    dispatch({ type: 'ADD_PENALTY', payload: { team, penalty: { playerNumber, penaltyTypeId }, addGameTime: gameTimeCs, addPeriodText: periodText }});
-    toast({ title: "Penalidad Añadida", description: "La penalidad se ha añadido al resumen."});
-    setIsAddPenaltyDialogOpen(false);
-  };
-
-  if (state.isLoading) {
-    return (
-        <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
-            <HockeyPuckSpinner className="h-24 w-24 text-primary mb-4" />
-            <p className="text-xl text-foreground">Cargando...</p>
-        </div>
-    );
-  }
-
-  return (
-    <div className="w-full max-w-6xl mx-auto space-y-6">
-        <div className="flex flex-wrap justify-between items-center gap-4">
-            <h1 className="text-3xl font-bold text-primary-foreground">Resumen del Partido</h1>
-            <Button onClick={handleGenerateSummaryClick} variant="outline"><RefreshCw className="mr-2 h-4 w-4"/> Recargar Datos del Partido</Button>
-        </div>
-
-        {!summaryData ? (
-             <div className="text-center py-20 border-2 border-dashed rounded-lg bg-card/50">
-                <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h2 className="text-xl font-semibold">Resumen no generado</h2>
-                <p className="text-muted-foreground">Haz clic en "Recargar Datos" para cargar las estadísticas del partido actual.</p>
+    if (state.isLoading || !summaryData) {
+        return (
+            <div className="flex flex-col justify-center items-center min-h-[calc(100vh-10rem)] text-center p-4">
+                <HockeyPuckSpinner className="h-24 w-24 text-primary mb-4" />
+                <p className="text-xl text-foreground">Cargando Resumen...</p>
             </div>
-        ) : (
-            <>
-                <div className="grid grid-cols-2 text-center my-2">
-                    <h3 className="text-2xl font-bold text-primary">{summaryData.homeTeamName} - <span className="text-accent">{summaryData.homeScore}</span></h3>
-                    <h3 className="text-2xl font-bold text-primary">{summaryData.awayTeamName} - <span className="text-accent">{summaryData.awayScore}</span></h3>
-                </div>
-                
-                <Tabs defaultValue="general">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="general">Estadísticas Generales</TabsTrigger>
-                        <TabsTrigger value="periods">Detalle por Periodo</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="general" className="mt-6">
-                        <ScrollArea className="h-[calc(100vh-22rem)]">
-                            <div className="space-y-6 pr-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <GoalsSection teamName={summaryData.homeTeamName} goals={homeAggregatedStats.goals} />
-                                    <GoalsSection teamName={summaryData.awayTeamName} goals={awayAggregatedStats.goals} />
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                     <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={homeAggregatedStats.penalties} onAdd={() => handleAddPenalty('home', 'general')} onDelete={(logId) => handleDeletePenalty('home', logId)} />
-                                     <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={awayAggregatedStats.penalties} onAdd={() => handleAddPenalty('away', 'general')} onDelete={(logId) => handleDeletePenalty('away', logId)} />
-                                </div>
-                                
-                                {summaryData.shootout && (summaryData.shootout.homeAttempts.length > 0 || summaryData.shootout.awayAttempts.length > 0) && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <ShootoutSection teamName={summaryData.homeTeamName} attempts={summaryData.shootout.homeAttempts} />
-                                        <ShootoutSection teamName={summaryData.awayTeamName} attempts={summaryData.shootout.awayAttempts} />
-                                    </div>
-                                )}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={homeAggregatedStats.playerStats} />
-                                    <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={awayAggregatedStats.playerStats} />
-                                </div>
+        );
+    }
+  
+    return (
+        <div className="w-full max-w-6xl mx-auto space-y-6">
+            <div className="flex flex-wrap justify-between items-center gap-4">
+                <h1 className="text-3xl font-bold text-primary-foreground">Resumen del Partido</h1>
+            </div>
+            
+            <div className="grid grid-cols-2 text-center my-2">
+                <h3 className="text-2xl font-bold text-primary">{summaryData.homeTeamName} - <span className="text-accent">{summaryData.homeScore}</span></h3>
+                <h3 className="text-2xl font-bold text-primary">{summaryData.awayTeamName} - <span className="text-accent">{summaryData.awayScore}</span></h3>
+            </div>
+            
+            <Tabs defaultValue="general">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="general">Estadísticas Generales</TabsTrigger>
+                    <TabsTrigger value="periods">Detalle por Periodo</TabsTrigger>
+                </TabsList>
+                <TabsContent value="general" className="mt-6">
+                    <ScrollArea className="h-[calc(100vh-22rem)]">
+                        <div className="space-y-6 pr-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <GoalsSection teamName={summaryData.homeTeamName} goals={summaryData.homeGoals} />
+                                <GoalsSection teamName={summaryData.awayTeamName} goals={summaryData.awayGoals} />
                             </div>
-                        </ScrollArea>
-                    </TabsContent>
-                    <TabsContent value="periods" className="mt-6">
-                        {allPeriodTexts.length > 0 ? (
-                           <Accordion type="single" collapsible className="w-full">
-                                {allPeriodTexts.map(periodText => {
-                                    const periodStats = summaryData.statsByPeriod![periodText];
-                                    if (!periodStats) return null;
-                                    return (
-                                        <AccordionItem value={periodText} key={periodText}>
-                                            <AccordionTrigger className="text-xl hover:no-underline">{periodText}</AccordionTrigger>
-                                            <AccordionContent className="space-y-6 pl-2">
-                                                <div className="flex justify-end pr-2">
-                                                {isEditingShots ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={summaryData.homePenalties} onAdd={() => handleAddPenalty('home', 'general')} onDelete={(logId) => handleDeletePenalty('home', logId)} />
+                                <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={summaryData.awayPenalties} onAdd={() => handleAddPenalty('away', 'general')} onDelete={(logId) => handleDeletePenalty('away', logId)} />
+                            </div>
+                            
+                            {summaryData.shootout && (summaryData.shootout.homeAttempts.length > 0 || summaryData.shootout.awayAttempts.length > 0) && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <ShootoutSection teamName={summaryData.homeTeamName} attempts={summaryData.shootout.homeAttempts} />
+                                    <ShootoutSection teamName={summaryData.awayTeamName} attempts={summaryData.shootout.awayAttempts} />
+                                </div>
+                            )}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={summaryData.homeAggregatedStats} />
+                                <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={summaryData.awayAggregatedStats} />
+                            </div>
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
+                <TabsContent value="periods" className="mt-6">
+                    {summaryData.allPeriodTexts.length > 0 ? (
+                       <Accordion type="single" collapsible className="w-full">
+                            {summaryData.allPeriodTexts.map(periodText => {
+                                const homeGoalsInPeriod = summaryData.homeGoals.filter(g => g.periodText === periodText);
+                                const awayGoalsInPeriod = summaryData.awayGoals.filter(g => g.periodText === periodText);
+                                const homePenaltiesInPeriod = summaryData.homePenalties.filter(p => p.addPeriodText === periodText);
+                                const awayPenaltiesInPeriod = summaryData.awayPenalties.filter(p => p.addPeriodText === periodText);
+                                
+                                const homePlayerStatsInPeriod = summaryData.homeAggregatedStats.map(p => ({ ...p, shots: state.live.gameSummary.home.homeShotsLog.filter(s => s.playerId === p.id && s.periodText === periodText).length, goals: homeGoalsInPeriod.filter(g => g.scorer?.playerNumber === p.number).length, assists: homeGoalsInPeriod.filter(g => g.assist?.playerNumber === p.number).length }));
+                                const awayPlayerStatsInPeriod = summaryData.awayAggregatedStats.map(p => ({ ...p, shots: state.live.gameSummary.away.awayShotsLog.filter(s => s.playerId === p.id && s.periodText === periodText).length, goals: awayGoalsInPeriod.filter(g => g.scorer?.playerNumber === p.number).length, assists: awayGoalsInPeriod.filter(g => g.assist?.playerNumber === p.number).length }));
+                                
+                                return (
+                                    <AccordionItem value={periodText} key={periodText}>
+                                        <AccordionTrigger className="text-xl hover:no-underline">{periodText}</AccordionTrigger>
+                                        <AccordionContent className="space-y-6 pl-2">
+                                            <div className="flex justify-end pr-2">
+                                                {isEditing ? (
                                                     <div className="flex gap-2">
                                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveShotsClick}><Check className="h-5 w-5" /></Button>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setIsEditingShots(false)}><XCircle className="h-5 w-5" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setIsEditing(false)}><XCircle className="h-5 w-5" /></Button>
                                                     </div>
                                                 ) : (
                                                     <Button variant="outline" size="sm" onClick={handleEditShotsClick}>
                                                         <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
                                                     </Button>
                                                 )}
-                                                </div>
-                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <GoalsSection teamName={summaryData.homeTeamName} goals={periodStats.home.goals} />
-                                                    <GoalsSection teamName={summaryData.awayTeamName} goals={periodStats.away.goals} />
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={periodStats.home.penalties} onAdd={() => handleAddPenalty('home', periodText)} onDelete={(logId) => handleDeletePenalty('home', logId)} />
-                                                    <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={periodStats.away.penalties} onAdd={() => handleAddPenalty('away', periodText)} onDelete={(logId) => handleDeletePenalty('away', logId)} />
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                     <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={periodStats.home.playerStats} editable={isEditingShots} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
-                                                     <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={periodStats.away.playerStats} editable={isEditingShots} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
-                                                </div>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    )
-                                })}
-                           </Accordion>
-                        ) : (
-                            <p className="text-center text-muted-foreground py-10">No hay datos por período para mostrar.</p>
-                        )}
-                    </TabsContent>
-                </Tabs>
-            </>
-        )}
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <GoalsSection teamName={summaryData.homeTeamName} goals={homeGoalsInPeriod} />
+                                                <GoalsSection teamName={summaryData.awayTeamName} goals={awayGoalsInPeriod} />
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <PenaltiesSection team="home" teamName={summaryData.homeTeamName} penalties={homePenaltiesInPeriod} onAdd={() => handleAddPenalty('home', periodText)} onDelete={(logId) => handleDeletePenalty('home', logId)} />
+                                                <PenaltiesSection team="away" teamName={summaryData.awayTeamName} penalties={awayPenaltiesInPeriod} onAdd={() => handleAddPenalty('away', periodText)} onDelete={(logId) => handleDeletePenalty('away', logId)} />
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <PlayerStatsSection teamName={summaryData.homeTeamName} playerStats={homePlayerStatsInPeriod} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
+                                                <PlayerStatsSection teamName={summaryData.awayTeamName} playerStats={awayPlayerStatsInPeriod} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                )
+                            })}
+                       </Accordion>
+                    ) : (
+                        <p className="text-center text-muted-foreground py-10">No hay datos por período para mostrar.</p>
+                    )}
+                </TabsContent>
+            </Tabs>
         
-        {overwriteConfirm && (
-            <AlertDialog open={!!overwriteConfirm} onOpenChange={() => setOverwriteConfirm(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="text-amber-500" /> Confirmar Recarga de Datos</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Ya existe un resumen generado. Si continúas, se perderán todos los cambios manuales que hayas hecho en este resumen. ¿Deseas continuar y reemplazar los datos?
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setOverwriteConfirm(null)}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => { overwriteConfirm.onConfirm(); setOverwriteConfirm(null); }}>
-                            Sí, Recargar Datos
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        )}
-        {isAddPenaltyDialogOpen && addPenaltyContext && (
-            <Dialog open={isAddPenaltyDialogOpen} onOpenChange={setIsAddPenaltyDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Añadir Penalidad al Resumen</DialogTitle>
-                    </DialogHeader>
-                    <AddPenaltyForm
-                        homeTeamName={summaryData?.homeTeamName || 'Local'}
-                        awayTeamName={summaryData?.awayTeamName || 'Visitante'}
-                        penaltyTypes={state.config.penaltyTypes || []}
-                        defaultPenaltyTypeId={state.config.defaultPenaltyTypeId}
-                        onPenaltySent={(team, playerNumber, penaltyTypeId, gameTimeCs, periodText) => handleSaveNewPenalty(team, playerNumber, penaltyTypeId, gameTimeCs, periodText)}
-                        preselectedTeam={addPenaltyContext.team}
-                        showTimeInput={true}
-                        availablePeriods={allPeriodTexts}
-                        preselectedPeriod={addPenaltyContext.period !== 'general' ? addPenaltyContext.period : undefined}
-                    />
-                </DialogContent>
-            </Dialog>
-        )}
-    </div>
-  );
+            {isAddPenaltyDialogOpen && addPenaltyContext && (
+                <Dialog open={isAddPenaltyDialogOpen} onOpenChange={setIsAddPenaltyDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Añadir Penalidad al Resumen</DialogTitle>
+                        </DialogHeader>
+                        <AddPenaltyForm
+                            homeTeamName={summaryData?.homeTeamName || 'Local'}
+                            awayTeamName={summaryData?.awayTeamName || 'Visitante'}
+                            penaltyTypes={state.config.penaltyTypes || []}
+                            defaultPenaltyTypeId={state.config.defaultPenaltyTypeId}
+                            onPenaltySent={(team, playerNumber, penaltyTypeId, gameTimeCs, periodText) => handleSaveNewPenalty(team, playerNumber, penaltyTypeId, gameTimeCs, periodText)}
+                            preselectedTeam={addPenaltyContext.team}
+                            showTimeInput={true}
+                            availablePeriods={summaryData.allPeriodTexts}
+                            preselectedPeriod={addPenaltyContext.period !== 'general' ? addPenaltyContext.period : undefined}
+                        />
+                    </DialogContent>
+                </Dialog>
+            )}
+        </div>
+    );
 };
 
 export default function ResumenPage() {
