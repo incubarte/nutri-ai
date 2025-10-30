@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo } from 'react';
@@ -50,7 +51,7 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
     const finishedMatches = currentTournament.matches.filter(m => m.summary && m.categoryId === selectedMatchCategory);
     const teamsInCategory = currentTournament.teams.filter(t => t.category === selectedMatchCategory);
       
-    const stats = teamsInCategory.map(team => {
+    const stats: TeamStats[] = teamsInCategory.map(team => {
         const teamStats: TeamStats = {
           id: team.id, name: team.name, pj: 0, pg: 0, pe: 0, pp: 0, pg_ot: 0, pp_ot: 0, gf: 0, gc: 0, puntos: 0
         };
@@ -69,19 +70,19 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
             teamStats.gf += isHome ? homeScore : awayScore;
             teamStats.gc += isHome ? awayScore : homeScore;
 
-            if (homeScore > awayScore) {
+            if (homeScore > awayScore) { // Team won
               if (isHome) {
                 if (wentToOTOrSO) teamStats.pg_ot++; else teamStats.pg++;
-              } else {
+              } else { // Team is away, and lost
                 if (wentToOTOrSO) teamStats.pp_ot++; else teamStats.pp++;
               }
-            } else if (awayScore > homeScore) {
-              if (!isHome) {
+            } else if (awayScore > homeScore) { // Team lost
+              if (!isHome) { // Team is away, and won
                 if (wentToOTOrSO) teamStats.pg_ot++; else teamStats.pg++;
-              } else {
+              } else { // Team is home, and lost
                 if (wentToOTOrSO) teamStats.pp_ot++; else teamStats.pp++;
               }
-            } else {
+            } else { // Tie
               teamStats.pe++;
             }
           });
@@ -90,14 +91,30 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
         return teamStats;
       });
 
-      return stats.sort((a, b) => {
+      // Sort stats
+      stats.sort((a, b) => {
         if (b.puntos !== a.puntos) return b.puntos - a.puntos;
         const diffA = a.gf - a.gc;
         const diffB = b.gf - b.gc;
         if(diffB !== diffA) return diffB - diffA;
-        if (a.pj !== b.pj) return a.pj - b.pj;
-        return b.gf - a.gf;
+        if (b.gf !== a.gf) return b.gf - a.gf;
+        return a.pj - b.pj;
       });
+
+      const rankedStats = stats.map((team, index) => {
+          let rank = index + 1;
+          if (index > 0) {
+            const prevTeam = stats[index - 1];
+            const diffA = team.gf - team.gc;
+            const diffB = prevTeam.gf - prevTeam.gc;
+            if (team.puntos === prevTeam.puntos && team.pj === prevTeam.pj && diffA === diffB && team.gf === prevTeam.gf) {
+              rank = rankedStats[index - 1].rank;
+            }
+          }
+          return { ...team, rank };
+        });
+
+      return rankedStats;
 
   }, [currentTournament, selectedMatchCategory]);
   
@@ -116,10 +133,10 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="text-center">Puesto</TableHead>
                 <TableHead className="w-1/2">Equipo</TableHead>
                 <TableHead className="text-center">PJ</TableHead>
                 <TableHead className="text-center">PG</TableHead>
-                <TableHead className="text-center">PE</TableHead>
                 <TableHead className="text-center">PP</TableHead>
                 <TableHead className="text-center">Pts</TableHead>
               </TableRow>
@@ -127,17 +144,17 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
             <TableBody>
               {standings.map(teamStat => (
                 <TableRow key={teamStat.id} className={cn(teamStat.id === teamIdToShow && "bg-primary/20 text-foreground font-bold")}>
+                  <TableCell className="text-center font-bold">{teamStat.rank}</TableCell>
                   <TableCell className="font-medium">{teamStat.name}</TableCell>
                   <TableCell className="text-center">{teamStat.pj}</TableCell>
                   <TableCell className="text-center">{teamStat.pg + teamStat.pg_ot}</TableCell>
-                  <TableCell className="text-center">{teamStat.pe}</TableCell>
                   <TableCell className="text-center">{teamStat.pp + teamStat.pp_ot}</TableCell>
                   <TableCell className="text-center font-bold text-lg">{teamStat.puntos}</TableCell>
                 </TableRow>
               ))}
               {standings.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">No hay datos de posiciones.</TableCell>
+                  <TableCell colSpan={7} className="h-24 text-center">No hay datos de posiciones.</TableCell>
                 </TableRow>
               )}
             </TableBody>

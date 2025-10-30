@@ -6,6 +6,8 @@ import { useGameState } from '@/contexts/game-state-context';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Info } from 'lucide-react';
+import type { TeamData, Team } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface TeamStats {
   id: string;
@@ -14,8 +16,8 @@ interface TeamStats {
   pg: number; // Partidos Ganados en tiempo regular
   pe: number; // Partidos Empatados
   pp: number; // Partidos Perdidos en tiempo regular
-  pg_ot: number; // Partidos Ganados en OT
-  pp_ot: number; // Partidos Perdidos en OT
+  pg_ot: number; // Partidos Ganados en OT/SO
+  pp_ot: number; // Partidos Perdidos en OT/SO
   gf: number; // Goles a Favor
   gc: number; // Goles en Contra
   puntos: number;
@@ -37,7 +39,7 @@ export function StandingsTab() {
     return selectedTournament.categories.map(category => {
       const teamsInCategory = selectedTournament.teams.filter(t => t.category === category.id);
       
-      const stats = teamsInCategory.map(team => {
+      const stats: TeamStats[] = teamsInCategory.map(team => {
         const teamStats: TeamStats = {
           id: team.id,
           name: team.name,
@@ -50,28 +52,28 @@ export function StandingsTab() {
             teamStats.pj++;
             const homeScore = match.summary?.home.goals.length || 0;
             const awayScore = match.summary?.away.goals.length || 0;
-            const wentToOT = match.summary?.statsByPeriod && Object.keys(match.summary.statsByPeriod).some(p => p.startsWith('OT'));
+            const wentToOTOrSO = (match.summary?.statsByPeriod && Object.keys(match.summary.statsByPeriod).some(p => p.startsWith('OT'))) || 
+                                 (match.summary?.shootout && (match.summary.shootout.homeAttempts.length > 0 || match.summary.shootout.awayAttempts.length > 0));
+
+            const isHome = match.homeTeamId === team.id;
             
-            if (match.homeTeamId === team.id) {
-              teamStats.gf += homeScore;
-              teamStats.gc += awayScore;
-              if (homeScore > awayScore) {
-                if (wentToOT) teamStats.pg_ot++; else teamStats.pg++;
-              } else if (homeScore < awayScore) {
-                if (wentToOT) teamStats.pp_ot++; else teamStats.pp++;
-              } else {
-                teamStats.pe++;
+            teamStats.gf += isHome ? homeScore : awayScore;
+            teamStats.gc += isHome ? awayScore : homeScore;
+
+            if (homeScore > awayScore) { // Team won
+              if (isHome) {
+                if (wentToOTOrSO) teamStats.pg_ot++; else teamStats.pg++;
+              } else { // Team is away, and lost
+                if (wentToOTOrSO) teamStats.pp_ot++; else teamStats.pp++;
               }
-            } else { // Away team
-              teamStats.gf += awayScore;
-              teamStats.gc += homeScore;
-              if (awayScore > homeScore) {
-                if (wentToOT) teamStats.pg_ot++; else teamStats.pg++;
-              } else if (awayScore < homeScore) {
-                if (wentToOT) teamStats.pp_ot++; else teamStats.pp++;
-              } else {
-                teamStats.pe++;
+            } else if (awayScore > homeScore) { // Team lost
+              if (!isHome) { // Team is away, and won
+                if (wentToOTOrSO) teamStats.pg_ot++; else teamStats.pg++;
+              } else { // Team is home, and lost
+                if (wentToOTOrSO) teamStats.pp_ot++; else teamStats.pp++;
               }
+            } else { // Tie
+              teamStats.pe++;
             }
           });
         
@@ -85,13 +87,27 @@ export function StandingsTab() {
         const diffA = a.gf - a.gc;
         const diffB = b.gf - b.gc;
         if(diffB !== diffA) return diffB - diffA;
-        if (a.pj !== b.pj) return a.pj - b.pj;
-        return b.gf - a.gf;
+        if (b.gf !== a.gf) return b.gf - a.gf;
+        return a.pj - b.pj;
       });
+
+      const rankedStats = stats.map((team, index) => {
+          let rank = index + 1;
+          if (index > 0) {
+            const prevTeam = stats[index - 1];
+            const diffA = team.gf - team.gc;
+            const diffB = prevTeam.gf - prevTeam.gc;
+            if (team.puntos === prevTeam.puntos && team.pj === prevTeam.pj && diffA === diffB && team.gf === prevTeam.gf) {
+              // Find the rank of the previous team in the final array to handle multi-way ties
+              rank = rankedStats[index - 1].rank;
+            }
+          }
+          return { ...team, rank };
+        });
 
       return {
         categoryName: category.name,
-        stats: stats
+        stats: rankedStats
       };
     }).filter(cat => cat.stats.length > 0);
   }, [selectedTournament]);
@@ -102,7 +118,7 @@ export function StandingsTab() {
     <div className="space-y-8">
         <div className="flex items-start gap-2 p-3 text-sm border rounded-lg bg-muted/50 text-muted-foreground">
             <Info className="h-5 w-5 mt-0.5 shrink-0"/>
-            <p>Observación: La tabla de posiciones otorga 3 puntos por victoria en tiempo regular, 2 puntos por victoria en tiempo extra/penales, 1 punto por derrota en tiempo extra/penales y 1 punto por empate.</p>
+            <p>El sistema de puntos es: 3 por victoria, 2 por victoria en OT/Penales, 1 por derrota en OT/Penales, y 1 por empate (si aplica).</p>
         </div>
 
         {standingsByCat.map(({ categoryName, stats }) => (
@@ -117,6 +133,7 @@ export function StandingsTab() {
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead className="text-center">Puesto</TableHead>
                                 <TableHead className="w-1/2">Equipo</TableHead>
                                 <TableHead className="text-center">PJ</TableHead>
                                 <TableHead className="text-center">PG</TableHead>
@@ -130,6 +147,7 @@ export function StandingsTab() {
                         <TableBody>
                             {stats.map(team => (
                                 <TableRow key={team.id}>
+                                    <TableCell className="text-center font-bold">{team.rank}</TableCell>
                                     <TableCell className="font-medium">{team.name}</TableCell>
                                     <TableCell className="text-center">{team.pj}</TableCell>
                                     <TableCell className="text-center">{team.pg + team.pg_ot}</TableCell>

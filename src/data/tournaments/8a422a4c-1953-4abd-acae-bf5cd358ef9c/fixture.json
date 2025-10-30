@@ -3911,6 +3911,14 @@
           "initiator": "home"
         }
       }
+    },
+    {
+      "date": "2025-10-30T03:00:00.000Z",
+      "categoryId": "89e25708-38d4-446f-bb29-c4d2c923e48d",
+      "homeTeamId": "f761b189-b669-4b4d-bb85-0bc92ddd6310",
+      "awayTeamId": "29c7d1a8-3a07-44be-92b6-66237bfb0d23",
+      "playersPerTeam": 5,
+      "id": "07e73217-5a65-478f-84b7-feb618f3f10b"
     }
   ]
 }
