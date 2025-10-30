@@ -21,7 +21,7 @@ interface GoalManagementDialogProps {
   team: Team | null;
 }
 
-function AddGoalForm({ team, onGoalAdded }: { team: Team, onGoalAdded: () => void }) {
+function AddGoalForm({ team, onGoalAdded, disabled }: { team: Team, onGoalAdded: () => void, disabled: boolean }) {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
   const [scorerNumber, setScorerNumber] = useState('');
@@ -44,6 +44,12 @@ function AddGoalForm({ team, onGoalAdded }: { team: Team, onGoalAdded: () => voi
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!state.live || !state.config) return;
+
+    const { periodDisplayOverride } = state.live.clock;
+    if (disabled || (periodDisplayOverride && periodDisplayOverride !== 'Time Out')) {
+        toast({ title: "Acción no permitida", description: "No se pueden agregar goles durante el calentamiento, descansos o con el partido finalizado.", variant: "destructive" });
+        return;
+    }
 
     const trimmedScorerNumber = scorerNumber.trim();
     const trimmedAssistNumber = assistNumber.trim();
@@ -107,6 +113,7 @@ function AddGoalForm({ team, onGoalAdded }: { team: Team, onGoalAdded: () => voi
                         onChange={(e) => { if (/^\d*$/.test(e.target.value)) setScorerNumber(e.target.value); }}
                         placeholder="Ej: 99"
                         autoComplete="off"
+                        disabled={disabled}
                     />
                     {selectedPlayer && <p className="text-xs text-muted-foreground mt-1 truncate" title={selectedPlayer.name}>Jugador: {selectedPlayer.name}</p>}
                 </div>
@@ -118,11 +125,12 @@ function AddGoalForm({ team, onGoalAdded }: { team: Team, onGoalAdded: () => voi
                         onChange={(e) => { if (/^\d*$/.test(e.target.value)) setAssistNumber(e.target.value); }}
                         placeholder="(Opcional)"
                          autoComplete="off"
+                         disabled={disabled}
                     />
                     {selectedAssistPlayer && <p className="text-xs text-muted-foreground mt-1 truncate" title={selectedAssistPlayer.name}>Asistente: {selectedAssistPlayer.name}</p>}
                 </div>
             </div>
-            <Button type="submit" className="w-full sm:w-auto mt-2 sm:mt-0">
+            <Button type="submit" className="w-full sm:w-auto mt-2 sm:mt-0" disabled={disabled}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Añadir Gol
             </Button>
         </form>
@@ -331,6 +339,8 @@ export function GoalManagementDialog({ isOpen, onOpenChange, team }: GoalManagem
 
   if (!team) return null;
 
+  const isActionDisabled = state.live.clock.periodDisplayOverride !== null && state.live.clock.periodDisplayOverride !== 'Time Out';
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent 
@@ -343,7 +353,7 @@ export function GoalManagementDialog({ isOpen, onOpenChange, team }: GoalManagem
           </DialogDescription>
         </DialogHeader>
 
-        <AddGoalForm team={team} onGoalAdded={() => onOpenChange(false)} />
+        <AddGoalForm team={team} onGoalAdded={() => onOpenChange(false)} disabled={isActionDisabled} />
 
         <Separator className="my-4" />
         
@@ -369,3 +379,4 @@ export function GoalManagementDialog({ isOpen, onOpenChange, team }: GoalManagem
     </Dialog>
   );
 }
+
