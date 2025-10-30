@@ -260,5 +260,3 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
     </Dialog>
   );
 }
-
-    

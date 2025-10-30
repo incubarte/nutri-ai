@@ -1683,7 +1683,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PLAYER_TO_TEAM': {
       const { teamId, player } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...t, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
       toastMessage = { title: "Jugador Añadido", description: `Jugador ${player.number ? `#${player.number} ` : ''}${player.name} añadido.` };
       break;
     }
@@ -1880,13 +1880,21 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     const playedPeriods = new Set<string>();
 
     const allEvents = [
-        ...summary.home.goals.map(e => ({ ...e, type: 'goal' as const, team: 'home' as const })),
-        ...summary.away.goals.map(e => ({ ...e, type: 'goal' as const, team: 'away' as const })),
-        ...(summary.home.homeShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'home' as const })),
-        ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'away' as const })),
+        ...summary.home.goals.map(e => ({ ...e, type: 'goal' as const, team: 'home' as const, periodText: e.periodText })),
+        ...summary.away.goals.map(e => ({ ...e, type: 'goal' as const, team: 'away' as const, periodText: e.periodText })),
+        ...(summary.home.homeShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'home' as const, periodText: e.periodText })),
+        ...(summary.away.awayShotsLog || []).map(e => ({ ...e, type: 'shot' as const, team: 'away' as const, periodText: e.periodText })),
     ];
     
-    // Determine all periods that had events
+    // Add all periods that were actually played
+    const totalPeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
+    const lastPlayedPeriod = live.clock.periodDisplayOverride === 'End of Game' ? live.clock.currentPeriod : totalPeriods;
+    for (let i = 1; i <= lastPlayedPeriod && i <= totalPeriods; i++) {
+        const periodText = getPeriodText(i, config.numberOfRegularPeriods);
+        playedPeriods.add(periodText);
+    }
+    
+    // Also add any periods that had events, just in case
     allEvents.forEach(event => {
         const periodText = event.periodText;
         if (periodText && !periodText.toLowerCase().includes('warm-up')) {
@@ -1963,10 +1971,11 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
 
 
 const GameStateObserver = () => {
-    const { state } = useGameState();
+    const { state, dispatch } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
-    
+    const prevPeriodDisplayOverrideRef = useRef<PeriodDisplayOverrideType>();
+
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
             toast(state._lastToastMessage);
@@ -1974,6 +1983,32 @@ const GameStateObserver = () => {
         }
     }, [state._lastToastMessage, toast]);
     
+     useEffect(() => {
+        if (!state._initialConfigLoadComplete) {
+            return; // Don't run this logic during initial hydration
+        }
+        
+        const currentOverride = state.live?.clock?.periodDisplayOverride;
+
+        if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && currentOverride === 'End of Game' && state.live.matchId) {
+             const summary = generateSummaryData(state);
+            if (summary) {
+                dispatch({
+                    type: 'SAVE_MATCH_SUMMARY',
+                    payload: { matchId: state.live.matchId, summary }
+                });
+                toast({
+                    title: "Resumen Guardado",
+                    description: "El resumen del partido finalizado se ha guardado automáticamente."
+                });
+            }
+        }
+        
+        // Update the ref *after* the check
+        prevPeriodDisplayOverrideRef.current = currentOverride;
+    }, [state.live?.clock?.periodDisplayOverride, state._initialConfigLoadComplete, state.live?.matchId, state, dispatch, toast]);
+
+
     return null;
 }
 
@@ -2205,5 +2240,3 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
 
 
 
-
-    
