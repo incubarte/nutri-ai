@@ -92,16 +92,13 @@ async function writeTournament(tournament: Tournament): Promise<void> {
         (tournament.matches || []).forEach(match => {
             const { summary, ...matchWithoutSummary } = match;
             
-            // Critical fix: Only write a summary if it's explicitly provided.
-            // If summary is undefined, it means it wasn't loaded on the client,
-            // so we should not overwrite a potentially existing summary file.
             if (summary) {
                 const summaryPath = path.join(summariesDir, `${match.id}.json`);
                 summaryWritePromises.push(writeData(summaryPath, summary));
                 
                 // Add lightweight result fields to the match object in fixture.json
-                matchWithoutSummary.homeScore = summary.home.goals.length;
-                matchWithoutSummary.awayScore = summary.away.goals.length;
+                matchWithoutSummary.homeScore = summary.goals.home.length;
+                matchWithoutSummary.awayScore = summary.goals.away.length;
                 matchWithoutSummary.overTimeOrShootouts = summary.overTimeOrShootouts || (summary.shootout && (summary.shootout.homeAttempts.length > 0 || summary.shootout.awayAttempts.length > 0));
             }
             fixtureMatches.push(matchWithoutSummary);
