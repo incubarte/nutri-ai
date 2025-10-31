@@ -96,10 +96,18 @@ async function writeTournament(tournament: Tournament): Promise<void> {
                 const summaryPath = path.join(summariesDir, `${match.id}.json`);
                 summaryWritePromises.push(writeData(summaryPath, summary));
                 
-                // Add lightweight result fields to the match object in fixture.json
-                matchWithoutSummary.homeScore = summary.goals.home.length;
-                matchWithoutSummary.awayScore = summary.goals.away.length;
-                matchWithoutSummary.overTimeOrShootouts = summary.overTimeOrShootouts || (summary.shootout && (summary.shootout.homeAttempts.length > 0 || summary.shootout.awayAttempts.length > 0));
+                // Use optional chaining and nullish coalescing for safety
+                const homeScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals?.home?.length ?? 0), 0);
+                const awayScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals?.away?.length ?? 0), 0);
+                
+                matchWithoutSummary.homeScore = homeScore;
+                matchWithoutSummary.awayScore = awayScore;
+
+                // Safely determine if OT or SO happened from the summary object
+                const wentToOTOrSO = (summary.statsByPeriod && (summary.statsByPeriod).some(p => p.period.startsWith('OT'))) || 
+                                     (summary.shootout && (summary.shootout.homeAttempts.length > 0 || summary.shootout.awayAttempts.length > 0));
+
+                matchWithoutSummary.overTimeOrShootouts = wentToOTOrSO;
             }
             fixtureMatches.push(matchWithoutSummary);
         });

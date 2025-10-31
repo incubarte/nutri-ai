@@ -248,15 +248,9 @@ const finalizeMatch = (state: GameState): GameState => {
         }
     };
     
-    // Generate and dispatch save action
-    if (newState.live.matchId) {
-        const summary = generateSummaryData(newState);
-        if (summary) {
-            // We can't dispatch from here. The caller of finalizeMatch must handle the dispatch.
-            // This function's sole purpose is to return the final state.
-        }
-    }
-
+    // The summary action is now part of the returned state from this reducer,
+    // and will be handled by the component that called the finalization.
+    // We cannot dispatch from within a reducer.
     return newState;
 };
 
@@ -728,10 +722,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       const summary = generateSummaryData(finalizedState);
       if (summary && finalizedState.live.matchId) {
-          dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: finalizedState.live.matchId, summary } });
+          newState = gameReducer(finalizedState, { type: 'SAVE_MATCH_SUMMARY', payload: { matchId: finalizedState.live.matchId, summary } });
+      } else {
+        newState = finalizedState;
       }
-
-      newState = finalizedState;
       toastMessage = { title: "¡Partido Finalizado!", description: "Gol de oro registrado exitosamente." };
       break;
     }
@@ -828,16 +822,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'DELETE_PENALTY_LOG': {
       const { team, logId } = action.payload;
       
-      const newActivePenalties = state.live.penalties[team].filter(p => p.id !== logId);
-
       const newPenaltiesLog = { ...state.live.penaltiesLog };
       newPenaltiesLog[team] = newPenaltiesLog[team].filter((p: PenaltyLog) => p.id !== logId);
       
       newState = { ...state, live: { ...state.live, 
-        penalties: { ...state.live.penalties, [team]: newActivePenalties },
         penaltiesLog: newPenaltiesLog
       }};
-      toastMessage = { title: "Penalidad Eliminada", variant: "destructive" };
+      toastMessage = { title: "Penalidad Eliminada del Registro", variant: "destructive" };
       break;
     }
      case 'END_PENALTY_FOR_GOAL': {
@@ -1175,7 +1166,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             const finalizedState = finalizeMatch(tempState);
             const summary = generateSummaryData(finalizedState);
             if (summary && finalizedState.live.matchId) {
-                return { ...gameReducer(state, { type: 'SAVE_MATCH_SUMMARY', payload: { matchId: finalizedState.live.matchId, summary } }), ...finalizedState };
+                return gameReducer(finalizedState, { type: 'SAVE_MATCH_SUMMARY', payload: { matchId: finalizedState.live.matchId, summary } });
             }
             newState = finalizedState;
         }
@@ -1637,8 +1628,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         playPenaltyBeepTrigger: state.live.playPenaltyBeepTrigger,
       };
 
-      // Save the reset live state to the server immediately
-      saveDataOnServer({ config: state.config, live: resetLiveState });
+      // Do NOT sync to server here. This action is just about resetting the client's live state.
+      // The server will be updated on the next meaningful action (like toggling the clock).
 
       newState = { ...state, live: resetLiveState };
       break;
@@ -1657,6 +1648,7 @@ const GameStateObserver = () => {
     const { state, dispatch } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
+    const prevClockOverrideRef = useRef(state.live?.clock.periodDisplayOverride);
 
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
@@ -1664,6 +1656,24 @@ const GameStateObserver = () => {
             lastToastRef.current = state._lastToastMessage;
         }
     }, [state._lastToastMessage, toast]);
+    
+    // Effect to save summary when game ends
+    useEffect(() => {
+        const currentOverride = state.live?.clock.periodDisplayOverride;
+        const previousOverride = prevClockOverrideRef.current;
+
+        // Trigger save only on the transition to 'End of Game'
+        if (currentOverride === 'End of Game' && previousOverride !== 'End of Game') {
+            if (state.live.matchId) {
+                const summary = generateSummaryData(state);
+                if (summary) {
+                    dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: state.live.matchId, summary } });
+                }
+            }
+        }
+        
+        prevClockOverrideRef.current = currentOverride;
+    }, [state.live?.clock.periodDisplayOverride, state.live.matchId, state, dispatch]);
     
 
     return null;
@@ -1893,7 +1903,3 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
-
-
-
-
