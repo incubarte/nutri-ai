@@ -307,7 +307,7 @@
     "currentTime": 0,
     "currentPeriod": 3,
     "isClockRunning": false,
-    "periodDisplayOverride": "AwaitingDecision",
+    "periodDisplayOverride": "End of Game",
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,

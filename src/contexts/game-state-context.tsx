@@ -833,15 +833,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'DELETE_PENALTY_LOG': {
       const { team, logId } = action.payload;
-      
-      const newActivePenalties = state.live.penalties[team].filter(p => p.id !== logId);
       const newPenaltiesLog = { ...state.live.penaltiesLog };
       newPenaltiesLog[team] = newPenaltiesLog[team].filter((p: PenaltyLog) => p.id !== logId);
-      
-      newState = { ...state, live: { ...state.live, 
-        penalties: { ...state.live.penalties, [team]: newActivePenalties },
-        penaltiesLog: newPenaltiesLog
-      }};
+      newState = { ...state, live: { ...state.live, penaltiesLog: newPenaltiesLog }};
       toastMessage = { title: "Penalidad Eliminada del Historial", variant: "destructive" };
       break;
     }
@@ -1374,9 +1368,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         },
       };
       
-      if (newState.live.matchId) {
-        // This will be handled by the observer now.
-      }
       toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
       break;
     }
@@ -1574,8 +1565,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         if (t.id === tournamentId) {
           const newMatches = t.matches.map(m => {
             if (m.id === matchId) {
-              const homeScore = (summary.statsByPeriod || []).reduce((acc, period) => acc + period.stats.goals.home.length, 0);
-              const awayScore = (summary.statsByPeriod || []).reduce((acc, period) => acc + period.stats.goals.away.length, 0);
+              const homeScore = (summary.goals.home || []).length;
+              const awayScore = (summary.goals.away || []).length;
               return { ...m, summary, homeScore, awayScore, overTimeOrShootouts: summary.overTimeOrShootouts };
             }
             return m;
@@ -1616,7 +1607,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'REMOVE_PLAYER_FROM_TEAM': {
       const { teamId, playerId } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) } };
       break;
     }
     case 'SET_TEAM_ATTENDANCE': {
@@ -1970,5 +1961,6 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
 
 
