@@ -266,15 +266,9 @@
     ]
   },
   "home": {
-    "goals": [],
-    "penalties": [],
-    "playerStats": [],
     "homeShotsLog": []
   },
   "away": {
-    "goals": [],
-    "penalties": [],
-    "playerStats": [],
     "awayShotsLog": []
   },
   "statsByPeriod": {

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Info } from 'lucide-react';
 import type { TeamData, Team } from '@/types';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface TeamStats {
   id: string;
@@ -21,6 +22,10 @@ interface TeamStats {
   gf: number; // Goles a Favor
   gc: number; // Goles en Contra
   puntos: number;
+}
+
+interface StandingsDisplayProps {
+  teamContext: Team;
 }
 
 export function StandingsTab() {
@@ -50,8 +55,8 @@ export function StandingsTab() {
           .filter(m => m.categoryId === category.id && (m.homeTeamId === team.id || m.awayTeamId === team.id))
           .forEach(match => {
             teamStats.pj++;
-            const homeScore = match.summary?.home.goals.length || 0;
-            const awayScore = match.summary?.away.goals.length || 0;
+            const homeScore = match.summary?.goals.home.length || 0;
+            const awayScore = match.summary?.goals.away.length || 0;
             const wentToOTOrSO = (match.summary?.statsByPeriod && Object.keys(match.summary.statsByPeriod).some(p => p.startsWith('OT'))) || 
                                  (match.summary?.shootout && (match.summary.shootout.homeAttempts.length > 0 || match.summary.shootout.awayAttempts.length > 0));
 
