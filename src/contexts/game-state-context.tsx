@@ -737,13 +737,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         playedPeriods,
         playHornTrigger: state.live.playHornTrigger + 1,
       }};
-
-      if (newState.live.matchId) {
-        const summary = generateSummaryData(newState);
-        if (summary) {
-          dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: newState.live.matchId, summary } });
-        }
-      }
       
       toastMessage = { title: "¡Partido Finalizado!", description: "Gol de oro registrado exitosamente." };
       break;
@@ -1224,7 +1217,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         if (newState.live.clock.periodDisplayOverride === 'End of Game' && newState.live.matchId) {
             const summary = generateSummaryData(newState);
             if (summary) {
-                dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: newState.live.matchId, summary } });
+                // The reducer can't dispatch. This side-effect needs to happen in an observer.
+                // We will rely on GameStateObserver to handle this.
             }
         }
         break;
@@ -1381,10 +1375,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
       
       if (newState.live.matchId) {
-        const summary = generateSummaryData(newState);
-        if (summary) {
-          dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: newState.live.matchId, summary } });
-        }
+        // This will be handled by the observer now.
       }
       toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
       break;
@@ -1620,12 +1611,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'UPDATE_PLAYER_IN_TEAM': {
       const { teamId, playerId, updates } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
       break;
     }
     case 'REMOVE_PLAYER_FROM_TEAM': {
       const { teamId, playerId } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
       break;
     }
     case 'SET_TEAM_ATTENDANCE': {
@@ -1979,4 +1970,5 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
 
