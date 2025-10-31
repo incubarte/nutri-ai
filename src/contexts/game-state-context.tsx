@@ -977,7 +977,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         currentTimeSnapshot = 0;
       }
       
-      const newPenaltiesLog: { home: PenaltyLog[], away: PenaltyLog[] } = JSON.parse(JSON.stringify(penaltiesLog));
+      const newPenaltiesLog: { home: PenaltyLog[], away: PenaltyLog[] } = penaltiesLog
+        ? JSON.parse(JSON.stringify(penaltiesLog))
+        : { home: [], away: [] };
       
       const processPenalties = (team: Team): Penalty[] => {
           const teamPenalties = penalties[team];
@@ -1277,7 +1279,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newState = { ...state, live: { ...state.live, 
         playedPeriods,
         shootout: {
-          ...INITIAL_SHOOTOUT_STATE,
+          ...INITIAL_LIVE_DATA.shootout,
           isActive: true,
         },
         clock: {
@@ -1581,8 +1583,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         if (t.id === tournamentId) {
           const newMatches = t.matches.map(m => {
             if (m.id === matchId) {
-              const homeScore = summary.goals.home.length;
-              const awayScore = summary.goals.away.length;
+              const homeScore = (summary.statsByPeriod || []).reduce((acc, period) => acc + period.stats.goals.home.length, 0);
+              const awayScore = (summary.statsByPeriod || []).reduce((acc, period) => acc + period.stats.goals.away.length, 0);
               return { ...m, summary, homeScore, awayScore, overTimeOrShootouts: summary.overTimeOrShootouts };
             }
             return m;
@@ -1592,6 +1594,66 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         return t;
       });
       newState = { ...state, config: { ...state.config, tournaments: newTournaments }};
+      break;
+    }
+    case 'ADD_TEAM_TO_TOURNAMENT': {
+        const { tournamentId, team } = action.payload;
+        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === tournamentId ? { ...t, teams: [...t.teams, { ...team, id: team.id || safeUUID() }] } : t) } };
+        break;
+    }
+    case 'DELETE_TEAMS_FROM_TOURNAMENT': {
+        const { tournamentId, teamIds } = action.payload;
+         newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === tournamentId ? { ...t, teams: t.teams.filter(team => !teamIds.includes(team.id)) } : t) } };
+        break;
+    }
+    case 'UPDATE_TEAM_DETAILS': {
+      const { teamId, ...updates } = action.payload;
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, ...updates } : team) })) } };
+      toastMessage = { title: "Equipo Actualizado", description: `El equipo "${updates.name}" ha sido actualizado.` };
+      break;
+    }
+    case 'ADD_PLAYER_TO_TEAM': {
+      const { teamId, player } = action.payload;
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
+      toastMessage = { title: "Jugador Añadido", description: `Jugador ${player.number ? `#${player.number} ` : ''}${player.name} añadido.` };
+      break;
+    }
+    case 'UPDATE_PLAYER_IN_TEAM': {
+      const { teamId, playerId, updates } = action.payload;
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
+      break;
+    }
+    case 'REMOVE_PLAYER_FROM_TEAM': {
+      const { teamId, playerId } = action.payload;
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) } };
+      break;
+    }
+    case 'SET_TEAM_ATTENDANCE': {
+      const { team, playerIds } = action.payload;
+      const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+      const teamData = selectedTournament?.teams.find(t => 
+        t.name === state.live[`${team}TeamName`] &&
+        (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) &&
+        t.category === state.config.selectedMatchCategory
+      );
+
+      let attendedPlayerInfo: AttendedPlayerInfo[] = [];
+      if (teamData) {
+        attendedPlayerInfo = teamData.players
+          .filter(p => playerIds.includes(p.id))
+          .map(p => ({ id: p.id, number: p.number, name: p.name }));
+      }
+      
+      newState = {
+        ...state,
+        live: {
+          ...state.live,
+          attendance: {
+            ...state.live.attendance,
+            [team]: attendedPlayerInfo,
+          },
+        },
+      };
       break;
     }
      case 'UPDATE_LIVE_STATE':
@@ -1917,3 +1979,4 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
