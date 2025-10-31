@@ -26,10 +26,10 @@ export const recalculateAllStatsFromLogs = (gameSummary: GameSummary, homeTeamRo
     });
 
     // Process shots
-    (gameSummary.homeShotsLog || []).forEach(shot => {
+    (gameSummary.home?.homeShotsLog || []).forEach(shot => {
         if (shot.playerId && homePlayerStatsMap.has(shot.playerId)) homePlayerStatsMap.get(shot.playerId)!.shots++;
     });
-    (gameSummary.awayShotsLog || []).forEach(shot => {
+    (gameSummary.away?.awayShotsLog || []).forEach(shot => {
         if (shot.playerId && awayPlayerStatsMap.has(shot.playerId)) awayPlayerStatsMap.get(shot.playerId)!.shots++;
     });
     
@@ -48,11 +48,17 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     // Create the base summary object with the new simplified structure.
     const finalSummary: GameSummary = {
         attendance: live.gameSummary.attendance,
-        goals: { home: live.gameSummary.goals.home || [], away: live.gameSummary.goals.away || [] },
-        penalties: { home: live.gameSummary.penalties.home || [], away: live.gameSummary.penalties.away || [] },
+        goals: { home: live.gameSummary.home.goals || [], away: live.gameSummary.away.goals || [] },
+        penalties: { home: live.gameSummary.home.penalties || [], away: live.gameSummary.away.penalties || [] },
         playerStats: { home: [], away: [] },
-        homeShotsLog: live.gameSummary.homeShotsLog || [],
-        awayShotsLog: live.gameSummary.awayShotsLog || [],
+        home: {
+            ...live.gameSummary.home,
+            homeShotsLog: live.gameSummary.home?.homeShotsLog || [],
+        },
+        away: {
+            ...live.gameSummary.away,
+            awayShotsLog: live.gameSummary.away?.awayShotsLog || [],
+        },
         statsByPeriod: {},
         playedPeriods: live.playedPeriods || [],
     };
@@ -63,9 +69,7 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     finalSummary.playerStats.away = aggregatedStats.away;
 
     // Use live.playedPeriods as the source of truth for all periods.
-    const allPlayedPeriods = [...(live.playedPeriods || [])];
-    
-    allPlayedPeriods.forEach(periodText => {
+    (live.playedPeriods || []).forEach(periodText => {
         // Initialize the structure for this period with home/away containers.
         const periodData: PeriodStats = {
             goals: { home: [], away: [] },
@@ -83,12 +87,8 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         const periodSummaryForStats: GameSummary = {
           ...finalSummary,
           goals: periodData.goals,
-          homeShotsLog: (finalSummary.homeShotsLog || []).filter(s => s.periodText === periodText),
-          awayShotsLog: (finalSummary.awayShotsLog || []).filter(s => s.periodText === periodText),
-          playerStats: {home: [], away: []}, // temp holder
-          penalties: {home: [], away: []}, // temp holder
-          attendance: finalSummary.attendance, // required for recalculate
-          playedPeriods: []
+          home: { ...finalSummary.home, homeShotsLog: (finalSummary.home?.homeShotsLog || []).filter(s => s.periodText === periodText) },
+          away: { ...finalSummary.away, awayShotsLog: (finalSummary.away?.awayShotsLog || []).filter(s => s.periodText === periodText) },
         };
         const periodPlayerStats = recalculateAllStatsFromLogs(periodSummaryForStats, homeTeamRoster, awayTeamRoster);
         periodData.playerStats.home = periodPlayerStats.home;
