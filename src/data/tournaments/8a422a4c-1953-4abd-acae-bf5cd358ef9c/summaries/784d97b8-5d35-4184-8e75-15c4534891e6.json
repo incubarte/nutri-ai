@@ -275,7 +275,30 @@
     "1ST": {
       "goals": {
         "home": [],
-        "away": []
+        "away": [
+          {
+            "id": "1471be39-51ce-4e23-b140-08512a4d57d2",
+            "team": "away",
+            "timestamp": 0,
+            "gameTime": 0,
+            "periodText": "1ST",
+            "scorer": {
+              "playerNumber": "7",
+              "playerName": "BURGESS-WEBB BENICIO"
+            }
+          },
+          {
+            "id": "5d3fd048-e73f-46b2-b47b-d86ea21e6748",
+            "team": "away",
+            "timestamp": 0,
+            "gameTime": 0,
+            "periodText": "1ST",
+            "scorer": {
+              "playerNumber": "7",
+              "playerName": "BURGESS-WEBB BENICIO"
+            }
+          }
+        ]
       },
       "penalties": {
         "home": [],
@@ -426,8 +449,8 @@
             "name": "BURGESS-WEBB BENICIO",
             "number": "7",
             "shots": 0,
-            "goals": 0,
-            "assists": 0
+            "goals": 2,
+            "assists": 19
           },
           {
             "id": "3274dfee-fa07-4c6f-b620-ac7ffb371156",
@@ -443,7 +466,7 @@
             "number": "2",
             "shots": 0,
             "goals": 0,
-            "assists": 0
+            "assists": 4
           },
           {
             "id": "349302cb-ca49-4205-9989-7a797655f00a",
@@ -689,7 +712,7 @@
             "id": "30662261-1360-4849-874d-515e085c0419",
             "name": "BURGESS-WEBB BENICIO",
             "number": "7",
-            "shots": 0,
+            "shots": 2,
             "goals": 0,
             "assists": 0
           },
@@ -705,7 +728,7 @@
             "id": "ee8ae202-fea6-4ca1-bc08-84f54dab6775",
             "name": "CASANOVA FRANCO",
             "number": "2",
-            "shots": 0,
+            "shots": 2,
             "goals": 0,
             "assists": 0
           },
