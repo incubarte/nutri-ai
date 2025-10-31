@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { GameState, GameSummary, PeriodStats, SummaryPlayerStats, GoalLog, ShotLog, AttendedPlayerInfo, Team, PlayerData, PenaltyLog } from "@/types";
@@ -12,13 +13,13 @@ export const recalculateAllStatsFromLogs = (gameSummary: GameSummary, homeTeamRo
     awayTeamRoster.forEach(p => awayPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
 
     // Process goals and assists
-    (gameSummary.goals.home || []).forEach(goal => {
+    (gameSummary.goals?.home || []).forEach(goal => {
         const scorerId = homeTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
         if (scorerId && homePlayerStatsMap.has(scorerId)) homePlayerStatsMap.get(scorerId)!.goals++;
         const assistId = homeTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
         if (assistId && homePlayerStatsMap.has(assistId)) homePlayerStatsMap.get(assistId)!.assists++;
     });
-    (gameSummary.goals.away || []).forEach(goal => {
+    (gameSummary.goals?.away || []).forEach(goal => {
         const scorerId = awayTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
         if (scorerId && awayPlayerStatsMap.has(scorerId)) awayPlayerStatsMap.get(scorerId)!.goals++;
         const assistId = awayTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
@@ -47,8 +48,8 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     
     const finalSummary: GameSummary = {
         attendance: live.gameSummary.attendance,
-        goals: { home: live.gameSummary.goals.home || [], away: live.gameSummary.goals.away || [] },
-        penalties: { home: live.gameSummary.penalties.home || [], away: live.gameSummary.penalties.away || [] },
+        goals: { home: live.gameSummary.goals?.home || [], away: live.gameSummary.goals?.away || [] },
+        penalties: { home: live.gameSummary.penalties?.home || [], away: live.gameSummary.penalties?.away || [] },
         playerStats: { home: [], away: [] },
         home: { homeShotsLog: live.gameSummary.home?.homeShotsLog || [] },
         away: { awayShotsLog: live.gameSummary.away?.awayShotsLog || [] },
@@ -59,8 +60,10 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     const aggregatedStats = recalculateAllStatsFromLogs(finalSummary, homeTeamRoster, awayTeamRoster);
     finalSummary.playerStats.home = aggregatedStats.home;
     finalSummary.playerStats.away = aggregatedStats.away;
+    
+    const allPlayedPeriods = [...(live.playedPeriods || [])];
 
-    (live.playedPeriods || []).forEach(periodText => {
+    allPlayedPeriods.forEach(periodText => {
         const periodData: PeriodStats = {
             goals: { home: [], away: [] },
             penalties: { home: [], away: [] },
