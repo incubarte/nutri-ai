@@ -193,69 +193,79 @@
     "home": [],
     "away": []
   },
-  "homeShotsLog": [],
-  "awayShotsLog": [],
-  "statsByPeriod": {
-    "1ST": {
-      "goals": {
-        "home": [
-          {
-            "team": "home",
-            "timestamp": 1761766893202,
-            "gameTime": 118235,
-            "periodText": "1ST",
-            "scorer": {
-              "playerNumber": "17",
-              "playerName": "SAVCHUK ROMAN"
-            },
-            "id": "a249a3a9-fa05-41c7-992a-3eb6ca161382"
-          }
-        ],
-        "away": []
-      },
-      "penalties": {
-        "home": [
-          {
-            "id": "d303acd2-4ad0-427e-94f3-c2de43a867c5",
-            "team": "home",
-            "playerNumber": "18",
-            "playerName": "CLEMENTINO RENZO",
-            "penaltyName": "Menor",
-            "initialDuration": 120,
-            "reducesPlayerCount": true,
-            "clearsOnGoal": true,
-            "isBenchPenalty": false,
-            "addTimestamp": 1761766885832,
-            "addGameTime": 118987,
-            "addPeriodText": "1ST",
-            "endTimestamp": 1761766889099,
-            "endGameTime": 118659,
-            "endReason": "goal_on_pp",
-            "timeServed": 3
-          }
-        ],
-        "away": []
-      },
-      "playerStats": {
-        "home": [],
-        "away": []
+  "home": {
+    "homeShotsLog": []
+  },
+  "away": {
+    "awayShotsLog": []
+  },
+  "statsByPeriod": [
+    {
+      "period": "1ST",
+      "stats": {
+        "goals": {
+          "home": [
+            {
+              "team": "home",
+              "timestamp": 1761766893202,
+              "gameTime": 118235,
+              "periodText": "1ST",
+              "scorer": {
+                "playerNumber": "17",
+                "playerName": "SAVCHUK ROMAN"
+              },
+              "id": "a249a3a9-fa05-41c7-992a-3eb6ca161382"
+            }
+          ],
+          "away": []
+        },
+        "penalties": {
+          "home": [
+            {
+              "id": "d303acd2-4ad0-427e-94f3-c2de43a867c5",
+              "team": "home",
+              "playerNumber": "18",
+              "playerName": "CLEMENTINO RENZO",
+              "penaltyName": "Menor",
+              "initialDuration": 120,
+              "reducesPlayerCount": true,
+              "clearsOnGoal": true,
+              "isBenchPenalty": false,
+              "addTimestamp": 1761766885832,
+              "addGameTime": 118987,
+              "addPeriodText": "1ST",
+              "endTimestamp": 1761766889099,
+              "endGameTime": 118659,
+              "endReason": "goal_on_pp",
+              "timeServed": 3
+            }
+          ],
+          "away": []
+        },
+        "playerStats": {
+          "home": [],
+          "away": []
+        }
       }
     },
-    "2ND": {
-      "goals": {
-        "home": [],
-        "away": []
-      },
-      "penalties": {
-        "home": [],
-        "away": []
-      },
-      "playerStats": {
-        "home": [],
-        "away": []
+    {
+      "period": "2ND",
+      "stats": {
+        "goals": {
+          "home": [],
+          "away": []
+        },
+        "penalties": {
+          "home": [],
+          "away": []
+        },
+        "playerStats": {
+          "home": [],
+          "away": []
+        }
       }
     }
-  },
+  ],
   "overTimeOrShootouts": false,
   "playedPeriods": [
     "1ST",

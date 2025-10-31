@@ -2,74 +2,69 @@
   "attendance": {
     "home": [
       {
-        "id": "a1267a33-140a-4ebb-92ae-67e2f91c5d8c",
-        "number": "25",
-        "name": "SCOTTO DI CARLO NATALIA"
+        "id": "8a0490f7-65d2-47fc-a7e2-d4c6774943fc",
+        "number": "",
+        "name": "LOMBRAÑA LUCIANO"
       },
       {
-        "id": "6522a433-3afe-491a-b0c1-eba803be98f6",
-        "number": "0",
-        "name": "BONVEHI SEBASTIAN"
+        "id": "b76afe4f-3106-4a32-8ff7-bb5a55d4e6cb",
+        "number": "",
+        "name": "RICCIOTTI MILENA"
       },
       {
-        "id": "7d435986-1a05-45ef-97f3-dfea388eb125",
-        "number": "52",
-        "name": "BRAVO LAUTARO HERNAN"
+        "id": "ab5d2182-3208-4544-8bcc-6d6418d703f8",
+        "number": "",
+        "name": "GUITELMAN TIN"
       },
       {
-        "id": "18396ec9-7833-478c-84ff-2dadb5c3fcf5",
-        "number": "33",
-        "name": "CACERES LEON CRISTIAN"
+        "id": "951d6821-7881-42f0-bbba-3cb2e51f36ac",
+        "number": "",
+        "name": "GUITELMAN CIRO"
       },
       {
-        "id": "e9a6ecf0-5ff3-482b-b526-46fc064e47ad",
-        "number": "17",
-        "name": "CARIMATTO JESICA"
+        "id": "bb870dd7-8ec5-413c-8a14-06b8ed3e609f",
+        "number": "",
+        "name": "ALTAMURA MANUELA"
       },
       {
-        "id": "98647fc4-64c8-4745-a892-d1a225c1effa",
-        "number": "72",
-        "name": "CRUSES RAMIRO"
+        "id": "6db9f543-b867-408b-aca1-0044e5c37032",
+        "number": "",
+        "name": "COVERNTON GUILLERMO"
       },
       {
-        "id": "7c2b9f49-8e9a-4ca7-a985-c64d5e613c57",
-        "number": "18",
-        "name": "DE LA VEGA FLAVIA MICHELLE"
+        "id": "455211fb-2226-4246-ab6d-ed191ce35e42",
+        "number": "",
+        "name": "VILLAGRA ROBERTO"
       },
       {
-        "id": "fc7c6551-7d6a-4ac9-9f9b-0862fd9b7d7e",
-        "number": "90",
-        "name": "DUPERRON SANTIAGO"
+        "id": "f0291968-768f-4093-8234-2804bb0de330",
+        "number": "",
+        "name": "VILLAGRA JUANCHI"
       },
       {
-        "id": "2cf39754-9b90-4c24-b893-c23b103c08b1",
-        "number": "30",
-        "name": "GARIBOTTO JULIAN"
+        "id": "458b5282-ac7c-49d9-8618-11d8d5e2e099",
+        "number": "",
+        "name": "BARRIONUEVO ANDREA"
       },
       {
-        "id": "c985a3b3-495b-45e7-bae2-d97037c733bc",
-        "number": "74",
-        "name": "GIULIODORO JUAN CARLOS"
+        "id": "8ba65d82-bf6e-4352-b8ad-1101473ed32d",
+        "number": "",
+        "name": "MARINELLI FRAN"
       },
       {
-        "id": "681bc4ec-d842-4c62-bc3c-14c7d5530e94",
-        "number": "7",
-        "name": "HERRERA JAVIER"
+        "id": "133a2ad7-3048-43d5-a247-ad6319dc8a87",
+        "number": "",
+        "name": "OLIVERA PAULA"
       },
       {
-        "id": "c0027f1f-9458-487d-8624-01b264fc7c07",
-        "number": "70",
-        "name": "SUAREZ PABLO"
+        "id": "d5acd970-a6dc-4ebd-94fe-00545dea8871",
+        "number": "",
+        "name": "STEINER CRISTOFER"
       },
       {
-        "id": "ffb17c2c-59e7-43ad-be02-832968c15a6a",
-        "number": "27",
-        "name": "SANCHEZ MATIAS"
-      },
-      {
-        "id": "1c75df96-8771-4644-a413-204f6021b81c",
-        "number": "22",
-        "name": "PONCE GERMAN"
+        "id": "3fd26c0b-054c-40a4-be87-528df687ce22",
+        "number": "",
+        "name": "FULUGONIO ESTEBAN ARTURO"
       }
     ],
     "away": [
@@ -165,26 +160,7 @@
     "away": []
   },
   "penalties": {
-    "home": [
-      {
-        "id": "16ac12ff-721f-4a8f-9455-5d2b92ff5200",
-        "team": "home",
-        "playerNumber": "25",
-        "playerName": "SCOTTO DI CARLO NATALIA",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761844293501,
-        "addGameTime": 119538,
-        "addPeriodText": "2ND",
-        "endTimestamp": 1761844299745,
-        "endGameTime": 107516,
-        "endReason": "completed",
-        "timeServed": 120
-      }
-    ],
+    "home": [],
     "away": []
   },
   "playerStats": {
@@ -223,22 +199,7 @@
           "away": []
         },
         "penalties": {
-          "home": [
-            {
-              "id": "16ac12ff-721f-4a8f-9455-5d2b92ff5200",
-              "team": "home",
-              "playerNumber": "25",
-              "playerName": "SCOTTO DI CARLO NATALIA",
-              "penaltyName": "Menor",
-              "initialDuration": 120,
-              "reducesPlayerCount": true,
-              "clearsOnGoal": true,
-              "isBenchPenalty": false,
-              "addTimestamp": 1761844293501,
-              "addGameTime": 119538,
-              "addPeriodText": "2ND"
-            }
-          ],
+          "home": [],
           "away": []
         },
         "playerStats": {
@@ -248,30 +209,7 @@
       }
     }
   ],
-  "overTimeOrShootouts": true,
-  "shootout": {
-    "rounds": 5,
-    "homeAttempts": [
-      {
-        "id": "ce0d29a4-2a2a-403e-aba1-0f1de4e52e9f",
-        "round": 1,
-        "playerId": "c985a3b3-495b-45e7-bae2-d97037c733bc",
-        "playerNumber": "74",
-        "playerName": "GIULIODORO JUAN CARLOS",
-        "isGoal": true
-      }
-    ],
-    "awayAttempts": [
-      {
-        "id": "33b97711-edcb-4114-96f4-743ecc1f9b4c",
-        "round": 1,
-        "playerId": "unknown-44",
-        "playerNumber": "44",
-        "isGoal": false
-      }
-    ],
-    "initiator": "home"
-  },
+  "overTimeOrShootouts": false,
   "playedPeriods": [
     "1ST",
     "2ND"
