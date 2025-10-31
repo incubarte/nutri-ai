@@ -1,37 +1,4 @@
 {
-  "home": {
-    "goals": [],
-    "penalties": [],
-    "playerStats": [],
-    "homeShotsLog": []
-  },
-  "away": {
-    "goals": [
-      {
-        "team": "away",
-        "timestamp": 1761792938097,
-        "gameTime": 120000,
-        "periodText": "1ST",
-        "scorer": {
-          "playerNumber": "1"
-        },
-        "id": "28e18713-56b7-4da1-b918-ed23f3e7cb34"
-      },
-      {
-        "team": "away",
-        "timestamp": 1761792940517,
-        "gameTime": 120000,
-        "periodText": "1ST",
-        "scorer": {
-          "playerNumber": "2"
-        },
-        "id": "231c52ca-dd0d-4b4e-8108-3546e8af7265"
-      }
-    ],
-    "penalties": [],
-    "playerStats": [],
-    "awayShotsLog": []
-  },
   "attendance": {
     "home": [
       {
@@ -188,15 +155,46 @@
       }
     ]
   },
+  "goals": {
+    "home": [],
+    "away": [
+      {
+        "team": "away",
+        "timestamp": 1761792938097,
+        "gameTime": 120000,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "1"
+        },
+        "id": "28e18713-56b7-4da1-b918-ed23f3e7cb34"
+      },
+      {
+        "team": "away",
+        "timestamp": 1761792940517,
+        "gameTime": 120000,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "2"
+        },
+        "id": "231c52ca-dd0d-4b4e-8108-3546e8af7265"
+      }
+    ]
+  },
+  "penalties": {
+    "home": [],
+    "away": []
+  },
+  "playerStats": {
+    "home": [],
+    "away": []
+  },
+  "homeShotsLog": [],
+  "awayShotsLog": [],
   "statsByPeriod": {
     "1ST": {
-      "home": {
-        "goals": [],
-        "penalties": [],
-        "playerStats": []
-      },
-      "away": {
-        "goals": [
+      "goals": {
+        "home": [],
+        "away": [
           {
             "team": "away",
             "timestamp": 1761792938097,
@@ -219,15 +217,24 @@
             "id": "231c52ca-dd0d-4b4e-8108-3546e8af7265",
             "type": "goal"
           }
-        ],
-        "penalties": [],
-        "playerStats": []
+        ]
+      },
+      "penalties": {
+        "home": [],
+        "away": []
+      },
+      "playerStats": {
+        "home": [],
+        "away": []
       }
     },
     "2ND": {
-      "home": {
-        "goals": [],
-        "penalties": [
+      "goals": {
+        "home": [],
+        "away": []
+      },
+      "penalties": {
+        "home": [
           {
             "id": "099be3f8-1699-4c15-ae1c-9bd22d9d348f",
             "team": "home",
@@ -249,12 +256,11 @@
             "type": "penalty"
           }
         ],
-        "playerStats": []
+        "away": []
       },
-      "away": {
-        "goals": [],
-        "penalties": [],
-        "playerStats": []
+      "playerStats": {
+        "home": [],
+        "away": []
       }
     }
   },

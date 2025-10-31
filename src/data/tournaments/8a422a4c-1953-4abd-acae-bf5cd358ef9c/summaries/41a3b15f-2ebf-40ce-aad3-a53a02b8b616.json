@@ -1,6 +1,10 @@
 {
-  "home": {
-    "goals": [
+  "attendance": {
+    "home": [],
+    "away": []
+  },
+  "goals": {
+    "home": [
       {
         "team": "home",
         "timestamp": 1761869023498,
@@ -12,24 +16,22 @@
         "id": "a6309b1f-68be-45f1-b057-526320f6a966"
       }
     ],
-    "penalties": [],
-    "playerStats": [],
-    "homeShotsLog": []
+    "away": []
   },
-  "away": {
-    "goals": [],
-    "penalties": [],
-    "playerStats": [],
-    "awayShotsLog": []
-  },
-  "attendance": {
+  "penalties": {
     "home": [],
     "away": []
   },
+  "playerStats": {
+    "home": [],
+    "away": []
+  },
+  "homeShotsLog": [],
+  "awayShotsLog": [],
   "statsByPeriod": {
     "2ND": {
-      "home": {
-        "goals": [
+      "goals": {
+        "home": [
           {
             "team": "home",
             "timestamp": 1761869023498,
@@ -41,11 +43,15 @@
             "id": "a6309b1f-68be-45f1-b057-526320f6a966"
           }
         ],
-        "playerStats": []
+        "away": []
       },
-      "away": {
-        "goals": [],
-        "playerStats": []
+      "penalties": {
+        "home": [],
+        "away": []
+      },
+      "playerStats": {
+        "home": [],
+        "away": []
       }
     }
   },

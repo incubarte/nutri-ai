@@ -1,36 +1,4 @@
 {
-  "home": {
-    "goals": [],
-    "penalties": [
-      {
-        "id": "16ac12ff-721f-4a8f-9455-5d2b92ff5200",
-        "team": "home",
-        "playerNumber": "25",
-        "playerName": "SCOTTO DI CARLO NATALIA",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761844293501,
-        "addGameTime": 119538,
-        "addPeriodText": "2ND",
-        "endTimestamp": 1761844299745,
-        "endGameTime": 107516,
-        "endPeriodText": "2ND",
-        "endReason": "completed",
-        "timeServed": 120
-      }
-    ],
-    "playerStats": [],
-    "homeShotsLog": []
-  },
-  "away": {
-    "goals": [],
-    "penalties": [],
-    "playerStats": [],
-    "awayShotsLog": []
-  },
   "attendance": {
     "home": [
       {
@@ -192,47 +160,74 @@
       }
     ]
   },
-  "statsByPeriod": {
-    "1ST": {
-      "home": {
-        "goals": [],
-        "playerStats": []
-      },
-      "away": {
-        "goals": [],
-        "playerStats": []
+  "goals": {
+    "home": [],
+    "away": []
+  },
+  "penalties": {
+    "home": [
+      {
+        "id": "16ac12ff-721f-4a8f-9455-5d2b92ff5200",
+        "team": "home",
+        "playerNumber": "25",
+        "playerName": "SCOTTO DI CARLO NATALIA",
+        "penaltyName": "Menor",
+        "initialDuration": 120,
+        "reducesPlayerCount": true,
+        "clearsOnGoal": true,
+        "isBenchPenalty": false,
+        "addTimestamp": 1761844293501,
+        "addGameTime": 119538,
+        "addPeriodText": "2ND",
+        "endTimestamp": 1761844299745,
+        "endGameTime": 107516,
+        "endReason": "completed",
+        "timeServed": 120
       }
-    },
+    ],
+    "away": []
+  },
+  "playerStats": {
+    "home": [],
+    "away": []
+  },
+  "homeShotsLog": [],
+  "awayShotsLog": [],
+  "statsByPeriod": {
     "2ND": {
-      "home": {
-        "goals": [],
-        "penalties": [],
-        "playerStats": []
+      "goals": {
+        "home": [],
+        "away": []
       },
-      "away": {
-        "goals": [],
-        "playerStats": []
+      "penalties": {
+        "home": [],
+        "away": []
+      },
+      "playerStats": {
+        "home": [],
+        "away": []
       }
     }
   },
   "overTimeOrShootouts": true,
   "shootout": {
+    "rounds": 5,
     "homeAttempts": [
       {
-        "id": "6d6fa2c5-7f9e-41db-844b-d6b32e2dc17d",
+        "id": "ce0d29a4-2a2a-403e-aba1-0f1de4e52e9f",
         "round": 1,
-        "playerId": "7c2b9f49-8e9a-4ca7-a985-c64d5e613c57",
-        "playerNumber": "18",
-        "playerName": "DE LA VEGA FLAVIA MICHELLE",
+        "playerId": "c985a3b3-495b-45e7-bae2-d97037c733bc",
+        "playerNumber": "74",
+        "playerName": "GIULIODORO JUAN CARLOS",
         "isGoal": true
       }
     ],
     "awayAttempts": [
       {
-        "id": "b378736d-5471-42d5-9a24-0c461a7334ed",
+        "id": "33b97711-edcb-4114-96f4-743ecc1f9b4c",
         "round": 1,
-        "playerId": "unknown-4",
-        "playerNumber": "4",
+        "playerId": "unknown-44",
+        "playerNumber": "44",
         "isGoal": false
       }
     ],

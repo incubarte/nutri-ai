@@ -1,12 +1,5 @@
 
 
-export interface PlayerStats {
-  name: string;
-  shots: number;
-  goals: number;
-  assists: number;
-}
-
 export interface PenaltyTypeDefinition {
   id: string;
   name: string;
@@ -27,6 +20,7 @@ export interface Penalty {
   clearsOnGoal: boolean;
   isBenchPenalty?: boolean;
   _limitReached?: ('quantity')[];
+  _doesNotReducePlayerCountOverride?: boolean;
 }
 
 export type Team = 'home' | 'away';
@@ -39,6 +33,20 @@ export interface PlayerData {
   name: string; 
 }
 
+export interface MatchData {
+  id: string;
+  date: string; // ISO string
+  categoryId: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  playersPerTeam: number;
+  summary?: GameSummary;
+  homeScore?: number;
+  awayScore?: number;
+  overTimeOrShootouts?: boolean;
+}
+
+
 export interface TeamData {
   id: string;
   name: string;
@@ -46,6 +54,15 @@ export interface TeamData {
   logoDataUrl?: string | null; 
   players: PlayerData[];
   category: string; 
+}
+
+export interface Tournament {
+  id: string;
+  name: string;
+  status: 'active' | 'inactive' | 'finished';
+  teams: TeamData[];
+  categories: CategoryData[];
+  matches: MatchData[];
 }
 
 export interface CategoryData {
@@ -74,6 +91,8 @@ export interface FormatAndTimingsProfileData {
   defaultPenaltyTypeId: string | null;
   enableMaxPenaltiesLimit: boolean;
   maxPenaltiesPerPlayer: number;
+  gameTimeMode: 'running' | 'stopped';
+  autoActivatePuckPenalties: boolean;
   enableStoppedTimeAlert: boolean;
   stoppedTimeAlertGoalDiff: number;
   stoppedTimeAlertTimeRemaining: number;
@@ -160,24 +179,36 @@ export interface AttendedPlayerInfo {
   name: string;
 }
 
-export interface GameSummary {
-  home: {
-    goals: GoalLog[];
-    penalties: PenaltyLog[];
-    playerStats: Record<string, PlayerStats>;
-    homeShotsLog: ShotLog[];
-  };
-  away: {
-    goals: GoalLog[];
-    penalties: PenaltyLog[];
-    playerStats: Record<string, PlayerStats>;
-    awayShotsLog: ShotLog[];
-  };
-  attendance: {
-    home: AttendedPlayerInfo[]; 
-    away: AttendedPlayerInfo[]; 
-  };
+export interface PeriodStats {
+  goals: { home: GoalLog[], away: GoalLog[] };
+  penalties: { home: PenaltyLog[], away: PenaltyLog[] };
+  playerStats: { home: SummaryPlayerStats[], away: SummaryPlayerStats[] };
 }
+
+export interface GameSummary {
+  attendance: {
+    home: AttendedPlayerInfo[];
+    away: AttendedPlayerInfo[];
+  };
+  goals: {
+    home: GoalLog[];
+    away: GoalLog[];
+  };
+  penalties: {
+    home: PenaltyLog[];
+    away: PenaltyLog[];
+  };
+  playerStats: {
+    home: SummaryPlayerStats[];
+    away: SummaryPlayerStats[];
+  };
+  homeShotsLog?: ShotLog[];
+  awayShotsLog?: ShotLog[];
+  shootout?: Omit<ShootoutState, 'isActive'>;
+  statsByPeriod?: Record<string, PeriodStats>;
+  overTimeOrShootouts?: boolean;
+}
+
 
 export interface TunnelState {
   subdomain: string | null;
@@ -200,6 +231,7 @@ export interface ConfigFields { // Interface for easier picking of fields
   customPenaltyBeepSoundDataUrl: string | null;
   scoreboardLayoutProfiles: ScoreboardLayoutProfile[];
   enableDebugMode: boolean;
+  tickIntervalMs: number;
   tunnel: TunnelState;
 }
 
@@ -208,12 +240,12 @@ export interface ConfigState extends Omit<FormatAndTimingsProfileData, 'id' | 'n
   selectedFormatAndTimingsProfileId: string | null;
   scoreboardLayout: ScoreboardLayoutSettings;
   selectedScoreboardLayoutProfileId: string | null;
-  availableCategories: CategoryData[];
+  tournaments: Tournament[];
+  selectedTournamentId: string | null;
   selectedMatchCategory: string;
-  teams: TeamData[];
 }
 
-export type PeriodDisplayOverrideType = 'Warm-up' | 'Break' | 'Pre-OT Break' | 'Time Out' | 'End of Game' | null;
+export type PeriodDisplayOverrideType = 'Warm-up' | 'Break' | 'Pre-OT Break' | 'Time Out' | 'End of Game' | 'Shootout' | 'AwaitingDecision' | null;
 
 export interface PreTimeoutState {
   period: number;
@@ -286,12 +318,22 @@ export interface LiveState {
     team: Team; // The team that conceded the goal (and has the penalty)
     penaltyId: string;
   } | null;
+  overlayMessage: {
+    id: string;
+    text: string;
+    duration: number; // in milliseconds
+  } | null;
+  matchId: string | null;
+  playedPeriods: string[];
 }
 
 export interface LiveGameState extends LiveState {
     playersPerTeamOnIce?: number; 
     numberOfRegularPeriods?: number;
+    // These optional fields are for backward compatibility during transitions.
+    // They will be derived from the selected tournament's data.
     teams?: TeamData[];
+    availableCategories?: CategoryData[]; 
     selectedMatchCategory?: string;
     penaltyTypes?: PenaltyTypeDefinition[];
     defaultPenaltyTypeId?: string | null;
@@ -326,6 +368,8 @@ export type RemoteCommand =
 
 
 export type GameAction =
+  | { type: 'SHOW_OVERLAY_MESSAGE'; payload: { text: string, duration: number } }
+  | { type: 'HIDE_OVERLAY_MESSAGE' }
   | { type: 'TOGGLE_CLOCK' }
   | { type: 'SET_TIME'; payload: { minutes: number; seconds: number } }
   | { type: 'ADJUST_TIME'; payload: number }
@@ -335,12 +379,13 @@ export type GameAction =
   | { type: 'EDIT_GOAL'; payload: { goalId: string; updates: Partial<GoalLog> } }
   | { type: 'DELETE_GOAL'; payload: { goalId: string } }
   | { type: 'ADD_PLAYER_SHOT'; payload: { team: Team; playerNumber: string } }
-  | { type: 'SET_PLAYER_SHOTS', payload: { team: Team; playerId: string; periodText: string; shotCount: number } }
   | { type: 'FINISH_GAME_WITH_OT_GOAL'; payload: Omit<GoalLog, 'id'> }
-  | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; penaltyTypeId: string; } } }
+  | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; penaltyTypeId: string; }, addGameTime?: number, addPeriodText?: string } }
   | { type: 'REMOVE_PENALTY'; payload: { team: Team; penaltyId: string } }
+  | { type: 'DELETE_PENALTY_LOG', payload: { team: Team, logId: string } }
   | { type: 'END_PENALTY_FOR_GOAL'; payload: { team: Team; penaltyId: string } }
   | { type: 'CLEAR_PENDING_POWER_PLAY_GOAL' }
+  | { type: 'TOGGLE_PENALTY_PLAYER_REDUCTION'; payload: { team: Team; penaltyId: string } }
   | { type: 'ADJUST_PENALTY_TIME'; payload: { team: Team; penaltyId: string; delta: number } }
   | { type: 'SET_PENALTY_TIME'; payload: { team: Team; penaltyId: string; time: number } }
   | { type: 'REORDER_PENALTIES'; payload: { team: Team; startIndex: number; endIndex: number } }
@@ -377,21 +422,32 @@ export type GameAction =
   | { type: 'SELECT_SCOREBOARD_LAYOUT_PROFILE'; payload: { profileId: string } }
   | { type: 'SAVE_CURRENT_LAYOUT_TO_PROFILE' }
   | { type: 'LOAD_SOUND_AND_DISPLAY_CONFIG'; payload: Partial<Pick<ConfigState, 'playSoundAtPeriodEnd' | 'customHornSoundDataUrl' | 'enableTeamSelectionInMiniScoreboard' | 'enablePlayerSelectionForPenalties' | 'showAliasInPenaltyPlayerSelector' | 'showAliasInControlsPenaltyList' | 'showAliasInScoreboardPenalties' | 'scoreboardLayoutProfiles' | 'enablePenaltyCountdownSound' | 'penaltyCountdownStartTime' | 'customPenaltyBeepSoundDataUrl' | 'enableDebugMode' | 'tunnel'>> }
-  | { type: 'SET_AVAILABLE_CATEGORIES'; payload: CategoryData[] }
+  | { type: 'SET_CATEGORIES_FOR_TOURNAMENT'; payload: { tournamentId: string, categories: CategoryData[] } }
+  | { type: 'ADD_CATEGORIES_TO_TOURNAMENT'; payload: { tournamentId: string, categories: CategoryData[] } }
   | { type: 'SET_SELECTED_MATCH_CATEGORY'; payload: string }
   | { type: 'UPDATE_TUNNEL_STATE', payload: Partial<TunnelState> }
-  | { type: 'HYDRATE_FROM_STORAGE'; payload: Partial<GameState> }
+  | { type: 'ADD_TOURNAMENT'; payload: { name: string; status: Tournament['status'] } }
+  | { type: 'UPDATE_TOURNAMENT'; payload: { id: string; name: string; status: Tournament['status'] } }
+  | { type: 'DELETE_TOURNAMENT'; payload: { id: string } }
+  | { type: 'SET_ACTIVE_TOURNAMENT'; payload: { tournamentId: string | null } }
+  | { type: 'ADD_MATCH_TO_TOURNAMENT'; payload: { tournamentId: string; match: Omit<MatchData, 'id'> } }
+  | { type: 'UPDATE_MATCH_IN_TOURNAMENT'; payload: { tournamentId: string; match: MatchData } }
+  | { type: 'DELETE_MATCH_FROM_TOURNAMENT'; payload: { tournamentId: string; matchId: string } }
+  | { type: 'SAVE_MATCH_SUMMARY'; payload: { matchId: string; summary: GameSummary; } }
+  | { type: 'HYDRATE_FROM_SERVER'; payload: GameState }
   | { type: 'SET_STATE_FROM_LOCAL_BROADCAST'; payload: GameState }
+  | { type: 'UPDATE_LIVE_STATE', payload: Partial<LiveState> }
   | { type: 'RESET_CONFIG_TO_DEFAULTS' }
   | { type: 'RESET_GAME_STATE' }
-  | { type: 'ADD_TEAM'; payload: Omit<TeamData, 'id' | 'players'> & { players: PlayerData[] } }
+  | { type: 'ADD_TEAM_TO_TOURNAMENT'; payload: { tournamentId: string, team: Omit<TeamData, 'id'> & { id?: string } } }
+  | { type: 'DELETE_TEAMS_FROM_TOURNAMENT'; payload: { tournamentId: string, teamIds: string[] } }
   | { type: 'UPDATE_TEAM_DETAILS'; payload: { teamId: string; name: string; subName?: string; category: string; logoDataUrl?: string | null } }
-  | { type: 'DELETE_TEAM'; payload: { teamId: string } }
   | { type: 'ADD_PLAYER_TO_TEAM'; payload: { teamId: string; player: Omit<PlayerData, 'id'> } }
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
-  | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
-  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } };
+  | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } }
+  | { type: 'SET_PLAYER_SHOTS', payload: { team: Team; playerId: string; periodText: string; shotCount: number } };
+
 
 export interface GameState {
   config: ConfigState;
@@ -399,4 +455,20 @@ export interface GameState {
   _initialConfigLoadComplete: boolean;
   _lastActionOriginator?: string;
   _lastUpdatedTimestamp?: number;
+  _lastToastMessage?: {
+    title: string;
+    description?: string;
+    variant?: "default" | "destructive";
+  } | null;
+}
+
+
+// --- Type for player stats within the summary component ---
+export interface SummaryPlayerStats {
+  id: string;
+  number: string;
+  name: string;
+  goals: number;
+  assists: number;
+  shots: number;
 }
