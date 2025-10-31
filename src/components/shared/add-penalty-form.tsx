@@ -44,8 +44,8 @@ export function AddPenaltyForm({
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(preselectedTeam);
   const [playerNumber, setPlayerNumber] = useState('');
   const [penaltyTypeId, setPenaltyTypeId] = useState<string | null>(defaultPenaltyTypeId);
-  const [minutes, setMinutes] = useState('');
-  const [seconds, setSeconds] = useState('');
+  const [minutes, setMinutes] = useState('00');
+  const [seconds, setSeconds] = useState('00');
   const [period, setPeriod] = useState<string | undefined>(preselectedPeriod);
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();

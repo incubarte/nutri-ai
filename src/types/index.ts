@@ -1,5 +1,4 @@
 
-
 export interface PenaltyTypeDefinition {
   id: string;
   name: string;
@@ -202,8 +201,12 @@ export interface GameSummary {
     home: SummaryPlayerStats[];
     away: SummaryPlayerStats[];
   };
-  homeShotsLog?: ShotLog[];
-  awayShotsLog?: ShotLog[];
+  home: { // Legacy or temporary structure, to be removed.
+    homeShotsLog?: ShotLog[];
+  };
+  away: { // Legacy or temporary structure, to be removed.
+    awayShotsLog?: ShotLog[];
+  };
   shootout?: Omit<ShootoutState, 'isActive'>;
   statsByPeriod?: Record<string, PeriodStats>;
   overTimeOrShootouts?: boolean;

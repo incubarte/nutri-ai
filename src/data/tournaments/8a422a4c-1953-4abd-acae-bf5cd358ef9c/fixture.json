@@ -26,7 +26,10 @@
       "homeTeamId": "a3a33ad9-1227-4336-8d16-2a565095597c",
       "awayTeamId": "01c108c7-6733-4db5-83f4-0fb3d8b258cf",
       "playersPerTeam": 5,
-      "id": "784d97b8-5d35-4184-8e75-15c4534891e6"
+      "id": "784d97b8-5d35-4184-8e75-15c4534891e6",
+      "homeScore": 0,
+      "awayScore": 0,
+      "overTimeOrShootouts": true
     },
     {
       "date": "2025-10-29T03:00:00.000Z",

@@ -1,22 +1,11 @@
 {
   "score": {
-    "home": 1,
+    "home": 0,
     "away": 0,
-    "homeGoals": [
-      {
-        "team": "home",
-        "timestamp": 1761869023498,
-        "gameTime": 120000,
-        "periodText": "2ND",
-        "scorer": {
-          "playerNumber": "44"
-        },
-        "id": "a6309b1f-68be-45f1-b057-526320f6a966"
-      }
-    ],
-    "awayGoals": [],
     "homeShots": 0,
-    "awayShots": 0
+    "awayShots": 0,
+    "homeGoals": [],
+    "awayGoals": []
   },
   "penalties": {
     "home": [],
@@ -24,7 +13,7 @@
   },
   "clock": {
     "currentTime": 0,
-    "currentPeriod": 2,
+    "currentPeriod": 3,
     "isClockRunning": false,
     "periodDisplayOverride": "End of Game",
     "preTimeoutState": null,
@@ -40,23 +29,11 @@
     "awayAttempts": [],
     "initiator": null
   },
-  "homeTeamName": "Fantasy Skate CM",
-  "awayTeamName": "Ovejas Negras Corderos",
-  "awayTeamSubName": "Corderos",
+  "homeTeamName": "Fantasy Skate",
+  "awayTeamName": "ACEMHH",
   "gameSummary": {
     "home": {
-      "goals": [
-        {
-          "team": "home",
-          "timestamp": 1761869023498,
-          "gameTime": 120000,
-          "periodText": "2ND",
-          "scorer": {
-            "playerNumber": "44"
-          },
-          "id": "a6309b1f-68be-45f1-b057-526320f6a966"
-        }
-      ],
+      "goals": [],
       "penalties": [],
       "playerStats": [],
       "homeShotsLog": []
@@ -76,9 +53,10 @@
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
-  "matchId": "41a3b15f-2ebf-40ce-aad3-a53a02b8b616",
+  "matchId": "784d97b8-5d35-4184-8e75-15c4534891e6",
   "playedPeriods": [
     "1ST",
-    "2ND"
+    "2ND",
+    "OT"
   ]
 }

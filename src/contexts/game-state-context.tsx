@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -96,9 +94,13 @@ const IN_CODE_INITIAL_TOURNAMENT: Tournament = {
 
 
 const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
-  home: { goals: [], penalties: [], playerStats: [], homeShotsLog: [] },
-  away: { goals: [], penalties: [], playerStats: [], awayShotsLog: [] },
+  home: { homeShotsLog: [] },
+  away: { awayShotsLog: [] },
   attendance: { home: [], away: [] },
+  goals: { home: [], away: [] },
+  penalties: { home: [], away: [] },
+  playerStats: { home: [], away: [] },
+  playedPeriods: [],
 };
 
 const INITIAL_SHOOTOUT_STATE: ShootoutState = {
@@ -559,6 +561,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_GOAL': {
       const { clock, config, live } = state;
+      const tournament = (config.tournaments || []).find(t => t.id === config.selectedTournamentId);
+      const homeTeamRoster = tournament?.teams.find(t => t.name === live.homeTeamName && (t.subName || undefined) === (live.homeTeamSubName || undefined))?.players || [];
+      const awayTeamRoster = tournament?.teams.find(t => t.name === live.awayTeamName && (t.subName || undefined) === (live.awayTeamSubName || undefined))?.players || [];
+
       let periodTextForLog: string;
       
       if (action.payload.periodText) {
@@ -572,24 +578,24 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       const newGoal: GoalLog = { ...action.payload, id: safeUUID(), periodText: periodTextForLog };
       
-      const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      newGameSummary[action.payload.team].goals.push(newGoal);
+      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      newGameSummary.goals[action.payload.team].push(newGoal);
 
       const teamScored = action.payload.team;
       const teamConceded = teamScored === 'home' ? 'away' : 'home';
       
-      const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
+      const statsRecalc = recalculateAllStatsFromLogs(newGameSummary, homeTeamRoster, awayTeamRoster);
 
-      const homeGoals = newGameSummary.home.goals;
-      const awayGoals = newGameSummary.away.goals;
+      const homeGoals = newGameSummary.goals.home;
+      const awayGoals = newGameSummary.goals.away;
 
       const score = {
           home: homeGoals.length,
           away: awayGoals.length,
           homeGoals,
           awayGoals,
-          homeShots: homeTotalShots,
-          awayShots: awayTotalShots,
+          homeShots: (newGameSummary.home.homeShotsLog || []).length,
+          awayShots: (newGameSummary.away.awayShotsLog || []).length,
       };
 
       let pendingPPGoal: LiveState['pendingPowerPlayGoal'] = null;
@@ -613,8 +619,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         pendingPowerPlayGoal: pendingPPGoal,
         gameSummary: {
           ...newGameSummary,
-          home: { ...newGameSummary.home, playerStats: homePlayerStats },
-          away: { ...newGameSummary.away, playerStats: awayPlayerStats },
+          playerStats: {
+            home: statsRecalc.home,
+            away: statsRecalc.away,
+          },
         },
       }};
       toastMessage = { title: "Gol Añadido", description: `Gol para el jugador #${action.payload.scorer?.playerNumber} registrado.` };
@@ -622,10 +630,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
      case 'EDIT_GOAL': {
       const { goalId, updates } = action.payload;
-      const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
       let goalFound = false;
 
-      newGameSummary.home.goals = newGameSummary.home.goals.map((g: GoalLog) => {
+      newGameSummary.goals.home = newGameSummary.goals.home.map((g: GoalLog) => {
         if (g.id === goalId) {
             goalFound = true;
             return { ...g, ...updates };
@@ -633,7 +641,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         return g;
       });
       if (!goalFound) {
-        newGameSummary.away.goals = newGameSummary.away.goals.map((g: GoalLog) => {
+        newGameSummary.goals.away = newGameSummary.goals.away.map((g: GoalLog) => {
           if (g.id === goalId) {
               goalFound = true;
               return { ...g, ...updates };
@@ -643,17 +651,20 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
 
       if (goalFound) {
-        const { homePlayerStats, awayPlayerStats } = recalculateAllStatsFromLogs(newGameSummary);
-        const homeGoals = newGameSummary.home.goals;
-        const awayGoals = newGameSummary.away.goals;
+        const tournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
+        const homeTeamRoster = tournament?.teams.find(t => t.name === state.live.homeTeamName && (t.subName || undefined) === (state.live.homeTeamSubName || undefined))?.players || [];
+        const awayTeamRoster = tournament?.teams.find(t => t.name === state.live.awayTeamName && (t.subName || undefined) === (state.live.awayTeamSubName || undefined))?.players || [];
+        const { home: homePlayerStats, away: awayPlayerStats } = recalculateAllStatsFromLogs(newGameSummary, homeTeamRoster, awayTeamRoster);
+        
+        const homeGoals = newGameSummary.goals.home;
+        const awayGoals = newGameSummary.goals.away;
         const newScore = { ...state.live.score, home: homeGoals.length, away: awayGoals.length, homeGoals, awayGoals };
 
         newState = { ...state, live: { ...state.live, 
           score: newScore,
           gameSummary: {
             ...newGameSummary,
-            home: { ...newGameSummary.home, playerStats: homePlayerStats },
-            away: { ...newGameSummary.away, playerStats: awayPlayerStats },
+            playerStats: { home: homePlayerStats, away: awayPlayerStats },
           }
         }};
         toastMessage = { title: "Gol Actualizado", description: "Los cambios en el gol han sido guardados." };
@@ -662,25 +673,28 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'DELETE_GOAL': {
       const { goalId } = action.payload;
-      const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      const initialHomeGoalsCount = newGameSummary.home.goals.length;
+      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      const initialHomeGoalsCount = newGameSummary.goals.home.length;
       
-      newGameSummary.home.goals = newGameSummary.home.goals.filter((g: GoalLog) => g.id !== goalId);
-      if (newGameSummary.home.goals.length === initialHomeGoalsCount) {
-        newGameSummary.away.goals = newGameSummary.away.goals.filter((g: GoalLog) => g.id !== goalId);
+      newGameSummary.goals.home = newGameSummary.goals.home.filter((g: GoalLog) => g.id !== goalId);
+      if (newGameSummary.goals.home.length === initialHomeGoalsCount) {
+        newGameSummary.goals.away = newGameSummary.goals.away.filter((g: GoalLog) => g.id !== goalId);
       }
+      
+      const tournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
+      const homeTeamRoster = tournament?.teams.find(t => t.name === state.live.homeTeamName && (t.subName || undefined) === (state.live.homeTeamSubName || undefined))?.players || [];
+      const awayTeamRoster = tournament?.teams.find(t => t.name === state.live.awayTeamName && (t.subName || undefined) === (state.live.awayTeamSubName || undefined))?.players || [];
+      const { home: homePlayerStats, away: awayPlayerStats } = recalculateAllStatsFromLogs(newGameSummary, homeTeamRoster, awayTeamRoster);
 
-      const { homePlayerStats, awayPlayerStats } = recalculateAllStatsFromLogs(newGameSummary);
-      const homeGoals = newGameSummary.home.goals;
-      const awayGoals = newGameSummary.away.goals;
+      const homeGoals = newGameSummary.goals.home;
+      const awayGoals = newGameSummary.goals.away;
       const newScore = { ...state.live.score, home: homeGoals.length, away: awayGoals.length, homeGoals, awayGoals };
 
       newState = { ...state, live: { ...state.live,
         score: newScore,
         gameSummary: {
           ...newGameSummary,
-          home: { ...newGameSummary.home, playerStats: homePlayerStats },
-          away: { ...newGameSummary.away, playerStats: awayPlayerStats },
+          playerStats: { home: homePlayerStats, away: awayPlayerStats },
         }
       }};
       toastMessage = { title: "Gol Eliminado", description: "El gol ha sido eliminado del registro." };
@@ -701,37 +715,48 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         playerName: attendedPlayer?.name,
       };
 
-      const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      const shotsLogKey = `${team}ShotsLog` as const;
-      if (!newGameSummary[team][shotsLogKey]) {
-        newGameSummary[team][shotsLogKey] = [];
-      }
-      newGameSummary[team][shotsLogKey].push(newShotLog);
+      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      const shotsLogKey = team === 'home' ? 'home' : 'away';
+      if (!newGameSummary[shotsLogKey].homeShotsLog && team === 'home') newGameSummary.home.homeShotsLog = [];
+      if (!newGameSummary[shotsLogKey].awayShotsLog && team === 'away') newGameSummary.away.awayShotsLog = [];
       
-      const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
+      if(team === 'home') newGameSummary.home.homeShotsLog!.push(newShotLog);
+      else newGameSummary.away.awayShotsLog!.push(newShotLog);
       
-      const newScore = { ...state.live.score, homeShots: homeTotalShots, awayShots: awayTotalShots };
+      const tournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
+      const homeTeamRoster = tournament?.teams.find(t => t.name === state.live.homeTeamName && (t.subName || undefined) === (state.live.homeTeamSubName || undefined))?.players || [];
+      const awayTeamRoster = tournament?.teams.find(t => t.name === state.live.awayTeamName && (t.subName || undefined) === (state.live.awayTeamSubName || undefined))?.players || [];
+      const { home: homePlayerStats, away: awayPlayerStats } = recalculateAllStatsFromLogs(newGameSummary, homeTeamRoster, awayTeamRoster);
+      
+      const newScore = { 
+        ...state.live.score, 
+        homeShots: (newGameSummary.home.homeShotsLog || []).length, 
+        awayShots: (newGameSummary.away.awayShotsLog || []).length,
+      };
 
       newState = { ...state, live: { ...state.live,
         score: newScore,
         gameSummary: {
           ...newGameSummary,
-          home: { ...newGameSummary.home, playerStats: homePlayerStats },
-          away: { ...newGameSummary.away, playerStats: awayPlayerStats },
+          playerStats: { home: homePlayerStats, away: awayPlayerStats },
         }
       }};
       break;
     }
     case 'SET_PLAYER_SHOTS': {
       const { team, playerId, periodText, shotCount } = action.payload;
-      const { live } = state;
+      const { live, config } = state;
       const { gameSummary } = live;
 
-      const attendedPlayer = gameSummary.attendance[team].find(p => p.id === playerId);
-      if (!attendedPlayer) break;
+      const tournament = (config.tournaments || []).find(t => t.id === config.selectedTournamentId);
+      const teamRoster = (team === 'home' ? tournament?.teams.find(t => t.name === live.homeTeamName && (t.subName || undefined) === (live.homeTeamSubName || undefined))?.players : tournament?.teams.find(t => t.name === live.awayTeamName && (t.subName || undefined) === (live.awayTeamSubName || undefined))?.players) || [];
+      const playerDetails = teamRoster.find(p => p.id === playerId);
+      if (!playerDetails) break;
 
-      const shotsLogKey = `${team}ShotsLog` as const;
-      const otherShots = (gameSummary[team]?.[shotsLogKey] || []).filter((shot: ShotLog) => shot.playerId !== playerId || shot.periodText !== periodText);
+      const shotsLogKey = team === 'home' ? 'homeShotsLog' : 'awayShotsLog';
+      const teamLogKey = team;
+      
+      const otherShots = (gameSummary[teamLogKey]?.[shotsLogKey] || []).filter((shot: ShotLog) => shot.playerId !== playerId || shot.periodText !== periodText);
       
       const newShotsForPeriod: ShotLog[] = Array.from({ length: shotCount }, (_, i) => ({
           id: safeUUID(),
@@ -739,15 +764,20 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           timestamp: Date.now() + i,
           gameTime: 0,
           periodText,
-          playerId: attendedPlayer.id,
-          playerNumber: attendedPlayer.number,
-          playerName: attendedPlayer.name
+          playerId: playerDetails.id,
+          playerNumber: playerDetails.number,
+          playerName: playerDetails.name
       }));
 
       const newGameSummary = JSON.parse(JSON.stringify(gameSummary));
-      newGameSummary[team][shotsLogKey] = [...otherShots, ...newShotsForPeriod];
+      newGameSummary[teamLogKey][shotsLogKey] = [...otherShots, ...newShotsForPeriod];
       
-      const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(newGameSummary);
+      const homeTeamRoster = tournament?.teams.find(t => t.name === live.homeTeamName && (t.subName || undefined) === (live.homeTeamSubName || undefined))?.players || [];
+      const awayTeamRoster = tournament?.teams.find(t => t.name === live.awayTeamName && (t.subName || undefined) === (live.awayTeamSubName || undefined))?.players || [];
+      const { home: homePlayerStats, away: awayPlayerStats } = recalculateAllStatsFromLogs(newGameSummary, homeTeamRoster, awayTeamRoster);
+      const homeTotalShots = (newGameSummary.home.homeShotsLog || []).length;
+      const awayTotalShots = (newGameSummary.away.awayShotsLog || []).length;
+
 
       newState = {
           ...state,
@@ -760,8 +790,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
               },
               gameSummary: {
                   ...newGameSummary,
-                  home: { ...newGameSummary.home, playerStats: homePlayerStats },
-                  away: { ...newGameSummary.away, playerStats: awayPlayerStats },
+                  playerStats: { home: homePlayerStats, away: awayPlayerStats },
               }
           }
       };
@@ -771,18 +800,21 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'FINISH_GAME_WITH_OT_GOAL': {
       const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
       const team = action.payload.team;
-      const gameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      gameSummary[team].goals.push(newGoal);
+      const gameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      gameSummary.goals[team].push(newGoal);
 
-      const { homePlayerStats, awayPlayerStats, homeTotalShots, awayTotalShots } = recalculateAllStatsFromLogs(gameSummary);
+      const tournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
+      const homeTeamRoster = tournament?.teams.find(t => t.name === state.live.homeTeamName && (t.subName || undefined) === (state.live.homeTeamSubName || undefined))?.players || [];
+      const awayTeamRoster = tournament?.teams.find(t => t.name === state.live.awayTeamName && (t.subName || undefined) === (state.live.awayTeamSubName || undefined))?.players || [];
+      const { home: homePlayerStats, away: awayPlayerStats } = recalculateAllStatsFromLogs(gameSummary, homeTeamRoster, awayTeamRoster);
       
       const newScore = {
-          home: gameSummary.home.goals.length,
-          away: gameSummary.away.goals.length,
-          homeGoals: gameSummary.home.goals,
-          awayGoals: gameSummary.away.goals,
-          homeShots: homeTotalShots,
-          awayShots: awayTotalShots,
+          home: gameSummary.goals.home.length,
+          away: gameSummary.goals.away.length,
+          homeGoals: gameSummary.goals.home,
+          awayGoals: gameSummary.goals.away,
+          homeShots: (gameSummary.home.homeShotsLog || []).length,
+          awayShots: (gameSummary.away.awayShotsLog || []).length,
       };
       
       const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
@@ -809,8 +841,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         playedPeriods,
         gameSummary: {
           ...gameSummary,
-          home: { ...gameSummary.home, playerStats: homePlayerStats },
-          away: { ...gameSummary.away, playerStats: awayPlayerStats },
+          playerStats: { home: homePlayerStats, away: awayPlayerStats },
         },
         playHornTrigger: state.live.playHornTrigger + 1,
       }};
@@ -824,7 +855,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             if (t.id === tournamentId) {
               const matches = t.matches.map(m => {
                 if (m.id === matchId) {
-                  return { ...m, summary, homeScore: summary.home.goals.length, awayScore: summary.away.goals.length, overTimeOrShootouts: summary.overTimeOrShootouts };
+                  return { ...m, summary, homeScore: summary.goals.home.length, awayScore: summary.goals.away.length, overTimeOrShootouts: summary.overTimeOrShootouts };
                 }
                 return m;
               });
@@ -867,8 +898,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         addPeriodText: addPeriodText ?? getActualPeriodText(live.clock.currentPeriod, live.clock.periodDisplayOverride, config.numberOfRegularPeriods || 2, live.shootout),
       };
 
-      const newGameSummary = JSON.parse(JSON.stringify(live.gameSummary));
-      newGameSummary[team].penalties.push(newPenaltyLog);
+      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(live.gameSummary));
+      newGameSummary.penalties[team].push(newPenaltyLog);
       
       if (addGameTime !== undefined && addPeriodText !== undefined) {
         newState = { ...state, live: { ...state.live, gameSummary: newGameSummary }};
@@ -876,7 +907,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       } else {
         const { _liveAbsoluteElapsedTimeCs } = live.clock;
         const limitReachedReasons: ('quantity')[] = [];
-        const playerPenalties = live.gameSummary[team].penalties.filter(
+        const playerPenalties = live.gameSummary.penalties[team].filter(
           p => p.playerNumber === playerNumber && p.endReason !== 'deleted' && !p.isBenchPenalty
         );
         
@@ -923,11 +954,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const remainingTimeCs = penaltyToRemove.expirationTime !== undefined ? Math.max(0, penaltyToRemove.expirationTime - state.live.clock._liveAbsoluteElapsedTimeCs) : penaltyToRemove.initialDuration * 100;
       const timeServed = penaltyToRemove.initialDuration - Math.round(remainingTimeCs / 100);
       
+      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      newGameSummary.penalties[team] = newGameSummary.penalties[team].map(p =>
+          p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'deleted', timeServed } : p
+        );
+
       newState = { ...state, live: { ...state.live,
         penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId))},
-        gameSummary: { ...state.live.gameSummary, [team]: { ...state.live.gameSummary[team], penalties: state.live.gameSummary[team].penalties.map(p =>
-          p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'deleted', timeServed } : p
-        )}}
+        gameSummary: newGameSummary
       }};
       break;
     }
@@ -936,8 +970,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       const newActivePenalties = state.live.penalties[team].filter(p => p.id !== logId);
 
-      const newGameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      newGameSummary[team].penalties = newGameSummary[team].penalties.filter((p: PenaltyLog) => p.id !== logId);
+      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      newGameSummary.penalties[team] = newGameSummary.penalties[team].filter((p: PenaltyLog) => p.id !== logId);
       
       newState = { ...state, live: { ...state.live, 
         penalties: { ...state.live.penalties, [team]: newActivePenalties },
@@ -954,12 +988,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const remainingTimeCs = penaltyToEnd.expirationTime !== undefined ? Math.max(0, penaltyToEnd.expirationTime - state.live.clock._liveAbsoluteElapsedTimeCs) : penaltyToEnd.initialDuration * 100;
       const timeServed = penaltyToEnd.initialDuration - Math.round(remainingTimeCs / 100);
       
+      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
+      newGameSummary.penalties[team] = newGameSummary.penalties[team].map(p =>
+          p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'goal_on_pp', timeServed } : p
+        );
+
       newState = { ...state, live: { ...state.live,
         penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId))},
         pendingPowerPlayGoal: null, // Clear the pending goal confirmation
-        gameSummary: { ...state.live.gameSummary, [team]: { ...state.live.gameSummary[team], penalties: state.live.gameSummary[team].penalties.map(p =>
-          p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'goal_on_pp', timeServed } : p
-        )}}
+        gameSummary: newGameSummary
       }};
       toastMessage = { title: "Penalidad Finalizada", description: "La penalidad se eliminó por el gol en Power Play." };
       break;
@@ -1078,12 +1115,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           if (expiredPenalties.length > 0) significantChangeOccurred = true;
           
           expiredPenalties.forEach(p => {
-              const logIndex = newGameSummary[team].penalties.findIndex(log => log.id === p.id && !log.endReason);
+              const logIndex = newGameSummary.penalties[team].findIndex(log => log.id === p.id && !log.endReason);
               if (logIndex > -1) {
                   const absoluteEndTime = p.expirationTime ?? liveAbsoluteElapsedTimeCs;
                   const endTimeContext = getPeriodContextFromAbsoluteTime(absoluteEndTime, state);
-                  newGameSummary[team].penalties[logIndex] = {
-                      ...newGameSummary[team].penalties[logIndex],
+                  newGameSummary.penalties[team][logIndex] = {
+                      ...newGameSummary.penalties[team][logIndex],
                       endTimestamp: Date.now(), endGameTime: endTimeContext.timeInPeriodCs,
                       endPeriodText: endTimeContext.periodText, endReason: 'completed', timeServed: p.initialDuration,
                   };
@@ -1319,7 +1356,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 if (t.id === tournamentId) {
                   const matches = t.matches.map(m => {
                     if (m.id === matchId) {
-                      return { ...m, summary, homeScore: summary.home.goals.length, awayScore: summary.away.goals.length, overTimeOrShootouts: summary.overTimeOrShootouts };
+                      return { ...m, summary, homeScore: summary.goals.home.length, awayScore: summary.goals.away.length, overTimeOrShootouts: summary.overTimeOrShootouts };
                     }
                     return m;
                   });
@@ -1493,7 +1530,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             if (t.id === tournamentId) {
               const matches = t.matches.map(m => {
                 if (m.id === matchId) {
-                  return { ...m, summary, homeScore: summary.home.goals.length, awayScore: summary.away.goals.length, overTimeOrShootouts: summary.overTimeOrShootouts };
+                  return { ...m, summary, homeScore: summary.goals.home.length, awayScore: summary.goals.away.length, overTimeOrShootouts: summary.overTimeOrShootouts };
                 }
                 return m;
               });
@@ -1703,8 +1740,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         if (t.id === tournamentId) {
           const newMatches = t.matches.map(m => {
             if (m.id === matchId) {
-              const homeScore = summary.home.goals.length;
-              const awayScore = summary.away.goals.length;
+              const homeScore = summary.goals.home.length;
+              const awayScore = summary.goals.away.length;
               return { ...m, summary, homeScore, awayScore, overTimeOrShootouts: summary.overTimeOrShootouts };
             }
             return m;
@@ -1797,9 +1834,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
 
 const GameStateObserver = () => {
-    const { state } = useGameState();
+    const { state, dispatch } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
+    const prevPeriodDisplayOverrideRef = useRef<PeriodDisplayOverrideType>();
 
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
@@ -1808,6 +1846,23 @@ const GameStateObserver = () => {
         }
     }, [state._lastToastMessage, toast]);
     
+    useEffect(() => {
+        const currentOverride = state.live?.clock?.periodDisplayOverride;
+
+        if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && currentOverride === 'End of Game' && state.live.matchId) {
+             const summary = generateSummaryData(state);
+            if (summary) {
+                dispatch({
+                    type: 'SAVE_MATCH_SUMMARY',
+                    payload: { matchId: state.live.matchId, summary }
+                });
+            }
+        }
+
+        prevPeriodDisplayOverrideRef.current = currentOverride;
+    }, [state.live?.clock?.periodDisplayOverride, state.live?.matchId, state, dispatch, toast]);
+
+
     return null;
 }
 
@@ -2036,8 +2091,3 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
-
-
-
-    
-

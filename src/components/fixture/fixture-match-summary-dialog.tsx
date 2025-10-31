@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
@@ -7,8 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, Edit3, Check, XCircle } from "lucide-react";
-import type { MatchData, Tournament, GameSummary, SummaryPlayerStats, PlayerData, PeriodStats } from "@/types";
-import { useGameState, getCategoryNameById } from "@/contexts/game-state-context";
+import type { MatchData, Tournament, GameSummary, SummaryPlayerStats, PlayerData, PeriodStats, Team, GoalLog, PenaltyLog } from "@/types";
+import { useGameState, getCategoryNameById, getPeriodText } from "@/contexts/game-state-context";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { GoalsSection } from "../summary/goals-section";
 import { PenaltiesSection } from "../summary/penalties-section";
@@ -17,6 +15,7 @@ import { ShootoutSection } from "../summary/shootout-section";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "../ui/input";
 import { Separator } from "../ui/separator";
+import { AddPenaltyForm } from "../shared/add-penalty-form";
 
 interface FixtureMatchSummaryDialogProps {
   isOpen: boolean;
@@ -26,13 +25,17 @@ interface FixtureMatchSummaryDialogProps {
 }
 
 export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournament }: FixtureMatchSummaryDialogProps) {
-  const { dispatch } = useGameState();
+  const { state, dispatch } = useGameState();
   const { toast } = useToast();
   
   const [localSummary, setLocalSummary] = useState<GameSummary | undefined>(match?.summary);
   const [isEditing, setIsEditing] = useState(false);
   const [editedShots, setEditedShots] = useState<Record<string, Record<string, string>>>({});
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // States for adding penalties/goals
+  const [isAddPenaltyOpen, setIsAddPenaltyOpen] = useState(false);
+  const [addContext, setAddContext] = useState<{team: Team, period: string} | null>(null);
 
   useEffect(() => {
     if (isOpen && match?.summary) {
@@ -46,12 +49,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   const categoryName = useMemo(() => getCategoryNameById(match?.categoryId || '', tournament?.categories), [match, tournament]);
 
   const allPeriodTexts = useMemo(() => {
-    if (!localSummary?.statsByPeriod) return [];
-    return Object.keys(localSummary.statsByPeriod).sort((a, b) => {
-      if (a.startsWith('OT') && !b.startsWith('OT')) return 1;
-      if (!a.startsWith('OT') && b.startsWith('OT')) return -1;
-      return a.localeCompare(b);
-    });
+    return localSummary?.playedPeriods || [];
   }, [localSummary]);
 
   const handleEditClick = () => {
@@ -77,6 +75,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   const handleSaveClick = () => {
     if (!localSummary || !match || !tournament) return;
     
+    let summaryChanged = false;
     const newSummary = JSON.parse(JSON.stringify(localSummary));
 
     for (const periodText in editedShots) {
@@ -96,23 +95,30 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                     let periodStats = newSummary.statsByPeriod[periodText].playerStats[team] as SummaryPlayerStats[];
                     let playerStat = periodStats.find(p => p.id === player.id);
                     if (playerStat) {
-                        playerStat.shots = newShotCount;
+                       if (playerStat.shots !== newShotCount) {
+                         playerStat.shots = newShotCount;
+                         summaryChanged = true;
+                       }
                     } else {
                         periodStats.push({ id: player.id, name: player.name, number: player.number, shots: newShotCount, goals: 0, assists: 0 });
+                        if(newShotCount > 0) summaryChanged = true;
                     }
                 }
             });
         }
     }
 
-    dispatch({
-        type: 'SAVE_MATCH_SUMMARY',
-        payload: { matchId: match.id, summary: newSummary }
-    });
-    setLocalSummary(newSummary);
-    setRefreshKey(k => k + 1);
-    toast({ title: "Resumen Guardado", description: "Los cambios en los tiros han sido guardados."});
-
+    if(summaryChanged) {
+        dispatch({
+            type: 'SAVE_MATCH_SUMMARY',
+            payload: { matchId: match.id, summary: newSummary }
+        });
+        setLocalSummary(newSummary);
+        setRefreshKey(k => k + 1);
+        toast({ title: "Resumen Guardado", description: "Los cambios en los tiros han sido guardados."});
+    } else {
+        toast({ title: "Sin Cambios", description: "No se detectaron cambios para guardar."});
+    }
     setIsEditing(false);
   };
 
@@ -128,12 +134,57 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
     }
   };
 
+  const handleAddPenaltyClick = (team: Team, period: string) => {
+    setAddContext({ team, period });
+    setIsAddPenaltyOpen(true);
+  };
+
+  const handleAddPenaltySubmit = (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs?: number, periodText?: string) => {
+    if(!match || !tournament) return;
+    const penaltyDef = state.config.penaltyTypes.find(p => p.id === penaltyTypeId);
+    if (!penaltyDef) return;
+
+    const penaltyLog: PenaltyLog = {
+      id: `manual-${safeUUID()}`,
+      team,
+      playerNumber,
+      penaltyName: penaltyDef.name,
+      initialDuration: penaltyDef.duration,
+      reducesPlayerCount: penaltyDef.reducesPlayerCount,
+      clearsOnGoal: penaltyDef.clearsOnGoal,
+      isBenchPenalty: penaltyDef.isBenchPenalty,
+      addTimestamp: new Date(match.date).getTime(),
+      addGameTime: gameTimeCs || 0,
+      addPeriodText: periodText || 'N/A',
+      endReason: 'completed', // Assume completed for manual entries
+      timeServed: penaltyDef.duration,
+    };
+
+    const newSummary = JSON.parse(JSON.stringify(localSummary));
+    newSummary.penalties[team].push(penaltyLog);
+    
+    dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: match.id, summary: newSummary }});
+    setLocalSummary(newSummary);
+    toast({ title: "Penalidad Añadida", description: "La penalidad se ha añadido manualmente al resumen."});
+    setIsAddPenaltyOpen(false);
+  };
+
+  const handleDeletePenalty = (team: Team, logId: string) => {
+     if (!localSummary || !match || !tournament) return;
+      const newSummary = JSON.parse(JSON.stringify(localSummary));
+      newSummary.penalties[team] = newSummary.penalties[team].filter((p: PenaltyLog) => p.id !== logId);
+      dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: match.id, summary: newSummary }});
+      setLocalSummary(newSummary);
+      toast({ title: "Penalidad Eliminada", variant: "destructive" });
+  };
+
 
   if (!match || !tournament || !localSummary) return null;
   
   const aggregatedStats = localSummary.playerStats;
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
         <DialogHeader>
@@ -201,13 +252,17 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                                 return (
                                     <div key={periodText} className="space-y-4 border-l-2 pl-4 ml-2">
                                         <h3 className="text-lg font-semibold">{periodText}</h3>
-                                        <div className="space-y-4">
-                                            <GoalsSection teamName={homeTeam?.name || ''} goals={periodStats?.goals.home || []}/>
-                                            <GoalsSection teamName={awayTeam?.name || ''} goals={periodStats?.goals.away || []}/>
-                                            <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={periodStats?.penalties.home || []}/>
-                                            <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={periodStats?.penalties.away || []}/>
-                                            <PlayerStatsSection teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={periodStats?.playerStats.home} attendance={localSummary.attendance.home} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
-                                            <PlayerStatsSection teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={periodStats?.playerStats.away} attendance={localSummary.attendance.away} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-4">
+                                                <GoalsSection teamName={homeTeam?.name || ''} goals={periodStats?.goals.home || []}/>
+                                                <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={periodStats?.penalties.home || []} onAdd={() => handleAddPenaltyClick('home', periodText)} onDelete={(id) => handleDeletePenalty('home', id)} />
+                                                <PlayerStatsSection teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={periodStats?.playerStats.home} attendance={localSummary.attendance.home} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
+                                            </div>
+                                             <div className="space-y-4">
+                                                <GoalsSection teamName={awayTeam?.name || ''} goals={periodStats?.goals.away || []}/>
+                                                <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={periodStats?.penalties.away || []} onAdd={() => handleAddPenaltyClick('away', periodText)} onDelete={(id) => handleDeletePenalty('away', id)} />
+                                                <PlayerStatsSection teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={periodStats?.playerStats.away} attendance={localSummary.attendance.away} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
+                                            </div>
                                         </div>
                                     </div>
                                 )
@@ -225,5 +280,28 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    
+    {addContext && (
+       <Dialog open={isAddPenaltyOpen} onOpenChange={setIsAddPenaltyOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Añadir Penalidad Manual</DialogTitle>
+              <DialogDescription>Añadiendo una penalidad para {addContext.team === 'home' ? homeTeam?.name : awayTeam?.name} en el período {addContext.period}.</DialogDescription>
+            </DialogHeader>
+            <AddPenaltyForm
+              homeTeamName={homeTeam?.name || 'Local'}
+              awayTeamName={awayTeam?.name || 'Visitante'}
+              penaltyTypes={state.config.penaltyTypes}
+              defaultPenaltyTypeId={state.config.defaultPenaltyTypeId}
+              onPenaltySent={handleAddPenaltySubmit}
+              preselectedTeam={addContext.team}
+              showTimeInput={true}
+              availablePeriods={allPeriodTexts}
+              preselectedPeriod={addContext.period}
+            />
+          </DialogContent>
+       </Dialog>
+    )}
+    </>
   );
 }
