@@ -1,5 +1,4 @@
 
-
 export interface PenaltyTypeDefinition {
   id: string;
   name: string;
@@ -180,33 +179,37 @@ export interface AttendedPlayerInfo {
 }
 
 export interface PeriodStats {
-  goals: { home: GoalLog[], away: GoalLog[] };
-  penalties: { home: PenaltyLog[], away: PenaltyLog[] };
-  playerStats: { home: SummaryPlayerStats[], away: SummaryPlayerStats[] };
+  home: {
+    goals: GoalLog[];
+    playerStats: SummaryPlayerStats[];
+  };
+  away: {
+    goals: GoalLog[];
+    playerStats: SummaryPlayerStats[];
+  };
 }
 
 export interface GameSummary {
+  home: {
+    goals: GoalLog[];
+    penalties: PenaltyLog[];
+    playerStats: SummaryPlayerStats[];
+    homeShotsLog?: ShotLog[];
+  };
+  away: {
+    goals: GoalLog[];
+    penalties: PenaltyLog[];
+    playerStats: SummaryPlayerStats[];
+    awayShotsLog?: ShotLog[];
+  };
   attendance: {
     home: AttendedPlayerInfo[];
     away: AttendedPlayerInfo[];
   };
-  goals: {
-    home: GoalLog[];
-    away: GoalLog[];
-  };
-  penalties: {
-    home: PenaltyLog[];
-    away: PenaltyLog[];
-  };
-  playerStats: {
-    home: SummaryPlayerStats[];
-    away: SummaryPlayerStats[];
-  };
-  homeShotsLog?: ShotLog[];
-  awayShotsLog?: ShotLog[];
   shootout?: Omit<ShootoutState, 'isActive'>;
   statsByPeriod?: Record<string, PeriodStats>;
   overTimeOrShootouts?: boolean;
+  playedPeriods: string[];
 }
 
 
