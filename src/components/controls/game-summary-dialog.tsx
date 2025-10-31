@@ -44,20 +44,20 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     return { homeTeam: home, awayTeam: away };
   }, [selectedTournament, state.live.homeTeamName, state.live.awayTeamName, state.live.homeTeamSubName, state.live.awayTeamSubName, state.config.selectedMatchCategory]);
 
-  const allHomeGoals = useMemo(() => [...(state.live.score?.homeGoals || [])].sort((a, b) => a.timestamp - b.timestamp), [state.live.score, refreshKey]);
-  const allAwayGoals = useMemo(() => [...(state.live.score?.awayGoals || [])].sort((a, b) => a.timestamp - b.timestamp), [state.live.score, refreshKey]);
-  const allHomePenalties = useMemo(() => [...state.live.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp), [state.live.gameSummary.home, refreshKey]);
-  const allAwayPenalties = useMemo(() => [...state.live.gameSummary.away.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp), [state.live.gameSummary.away, refreshKey]);
+  const allHomeGoals = useMemo(() => [...(state.live.goals?.home || [])].sort((a, b) => a.timestamp - b.timestamp), [state.live.goals, refreshKey]);
+  const allAwayGoals = useMemo(() => [...(state.live.goals?.away || [])].sort((a, b) => a.timestamp - b.timestamp), [state.live.goals, refreshKey]);
+  const allHomePenalties = useMemo(() => [...state.live.penaltiesLog.home].sort((a,b) => a.addTimestamp - b.addTimestamp), [state.live.penaltiesLog.home, refreshKey]);
+  const allAwayPenalties = useMemo(() => [...state.live.penaltiesLog.away].sort((a,b) => a.addTimestamp - b.addTimestamp), [state.live.penaltiesLog.away, refreshKey]);
   
   const allPeriodTexts = useMemo(() => {
     const periodSet = new Set<string>();
     const allEvents = [
-        ...state.live.score.homeGoals,
-        ...state.live.score.awayGoals,
-        ...state.live.gameSummary.home.penalties,
-        ...state.live.gameSummary.away.penalties,
-        ...(state.live.gameSummary.home.homeShotsLog || []),
-        ...(state.live.gameSummary.away.awayShotsLog || []),
+        ...state.live.goals.home,
+        ...state.live.goals.away,
+        ...state.live.penaltiesLog.home,
+        ...state.live.penaltiesLog.away,
+        ...(state.live.shotsLog.home || []),
+        ...(state.live.shotsLog.away || []),
     ];
     allEvents.forEach(event => {
         const periodText = 'periodText' in event ? event.periodText : event.addPeriodText;
@@ -78,7 +78,7 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     return sortedPeriods.sort((a, b) => {
         const getPeriodNumber = (text: string) => {
             if (text === 'SHOOTOUT') return (state.config.numberOfRegularPeriods || 2) + (state.config.numberOfOvertimePeriods || 0) + 1;
-            if (text.startsWith('OT')) return (state.config.numberOfRegularPeriods || 2) + parseInt(text.replace('OT', ''), 10);
+            if (text.startsWith('OT')) return (state.config.numberOfRegularPeriods || 2) + parseInt(text.replace('OT', '') || '1', 10);
             return parseInt(text.replace(/\D/g, ''), 10);
         };
         return getPeriodNumber(a) - getPeriodNumber(b);
@@ -155,8 +155,8 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
   
   const getPlayerStatsForPeriod = (periodText: string, team: 'home' | 'away'): SummaryPlayerStats[] => {
     const goalsInPeriod = (team === 'home' ? allHomeGoals : allAwayGoals).filter(g => g.periodText === periodText);
-    const shotsInPeriod = (team === 'home' ? state.live.gameSummary.home.homeShotsLog : state.live.gameSummary.away.awayShotsLog || []).filter(s => s.periodText === periodText);
-    const attendance = state.live.gameSummary.attendance[team] || [];
+    const shotsInPeriod = (team === 'home' ? state.live.shotsLog.home : state.live.shotsLog.away || []).filter(s => s.periodText === periodText);
+    const attendance = state.live.attendance[team] || [];
 
     const statsMap = new Map<string, SummaryPlayerStats>();
     attendance.forEach(p => statsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
@@ -174,6 +174,9 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
 
     return Array.from(statsMap.values());
   };
+
+  const aggregatedHomeStats = useMemo(() => recalculateAllStatsFromLogs({ goals: {home: allHomeGoals, away: []}, shotsLog: {home: state.live.shotsLog.home, away: []} }, homeTeam?.players || []), [allHomeGoals, state.live.shotsLog.home, homeTeam]);
+  const aggregatedAwayStats = useMemo(() => recalculateAllStatsFromLogs({ goals: {home: [], away: allAwayGoals}, shotsLog: {home: [], away: state.live.shotsLog.away} }, awayTeam?.players || []), [allAwayGoals, state.live.shotsLog.away, awayTeam]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -207,8 +210,8 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
             <Separator />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <PlayerStatsSection teamName={state.live.homeTeamName} allPlayers={homeTeam?.players} playerStats={state.live.gameSummary.home.playerStats} attendance={state.live.gameSummary.attendance.home} />
-                <PlayerStatsSection teamName={state.live.awayTeamName} allPlayers={awayTeam?.players} playerStats={state.live.gameSummary.away.playerStats} attendance={state.live.gameSummary.attendance.away} />
+                <PlayerStatsSection teamName={state.live.homeTeamName} allPlayers={homeTeam?.players} playerStats={aggregatedHomeStats} attendance={state.live.attendance.home} editable={false} />
+                <PlayerStatsSection teamName={state.live.awayTeamName} allPlayers={awayTeam?.players} playerStats={aggregatedAwayStats} attendance={state.live.attendance.away} editable={false} />
             </div>
             
             {(state.live.shootout.homeAttempts.length > 0 || state.live.shootout.awayAttempts.length > 0) && (
@@ -252,8 +255,8 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
                             {periodText}
                           </h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <PlayerStatsSection teamName={state.live.homeTeamName} allPlayers={homeTeam?.players} playerStats={homePlayerStatsInPeriod} attendance={state.live.gameSummary.attendance.home} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
-                              <PlayerStatsSection teamName={state.live.awayTeamName} allPlayers={awayTeam?.players} playerStats={awayPlayerStatsInPeriod} attendance={state.live.gameSummary.attendance.away} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
+                              <PlayerStatsSection teamName={state.live.homeTeamName} allPlayers={homeTeam?.players} playerStats={homePlayerStatsInPeriod} attendance={state.live.attendance.home} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
+                              <PlayerStatsSection teamName={state.live.awayTeamName} allPlayers={awayTeam?.players} playerStats={awayPlayerStatsInPeriod} attendance={state.live.attendance.away} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
                           </div>
                         </div>
                       )
@@ -277,5 +280,3 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     </Dialog>
   );
 }
-
-    

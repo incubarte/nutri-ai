@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -271,11 +272,11 @@ function MiniScoreboardDisplay({ gameState }: { gameState: LiveGameState }) {
     return (
       <div 
         key={p.id} 
-        className={cn("flex items-center gap-2 text-xs", p.penaltyType === 'misconduct' && "text-orange-400")}
+        className="flex items-center gap-2 text-xs"
       >
         <Hourglass className="h-3 w-3 shrink-0" />
         <span>{playerIdentifier}</span>
-        <span className={cn(p.penaltyType !== 'misconduct' && "text-muted-foreground")}>{statusInfo}</span>
+        <span className="text-muted-foreground">{statusInfo}</span>
       </div>
     );
   };
@@ -557,4 +558,3 @@ export default function MobileControlsPage() {
     </main>
   );
 }
-

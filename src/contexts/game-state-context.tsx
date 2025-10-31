@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -94,24 +95,41 @@ const IN_CODE_INITIAL_TOURNAMENT: Tournament = {
 };
 
 
-const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
-  attendance: { home: [], away: [] },
-  goals: { home: [], away: [] },
+const INITIAL_LIVE_DATA: LiveState = {
+  score: { home: 0, away: 0, homeShots: 0, awayShots: 0 },
   penalties: { home: [], away: [] },
-  playerStats: { home: [], away: [] },
-  home: { homeShotsLog: [] },
-  away: { awayShotsLog: [] },
+  goals: { home: [], away: [] },
+  penaltiesLog: { home: [], away: [] },
+  shotsLog: { home: [], away: [] },
+  attendance: { home: [], away: [] },
+  clock: {
+    currentTime: 30000, // Default warm-up duration
+    currentPeriod: 0,
+    isClockRunning: false,
+    periodDisplayOverride: 'Warm-up',
+    preTimeoutState: null,
+    clockStartTimeMs: null,
+    remainingTimeAtStartCs: null,
+    absoluteElapsedTimeCs: 0,
+    _liveAbsoluteElapsedTimeCs: 0,
+    isFlashingZero: false,
+  },
+  shootout: {
+    isActive: false,
+    rounds: 5,
+    homeAttempts: [],
+    awayAttempts: [],
+    initiator: null,
+  },
+  homeTeamName: 'Local',
+  awayTeamName: 'Visitante',
+  playHornTrigger: 0,
+  playPenaltyBeepTrigger: 0,
+  pendingPowerPlayGoal: null,
+  overlayMessage: null,
+  matchId: null,
   playedPeriods: [],
 };
-
-const INITIAL_SHOOTOUT_STATE: ShootoutState = {
-  isActive: false,
-  rounds: 5,
-  homeAttempts: [],
-  awayAttempts: [],
-  initiator: null,
-};
-
 
 export const createDefaultFormatAndTimingsProfile = (id?: string, name?: string): FormatAndTimingsProfile => ({
   id: id || safeUUID(),
@@ -174,20 +192,8 @@ const getInitialState = (): GameState => {
       tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
     },
     live: {
-      score: { home: 0, away: 0, homeShots: 0, awayShots: 0, homeGoals: [], awayGoals: [] },
-      penalties: { home: [], away: [] },
-      clock: {
-        currentTime: defaultInitialProfile.defaultWarmUpDuration, currentPeriod: 0, isClockRunning: false,
-        periodDisplayOverride: 'Warm-up', preTimeoutState: null, clockStartTimeMs: null, remainingTimeAtStartCs: null,
-        absoluteElapsedTimeCs: 0, _liveAbsoluteElapsedTimeCs: 0, isFlashingZero: false,
-      },
-      shootout: INITIAL_SHOOTOUT_STATE,
-      homeTeamName: 'Local', homeTeamSubName: undefined, awayTeamName: 'Visitante', awayTeamSubName: undefined,
-      gameSummary: IN_CODE_INITIAL_GAME_SUMMARY, playHornTrigger: 0, playPenaltyBeepTrigger: 0,
-      pendingPowerPlayGoal: null,
-      overlayMessage: null,
-      matchId: null,
-      playedPeriods: [],
+      ...INITIAL_LIVE_DATA,
+      clock: { ...INITIAL_LIVE_DATA.clock, currentTime: defaultInitialProfile.defaultWarmUpDuration }
     },
     _initialConfigLoadComplete: false,
   };
@@ -562,12 +568,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_GOAL': {
       const { clock, config, live } = state;
-      const tournament = (config.tournaments || []).find(t => t.id === config.selectedTournamentId);
-      const homeTeamRoster = tournament?.teams.find(t => t.name === live.homeTeamName && (t.subName || undefined) === (live.homeTeamSubName || undefined))?.players || [];
-      const awayTeamRoster = tournament?.teams.find(t => t.name === live.awayTeamName && (t.subName || undefined) === (live.awayTeamSubName || undefined))?.players || [];
 
       let periodTextForLog: string;
-      
       if (action.payload.periodText) {
           periodTextForLog = action.payload.periodText;
       } else {
@@ -579,28 +581,19 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       const newGoal: GoalLog = { ...action.payload, id: safeUUID(), periodText: periodTextForLog };
       
-      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      newGameSummary.goals[action.payload.team].push(newGoal);
+      const newLiveGoals = { ...live.goals };
+      newLiveGoals[action.payload.team] = [...newLiveGoals[action.payload.team], newGoal];
 
       const teamScored = action.payload.team;
       const teamConceded = teamScored === 'home' ? 'away' : 'home';
       
-      const statsRecalc = recalculateAllStatsFromLogs(newGameSummary, homeTeamRoster, awayTeamRoster);
-
-      const homeGoals = newGameSummary.goals.home;
-      const awayGoals = newGameSummary.goals.away;
-
-      const score = {
-          home: homeGoals.length,
-          away: awayGoals.length,
-          homeGoals,
-          awayGoals,
-          homeShots: (newGameSummary.home.homeShotsLog || []).length,
-          awayShots: (newGameSummary.away.awayShotsLog || []).length,
+      const newScore: ScoreState = {
+        ...live.score,
+        home: newLiveGoals.home.length,
+        away: newLiveGoals.away.length,
       };
 
       let pendingPPGoal: LiveState['pendingPowerPlayGoal'] = null;
-      // Check for power play goal condition
       const scoringTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamScored].filter(p => p._status === 'running' && (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).length;
       const concedingTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamConceded].filter(p => p._status === 'running' && (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).length;
 
@@ -616,57 +609,32 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
       
       newState = { ...state, live: { ...state.live, 
-        score,
+        score: newScore,
+        goals: newLiveGoals,
         pendingPowerPlayGoal: pendingPPGoal,
-        gameSummary: {
-          ...newGameSummary,
-          playerStats: {
-            home: statsRecalc.home,
-            away: statsRecalc.away,
-          },
-        },
       }};
       toastMessage = { title: "Gol Añadido", description: `Gol para el jugador #${action.payload.scorer?.playerNumber} registrado.` };
       break;
     }
      case 'EDIT_GOAL': {
       const { goalId, updates } = action.payload;
-      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      let goalFound = false;
+      const newLiveGoals = { ...state.live.goals };
+      let goalFoundAndUpdated = false;
 
-      newGameSummary.goals.home = newGameSummary.goals.home.map((g: GoalLog) => {
-        if (g.id === goalId) {
-            goalFound = true;
-            return { ...g, ...updates };
-        }
-        return g;
-      });
-      if (!goalFound) {
-        newGameSummary.goals.away = newGameSummary.goals.away.map((g: GoalLog) => {
-          if (g.id === goalId) {
-              goalFound = true;
-              return { ...g, ...updates };
+      for (const team of ['home', 'away'] as const) {
+          const goalIndex = newLiveGoals[team].findIndex(g => g.id === goalId);
+          if (goalIndex !== -1) {
+              newLiveGoals[team][goalIndex] = { ...newLiveGoals[team][goalIndex], ...updates };
+              goalFoundAndUpdated = true;
+              break;
           }
-          return g;
-        });
       }
-
-      if (goalFound) {
-        const tournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
-        const homeTeamRoster = tournament?.teams.find(t => t.name === state.live.homeTeamName && (t.subName || undefined) === (state.live.homeTeamSubName || undefined))?.players || [];
-        const awayTeamRoster = tournament?.teams.find(t => t.name === state.live.awayTeamName && (t.subName || undefined) === (state.live.awayTeamSubName || undefined))?.players || [];
-        const { home: homePlayerStats, away: awayPlayerStats } = recalculateAllStatsFromLogs(newGameSummary, homeTeamRoster, awayTeamRoster);
-        
-        const homeGoals = newGameSummary.goals.home;
-        const awayGoals = newGameSummary.goals.away;
-        const newScore = { ...state.live.score, home: homeGoals.length, away: awayGoals.length, homeGoals, awayGoals };
-
+      
+      if (goalFoundAndUpdated) {
+        const newScore = { ...state.live.score, home: newLiveGoals.home.length, away: newLiveGoals.away.length };
         newState = { ...state, live: { ...state.live, 
           score: newScore,
-          gameSummary: {
-            ...newGameSummary,
-            playerStats: { home: homePlayerStats, away: awayPlayerStats },
-          }
+          goals: newLiveGoals,
         }};
         toastMessage = { title: "Gol Actualizado", description: "Los cambios en el gol han sido guardados." };
       }
@@ -674,36 +642,31 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'DELETE_GOAL': {
       const { goalId } = action.payload;
-      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      const initialHomeGoalsCount = newGameSummary.goals.home.length;
-      
-      newGameSummary.goals.home = newGameSummary.goals.home.filter((g: GoalLog) => g.id !== goalId);
-      if (newGameSummary.goals.home.length === initialHomeGoalsCount) {
-        newGameSummary.goals.away = newGameSummary.goals.away.filter((g: GoalLog) => g.id !== goalId);
+      const newLiveGoals = { ...state.live.goals };
+      let goalFoundAndDeleted = false;
+
+      for (const team of ['home', 'away'] as const) {
+          const initialLength = newLiveGoals[team].length;
+          newLiveGoals[team] = newLiveGoals[team].filter(g => g.id !== goalId);
+          if (newLiveGoals[team].length < initialLength) {
+              goalFoundAndDeleted = true;
+              break;
+          }
       }
-      
-      const tournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
-      const homeTeamRoster = tournament?.teams.find(t => t.name === state.live.homeTeamName && (t.subName || undefined) === (state.live.homeTeamSubName || undefined))?.players || [];
-      const awayTeamRoster = tournament?.teams.find(t => t.name === state.live.awayTeamName && (t.subName || undefined) === (state.live.awayTeamSubName || undefined))?.players || [];
-      const { home: homePlayerStats, away: awayPlayerStats } = recalculateAllStatsFromLogs(newGameSummary, homeTeamRoster, awayTeamRoster);
 
-      const homeGoals = newGameSummary.goals.home;
-      const awayGoals = newGameSummary.goals.away;
-      const newScore = { ...state.live.score, home: homeGoals.length, away: awayGoals.length, homeGoals, awayGoals };
-
-      newState = { ...state, live: { ...state.live,
-        score: newScore,
-        gameSummary: {
-          ...newGameSummary,
-          playerStats: { home: homePlayerStats, away: awayPlayerStats },
-        }
-      }};
-      toastMessage = { title: "Gol Eliminado", description: "El gol ha sido eliminado del registro." };
+      if (goalFoundAndDeleted) {
+          const newScore = { ...state.live.score, home: newLiveGoals.home.length, away: newLiveGoals.away.length };
+          newState = { ...state, live: { ...state.live,
+            score: newScore,
+            goals: newLiveGoals,
+          }};
+          toastMessage = { title: "Gol Eliminado", description: "El gol ha sido eliminado del registro." };
+      }
       break;
     }
     case 'ADD_PLAYER_SHOT': {
       const { team, playerNumber } = action.payload;
-      const attendedPlayer = state.live.gameSummary.attendance[team].find(p => p.number === playerNumber);
+      const attendedPlayer = state.live.attendance[team].find(p => p.number === playerNumber);
       
       const newShotLog: ShotLog = {
         id: safeUUID(),
@@ -716,111 +679,41 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         playerName: attendedPlayer?.name,
       };
 
-      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      const shotsLogKey = team === 'home' ? 'homeShotsLog' : 'awayShotsLog';
-      const teamLogKey = team;
-      if (!newGameSummary[teamLogKey]?.[shotsLogKey]) {
-        if (team === 'home') newGameSummary.home.homeShotsLog = [];
-        else newGameSummary.away.awayShotsLog = [];
-      }
-      newGameSummary[teamLogKey][shotsLogKey]!.push(newShotLog);
-      
-      const tournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
-      const homeTeamRoster = tournament?.teams.find(t => t.name === state.live.homeTeamName && (t.subName || undefined) === (state.live.homeTeamSubName || undefined))?.players || [];
-      const awayTeamRoster = tournament?.teams.find(t => t.name === state.live.awayTeamName && (t.subName || undefined) === (state.live.awayTeamSubName || undefined))?.players || [];
-      const { home: homePlayerStats, away: awayPlayerStats } = recalculateAllStatsFromLogs(newGameSummary, homeTeamRoster, awayTeamRoster);
+      const newShotsLog = { ...state.live.shotsLog };
+      newShotsLog[team] = [...newShotsLog[team], newShotLog];
       
       const newScore = { 
-        ...state.live.score, 
-        homeShots: (newGameSummary.home.homeShotsLog || []).length, 
-        awayShots: (newGameSummary.away.awayShotsLog || []).length,
+        ...state.live.score,
+        homeShots: newShotsLog.home.length,
+        awayShots: newShotsLog.away.length,
       };
 
       newState = { ...state, live: { ...state.live,
         score: newScore,
-        gameSummary: {
-          ...newGameSummary,
-          playerStats: { home: homePlayerStats, away: awayPlayerStats },
-        }
+        shotsLog: newShotsLog,
       }};
       break;
     }
     case 'SET_PLAYER_SHOTS': {
-      const { team, playerId, periodText, shotCount } = action.payload;
-      const { live, config } = state;
-      const { gameSummary } = live;
-
-      const tournament = (config.tournaments || []).find(t => t.id === config.selectedTournamentId);
-      const teamRoster = (team === 'home' ? tournament?.teams.find(t => t.name === live.homeTeamName && (t.subName || undefined) === (live.homeTeamSubName || undefined))?.players : tournament?.teams.find(t => t.name === live.awayTeamName && (t.subName || undefined) === (live.awayTeamSubName || undefined))?.players) || [];
-      const playerDetails = teamRoster.find(p => p.id === playerId);
-      if (!playerDetails) break;
-
-      const shotsLogKey = team === 'home' ? 'homeShotsLog' : 'awayShotsLog';
-      const teamLogKey = team;
-      
-      const otherShots = (gameSummary[teamLogKey]?.[shotsLogKey] || []).filter((shot: ShotLog) => shot.playerId !== playerId || shot.periodText !== periodText);
-      
-      const newShotsForPeriod: ShotLog[] = Array.from({ length: shotCount }, (_, i) => ({
-          id: safeUUID(),
-          team,
-          timestamp: Date.now() + i,
-          gameTime: 0,
-          periodText,
-          playerId: playerDetails.id,
-          playerNumber: playerDetails.number,
-          playerName: playerDetails.name
-      }));
-
-      const newGameSummary = JSON.parse(JSON.stringify(gameSummary));
-      newGameSummary[teamLogKey][shotsLogKey] = [...otherShots, ...newShotsForPeriod];
-      
-      const homeTeamRoster = tournament?.teams.find(t => t.name === live.homeTeamName && (t.subName || undefined) === (live.homeTeamSubName || undefined))?.players || [];
-      const awayTeamRoster = tournament?.teams.find(t => t.name === live.awayTeamName && (t.subName || undefined) === (live.awayTeamSubName || undefined))?.players || [];
-      const { home: homePlayerStats, away: awayPlayerStats } = recalculateAllStatsFromLogs(newGameSummary, homeTeamRoster, awayTeamRoster);
-      const homeTotalShots = (newGameSummary.home.homeShotsLog || []).length;
-      const awayTotalShots = (newGameSummary.away.awayShotsLog || []).length;
-
-
-      newState = {
-          ...state,
-          live: {
-              ...live,
-              score: {
-                  ...live.score,
-                  homeShots: homeTotalShots,
-                  awayShots: awayTotalShots
-              },
-              gameSummary: {
-                  ...newGameSummary,
-                  playerStats: { home: homePlayerStats, away: awayPlayerStats },
-              }
-          }
-      };
-      newState._lastActionOriginator = TAB_ID; // Mark as significant change to trigger server sync
-      break;
+        // This action needs rethinking in the new model.
+        // It operates on a period-by-period basis which is part of the summary.
+        // For now, this will be a no-op to prevent incorrect state updates.
+        break;
     }
     case 'FINISH_GAME_WITH_OT_GOAL': {
       const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
       const team = action.payload.team;
-      const gameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      gameSummary.goals[team].push(newGoal);
-
-      const tournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
-      const homeTeamRoster = tournament?.teams.find(t => t.name === state.live.homeTeamName && (t.subName || undefined) === (state.live.homeTeamSubName || undefined))?.players || [];
-      const awayTeamRoster = tournament?.teams.find(t => t.name === state.live.awayTeamName && (t.subName || undefined) === (state.live.awayTeamSubName || undefined))?.players || [];
-      const { home: homePlayerStats, away: awayPlayerStats } = recalculateAllStatsFromLogs(gameSummary, homeTeamRoster, awayTeamRoster);
+      
+      const newLiveGoals = { ...state.live.goals };
+      newLiveGoals[team] = [...newLiveGoals[team], newGoal];
       
       const newScore = {
-          home: gameSummary.goals.home.length,
-          away: gameSummary.goals.away.length,
-          homeGoals: gameSummary.goals.home,
-          awayGoals: gameSummary.goals.away,
-          homeShots: (gameSummary.home.homeShotsLog || []).length,
-          awayShots: (gameSummary.away.awayShotsLog || []).length,
+          ...state.live.score,
+          home: newLiveGoals.home.length,
+          away: newLiveGoals.away.length,
       };
       
       const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
-      
       const finishedPeriodText = getPeriodText(state.live.clock.currentPeriod, state.config.numberOfRegularPeriods);
       const playedPeriods = [...state.live.playedPeriods];
       if (!playedPeriods.includes(finishedPeriodText)) {
@@ -829,6 +722,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       newState = { ...state, live: { ...state.live, 
         score: newScore,
+        goals: newLiveGoals,
         clock: {
           ...state.live.clock,
           currentTime: 0,
@@ -841,36 +735,17 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           preTimeoutState: null,
         },
         playedPeriods,
-        gameSummary: {
-          ...gameSummary,
-          playerStats: { home: homePlayerStats, away: awayPlayerStats },
-        },
         playHornTrigger: state.live.playHornTrigger + 1,
       }};
-      
+
       if (newState.live.matchId) {
         const summary = generateSummaryData(newState);
-        const matchId = newState.live.matchId;
         if (summary) {
-          const tournamentId = newState.config.selectedTournamentId;
-          const tournaments = newState.config.tournaments.map(t => {
-            if (t.id === tournamentId) {
-              const matches = t.matches.map(m => {
-                if (m.id === matchId) {
-                  return { ...m, summary, homeScore: summary.goals.home.length, awayScore: summary.goals.away.length, overTimeOrShootouts: summary.overTimeOrShootouts };
-                }
-                return m;
-              });
-              return { ...t, matches };
-            }
-            return t;
-          });
-          newState.config = { ...newState.config, tournaments };
-          toastMessage = { title: "Resumen Guardado", description: "El resumen del partido finalizado se ha guardado automáticamente." };
+          dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: newState.live.matchId, summary } });
         }
-      } else {
-        toastMessage = { title: "¡Partido Finalizado!", description: "Gol de oro registrado exitosamente." };
       }
+      
+      toastMessage = { title: "¡Partido Finalizado!", description: "Gol de oro registrado exitosamente." };
       break;
     }
     case 'ADD_PENALTY': {
@@ -900,52 +775,48 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         addPeriodText: addPeriodText ?? getActualPeriodText(live.clock.currentPeriod, live.clock.periodDisplayOverride, config.numberOfRegularPeriods || 2, live.shootout),
       };
 
-      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(live.gameSummary));
-      newGameSummary.penalties[team].push(newPenaltyLog);
-      
-      if (addGameTime !== undefined && addPeriodText !== undefined) {
-        newState = { ...state, live: { ...state.live, gameSummary: newGameSummary }};
-        toastMessage = { title: "Penalidad Añadida", description: "La penalidad se ha agregado al resumen."};
-      } else {
-        const { _liveAbsoluteElapsedTimeCs } = live.clock;
-        const limitReachedReasons: ('quantity')[] = [];
-        const playerPenalties = live.gameSummary.penalties[team].filter(
-          p => p.playerNumber === playerNumber && p.endReason !== 'deleted' && !p.isBenchPenalty
-        );
-        
-        if (config.enableMaxPenaltiesLimit && !penaltyDef.isBenchPenalty) {
-          if (playerPenalties.length + 1 >= config.maxPenaltiesPerPlayer) {
-            limitReachedReasons.push('quantity');
-          }
-        }
-        
-        let newStatus: Penalty['_status'];
-        let startTime, expirationTime;
-        
-        if (penaltyDef.reducesPlayerCount) {
-          newStatus = config.autoActivatePuckPenalties ? 'pending_concurrent' : 'pending_puck';
-          startTime = undefined;
-          expirationTime = undefined;
-        } else {
-          newStatus = 'running';
-          startTime = _liveAbsoluteElapsedTimeCs;
-          expirationTime = _liveAbsoluteElapsedTimeCs + penaltyDef.duration * CENTISECONDS_PER_SECOND;
-        }
-        
-        const newPenalty: Penalty = { 
-          id: newPenaltyId, playerNumber: playerNumber.toUpperCase(), initialDuration: penaltyDef.duration,
-          reducesPlayerCount: penaltyDef.reducesPlayerCount, clearsOnGoal: penaltyDef.clearsOnGoal,
-          isBenchPenalty: penaltyDef.isBenchPenalty, _status: newStatus, startTime, expirationTime,
-          _limitReached: limitReachedReasons.length > 0 ? limitReachedReasons : undefined,
-        };
+      const newLivePenaltiesLog = { ...live.penaltiesLog };
+      newLivePenaltiesLog[team] = [...newLivePenaltiesLog[team], newPenaltyLog];
 
-        newState = { ...state, live: { ...live,
-          penalties: { ...live.penalties, [team]: sortPenaltiesByStatus([...live.penalties[team], newPenalty]) },
-          gameSummary: newGameSummary
-        }};
-        const teamName = team === 'home' ? live.homeTeamName : live.awayTeamName;
-        toastMessage = { title: "Penalidad Agregada", description: `Jugador ${playerNumber.toUpperCase()}${playerDetails ? ` (${playerDetails.name})` : ''} de ${teamName} recibió una penalidad de ${penaltyDef.name}.` };
+      const { _liveAbsoluteElapsedTimeCs } = live.clock;
+      const limitReachedReasons: ('quantity')[] = [];
+      const playerPenalties = live.penaltiesLog[team].filter(
+        p => p.playerNumber === playerNumber && p.endReason !== 'deleted' && !p.isBenchPenalty
+      );
+      
+      if (config.enableMaxPenaltiesLimit && !penaltyDef.isBenchPenalty) {
+        if (playerPenalties.length + 1 >= config.maxPenaltiesPerPlayer) {
+          limitReachedReasons.push('quantity');
+        }
       }
+      
+      let newStatus: Penalty['_status'];
+      let startTime, expirationTime;
+      
+      if (penaltyDef.reducesPlayerCount) {
+        newStatus = config.autoActivatePuckPenalties ? 'pending_concurrent' : 'pending_puck';
+        startTime = undefined;
+        expirationTime = undefined;
+      } else {
+        newStatus = 'running';
+        startTime = _liveAbsoluteElapsedTimeCs;
+        expirationTime = _liveAbsoluteElapsedTimeCs + penaltyDef.duration * CENTISECONDS_PER_SECOND;
+      }
+      
+      const newPenalty: Penalty = { 
+        id: newPenaltyId, playerNumber: playerNumber.toUpperCase(), initialDuration: penaltyDef.duration,
+        reducesPlayerCount: penaltyDef.reducesPlayerCount, clearsOnGoal: penaltyDef.clearsOnGoal,
+        isBenchPenalty: penaltyDef.isBenchPenalty, _status: newStatus, startTime, expirationTime,
+        _limitReached: limitReachedReasons.length > 0 ? limitReachedReasons : undefined,
+      };
+
+      newState = { ...state, live: { ...live,
+        penalties: { ...live.penalties, [team]: sortPenaltiesByStatus([...live.penalties[team], newPenalty]) },
+        penaltiesLog: newLivePenaltiesLog
+      }};
+      const teamName = team === 'home' ? live.homeTeamName : live.awayTeamName;
+      toastMessage = { title: "Penalidad Agregada", description: `Jugador ${playerNumber.toUpperCase()}${playerDetails ? ` (${playerDetails.name})` : ''} de ${teamName} recibió una penalidad de ${penaltyDef.name}.` };
+      
       break;
     }
     case 'REMOVE_PENALTY': {
@@ -955,15 +826,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       const remainingTimeCs = penaltyToRemove.expirationTime !== undefined ? Math.max(0, penaltyToRemove.expirationTime - state.live.clock._liveAbsoluteElapsedTimeCs) : penaltyToRemove.initialDuration * 100;
       const timeServed = penaltyToRemove.initialDuration - Math.round(remainingTimeCs / 100);
-      
-      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      newGameSummary.penalties[team] = newGameSummary.penalties[team].map(p =>
-          p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'deleted', timeServed } : p
-        );
 
+      const newPenaltiesLog = { ...state.live.penaltiesLog };
+      newPenaltiesLog[team] = newPenaltiesLog[team].map(p =>
+        p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'deleted', timeServed } : p
+      );
+      
       newState = { ...state, live: { ...state.live,
         penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId))},
-        gameSummary: newGameSummary
+        penaltiesLog: newPenaltiesLog
       }};
       break;
     }
@@ -971,15 +842,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const { team, logId } = action.payload;
       
       const newActivePenalties = state.live.penalties[team].filter(p => p.id !== logId);
-
-      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      newGameSummary.penalties[team] = newGameSummary.penalties[team].filter((p: PenaltyLog) => p.id !== logId);
+      const newPenaltiesLog = { ...state.live.penaltiesLog };
+      newPenaltiesLog[team] = newPenaltiesLog[team].filter((p: PenaltyLog) => p.id !== logId);
       
       newState = { ...state, live: { ...state.live, 
         penalties: { ...state.live.penalties, [team]: newActivePenalties },
-        gameSummary: newGameSummary
+        penaltiesLog: newPenaltiesLog
       }};
-      toastMessage = { title: "Penalidad Eliminada", variant: "destructive" };
+      toastMessage = { title: "Penalidad Eliminada del Historial", variant: "destructive" };
       break;
     }
      case 'END_PENALTY_FOR_GOAL': {
@@ -990,15 +860,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const remainingTimeCs = penaltyToEnd.expirationTime !== undefined ? Math.max(0, penaltyToEnd.expirationTime - state.live.clock._liveAbsoluteElapsedTimeCs) : penaltyToEnd.initialDuration * 100;
       const timeServed = penaltyToEnd.initialDuration - Math.round(remainingTimeCs / 100);
       
-      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      newGameSummary.penalties[team] = newGameSummary.penalties[team].map(p =>
-          p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'goal_on_pp', timeServed } : p
-        );
+      const newPenaltiesLog = { ...state.live.penaltiesLog };
+      newPenaltiesLog[team] = newPenaltiesLog[team].map(p =>
+        p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'goal_on_pp', timeServed } : p
+      );
 
       newState = { ...state, live: { ...state.live,
         penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId))},
-        pendingPowerPlayGoal: null, // Clear the pending goal confirmation
-        gameSummary: newGameSummary
+        penaltiesLog: newPenaltiesLog,
+        pendingPowerPlayGoal: null,
       }};
       toastMessage = { title: "Penalidad Finalizada", description: "La penalidad se eliminó por el gol en Power Play." };
       break;
@@ -1079,7 +949,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       if (!state.live?.clock) return state; // Safety guard
       let hasChanged = false;
       let significantChangeOccurred = false;
-      const { clock, penalties, gameSummary } = state.live;
+      const { clock, penalties, penaltiesLog } = state.live;
       const { config } = state;
       const now = Date.now();
       
@@ -1107,7 +977,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         currentTimeSnapshot = 0;
       }
       
-      const newGameSummary: GameSummary = JSON.parse(JSON.stringify(gameSummary));
+      const newPenaltiesLog: { home: PenaltyLog[], away: PenaltyLog[] } = JSON.parse(JSON.stringify(penaltiesLog));
       
       const processPenalties = (team: Team): Penalty[] => {
           const teamPenalties = penalties[team];
@@ -1117,12 +987,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           if (expiredPenalties.length > 0) significantChangeOccurred = true;
           
           expiredPenalties.forEach(p => {
-              const logIndex = newGameSummary.penalties[team].findIndex(log => log.id === p.id && !log.endReason);
+              const logIndex = newPenaltiesLog[team].findIndex(log => log.id === p.id && !log.endReason);
               if (logIndex > -1) {
                   const absoluteEndTime = p.expirationTime ?? liveAbsoluteElapsedTimeCs;
                   const endTimeContext = getPeriodContextFromAbsoluteTime(absoluteEndTime, state);
-                  newGameSummary.penalties[team][logIndex] = {
-                      ...newGameSummary.penalties[team][logIndex],
+                  newPenaltiesLog[team][logIndex] = {
+                      ...newPenaltiesLog[team][logIndex],
                       endTimestamp: Date.now(), endGameTime: endTimeContext.timeInPeriodCs,
                       endPeriodText: endTimeContext.periodText, endReason: 'completed', timeServed: p.initialDuration,
                   };
@@ -1201,7 +1071,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         newState = { ...state, live: { ...state.live,
             clock: { ...clock, currentTime: currentTimeSnapshot, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs },
             penalties: { home: sortPenaltiesByStatus(homePenaltiesResult), away: sortPenaltiesByStatus(awayPenaltiesResult) },
-            gameSummary: newGameSummary,
+            penaltiesLog: newPenaltiesLog,
             playPenaltyBeepTrigger: playPenaltyBeepTrigger
         }};
       } else {
@@ -1351,23 +1221,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         
         if (newState.live.clock.periodDisplayOverride === 'End of Game' && newState.live.matchId) {
             const summary = generateSummaryData(newState);
-            const matchId = newState.live.matchId;
             if (summary) {
-              const tournamentId = newState.config.selectedTournamentId;
-              const tournaments = newState.config.tournaments.map(t => {
-                if (t.id === tournamentId) {
-                  const matches = t.matches.map(m => {
-                    if (m.id === matchId) {
-                      return { ...m, summary, homeScore: summary.goals.home.length, awayScore: summary.goals.away.length, overTimeOrShootouts: summary.overTimeOrShootouts };
-                    }
-                    return m;
-                  });
-                  return { ...t, matches };
-                }
-                return t;
-              });
-              newState.config = { ...newState.config, tournaments };
-              toastMessage = { title: "Resumen Guardado", description: "El resumen del partido finalizado se ha guardado automáticamente." };
+                dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: newState.live.matchId, summary } });
             }
         }
         break;
@@ -1525,27 +1380,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       if (newState.live.matchId) {
         const summary = generateSummaryData(newState);
-        const matchId = newState.live.matchId;
         if (summary) {
-          const tournamentId = newState.config.selectedTournamentId;
-          const tournaments = newState.config.tournaments.map(t => {
-            if (t.id === tournamentId) {
-              const matches = t.matches.map(m => {
-                if (m.id === matchId) {
-                  return { ...m, summary, homeScore: summary.goals.home.length, awayScore: summary.goals.away.length, overTimeOrShootouts: summary.overTimeOrShootouts };
-                }
-                return m;
-              });
-              return { ...t, matches };
-            }
-            return t;
-          });
-          newState.config = { ...newState.config, tournaments };
-          toastMessage = { title: "Resumen Guardado", description: "El resumen del partido finalizado se ha guardado automáticamente." };
+          dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: newState.live.matchId, summary } });
         }
-      } else {
-         toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
       }
+      toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
       break;
     }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
@@ -1792,31 +1631,16 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const { defaultWarmUpDuration, autoStartWarmUp } = state.config;
       
       const resetLiveState: LiveState = {
-        score: { home: 0, away: 0, homeShots: 0, awayShots: 0, homeGoals: [], awayGoals: [] },
-        penalties: { home: [], away: [] },
+        ...INITIAL_LIVE_DATA,
         clock: {
+          ...INITIAL_LIVE_DATA.clock,
           currentTime: defaultWarmUpDuration,
-          currentPeriod: 0,
           isClockRunning: autoStartWarmUp && defaultWarmUpDuration > 0,
-          periodDisplayOverride: 'Warm-up',
-          preTimeoutState: null,
           clockStartTimeMs: (autoStartWarmUp && defaultWarmUpDuration > 0) ? Date.now() : null,
           remainingTimeAtStartCs: (autoStartWarmUp && defaultWarmUpDuration > 0) ? defaultWarmUpDuration : null,
-          absoluteElapsedTimeCs: 0,
-          _liveAbsoluteElapsedTimeCs: 0,
         },
-        shootout: INITIAL_SHOOTOUT_STATE,
-        homeTeamName: 'Local',
-        homeTeamSubName: undefined,
-        awayTeamName: 'Visitante',
-        awayTeamSubName: undefined,
-        gameSummary: IN_CODE_INITIAL_GAME_SUMMARY,
         playHornTrigger: state.live.playHornTrigger,
         playPenaltyBeepTrigger: state.live.playPenaltyBeepTrigger,
-        pendingPowerPlayGoal: null,
-        overlayMessage: null,
-        matchId: state.live.matchId, // Preserve the matchId
-        playedPeriods: [],
       };
 
       // Save the reset live state to the server immediately

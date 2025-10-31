@@ -1,4 +1,5 @@
 
+
 export interface PenaltyTypeDefinition {
   id: string;
   name: string;
@@ -189,6 +190,7 @@ export interface PeriodSummary {
     stats: PeriodStats;
 }
 
+// This is the model for post-game summaries. It should be self-contained.
 export interface GameSummary {
   attendance: {
     home: AttendedPlayerInfo[];
@@ -285,8 +287,6 @@ export interface ScoreState {
   away: number;
   homeShots: number;
   awayShots: number;
-  homeGoals: GoalLog[];
-  awayGoals: GoalLog[];
 }
 
 export interface PenaltiesState {
@@ -311,16 +311,20 @@ export interface ShootoutState {
   initiator: Team | null; // Track who started the shootout
 }
 
+// This is the model for live, in-game data
 export interface LiveState {
   clock: ClockState;
   score: ScoreState;
   penalties: PenaltiesState;
+  goals: { home: GoalLog[], away: GoalLog[] };
+  penaltiesLog: { home: PenaltyLog[], away: PenaltyLog[] };
+  shotsLog: { home: ShotLog[], away: ShotLog[] };
+  attendance: { home: AttendedPlayerInfo[], away: AttendedPlayerInfo[] };
   shootout: ShootoutState;
   homeTeamName: string;
   homeTeamSubName?: string;
   awayTeamName: string;
   awayTeamSubName?: string;
-  gameSummary: GameSummary;
   playHornTrigger: number;
   playPenaltyBeepTrigger: number;
   pendingPowerPlayGoal: {

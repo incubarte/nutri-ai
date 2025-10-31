@@ -3,7 +3,7 @@
 
 import type { GameState, GameSummary, PeriodStats, SummaryPlayerStats, GoalLog, ShotLog, AttendedPlayerInfo, Team, PlayerData, PenaltyLog, PeriodSummary } from "@/types";
 
-export const recalculateAllStatsFromLogs = (gameSummary: GameSummary, homeTeamRoster: PlayerData[], awayTeamRoster: PlayerData[]): { home: SummaryPlayerStats[], away: SummaryPlayerStats[] } => {
+export const recalculateAllStatsFromLogs = (partialSummary: Partial<Pick<GameSummary, 'goals' | 'home' | 'away'>>, homeTeamRoster: PlayerData[], awayTeamRoster: PlayerData[]): { home: SummaryPlayerStats[], away: SummaryPlayerStats[] } => {
     const homePlayerStatsMap = new Map<string, SummaryPlayerStats>();
     const awayPlayerStatsMap = new Map<string, SummaryPlayerStats>();
 
@@ -12,13 +12,13 @@ export const recalculateAllStatsFromLogs = (gameSummary: GameSummary, homeTeamRo
     awayTeamRoster.forEach(p => awayPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
 
     // Process goals and assists
-    (gameSummary.goals.home || []).forEach(goal => {
+    (partialSummary.goals?.home || []).forEach(goal => {
         const scorerId = homeTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
         if (scorerId && homePlayerStatsMap.has(scorerId)) homePlayerStatsMap.get(scorerId)!.goals++;
         const assistId = homeTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
         if (assistId && homePlayerStatsMap.has(assistId)) homePlayerStatsMap.get(assistId)!.assists++;
     });
-    (gameSummary.goals.away || []).forEach(goal => {
+    (partialSummary.goals?.away || []).forEach(goal => {
         const scorerId = awayTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
         if (scorerId && awayPlayerStatsMap.has(scorerId)) awayPlayerStatsMap.get(scorerId)!.goals++;
         const assistId = awayTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
@@ -26,10 +26,10 @@ export const recalculateAllStatsFromLogs = (gameSummary: GameSummary, homeTeamRo
     });
 
     // Process shots
-    (gameSummary.home?.homeShotsLog || []).forEach(shot => {
+    (partialSummary.home?.homeShotsLog || []).forEach(shot => {
         if (shot.playerId && homePlayerStatsMap.has(shot.playerId)) homePlayerStatsMap.get(shot.playerId)!.shots++;
     });
-    (gameSummary.away?.awayShotsLog || []).forEach(shot => {
+    (partialSummary.away?.awayShotsLog || []).forEach(shot => {
         if (shot.playerId && awayPlayerStatsMap.has(shot.playerId)) awayPlayerStatsMap.get(shot.playerId)!.shots++;
     });
     
@@ -47,12 +47,12 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     
     // Create the base summary object with the new simplified structure.
     const finalSummary: GameSummary = {
-        attendance: live.gameSummary.attendance,
-        goals: { home: live.gameSummary.goals?.home || [], away: live.gameSummary.goals?.away || [] },
-        penalties: { home: live.gameSummary.penalties?.home || [], away: live.gameSummary.penalties?.away || [] },
+        attendance: live.attendance,
+        goals: { home: live.goals?.home || [], away: live.goals?.away || [] },
+        penalties: { home: live.penaltiesLog?.home || [], away: live.penaltiesLog?.away || [] },
         playerStats: { home: [], away: [] },
-        home: { homeShotsLog: live.gameSummary.home?.homeShotsLog || [] },
-        away: { awayShotsLog: live.gameSummary.away?.awayShotsLog || [] },
+        home: { homeShotsLog: live.shotsLog?.home || [] },
+        away: { awayShotsLog: live.shotsLog?.away || [] },
         statsByPeriod: [],
         playedPeriods: live.playedPeriods || [],
     };
@@ -79,8 +79,7 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         periodData.penalties.away = (finalSummary.penalties.away || []).filter(p => p.addPeriodText === periodText);
         
         // Recalculate player stats specifically for this period.
-        const periodSummaryForStats: GameSummary = {
-          ...finalSummary,
+        const periodSummaryForStats: Partial<GameSummary> = {
           goals: periodData.goals,
           home: { homeShotsLog: (finalSummary.home?.homeShotsLog || []).filter(s => s.periodText === periodText) },
           away: { awayShotsLog: (finalSummary.away?.awayShotsLog || []).filter(s => s.periodText === periodText) },

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -272,8 +273,8 @@ export default function MobileShotsPage() {
 
   const homeTeamName = liveState.homeTeamName || 'Local';
   const awayTeamName = liveState.awayTeamName || 'Visitante';
-  const homeAttendedPlayers = [...(liveState.gameSummary?.attendance?.home || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
-  const awayAttendedPlayers = [...(liveState.gameSummary?.attendance?.away || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
+  const homeAttendedPlayers = [...(liveState.attendance?.home || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
+  const awayAttendedPlayers = [...(liveState.attendance?.away || [])].sort((a,b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
   const homeShots = liveState.score?.homeShots || 0;
   const awayShots = liveState.score?.awayShots || 0;
 
