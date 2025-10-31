@@ -49,6 +49,11 @@ export const PlayerStatsSection = ({
         });
 
         return combinedList.sort((a, b) => {
+            // Sort attended players first
+            if (a.attended && !b.attended) return -1;
+            if (!a.attended && b.attended) return 1;
+
+            // Then sort by number
             const numA = parseInt(a.number, 10);
             const numB = parseInt(b.number, 10);
 

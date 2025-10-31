@@ -5,13 +5,13 @@
     "homeGoals": [
       {
         "team": "home",
-        "timestamp": 1761868282013,
+        "timestamp": 1761868673590,
         "gameTime": 120000,
         "periodText": "2ND",
         "scorer": {
-          "playerNumber": "3"
+          "playerNumber": "4"
         },
-        "id": "b9604999-2cf6-43b5-ad73-b61175c4a83b"
+        "id": "a80337e5-c5e3-4b60-85b0-a2d14aded3f5"
       }
     ],
     "awayGoals": [],
@@ -48,13 +48,13 @@
       "goals": [
         {
           "team": "home",
-          "timestamp": 1761868282013,
+          "timestamp": 1761868673590,
           "gameTime": 120000,
           "periodText": "2ND",
           "scorer": {
-            "playerNumber": "3"
+            "playerNumber": "4"
           },
-          "id": "b9604999-2cf6-43b5-ad73-b61175c4a83b"
+          "id": "a80337e5-c5e3-4b60-85b0-a2d14aded3f5"
         }
       ],
       "penalties": [],
@@ -72,7 +72,7 @@
       "away": []
     }
   },
-  "playHornTrigger": 26,
+  "playHornTrigger": 27,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
