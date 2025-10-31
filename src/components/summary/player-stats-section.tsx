@@ -15,16 +15,16 @@ export const PlayerStatsSection = ({
     playerStats, 
     attendance,
     editable,
-    editedShots,
-    onShotChange
+    editedStats,
+    onStatChange
 }: { 
     teamName: string; 
     allPlayers?: PlayerData[];
     playerStats?: SummaryPlayerStats[]; 
     attendance?: AttendedPlayerInfo[];
     editable?: boolean;
-    editedShots?: Record<string, string>;
-    onShotChange?: (playerId: string, value: string) => void;
+    editedStats?: Record<string, { shots: string; goals: string; assists: string; }>;
+    onStatChange?: (playerId: string, field: 'shots' | 'goals' | 'assists', value: string) => void;
 }) => {
     
     const sortedPlayersWithStats = useMemo(() => {
@@ -67,19 +67,22 @@ export const PlayerStatsSection = ({
     const totals = useMemo(() => {
         return sortedPlayersWithStats.reduce((acc, player) => {
             if (player.attended) {
-                acc.goals += player.goals || 0;
-                acc.assists += player.assists || 0;
-                
-                let shotsValue = player.shots || 0;
-                if (editable && editedShots && editedShots[player.id] !== undefined) {
-                    shotsValue = parseInt(editedShots[player.id], 10) || 0;
+                if (editable && editedStats && editedStats[player.id]) {
+                    acc.goals += parseInt(editedStats[player.id].goals, 10) || 0;
+                    acc.assists += parseInt(editedStats[player.id].assists, 10) || 0;
+                    acc.shots += parseInt(editedStats[player.id].shots, 10) || 0;
+                } else {
+                    acc.goals += player.goals || 0;
+                    acc.assists += player.assists || 0;
+                    acc.shots += player.shots || 0;
                 }
-                acc.shots += shotsValue;
             }
             return acc;
         }, { goals: 0, assists: 0, shots: 0 });
-    }, [sortedPlayersWithStats, editable, editedShots]);
+    }, [sortedPlayersWithStats, editable, editedStats]);
     
+    const statInputClass = "h-7 w-12 text-center mx-auto text-sm";
+
     return (
         <Card>
             <CardHeader>
@@ -99,26 +102,26 @@ export const PlayerStatsSection = ({
                         </TableHeader>
                         <TableBody>
                             {sortedPlayersWithStats.map(player => {
-                                const currentShots = editable && editedShots ? (editedShots[player.id] !== undefined ? editedShots[player.id] : String(player.shots || 0)) : String(player.shots || 0);
+                                const playerEditedStats = editable && editedStats ? editedStats[player.id] : null;
 
                                 return (
-                                    <TableRow key={player.id} className={cn(!player.attended && "text-muted-foreground opacity-60")}>
+                                    <TableRow key={player.id} className={cn(!player.attended && "text-muted-foreground opacity-50")}>
                                         <TableCell className="font-semibold">{player.number || 'S/N'}</TableCell>
                                         <TableCell className="text-xs">{player.name}</TableCell>
-                                        <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
-                                        <TableCell className="text-center font-mono">{player.assists || 0}</TableCell>
                                         <TableCell className="text-center">
-                                        {editable ? (
-                                            <Input
-                                                type="number"
-                                                value={currentShots}
-                                                onChange={(e) => onShotChange?.(player.id, e.target.value)}
-                                                className="h-7 w-14 text-center mx-auto"
-                                                disabled={!player.attended}
-                                            />
-                                        ) : (
-                                            <span className="font-mono">{player.shots || 0}</span>
-                                        )}
+                                            {editable ? (
+                                                <Input type="number" value={playerEditedStats?.goals ?? String(player.goals || 0)} onChange={(e) => onStatChange?.(player.id, 'goals', e.target.value)} className={statInputClass} />
+                                            ) : ( <span className="font-mono">{player.goals || 0}</span> )}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            {editable ? (
+                                                <Input type="number" value={playerEditedStats?.assists ?? String(player.assists || 0)} onChange={(e) => onStatChange?.(player.id, 'assists', e.target.value)} className={statInputClass} />
+                                            ) : ( <span className="font-mono">{player.assists || 0}</span> )}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            {editable ? (
+                                                <Input type="number" value={playerEditedStats?.shots ?? String(player.shots || 0)} onChange={(e) => onStatChange?.(player.id, 'shots', e.target.value)} className={statInputClass} />
+                                            ) : ( <span className="font-mono">{player.shots || 0}</span> )}
                                         </TableCell>
                                     </TableRow>
                                 )}

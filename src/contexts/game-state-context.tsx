@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -94,12 +95,12 @@ const IN_CODE_INITIAL_TOURNAMENT: Tournament = {
 
 
 const IN_CODE_INITIAL_GAME_SUMMARY: GameSummary = {
-  home: { homeShotsLog: [] },
-  away: { awayShotsLog: [] },
   attendance: { home: [], away: [] },
   goals: { home: [], away: [] },
   penalties: { home: [], away: [] },
   playerStats: { home: [], away: [] },
+  home: { homeShotsLog: [] },
+  away: { awayShotsLog: [] },
   playedPeriods: [],
 };
 
@@ -716,12 +717,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
 
       const newGameSummary: GameSummary = JSON.parse(JSON.stringify(state.live.gameSummary));
-      const shotsLogKey = team === 'home' ? 'home' : 'away';
-      if (!newGameSummary[shotsLogKey].homeShotsLog && team === 'home') newGameSummary.home.homeShotsLog = [];
-      if (!newGameSummary[shotsLogKey].awayShotsLog && team === 'away') newGameSummary.away.awayShotsLog = [];
-      
-      if(team === 'home') newGameSummary.home.homeShotsLog!.push(newShotLog);
-      else newGameSummary.away.awayShotsLog!.push(newShotLog);
+      const shotsLogKey = team === 'home' ? 'homeShotsLog' : 'awayShotsLog';
+      const teamLogKey = team;
+      if (!newGameSummary[teamLogKey]?.[shotsLogKey]) {
+        if (team === 'home') newGameSummary.home.homeShotsLog = [];
+        else newGameSummary.away.awayShotsLog = [];
+      }
+      newGameSummary[teamLogKey][shotsLogKey]!.push(newShotLog);
       
       const tournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
       const homeTeamRoster = tournament?.teams.find(t => t.name === state.live.homeTeamName && (t.subName || undefined) === (state.live.homeTeamSubName || undefined))?.players || [];
