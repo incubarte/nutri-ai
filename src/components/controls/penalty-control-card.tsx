@@ -143,7 +143,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
         return ` - Expulsado`;
     }, [penalty._limitReached]);
 
-    const penaltyLogDetails = state.live.gameSummary[team]?.penalties.find(p => p.id === penalty.id);
+    const penaltyLogDetails = state.live.penaltiesLog[team]?.find(p => p.id === penalty.id);
     const penaltyNameForTooltip = penaltyLogDetails?.penaltyName || "Tipo desconocido";
 
 
@@ -862,4 +862,3 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     </>
   );
 }
-
