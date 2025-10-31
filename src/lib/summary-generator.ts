@@ -1,126 +1,118 @@
 
+
 "use client";
 
-import type { GameState, GameSummary, PeriodStats, SummaryPlayerStats, GoalLog, ShotLog, AttendedPlayerInfo, Team, PlayerData } from "@/types";
-import { getPeriodText } from "@/contexts/game-state-context";
+import type { GameState, GameSummary, PeriodStats, SummaryPlayerStats, GoalLog, ShotLog, AttendedPlayerInfo, Team, PlayerData, PenaltyLog } from "@/types";
 
-export const recalculateAllStatsFromLogs = (gameSummary: GameSummary): { homePlayerStats: SummaryPlayerStats[], awayPlayerStats: SummaryPlayerStats[], homeTotalShots: number, awayTotalShots: number } => {
+export const recalculateAllStatsFromLogs = (gameSummary: GameSummary, homeTeamRoster: PlayerData[], awayTeamRoster: PlayerData[]): { home: SummaryPlayerStats[], away: SummaryPlayerStats[] } => {
     const homePlayerStatsMap = new Map<string, SummaryPlayerStats>();
     const awayPlayerStatsMap = new Map<string, SummaryPlayerStats>();
 
-    // Initialize with all attended players to ensure they are on the list
-    gameSummary.attendance.home.forEach(p => {
-        homePlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 });
-    });
-    gameSummary.attendance.away.forEach(p => {
-        awayPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 });
-    });
+    // Initialize with all players from roster to ensure everyone is listed
+    homeTeamRoster.forEach(p => homePlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
+    awayTeamRoster.forEach(p => awayPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
 
     // Process goals and assists
-    [...gameSummary.home.goals, ...gameSummary.away.goals].forEach(goal => {
-        const statsMap = goal.team === 'home' ? homePlayerStatsMap : awayPlayerStatsMap;
-        const scorerId = gameSummary.attendance[goal.team].find(p => p.number === goal.scorer?.playerNumber)?.id;
-        if (scorerId && statsMap.has(scorerId)) {
-            statsMap.get(scorerId)!.goals++;
-        }
-        const assistId = gameSummary.attendance[goal.team].find(p => p.number === goal.assist?.playerNumber)?.id;
-        if (assistId && statsMap.has(assistId)) {
-            statsMap.get(assistId)!.assists++;
-        }
+    (gameSummary.goals.home || []).forEach(goal => {
+        const scorerId = homeTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
+        if (scorerId && homePlayerStatsMap.has(scorerId)) homePlayerStatsMap.get(scorerId)!.goals++;
+        const assistId = homeTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
+        if (assistId && homePlayerStatsMap.has(assistId)) homePlayerStatsMap.get(assistId)!.assists++;
     });
-    
+    (gameSummary.goals.away || []).forEach(goal => {
+        const scorerId = awayTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
+        if (scorerId && awayPlayerStatsMap.has(scorerId)) awayPlayerStatsMap.get(scorerId)!.goals++;
+        const assistId = awayTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
+        if (assistId && awayPlayerStatsMap.has(assistId)) awayPlayerStatsMap.get(assistId)!.assists++;
+    });
+
     // Process shots
-    const homeShotsLog = gameSummary.home.homeShotsLog || [];
-    const awayShotsLog = gameSummary.away.awayShotsLog || [];
-
-    [...homeShotsLog, ...awayShotsLog].forEach(shot => {
-        const statsMap = shot.team === 'home' ? homePlayerStatsMap : awayPlayerStatsMap;
-        if (shot.playerId && statsMap.has(shot.playerId)) {
-            statsMap.get(shot.playerId)!.shots++;
-        }
+    (gameSummary.homeShotsLog || []).forEach(shot => {
+        if (shot.playerId && homePlayerStatsMap.has(shot.playerId)) homePlayerStatsMap.get(shot.playerId)!.shots++;
     });
-
-    const homeTotalShots = homeShotsLog.length;
-    const awayTotalShots = awayShotsLog.length;
+    (gameSummary.awayShotsLog || []).forEach(shot => {
+        if (shot.playerId && awayPlayerStatsMap.has(shot.playerId)) awayPlayerStatsMap.get(shot.playerId)!.shots++;
+    });
     
-    return { 
-        homePlayerStats: Array.from(homePlayerStatsMap.values()),
-        awayPlayerStats: Array.from(awayPlayerStatsMap.values()),
-        homeTotalShots,
-        awayTotalShots 
-    };
+    return { home: Array.from(homePlayerStatsMap.values()), away: Array.from(awayPlayerStatsMap.values()) };
 };
+
 
 export const generateSummaryData = (state: GameState): GameSummary | null => {
     const { live, config } = state;
     if (!live || !config) return null;
 
-    const summary: GameSummary = JSON.parse(JSON.stringify(live.gameSummary));
-    
-    // 1. Recalculate total aggregated stats for all players first
-    const { homePlayerStats, awayPlayerStats } = recalculateAllStatsFromLogs(summary);
-    summary.home.playerStats = homePlayerStats;
-    summary.away.playerStats = awayPlayerStats;
-
-    // 2. Generate stats per period
-    const statsByPeriod: Record<string, PeriodStats> = {};
-    const { playedPeriods } = live;
-
     const currentTournament = config.tournaments.find(t => t.id === config.selectedTournamentId);
     const homeTeamRoster = currentTournament?.teams.find(t => t.name === live.homeTeamName && (t.subName || undefined) === (live.homeTeamSubName || undefined) && t.category === config.selectedMatchCategory)?.players || [];
     const awayTeamRoster = currentTournament?.teams.find(t => t.name === live.awayTeamName && (t.subName || undefined) === (live.awayTeamSubName || undefined) && t.category === config.selectedMatchCategory)?.players || [];
+    
+    const summary: GameSummary = {
+        attendance: live.gameSummary.attendance,
+        goals: { home: live.gameSummary.home.goals || [], away: live.gameSummary.away.goals || [] },
+        penalties: { home: live.gameSummary.home.penalties || [], away: live.gameSummary.away.penalties || [] },
+        playerStats: { home: [], away: [] }, // Will be populated by recalculate
+        homeShotsLog: live.gameSummary.home.homeShotsLog || [],
+        awayShotsLog: live.gameSummary.away.awayShotsLog || [],
+    };
+    
+    const { home: homePlayerStats, away: awayPlayerStats } = recalculateAllStatsFromLogs(summary, homeTeamRoster, awayTeamRoster);
+    summary.playerStats.home = homePlayerStats;
+    summary.playerStats.away = awayPlayerStats;
+    
+    const statsByPeriod: Record<string, PeriodStats> = {};
+    const periodsToProcess = live.playedPeriods || [];
+    
+    periodsToProcess.forEach(periodText => {
+        const homePeriodPlayerStatsMap = new Map<string, SummaryPlayerStats>();
+        homeTeamRoster.forEach(p => homePeriodPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
+        
+        const awayPeriodPlayerStatsMap = new Map<string, SummaryPlayerStats>();
+        awayTeamRoster.forEach(p => awayPeriodPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
 
-
-    (playedPeriods || []).forEach(periodText => {
-        const homePeriodStats = new Map<string, SummaryPlayerStats>();
-        homeTeamRoster.forEach(p => homePeriodStats.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
-
-        const awayPeriodStats = new Map<string, SummaryPlayerStats>();
-        awayTeamRoster.forEach(p => awayPeriodStats.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
-
-        const homeGoalsInPeriod = summary.home.goals.filter(g => g.periodText === periodText);
+        const homeGoalsInPeriod = (summary.goals.home || []).filter(g => g.periodText === periodText);
         homeGoalsInPeriod.forEach(goal => {
             const scorerId = homeTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
-            if (scorerId && homePeriodStats.has(scorerId)) homePeriodStats.get(scorerId)!.goals++;
+            if (scorerId && homePeriodPlayerStatsMap.has(scorerId)) homePeriodPlayerStatsMap.get(scorerId)!.goals++;
             const assistId = homeTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
-            if (assistId && homePeriodStats.has(assistId)) homePeriodStats.get(assistId)!.assists++;
+            if (assistId && homePeriodPlayerStatsMap.has(assistId)) homePeriodPlayerStatsMap.get(assistId)!.assists++;
         });
-        (summary.home.homeShotsLog || []).filter(s => s.periodText === periodText).forEach(shot => {
-             if (shot.playerId && homePeriodStats.has(shot.playerId)) homePeriodStats.get(shot.playerId)!.shots++;
+        (summary.homeShotsLog || []).filter(s => s.periodText === periodText).forEach(shot => {
+             if (shot.playerId && homePeriodPlayerStatsMap.has(shot.playerId)) homePeriodPlayerStatsMap.get(shot.playerId)!.shots++;
         });
 
-        const awayGoalsInPeriod = summary.away.goals.filter(g => g.periodText === periodText);
+        const awayGoalsInPeriod = (summary.goals.away || []).filter(g => g.periodText === periodText);
         awayGoalsInPeriod.forEach(goal => {
             const scorerId = awayTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
-            if (scorerId && awayPeriodStats.has(scorerId)) awayPeriodStats.get(scorerId)!.goals++;
+            if (scorerId && awayPeriodPlayerStatsMap.has(scorerId)) awayPeriodPlayerStatsMap.get(scorerId)!.goals++;
             const assistId = awayTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
-            if (assistId && awayPeriodStats.has(assistId)) awayPeriodStats.get(assistId)!.assists++;
+            if (assistId && awayPeriodPlayerStatsMap.has(assistId)) awayPeriodPlayerStatsMap.get(assistId)!.assists++;
         });
-        (summary.away.awayShotsLog || []).filter(s => s.periodText === periodText).forEach(shot => {
-             if (shot.playerId && awayPeriodStats.has(shot.playerId)) awayPeriodStats.get(shot.playerId)!.shots++;
+        (summary.awayShotsLog || []).filter(s => s.periodText === periodText).forEach(shot => {
+             if (shot.playerId && awayPeriodPlayerStatsMap.has(shot.playerId)) awayPeriodPlayerStatsMap.get(shot.playerId)!.shots++;
         });
 
         statsByPeriod[periodText] = {
-            home: {
-                goals: homeGoalsInPeriod,
-                playerStats: Array.from(homePeriodStats.values()),
+            goals: { home: homeGoalsInPeriod, away: awayGoalsInPeriod },
+            penalties: {
+                home: (summary.penalties.home || []).filter(p => p.addPeriodText === periodText),
+                away: (summary.penalties.away || []).filter(p => p.addPeriodText === periodText),
             },
-            away: {
-                goals: awayGoalsInPeriod,
-                playerStats: Array.from(awayPeriodStats.values()),
+            playerStats: {
+                home: Array.from(homePeriodPlayerStatsMap.values()),
+                away: Array.from(awayPeriodPlayerStatsMap.values()),
             },
         };
     });
 
     summary.statsByPeriod = statsByPeriod;
-    
     const overTimeOrShootouts = (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) || Object.keys(summary.statsByPeriod || {}).some(p => p.startsWith('OT'));
     summary.overTimeOrShootouts = overTimeOrShootouts;
 
     if (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) {
-        const { isActive, rounds, ...shootoutSummary } = live.shootout;
+        const { isActive, ...shootoutSummary } = live.shootout;
         summary.shootout = shootoutSummary;
     }
 
     return summary;
 };
+

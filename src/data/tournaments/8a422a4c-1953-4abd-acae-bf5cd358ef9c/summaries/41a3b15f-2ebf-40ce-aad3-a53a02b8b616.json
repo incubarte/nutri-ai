@@ -3,13 +3,13 @@
     "goals": [
       {
         "team": "home",
-        "timestamp": 1761868673590,
+        "timestamp": 1761869023498,
         "gameTime": 120000,
         "periodText": "2ND",
         "scorer": {
-          "playerNumber": "4"
+          "playerNumber": "44"
         },
-        "id": "a80337e5-c5e3-4b60-85b0-a2d14aded3f5"
+        "id": "a6309b1f-68be-45f1-b057-526320f6a966"
       }
     ],
     "penalties": [],
@@ -32,13 +32,13 @@
         "goals": [
           {
             "team": "home",
-            "timestamp": 1761868673590,
+            "timestamp": 1761869023498,
             "gameTime": 120000,
             "periodText": "2ND",
             "scorer": {
-              "playerNumber": "4"
+              "playerNumber": "44"
             },
-            "id": "a80337e5-c5e3-4b60-85b0-a2d14aded3f5"
+            "id": "a6309b1f-68be-45f1-b057-526320f6a966"
           }
         ],
         "playerStats": []

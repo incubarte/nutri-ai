@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, Edit3, Check, XCircle } from "lucide-react";
-import type { MatchData, Tournament, GameSummary, SummaryPlayerStats, PlayerData } from "@/types";
+import type { MatchData, Tournament, GameSummary, SummaryPlayerStats, PlayerData, PeriodStats } from "@/types";
 import { useGameState, getCategoryNameById } from "@/contexts/game-state-context";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { GoalsSection } from "../summary/goals-section";
@@ -47,55 +47,12 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
 
   const allPeriodTexts = useMemo(() => {
     if (!localSummary?.statsByPeriod) return [];
-    const periods = Object.keys(localSummary.statsByPeriod);
-    if (localSummary.shootout && (localSummary.shootout.homeAttempts.length > 0 || localSummary.shootout.awayAttempts.length > 0)) {
-       // Shootout is handled separately, not as a period
-    }
-    return periods.sort((a, b) => {
+    return Object.keys(localSummary.statsByPeriod).sort((a, b) => {
       if (a.startsWith('OT') && !b.startsWith('OT')) return 1;
       if (!a.startsWith('OT') && b.startsWith('OT')) return -1;
       return a.localeCompare(b);
     });
   }, [localSummary]);
-
-  const aggregatedStats = useMemo(() => {
-    const calculateTotals = (teamType: 'home' | 'away') => {
-        if (!localSummary) return { goals: [], penalties: [], playerStats: [] };
-        
-        const teamData = teamType === 'home' ? homeTeam : awayTeam;
-        const allGoals = localSummary[teamType]?.goals || [];
-        const allPenalties = localSummary[teamType]?.penalties || [];
-        
-        const playerStatsMap = new Map<string, SummaryPlayerStats>();
-        
-        (teamData?.players || []).forEach(p => {
-            playerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 });
-        });
-
-        Object.values(localSummary.statsByPeriod || {}).forEach(period => {
-            (period[teamType]?.playerStats || []).forEach(pStat => {
-                const player = playerStatsMap.get(pStat.id);
-                if (player) {
-                    player.goals += pStat.goals || 0;
-                    player.assists += pStat.assists || 0;
-                    player.shots += pStat.shots || 0;
-                }
-            });
-        });
-
-        return {
-            goals: allGoals,
-            penalties: allPenalties,
-            playerStats: Array.from(playerStatsMap.values()),
-        };
-    };
-
-    return {
-      home: calculateTotals('home'),
-      away: calculateTotals('away'),
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localSummary, homeTeam, awayTeam, refreshKey]);
 
   const handleEditClick = () => {
     const initialShots: Record<string, Record<string, string>> = {};
@@ -105,7 +62,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
             for(const team of ['home', 'away'] as const) {
                 const playersForTeam = team === 'home' ? homeTeam?.players : awayTeam?.players;
                 playersForTeam?.forEach(p => {
-                    const stat = localSummary.statsByPeriod![period][team].playerStats.find(ps => ps.id === p.id);
+                    const stat = localSummary.statsByPeriod![period].playerStats[team].find(ps => ps.id === p.id);
                     initialShots[period][p.id] = String(stat?.shots || 0);
                 });
             }
@@ -130,9 +87,13 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                     const newShotCount = parseInt(editedShots[periodText][player.id], 10) || 0;
                     
                     if (!newSummary.statsByPeriod[periodText]) {
-                         newSummary.statsByPeriod[periodText] = { home: { goals:[], playerStats:[] }, away: { goals:[], playerStats:[] } };
+                         newSummary.statsByPeriod[periodText] = {
+                            goals: { home: [], away: [] },
+                            penalties: { home: [], away: [] },
+                            playerStats: { home: [], away: [] }
+                         };
                     }
-                    let periodStats = newSummary.statsByPeriod[periodText][team].playerStats as SummaryPlayerStats[];
+                    let periodStats = newSummary.statsByPeriod[periodText].playerStats[team] as SummaryPlayerStats[];
                     let playerStat = periodStats.find(p => p.id === player.id);
                     if (playerStat) {
                         playerStat.shots = newShotCount;
@@ -170,6 +131,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
 
   if (!match || !tournament || !localSummary) return null;
   
+  const aggregatedStats = localSummary.playerStats;
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
@@ -181,25 +144,25 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
         </DialogHeader>
 
         <div className="grid grid-cols-2 text-center my-2">
-            <h3 className="text-2xl font-bold text-primary">{homeTeam?.name} - <span className="text-accent">{aggregatedStats.home.goals.length}</span></h3>
-            <h3 className="text-2xl font-bold text-primary">{awayTeam?.name} - <span className="text-accent">{aggregatedStats.away.goals.length}</span></h3>
+            <h3 className="text-2xl font-bold text-primary">{homeTeam?.name} - <span className="text-accent">{localSummary.goals.home.length}</span></h3>
+            <h3 className="text-2xl font-bold text-primary">{awayTeam?.name} - <span className="text-accent">{localSummary.goals.away.length}</span></h3>
         </div>
 
         <ScrollArea className="flex-grow my-2 border-t pt-4 pr-6 -mr-6">
           <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <GoalsSection teamName={homeTeam?.name || ''} goals={aggregatedStats.home.goals} />
-                <GoalsSection teamName={awayTeam?.name || ''} goals={aggregatedStats.away.goals} />
+                <GoalsSection teamName={homeTeam?.name || ''} goals={localSummary.goals.home} />
+                <GoalsSection teamName={awayTeam?.name || ''} goals={localSummary.goals.away} />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={aggregatedStats.home.penalties} />
-                  <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={aggregatedStats.away.penalties} />
+                  <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={localSummary.penalties.home} />
+                  <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={localSummary.penalties.away} />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <PlayerStatsSection teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={aggregatedStats.home.playerStats} attendance={localSummary.attendance.home} />
-                  <PlayerStatsSection teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={aggregatedStats.away.playerStats} attendance={localSummary.attendance.away} />
+                  <PlayerStatsSection teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={aggregatedStats.home} attendance={localSummary.attendance.home} />
+                  <PlayerStatsSection teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={aggregatedStats.away} attendance={localSummary.attendance.away} />
               </div>
               
                {localSummary.shootout && (localSummary.shootout.homeAttempts.length > 0 || localSummary.shootout.awayAttempts.length > 0) && (
@@ -238,9 +201,13 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                                 return (
                                     <div key={periodText} className="space-y-4 border-l-2 pl-4 ml-2">
                                         <h3 className="text-lg font-semibold">{periodText}</h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <PlayerStatsSection teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={periodStats?.home.playerStats} attendance={localSummary.attendance.home} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
-                                            <PlayerStatsSection teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={periodStats?.away.playerStats} attendance={localSummary.attendance.away} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
+                                        <div className="space-y-4">
+                                            <GoalsSection teamName={homeTeam?.name || ''} goals={periodStats?.goals.home || []}/>
+                                            <GoalsSection teamName={awayTeam?.name || ''} goals={periodStats?.goals.away || []}/>
+                                            <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={periodStats?.penalties.home || []}/>
+                                            <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={periodStats?.penalties.away || []}/>
+                                            <PlayerStatsSection teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={periodStats?.playerStats.home} attendance={localSummary.attendance.home} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
+                                            <PlayerStatsSection teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={periodStats?.playerStats.away} attendance={localSummary.attendance.away} editable={isEditing} editedShots={editedShots[periodText]} onShotChange={(playerId, value) => handleShotInputChange(periodText, playerId, value)} />
                                         </div>
                                     </div>
                                 )

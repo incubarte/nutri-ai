@@ -187,31 +187,36 @@ export interface AttendedPlayerInfo {
 }
 
 export interface PeriodStats {
-  home: { goals: GoalLog[]; playerStats: SummaryPlayerStats[]; };
-  away: { goals: GoalLog[]; playerStats: SummaryPlayerStats[]; };
+  goals: { home: GoalLog[], away: GoalLog[] };
+  penalties: { home: PenaltyLog[], away: PenaltyLog[] };
+  playerStats: { home: SummaryPlayerStats[], away: SummaryPlayerStats[] };
 }
 
 export interface GameSummary {
-  home: {
-    goals: GoalLog[];
-    penalties: PenaltyLog[];
-    playerStats: SummaryPlayerStats[];
-    homeShotsLog: ShotLog[];
-  };
-  away: {
-    goals: GoalLog[];
-    penalties: PenaltyLog[];
-    playerStats: SummaryPlayerStats[];
-    awayShotsLog: ShotLog[];
-  };
   attendance: {
     home: AttendedPlayerInfo[]; 
     away: AttendedPlayerInfo[]; 
   };
-  shootout?: ShootoutState;
+  goals: {
+    home: GoalLog[];
+    away: GoalLog[];
+  };
+  penalties: {
+    home: PenaltyLog[];
+    away: PenaltyLog[];
+  };
+  playerStats: {
+    home: SummaryPlayerStats[];
+    away: SummaryPlayerStats[];
+  };
+  // The shot logs are internal and might not be needed in the final summary
+  homeShotsLog?: ShotLog[];
+  awayShotsLog?: ShotLog[];
+  shootout?: Omit<ShootoutState, 'isActive'>;
   statsByPeriod?: Record<string, PeriodStats>;
   overTimeOrShootouts?: boolean;
 }
+
 
 export interface TunnelState {
   subdomain: string | null;
@@ -450,7 +455,7 @@ export type GameAction =
   | { type: 'RESET_GAME_STATE' }
   | { type: 'ADD_TEAM'; payload: Omit<TeamData, 'id' | 'players'> & { players: PlayerData[] } }
   | { type: 'ADD_TEAM_TO_TOURNAMENT'; payload: { tournamentId: string, team: Omit<TeamData, 'id'> & { id?: string } } }
-  | { type: 'DELETE_TEAMS_FROM_TOURNAMENT', payload: { tournamentId: string, teamIds: string[] } }
+  | { type: 'DELETE_TEAMS_FROM_TOURNAMENT'; payload: { tournamentId: string, teamIds: string[] } }
   | { type: 'UPDATE_TEAM_DETAILS'; payload: { teamId: string; name: string; subName?: string; category: string; logoDataUrl?: string | null } }
   | { type: 'DELETE_TEAM'; payload: { teamId: string } }
   | { type: 'ADD_PLAYER_TO_TEAM'; payload: { teamId: string; player: Omit<PlayerData, 'id'> } }
