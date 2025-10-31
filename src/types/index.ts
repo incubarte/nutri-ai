@@ -184,6 +184,11 @@ export interface PeriodStats {
   playerStats: { home: SummaryPlayerStats[], away: SummaryPlayerStats[] };
 }
 
+export interface PeriodSummary {
+    period: string;
+    stats: PeriodStats;
+}
+
 export interface GameSummary {
   attendance: {
     home: AttendedPlayerInfo[];
@@ -201,14 +206,14 @@ export interface GameSummary {
     home: SummaryPlayerStats[];
     away: SummaryPlayerStats[];
   };
-  home: { // Legacy or temporary structure, to be removed.
+  home: {
     homeShotsLog?: ShotLog[];
   };
-  away: { // Legacy or temporary structure, to be removed.
+  away: {
     awayShotsLog?: ShotLog[];
   };
   shootout?: Omit<ShootoutState, 'isActive'>;
-  statsByPeriod?: Record<string, PeriodStats>;
+  statsByPeriod?: PeriodSummary[];
   overTimeOrShootouts?: boolean;
   playedPeriods: string[];
 }
@@ -450,7 +455,12 @@ export type GameAction =
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } }
-  | { type: 'SET_PLAYER_SHOTS', payload: { team: Team; playerId: string; periodText: string; shotCount: number } };
+  | { type: 'SUMMARY_ADD_GOAL'; payload: { matchId: string; team: Team; periodText: string; goal: GoalLog; } }
+  | { type: 'SUMMARY_UPDATE_GOAL'; payload: { matchId: string; team: Team; periodText: string; originalGoalId: string; goal: GoalLog; } }
+  | { type: 'SUMMARY_DELETE_GOAL'; payload: { matchId: string; team: Team; periodText: string; goal: GoalLog; } }
+  | { type: 'SUMMARY_ADD_PENALTY'; payload: { matchId: string; team: Team; periodText: string; penalty: PenaltyLog; } }
+  | { type: 'SUMMARY_DELETE_PENALTY'; payload: { matchId: string; team: Team; periodText: string; penaltyId: string; } }
+  | { type: 'SET_PLAYER_SHOTS'; payload: { team: Team; playerId: string; periodText: string; shotCount: number } };
 
 
 export interface GameState {

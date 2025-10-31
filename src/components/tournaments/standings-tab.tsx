@@ -57,8 +57,7 @@ export function StandingsTab() {
             teamStats.pj++;
             const homeScore = match.summary?.goals.home.length || 0;
             const awayScore = match.summary?.goals.away.length || 0;
-            const wentToOTOrSO = (match.summary?.statsByPeriod && Object.keys(match.summary.statsByPeriod).some(p => p.startsWith('OT'))) || 
-                                 (match.summary?.shootout && (match.summary.shootout.homeAttempts.length > 0 || match.summary.shootout.awayAttempts.length > 0));
+            const wentToOTOrSO = match.overTimeOrShootouts || false;
 
             const isHome = match.homeTeamId === team.id;
             

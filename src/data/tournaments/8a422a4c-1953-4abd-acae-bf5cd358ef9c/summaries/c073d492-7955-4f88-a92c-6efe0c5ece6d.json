@@ -191,53 +191,63 @@
     "home": [],
     "away": []
   },
-  "homeShotsLog": [],
-  "awayShotsLog": [],
-  "statsByPeriod": {
-    "1ST": {
-      "goals": {
-        "home": [],
-        "away": []
-      },
-      "penalties": {
-        "home": [],
-        "away": []
-      },
-      "playerStats": {
-        "home": [],
-        "away": []
+  "home": {
+    "homeShotsLog": []
+  },
+  "away": {
+    "awayShotsLog": []
+  },
+  "statsByPeriod": [
+    {
+      "period": "1ST",
+      "stats": {
+        "goals": {
+          "home": [],
+          "away": []
+        },
+        "penalties": {
+          "home": [],
+          "away": []
+        },
+        "playerStats": {
+          "home": [],
+          "away": []
+        }
       }
     },
-    "2ND": {
-      "goals": {
-        "home": [],
-        "away": []
-      },
-      "penalties": {
-        "home": [
-          {
-            "id": "16ac12ff-721f-4a8f-9455-5d2b92ff5200",
-            "team": "home",
-            "playerNumber": "25",
-            "playerName": "SCOTTO DI CARLO NATALIA",
-            "penaltyName": "Menor",
-            "initialDuration": 120,
-            "reducesPlayerCount": true,
-            "clearsOnGoal": true,
-            "isBenchPenalty": false,
-            "addTimestamp": 1761844293501,
-            "addGameTime": 119538,
-            "addPeriodText": "2ND"
-          }
-        ],
-        "away": []
-      },
-      "playerStats": {
-        "home": [],
-        "away": []
+    {
+      "period": "2ND",
+      "stats": {
+        "goals": {
+          "home": [],
+          "away": []
+        },
+        "penalties": {
+          "home": [
+            {
+              "id": "16ac12ff-721f-4a8f-9455-5d2b92ff5200",
+              "team": "home",
+              "playerNumber": "25",
+              "playerName": "SCOTTO DI CARLO NATALIA",
+              "penaltyName": "Menor",
+              "initialDuration": 120,
+              "reducesPlayerCount": true,
+              "clearsOnGoal": true,
+              "isBenchPenalty": false,
+              "addTimestamp": 1761844293501,
+              "addGameTime": 119538,
+              "addPeriodText": "2ND"
+            }
+          ],
+          "away": []
+        },
+        "playerStats": {
+          "home": [],
+          "away": []
+        }
       }
     }
-  },
+  ],
   "overTimeOrShootouts": true,
   "shootout": {
     "rounds": 5,
