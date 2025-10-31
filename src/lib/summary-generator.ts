@@ -45,76 +45,66 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     const homeTeamRoster = currentTournament?.teams.find(t => t.name === live.homeTeamName && (t.subName || undefined) === (live.homeTeamSubName || undefined) && t.category === config.selectedMatchCategory)?.players || [];
     const awayTeamRoster = currentTournament?.teams.find(t => t.name === live.awayTeamName && (t.subName || undefined) === (live.awayTeamSubName || undefined) && t.category === config.selectedMatchCategory)?.players || [];
     
-    const baseSummary: GameSummary = {
+    // Create the base summary object with the new simplified structure.
+    const finalSummary: GameSummary = {
         attendance: live.gameSummary.attendance,
         goals: { home: live.gameSummary.goals.home || [], away: live.gameSummary.goals.away || [] },
         penalties: { home: live.gameSummary.penalties.home || [], away: live.gameSummary.penalties.away || [] },
         playerStats: { home: [], away: [] },
-        homeShotsLog: live.gameSummary.home.homeShotsLog || [],
-        awayShotsLog: live.gameSummary.away.awayShotsLog || [],
+        homeShotsLog: live.gameSummary.homeShotsLog || [],
+        awayShotsLog: live.gameSummary.awayShotsLog || [],
+        statsByPeriod: {},
         playedPeriods: live.playedPeriods || [],
     };
+
+    // Recalculate aggregated player stats for the whole game.
+    const aggregatedStats = recalculateAllStatsFromLogs(finalSummary, homeTeamRoster, awayTeamRoster);
+    finalSummary.playerStats.home = aggregatedStats.home;
+    finalSummary.playerStats.away = aggregatedStats.away;
+
+    // Use live.playedPeriods as the source of truth for all periods.
+    const allPlayedPeriods = [...(live.playedPeriods || [])];
     
-    const aggregatedStats = recalculateAllStatsFromLogs(baseSummary, homeTeamRoster, awayTeamRoster);
-    baseSummary.playerStats.home = aggregatedStats.home;
-    baseSummary.playerStats.away = aggregatedStats.away;
-    
-    const statsByPeriod: Record<string, PeriodStats> = {};
-    
-    (live.playedPeriods || []).forEach(periodText => {
-        statsByPeriod[periodText] = {
+    allPlayedPeriods.forEach(periodText => {
+        // Initialize the structure for this period with home/away containers.
+        const periodData: PeriodStats = {
             goals: { home: [], away: [] },
             penalties: { home: [], away: [] },
             playerStats: { home: [], away: [] }
         };
 
-        const homePeriodPlayerStatsMap = new Map<string, SummaryPlayerStats>();
-        homeTeamRoster.forEach(p => homePeriodPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
+        // Filter events for the current period.
+        periodData.goals.home = (finalSummary.goals.home || []).filter(g => g.periodText === periodText);
+        periodData.goals.away = (finalSummary.goals.away || []).filter(g => g.periodText === periodText);
+        periodData.penalties.home = (finalSummary.penalties.home || []).filter(p => p.addPeriodText === periodText);
+        periodData.penalties.away = (finalSummary.penalties.away || []).filter(p => p.addPeriodText === periodText);
         
-        const awayPeriodPlayerStatsMap = new Map<string, SummaryPlayerStats>();
-        awayTeamRoster.forEach(p => awayPeriodPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
+        // Recalculate player stats specifically for this period.
+        const periodSummaryForStats: GameSummary = {
+          ...finalSummary,
+          goals: periodData.goals,
+          homeShotsLog: (finalSummary.homeShotsLog || []).filter(s => s.periodText === periodText),
+          awayShotsLog: (finalSummary.awayShotsLog || []).filter(s => s.periodText === periodText),
+          playerStats: {home: [], away: []}, // temp holder
+          penalties: {home: [], away: []}, // temp holder
+          attendance: finalSummary.attendance, // required for recalculate
+          playedPeriods: []
+        };
+        const periodPlayerStats = recalculateAllStatsFromLogs(periodSummaryForStats, homeTeamRoster, awayTeamRoster);
+        periodData.playerStats.home = periodPlayerStats.home;
+        periodData.playerStats.away = periodPlayerStats.away;
 
-        const homeGoalsInPeriod = (baseSummary.goals.home || []).filter(g => g.periodText === periodText);
-        statsByPeriod[periodText].goals.home = homeGoalsInPeriod;
-
-        const awayGoalsInPeriod = (baseSummary.goals.away || []).filter(g => g.periodText === periodText);
-        statsByPeriod[periodText].goals.away = awayGoalsInPeriod;
-
-        statsByPeriod[periodText].penalties.home = (baseSummary.penalties.home || []).filter(p => p.addPeriodText === periodText);
-        statsByPeriod[periodText].penalties.away = (baseSummary.penalties.away || []).filter(p => p.addPeriodText === periodText);
-
-        homeGoalsInPeriod.forEach(goal => {
-            const scorerId = homeTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
-            if (scorerId && homePeriodPlayerStatsMap.has(scorerId)) homePeriodPlayerStatsMap.get(scorerId)!.goals++;
-            const assistId = homeTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
-            if (assistId && homePeriodPlayerStatsMap.has(assistId)) homePeriodPlayerStatsMap.get(assistId)!.assists++;
-        });
-        (baseSummary.homeShotsLog || []).filter(s => s.periodText === periodText).forEach(shot => {
-             if (shot.playerId && homePeriodPlayerStatsMap.has(shot.playerId)) homePeriodPlayerStatsMap.get(shot.playerId)!.shots++;
-        });
-
-        awayGoalsInPeriod.forEach(goal => {
-            const scorerId = awayTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
-            if (scorerId && awayPeriodPlayerStatsMap.has(scorerId)) awayPeriodPlayerStatsMap.get(scorerId)!.goals++;
-            const assistId = awayTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
-            if (assistId && awayPeriodPlayerStatsMap.has(assistId)) awayPeriodPlayerStatsMap.get(assistId)!.assists++;
-        });
-        (baseSummary.awayShotsLog || []).filter(s => s.periodText === periodText).forEach(shot => {
-             if (shot.playerId && awayPeriodPlayerStatsMap.has(shot.playerId)) awayPeriodPlayerStatsMap.get(shot.playerId)!.shots++;
-        });
-        
-        statsByPeriod[periodText].playerStats.home = Array.from(homePeriodPlayerStatsMap.values());
-        statsByPeriod[periodText].playerStats.away = Array.from(awayPeriodPlayerStatsMap.values());
+        // Assign the fully calculated data for the period.
+        finalSummary.statsByPeriod![periodText] = periodData;
     });
 
-    baseSummary.statsByPeriod = statsByPeriod;
-    const overTimeOrShootouts = (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) || Object.keys(baseSummary.statsByPeriod || {}).some(p => p.startsWith('OT'));
-    baseSummary.overTimeOrShootouts = overTimeOrShootouts;
+    const overTimeOrShootouts = (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) || Object.keys(finalSummary.statsByPeriod || {}).some(p => p.startsWith('OT'));
+    finalSummary.overTimeOrShootouts = overTimeOrShootouts;
 
     if (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) {
         const { isActive, ...shootoutSummary } = live.shootout;
-        baseSummary.shootout = shootoutSummary;
+        finalSummary.shootout = shootoutSummary;
     }
 
-    return baseSummary;
+    return finalSummary;
 };
