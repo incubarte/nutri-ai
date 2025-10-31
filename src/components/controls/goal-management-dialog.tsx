@@ -332,10 +332,10 @@ export function GoalManagementDialog({ isOpen, onOpenChange, team }: GoalManagem
   const teamName = team === 'home' ? state.live.homeTeamName : state.live.awayTeamName;
   
   const displayedGoals = useMemo(() => {
-    if (!team || !state.live.score) return [];
-    const goalsList = (team === 'home' ? state.live.score.homeGoals : state.live.score.awayGoals) || [];
+    if (!team || !state.live.goals) return [];
+    const goalsList = (team === 'home' ? state.live.goals.home : state.live.goals.away) || [];
     return [...goalsList].sort((a, b) => b.timestamp - a.timestamp);
-  }, [state.live.score, team]);
+  }, [state.live.goals, team]);
 
   if (!team) return null;
 
@@ -379,4 +379,3 @@ export function GoalManagementDialog({ isOpen, onOpenChange, team }: GoalManagem
     </Dialog>
   );
 }
-

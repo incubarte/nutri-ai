@@ -1,7 +1,7 @@
 {
   "score": {
-    "home": 1,
-    "away": 1,
+    "home": 2,
+    "away": 0,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -13,129 +13,29 @@
     "home": [
       {
         "team": "home",
-        "timestamp": 1761951115566,
+        "timestamp": 1761952103689,
         "gameTime": 120000,
-        "periodText": "2ND",
+        "periodText": "1ST",
         "scorer": {
-          "playerNumber": "1"
+          "playerNumber": "3"
         },
-        "id": "2badd0c3-c8fa-44a9-8f47-022e221e3150"
-      }
-    ],
-    "away": [
+        "id": "a1f631fe-a85d-4302-9a0e-92b17acddd13"
+      },
       {
-        "team": "away",
-        "timestamp": 1761951291179,
-        "gameTime": 95487,
-        "periodText": "2ND",
+        "team": "home",
+        "timestamp": 1761952108146,
+        "gameTime": 120000,
+        "periodText": "1ST",
         "scorer": {
           "playerNumber": "4"
         },
-        "assist": {
-          "playerNumber": "1"
-        },
-        "id": "acc2b1f9-b54b-4359-a1ff-dacd71d9291f"
-      }
-    ]
-  },
-  "penaltiesLog": {
-    "home": [
-      {
-        "id": "50b06149-28c0-42d7-aa87-70597d9ac5e0",
-        "team": "home",
-        "playerNumber": "20",
-        "playerName": "BATISTA FRANCO",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761951226530,
-        "addGameTime": 120000,
-        "addPeriodText": "2ND",
-        "endTimestamp": 1761951273270,
-        "endGameTime": 109177,
-        "endPeriodText": "2ND",
-        "endReason": "completed",
-        "timeServed": 120
-      },
-      {
-        "id": "64ae97b5-0f7a-4aa0-9a9a-f96583eb5f86",
-        "team": "home",
-        "playerNumber": "17",
-        "playerName": "MOGOLLÓN LUIS",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761951287044,
-        "addGameTime": 95791,
-        "addPeriodText": "2ND",
-        "endTimestamp": 1761951293169,
-        "endGameTime": 95290,
-        "endPeriodText": "2ND",
-        "endReason": "goal_on_pp",
-        "timeServed": 5
-      },
-      {
-        "id": "21f12184-fd5e-415c-b23a-bdf2932a9fe7",
-        "team": "home",
-        "playerNumber": "11",
-        "playerName": "GRENIER SEBASTIAN",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761951299814,
-        "addGameTime": 94630,
-        "addPeriodText": "2ND",
-        "endTimestamp": 1761951318461,
-        "endGameTime": 82610,
-        "endPeriodText": "2ND",
-        "endReason": "completed",
-        "timeServed": 120
-      },
-      {
-        "id": "a0493a10-b15d-4fe2-bbf9-239289e10f73",
-        "team": "home",
-        "playerNumber": "13",
-        "playerName": "MISHIN ALEX",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761951303364,
-        "addGameTime": 94264,
-        "addPeriodText": "2ND",
-        "endTimestamp": 1761951310972,
-        "endGameTime": 93505,
-        "endPeriodText": "2ND",
-        "endReason": "goal_on_pp",
-        "timeServed": 7
-      },
-      {
-        "id": "04292141-edea-40f8-b80c-3b6d33f7a0f6",
-        "team": "home",
-        "playerNumber": "20",
-        "playerName": "BATISTA FRANCO",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761951306514,
-        "addGameTime": 93963,
-        "addPeriodText": "2ND",
-        "endTimestamp": 1761951318461,
-        "endGameTime": 81482,
-        "endPeriodText": "2ND",
-        "endReason": "completed",
-        "timeServed": 120
+        "id": "fe52a168-57d1-4277-82df-5583eb6b8b5d"
       }
     ],
+    "away": []
+  },
+  "penaltiesLog": {
+    "home": [],
     "away": []
   },
   "shotsLog": {
@@ -304,15 +204,15 @@
     ]
   },
   "clock": {
-    "currentTime": 0,
-    "currentPeriod": 3,
+    "currentTime": 120000,
+    "currentPeriod": 1,
     "isClockRunning": false,
-    "periodDisplayOverride": "End of Game",
+    "periodDisplayOverride": null,
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 240000,
-    "_liveAbsoluteElapsedTimeCs": 240000,
+    "absoluteElapsedTimeCs": 0,
+    "_liveAbsoluteElapsedTimeCs": 0,
     "isFlashingZero": false
   },
   "shootout": {
@@ -329,9 +229,5 @@
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
   "matchId": "784d97b8-5d35-4184-8e75-15c4534891e6",
-  "playedPeriods": [
-    "1ST",
-    "2ND",
-    "OT"
-  ]
+  "playedPeriods": []
 }
