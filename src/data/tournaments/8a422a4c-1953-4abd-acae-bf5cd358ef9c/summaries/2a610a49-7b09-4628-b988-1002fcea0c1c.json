@@ -1,3 +1,4 @@
+
 {
   "attendance": {
     "home": [
@@ -155,114 +156,85 @@
       }
     ]
   },
-  "goals": {
-    "home": [],
-    "away": [
-      {
-        "team": "away",
-        "timestamp": 1761792938097,
-        "gameTime": 120000,
-        "periodText": "1ST",
-        "scorer": {
-          "playerNumber": "1"
-        },
-        "id": "28e18713-56b7-4da1-b918-ed23f3e7cb34"
-      },
-      {
-        "team": "away",
-        "timestamp": 1761792940517,
-        "gameTime": 120000,
-        "periodText": "1ST",
-        "scorer": {
-          "playerNumber": "2"
-        },
-        "id": "231c52ca-dd0d-4b4e-8108-3546e8af7265"
-      }
-    ]
-  },
-  "penalties": {
-    "home": [],
-    "away": []
-  },
-  "playerStats": {
-    "home": [],
-    "away": []
-  },
-  "homeShotsLog": [],
-  "awayShotsLog": [],
-  "statsByPeriod": {
-    "1ST": {
-      "goals": {
-        "home": [],
-        "away": [
-          {
-            "team": "away",
-            "timestamp": 1761792938097,
-            "gameTime": 120000,
-            "periodText": "1ST",
-            "scorer": {
-              "playerNumber": "1"
+  "statsByPeriod": [
+    {
+      "period": "1ST",
+      "stats": {
+        "goals": {
+          "home": [],
+          "away": [
+            {
+              "team": "away",
+              "timestamp": 1761792938097,
+              "gameTime": 120000,
+              "periodText": "1ST",
+              "scorer": {
+                "playerNumber": "1"
+              },
+              "id": "28e18713-56b7-4da1-b918-ed23f3e7cb34",
+              "type": "goal"
             },
-            "id": "28e18713-56b7-4da1-b918-ed23f3e7cb34",
-            "type": "goal"
-          },
-          {
-            "team": "away",
-            "timestamp": 1761792940517,
-            "gameTime": 120000,
-            "periodText": "1ST",
-            "scorer": {
-              "playerNumber": "2"
-            },
-            "id": "231c52ca-dd0d-4b4e-8108-3546e8af7265",
-            "type": "goal"
-          }
-        ]
-      },
-      "penalties": {
-        "home": [],
-        "away": []
-      },
-      "playerStats": {
-        "home": [],
-        "away": []
+            {
+              "team": "away",
+              "timestamp": 1761792940517,
+              "gameTime": 120000,
+              "periodText": "1ST",
+              "scorer": {
+                "playerNumber": "2"
+              },
+              "id": "231c52ca-dd0d-4b4e-8108-3546e8af7265",
+              "type": "goal"
+            }
+          ]
+        },
+        "penalties": {
+          "home": [],
+          "away": []
+        },
+        "playerStats": {
+          "home": [],
+          "away": []
+        }
       }
     },
-    "2ND": {
-      "goals": {
-        "home": [],
-        "away": []
-      },
-      "penalties": {
-        "home": [
-          {
-            "id": "099be3f8-1699-4c15-ae1c-9bd22d9d348f",
-            "team": "home",
-            "playerNumber": "17",
-            "playerName": "SAVCHUK ROMAN",
-            "penaltyName": "Menor",
-            "initialDuration": 120,
-            "reducesPlayerCount": true,
-            "clearsOnGoal": true,
-            "isBenchPenalty": false,
-            "addTimestamp": 1761792949137,
-            "addGameTime": 119845,
-            "addPeriodText": "2ND",
-            "endTimestamp": 1761792955635,
-            "endGameTime": 107825,
-            "endReason": "completed",
-            "timeServed": 120,
-            "type": "penalty"
-          }
-        ],
-        "away": []
-      },
-      "playerStats": {
-        "home": [],
-        "away": []
+    {
+      "period": "2ND",
+      "stats": {
+        "goals": {
+          "home": [],
+          "away": []
+        },
+        "penalties": {
+          "home": [
+            {
+              "id": "099be3f8-1699-4c15-ae1c-9bd22d9d348f",
+              "team": "home",
+              "playerNumber": "17",
+              "playerName": "SAVCHUK ROMAN",
+              "penaltyName": "Menor",
+              "initialDuration": 120,
+              "reducesPlayerCount": true,
+              "clearsOnGoal": true,
+              "isBenchPenalty": false,
+              "addTimestamp": 1761792949137,
+              "addGameTime": 119845,
+              "addPeriodText": "2ND",
+              "endTimestamp": 1761792955635,
+              "endGameTime": 107825,
+              "endReason": "completed",
+              "timeServed": 120,
+              "type": "penalty"
+            }
+          ],
+          "away": []
+        },
+        "playerStats": {
+          "home": [],
+          "away": []
+        }
       }
     }
-  },
+  ],
   "overTimeOrShootouts": false,
   "playedPeriods": [
     "1ST",

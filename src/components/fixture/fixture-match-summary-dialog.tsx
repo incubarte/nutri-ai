@@ -50,12 +50,55 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   const homeTeam = useMemo(() => tournament?.teams.find(t => t.id === match?.homeTeamId), [tournament, match]);
   const awayTeam = useMemo(() => tournament?.teams.find(t => t.id === match?.awayTeamId), [tournament, match]);
   const categoryName = useMemo(() => getCategoryNameById(match?.categoryId || '', tournament?.categories), [match, tournament]);
+
+  const aggregatedGoals = useMemo(() => {
+    if (!localSummary?.statsByPeriod) return { home: [], away: [] };
+    return localSummary.statsByPeriod.reduce((acc, periodSummary) => {
+        acc.home.push(...(periodSummary.stats.goals.home || []));
+        acc.away.push(...(periodSummary.stats.goals.away || []));
+        return acc;
+    }, { home: [] as GoalLog[], away: [] as GoalLog[] });
+  }, [localSummary]);
+
+  const aggregatedPenalties = useMemo(() => {
+    if (!localSummary?.statsByPeriod) return { home: [], away: [] };
+    return localSummary.statsByPeriod.reduce((acc, periodSummary) => {
+        acc.home.push(...(periodSummary.stats.penalties.home || []));
+        acc.away.push(...(periodSummary.stats.penalties.away || []));
+        return acc;
+    }, { home: [] as PenaltyLog[], away: [] as PenaltyLog[] });
+  }, [localSummary]);
   
   const aggregatedStats = useMemo(() => {
     if (!localSummary || !homeTeam || !awayTeam) return { home: [], away: [] };
-    return recalculateAllStatsFromLogs(localSummary, homeTeam.players, awayTeam.players);
-  }, [localSummary, homeTeam, awayTeam]);
+    
+    const statsFromPeriods = (localSummary.statsByPeriod || []).reduce((acc, period) => {
+      acc.home.push(...(period.stats.playerStats.home || []));
+      acc.away.push(...(period.stats.playerStats.away || []));
+      return acc;
+    }, { home: [] as SummaryPlayerStats[], away: [] as SummaryPlayerStats[] });
 
+    const homeMap = new Map<string, SummaryPlayerStats>();
+    const awayMap = new Map<string, SummaryPlayerStats>();
+
+    statsFromPeriods.home.forEach(stat => {
+        const existing = homeMap.get(stat.id) || { ...stat, goals: 0, assists: 0, shots: 0 };
+        existing.goals += stat.goals;
+        existing.assists += stat.assists;
+        existing.shots += stat.shots;
+        homeMap.set(stat.id, existing);
+    });
+
+    statsFromPeriods.away.forEach(stat => {
+        const existing = awayMap.get(stat.id) || { ...stat, goals: 0, assists: 0, shots: 0 };
+        existing.goals += stat.goals;
+        existing.assists += stat.assists;
+        existing.shots += stat.shots;
+        awayMap.set(stat.id, existing);
+    });
+
+    return { home: Array.from(homeMap.values()), away: Array.from(awayMap.values()) };
+  }, [localSummary, homeTeam, awayTeam]);
 
   const handleEditClick = () => {
     const initialShots: EditableStats = {};
@@ -92,7 +135,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
             const playerEditedStats = editedShots[periodText]?.[player.id];
             if (playerEditedStats) {
               const newShotCount = parseInt(playerEditedStats.shots, 10) || 0;
-              let periodStats = periodSummary.stats.playerStats[team] as SummaryPlayerStats[];
+              let periodStats = periodSummary.stats.playerStats[team as Team] as SummaryPlayerStats[];
               let playerStat = periodStats.find(p => p.id === player.id);
               if (playerStat) {
                 playerStat.shots = newShotCount;
@@ -104,8 +147,6 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
         }
     });
     
-    // The rest of the stats are derived from goals/penalties which are handled via dispatch
-    // We only need to save the shot changes here.
     dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: match.id, summary: newSummary }});
     setLocalSummary(newSummary);
     toast({ title: "Resumen Guardado", description: "Los cambios en las estadísticas de tiros han sido guardados."});
@@ -196,20 +237,20 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
         </DialogHeader>
 
         <div className="grid grid-cols-2 text-center my-2">
-            <h3 className="text-2xl font-bold text-primary">{homeTeam?.name} - <span className="text-accent">{localSummary.goals.home.length}</span></h3>
-            <h3 className="text-2xl font-bold text-primary">{awayTeam?.name} - <span className="text-accent">{localSummary.goals.away.length}</span></h3>
+            <h3 className="text-2xl font-bold text-primary">{homeTeam?.name} - <span className="text-accent">{aggregatedGoals.home.length}</span></h3>
+            <h3 className="text-2xl font-bold text-primary">{awayTeam?.name} - <span className="text-accent">{aggregatedGoals.away.length}</span></h3>
         </div>
 
         <ScrollArea className="flex-grow my-2 border-t pt-4 pr-6 -mr-6">
           <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <GoalsSection teamName={homeTeam?.name || ''} goals={localSummary.goals.home} onGoalChange={() => {}} editable={false} />
-                <GoalsSection teamName={awayTeam?.name || ''} goals={localSummary.goals.away} onGoalChange={() => {}} editable={false} />
+                <GoalsSection teamName={homeTeam?.name || ''} goals={aggregatedGoals.home} onGoalChange={() => {}} editable={false} />
+                <GoalsSection teamName={awayTeam?.name || ''} goals={aggregatedGoals.away} onGoalChange={() => {}} editable={false} />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={localSummary.penalties.home} />
-                  <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={localSummary.penalties.away} />
+                  <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={aggregatedPenalties.home} />
+                  <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={aggregatedPenalties.away} />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

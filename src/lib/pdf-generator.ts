@@ -3,7 +3,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatTime, getCategoryNameById, getEndReasonText, type GameState, getPeriodText } from '@/contexts/game-state-context';
-import type { GoalLog, PenaltyLog, PlayerData, SummaryPlayerStats } from '@/types';
+import type { GoalLog, PenaltyLog, PlayerData, SummaryPlayerStats, PeriodSummary } from '@/types';
 
 // Helper to add a section with a title
 const addSectionTitle = (doc: jsPDF, title: string, y: number): number => {
@@ -112,10 +112,10 @@ export const exportGameSummaryPDF = (state: GameState) => {
 
     let currentY = 40;
 
-    const allHomeGoals = [...live.score.homeGoals].sort((a, b) => a.timestamp - b.timestamp);
-    const allAwayGoals = [...live.score.awayGoals].sort((a, b) => a.timestamp - b.timestamp);
-    const allHomePenalties = [...live.gameSummary.home.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
-    const allAwayPenalties = [...live.gameSummary.away.penalties].sort((a,b) => a.addTimestamp - b.addTimestamp);
+    const allHomeGoals = [...(live.goals?.home || [])].sort((a, b) => a.timestamp - b.timestamp);
+    const allAwayGoals = [...(live.goals?.away || [])].sort((a, b) => a.timestamp - b.timestamp);
+    const allHomePenalties = [...(live.penaltiesLog?.home || [])].sort((a,b) => a.addTimestamp - b.addTimestamp);
+    const allAwayPenalties = [...(live.penaltiesLog?.away || [])].sort((a,b) => a.addTimestamp - b.addTimestamp);
 
     // --- Tablas Generales ---
     currentY = addTable(doc, `${live.homeTeamName} - Goles`, currentY,
@@ -149,8 +149,26 @@ export const exportGameSummaryPDF = (state: GameState) => {
     doc.addPage();
     currentY = 20;
 
-    const homeAggregatedStats = live.gameSummary.home.playerStats;
-    const awayAggregatedStats = live.gameSummary.away.playerStats;
+    const homeAggregatedStats = live.attendance.home.map(p => {
+        return {
+            id: p.id,
+            name: p.name,
+            number: p.number,
+            goals: allHomeGoals.filter(g => g.scorer?.playerNumber === p.number).length,
+            assists: allHomeGoals.filter(g => g.assist?.playerNumber === p.number).length,
+            shots: (live.shotsLog?.home || []).filter(s => s.playerNumber === p.number).length
+        }
+    });
+     const awayAggregatedStats = live.attendance.away.map(p => {
+        return {
+            id: p.id,
+            name: p.name,
+            number: p.number,
+            goals: allAwayGoals.filter(g => g.scorer?.playerNumber === p.number).length,
+            assists: allAwayGoals.filter(g => g.assist?.playerNumber === p.number).length,
+            shots: (live.shotsLog?.away || []).filter(s => s.playerNumber === p.number).length
+        }
+    });
 
     currentY = addPlayerStatsTable(doc, `${live.homeTeamName} - Estadísticas de Jugador`, currentY, homeAggregatedStats);
     currentY = checkPageBreak(doc, currentY);
@@ -195,5 +213,3 @@ export const exportGameSummaryPDF = (state: GameState) => {
     
     return filename;
 };
-
-    

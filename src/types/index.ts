@@ -196,24 +196,6 @@ export interface GameSummary {
     home: AttendedPlayerInfo[];
     away: AttendedPlayerInfo[];
   };
-  goals: {
-    home: GoalLog[];
-    away: GoalLog[];
-  };
-  penalties: {
-    home: PenaltyLog[];
-    away: PenaltyLog[];
-  };
-  playerStats: {
-    home: SummaryPlayerStats[];
-    away: SummaryPlayerStats[];
-  };
-  home: {
-    homeShotsLog?: ShotLog[];
-  };
-  away: {
-    awayShotsLog?: ShotLog[];
-  };
   shootout?: Omit<ShootoutState, 'isActive'>;
   statsByPeriod?: PeriodSummary[];
   overTimeOrShootouts?: boolean;

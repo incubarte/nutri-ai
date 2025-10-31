@@ -1,3 +1,4 @@
+
 {
   "attendance": {
     "home": [
@@ -140,50 +141,42 @@
       }
     ]
   },
-  "goals": {
-    "home": [],
-    "away": []
-  },
-  "penalties": {
-    "home": [],
-    "away": []
-  },
-  "playerStats": {
-    "home": [],
-    "away": []
-  },
-  "homeShotsLog": [],
-  "awayShotsLog": [],
-  "statsByPeriod": {
-    "1ST": {
-      "goals": {
-        "home": [],
-        "away": []
-      },
-      "penalties": {
-        "home": [],
-        "away": []
-      },
-      "playerStats": {
-        "home": [],
-        "away": []
+  "statsByPeriod": [
+    {
+      "period": "1ST",
+      "stats": {
+        "goals": {
+          "home": [],
+          "away": []
+        },
+        "penalties": {
+          "home": [],
+          "away": []
+        },
+        "playerStats": {
+          "home": [],
+          "away": []
+        }
       }
     },
-    "2ND": {
-      "goals": {
-        "home": [],
-        "away": []
-      },
-      "penalties": {
-        "home": [],
-        "away": []
-      },
-      "playerStats": {
-        "home": [],
-        "away": []
+    {
+      "period": "2ND",
+      "stats": {
+        "goals": {
+          "home": [],
+          "away": []
+        },
+        "penalties": {
+          "home": [],
+          "away": []
+        },
+        "playerStats": {
+          "home": [],
+          "away": []
+        }
       }
     }
-  },
+  ],
   "shootout": {
     "rounds": 5,
     "homeAttempts": [

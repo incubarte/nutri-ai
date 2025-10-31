@@ -1,3 +1,4 @@
+
 {
   "attendance": {
     "home": [
@@ -159,43 +160,6 @@
         "name": "ROST AGUSTÍN"
       }
     ]
-  },
-  "goals": {
-    "home": [],
-    "away": []
-  },
-  "penalties": {
-    "home": [
-      {
-        "id": "16ac12ff-721f-4a8f-9455-5d2b92ff5200",
-        "team": "home",
-        "playerNumber": "25",
-        "playerName": "SCOTTO DI CARLO NATALIA",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761844293501,
-        "addGameTime": 119538,
-        "addPeriodText": "2ND",
-        "endTimestamp": 1761844299745,
-        "endGameTime": 107516,
-        "endReason": "completed",
-        "timeServed": 120
-      }
-    ],
-    "away": []
-  },
-  "playerStats": {
-    "home": [],
-    "away": []
-  },
-  "home": {
-    "homeShotsLog": []
-  },
-  "away": {
-    "awayShotsLog": []
   },
   "statsByPeriod": [
     {

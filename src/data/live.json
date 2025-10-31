@@ -1,7 +1,7 @@
 {
   "score": {
-    "home": 2,
-    "away": 0,
+    "home": 1,
+    "away": 2,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -20,22 +20,149 @@
           "playerNumber": "3"
         },
         "id": "a1f631fe-a85d-4302-9a0e-92b17acddd13"
-      },
+      }
+    ],
+    "away": [
       {
-        "team": "home",
-        "timestamp": 1761952108146,
-        "gameTime": 120000,
+        "team": "away",
+        "timestamp": 1761952317788,
+        "gameTime": 112732,
         "periodText": "1ST",
         "scorer": {
           "playerNumber": "4"
         },
-        "id": "fe52a168-57d1-4277-82df-5583eb6b8b5d"
+        "id": "ef5ce626-9236-4706-8de4-21fd9695b5b1"
+      },
+      {
+        "team": "away",
+        "timestamp": 1761952341074,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "17",
+          "playerName": "AGUIRRE LEILA"
+        },
+        "id": "c401107c-d1e8-43f7-8416-e562f3b14950"
       }
-    ],
-    "away": []
+    ]
   },
   "penaltiesLog": {
-    "home": [],
+    "home": [
+      {
+        "id": "e44beece-c513-4fd2-a46e-e0fe4eda3b6c",
+        "team": "home",
+        "playerNumber": "13",
+        "playerName": "MISHIN ALEX",
+        "penaltyName": "Menor",
+        "initialDuration": 120,
+        "reducesPlayerCount": true,
+        "clearsOnGoal": true,
+        "isBenchPenalty": false,
+        "addTimestamp": 1761952220375,
+        "addGameTime": 119896,
+        "addPeriodText": "1ST",
+        "endTimestamp": 1761952234114,
+        "endGameTime": 119896,
+        "endPeriodText": "1ST",
+        "endReason": "deleted",
+        "timeServed": 0
+      },
+      {
+        "id": "d150d765-4349-42e0-bbba-01e9703f25cb",
+        "team": "home",
+        "playerNumber": "9",
+        "playerName": "TIBAUDIN GUIDO",
+        "penaltyName": "Menor",
+        "initialDuration": 120,
+        "reducesPlayerCount": true,
+        "clearsOnGoal": true,
+        "isBenchPenalty": false,
+        "addTimestamp": 1761952237342,
+        "addGameTime": 119896,
+        "addPeriodText": "1ST",
+        "endTimestamp": 1761952329766,
+        "endGameTime": 107873,
+        "endPeriodText": "1ST",
+        "endReason": "completed",
+        "timeServed": 120
+      },
+      {
+        "id": "f974b551-0797-469c-80a5-42d53f2d69ec",
+        "team": "home",
+        "playerNumber": "17",
+        "playerName": "MOGOLLÓN LUIS",
+        "penaltyName": "Menor",
+        "initialDuration": 120,
+        "reducesPlayerCount": true,
+        "clearsOnGoal": true,
+        "isBenchPenalty": false,
+        "addTimestamp": 1761952243289,
+        "addGameTime": 119454,
+        "addPeriodText": "1ST",
+        "endTimestamp": 1761952329766,
+        "endGameTime": 107433,
+        "endPeriodText": "1ST",
+        "endReason": "completed",
+        "timeServed": 120
+      },
+      {
+        "id": "5f4f7abc-e556-43cc-9c62-b186bb462cfd",
+        "team": "home",
+        "playerNumber": "13",
+        "playerName": "MISHIN ALEX",
+        "penaltyName": "Menor",
+        "initialDuration": 120,
+        "reducesPlayerCount": true,
+        "clearsOnGoal": true,
+        "isBenchPenalty": false,
+        "addTimestamp": 1761952247174,
+        "addGameTime": 119083,
+        "addPeriodText": "1ST",
+        "endTimestamp": 1761952321202,
+        "endGameTime": 112395,
+        "endPeriodText": "1ST",
+        "endReason": "goal_on_pp",
+        "timeServed": 67
+      },
+      {
+        "id": "d883be98-f006-45d4-92d3-d3b1b2979912",
+        "team": "home",
+        "playerNumber": "17",
+        "playerName": "MOGOLLÓN LUIS",
+        "penaltyName": "Menor",
+        "initialDuration": 120,
+        "reducesPlayerCount": true,
+        "clearsOnGoal": true,
+        "isBenchPenalty": false,
+        "addTimestamp": 1761952251135,
+        "addGameTime": 118688,
+        "addPeriodText": "1ST",
+        "endTimestamp": 1761952293854,
+        "endGameTime": 114740,
+        "endPeriodText": "1ST",
+        "endReason": "deleted",
+        "timeServed": 0
+      },
+      {
+        "id": "d7837830-2911-4371-85a4-5f413639a52d",
+        "team": "home",
+        "playerNumber": "32",
+        "playerName": "GIOVANELLI CHRISTIAN",
+        "penaltyName": "Menor",
+        "initialDuration": 120,
+        "reducesPlayerCount": true,
+        "clearsOnGoal": true,
+        "isBenchPenalty": false,
+        "addTimestamp": 1761952303023,
+        "addGameTime": 114214,
+        "addPeriodText": "1ST",
+        "endTimestamp": 1761952329766,
+        "endGameTime": 101841,
+        "endPeriodText": "1ST",
+        "endReason": "completed",
+        "timeServed": 120
+      }
+    ],
     "away": []
   },
   "shotsLog": {
@@ -204,15 +331,15 @@
     ]
   },
   "clock": {
-    "currentTime": 120000,
-    "currentPeriod": 1,
+    "currentTime": 0,
+    "currentPeriod": 2,
     "isClockRunning": false,
-    "periodDisplayOverride": null,
+    "periodDisplayOverride": "End of Game",
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 0,
-    "_liveAbsoluteElapsedTimeCs": 0,
+    "absoluteElapsedTimeCs": 240000,
+    "_liveAbsoluteElapsedTimeCs": 240000,
     "isFlashingZero": false
   },
   "shootout": {
@@ -224,10 +351,13 @@
   },
   "homeTeamName": "Fantasy Skate",
   "awayTeamName": "ACEMHH",
-  "playHornTrigger": 28,
+  "playHornTrigger": 29,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
   "matchId": "784d97b8-5d35-4184-8e75-15c4534891e6",
-  "playedPeriods": []
+  "playedPeriods": [
+    "1ST",
+    "2ND"
+  ]
 }
