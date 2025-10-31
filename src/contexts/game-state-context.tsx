@@ -227,6 +227,38 @@ const calculateAbsoluteTimeForPeriod = (targetPeriod: number, remainingTimeInPer
     return Math.max(0, totalElapsedCs);
 };
 
+const finalizeMatch = (state: GameState): GameState => {
+    const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
+    const newState = {
+        ...state,
+        live: {
+            ...state.live,
+            clock: {
+                ...state.live.clock,
+                currentTime: 0,
+                isClockRunning: false,
+                periodDisplayOverride: 'End of Game' as PeriodDisplayOverrideType,
+                absoluteElapsedTimeCs: newAbsoluteTime,
+                _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
+                clockStartTimeMs: null,
+                remainingTimeAtStartCs: null,
+                preTimeoutState: null,
+            },
+            playHornTrigger: state.live.playHornTrigger + 1
+        }
+    };
+    
+    // Generate and dispatch save action
+    if (newState.live.matchId) {
+        const summary = generateSummaryData(newState);
+        if (summary) {
+            // We can't dispatch from here. The caller of finalizeMatch must handle the dispatch.
+            // This function's sole purpose is to return the final state.
+        }
+    }
+
+    return newState;
+};
 
 
 const handleAutoTransition = (currentState: GameState): GameState => {
@@ -294,8 +326,8 @@ const handleAutoTransition = (currentState: GameState): GameState => {
       // Check for end of regulation or last OT
       if (currentPeriod >= totalGamePeriods) {
           if (score.home !== score.away) {
-              // Game ends, no tie
-              newGameStateAfterTransition.live.clock.periodDisplayOverride = "End of Game";
+              // Game ends, no tie. Call the finalizer.
+              return finalizeMatch(newGameStateAfterTransition);
           } else {
               // Tie game, go to pre-end decision state
               newGameStateAfterTransition.live.clock.periodDisplayOverride = "AwaitingDecision";
@@ -305,7 +337,7 @@ const handleAutoTransition = (currentState: GameState): GameState => {
           // It's a regular OT period that ended (but not the last one)
           if (score.home !== score.away) {
               // Golden goal situation in a non-final OT, game is over
-              newGameStateAfterTransition.live.clock.periodDisplayOverride = "End of Game";
+              return finalizeMatch(newGameStateAfterTransition);
           } else {
               // Start a pre-OT break before the next OT
               newGameStateAfterTransition.live.clock.currentTime = defaultPreOTBreakDuration;
@@ -323,15 +355,6 @@ const handleAutoTransition = (currentState: GameState): GameState => {
     default: // No transition, e.g. "End of Game"
       break;
   }
-
-  // Common logic for state after transition
-  if (newGameStateAfterTransition.live.clock.periodDisplayOverride === 'End of Game') {
-    newGameStateAfterTransition.live.clock.currentTime = 0;
-    newGameStateAfterTransition.live.clock.isClockRunning = false;
-  }
-  
-  // This ensures isClockRunning is always a boolean
-  newGameStateAfterTransition.live.clock.isClockRunning = newGameStateAfterTransition.live.clock.isClockRunning ?? false;
   
   if (!newGameStateAfterTransition.live.clock.isClockRunning) {
     newGameStateAfterTransition.live.clock.clockStartTimeMs = null;
@@ -428,7 +451,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             return state; // Return current state if server data is incomplete
         }
         
-        // Start with a clean slate, but keep config and potentially live state
         let finalState: GameState = {
             ...getInitialState(), 
             config: serverState.config,
@@ -439,7 +461,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             finalState.live = serverState.live;
         }
 
-        // Ensure the correct profiles are applied upon hydration
         newState = applyFormatAndTimingsProfileToState(finalState, finalState.config.selectedFormatAndTimingsProfileId);
         newState = applyScoreboardLayoutProfileToState(newState, finalState.config.selectedScoreboardLayoutProfileId);
         break;
@@ -479,7 +500,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             absoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
             _liveAbsoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
         };
-        // Explicitly sync to server when clock stops
         saveDataOnServer({ config: state.config, live: { ...state.live, clock: { ...state.live.clock, ...newClockState } } });
 
       } else { // Starting the clock
@@ -695,49 +715,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'SET_PLAYER_SHOTS': {
-        // This action needs rethinking in the new model.
-        // It operates on a period-by-period basis which is part of the summary.
-        // For now, this will be a no-op to prevent incorrect state updates.
         break;
     }
     case 'FINISH_GAME_WITH_OT_GOAL': {
       const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
       const team = action.payload.team;
       
-      const newLiveGoals = { ...state.live.goals };
-      newLiveGoals[team] = [...newLiveGoals[team], newGoal];
+      let tempState = { ...state };
+      tempState.live.goals[team] = [...tempState.live.goals[team], newGoal];
       
-      const newScore = {
-          ...state.live.score,
-          home: newLiveGoals.home.length,
-          away: newLiveGoals.away.length,
-      };
+      const finalizedState = finalizeMatch(tempState);
       
-      const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
-      const finishedPeriodText = getPeriodText(state.live.clock.currentPeriod, state.config.numberOfRegularPeriods);
-      const playedPeriods = [...state.live.playedPeriods];
-      if (!playedPeriods.includes(finishedPeriodText)) {
-          playedPeriods.push(finishedPeriodText);
+      const summary = generateSummaryData(finalizedState);
+      if (summary && finalizedState.live.matchId) {
+          dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: finalizedState.live.matchId, summary } });
       }
-      
-      newState = { ...state, live: { ...state.live, 
-        score: newScore,
-        goals: newLiveGoals,
-        clock: {
-          ...state.live.clock,
-          currentTime: 0,
-          isClockRunning: false,
-          periodDisplayOverride: 'End of Game',
-          absoluteElapsedTimeCs: newAbsoluteTime,
-          _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
-          clockStartTimeMs: null,
-          remainingTimeAtStartCs: null,
-          preTimeoutState: null,
-        },
-        playedPeriods,
-        playHornTrigger: state.live.playHornTrigger + 1,
-      }};
-      
+
+      newState = finalizedState;
       toastMessage = { title: "¡Partido Finalizado!", description: "Gol de oro registrado exitosamente." };
       break;
     }
@@ -833,10 +827,17 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'DELETE_PENALTY_LOG': {
       const { team, logId } = action.payload;
+      
+      const newActivePenalties = state.live.penalties[team].filter(p => p.id !== logId);
+
       const newPenaltiesLog = { ...state.live.penaltiesLog };
       newPenaltiesLog[team] = newPenaltiesLog[team].filter((p: PenaltyLog) => p.id !== logId);
-      newState = { ...state, live: { ...state.live, penaltiesLog: newPenaltiesLog }};
-      toastMessage = { title: "Penalidad Eliminada del Historial", variant: "destructive" };
+      
+      newState = { ...state, live: { ...state.live, 
+        penalties: { ...state.live.penalties, [team]: newActivePenalties },
+        penaltiesLog: newPenaltiesLog
+      }};
+      toastMessage = { title: "Penalidad Eliminada", variant: "destructive" };
       break;
     }
      case 'END_PENALTY_FOR_GOAL': {
@@ -1067,7 +1068,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         return { ...state, live: { ...state.live, clock: { ...state.live.clock, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs }}};
       }
       
-      // Do not mark TICK as an originator to prevent server sync on every tick
       newState._lastActionOriginator = significantChangeOccurred ? TAB_ID : undefined;
       newState._lastUpdatedTimestamp = significantChangeOccurred ? newTimestamp : state._lastUpdatedTimestamp;
       return newState;
@@ -1160,60 +1160,24 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'MANUAL_END_GAME': {
-        const { live, config } = state;
-        const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
-        let tempLive = { ...live };
+        const tempState = { ...state };
+        const finishedPeriodText = getPeriodText(tempState.live.clock.currentPeriod, tempState.config.numberOfRegularPeriods);
+        if (!tempState.live.playedPeriods.includes(finishedPeriodText)) {
+            tempState.live.playedPeriods.push(finishedPeriodText);
+        }
 
-        // If we are in a running period, add it to playedPeriods before ending it
-        if (tempLive.clock.periodDisplayOverride === null) {
-            const finishedPeriodText = getPeriodText(tempLive.clock.currentPeriod, config.numberOfRegularPeriods);
-            if (!tempLive.playedPeriods.includes(finishedPeriodText)) {
-                tempLive.playedPeriods = [...tempLive.playedPeriods, finishedPeriodText];
+        if (tempState.live.score.home === tempState.live.score.away) {
+            newState = { ...tempState, live: { ...tempState.live,
+                clock: { ...tempState.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
+                shootout: { ...tempState.live.shootout, isActive: false }
+            }};
+        } else {
+            const finalizedState = finalizeMatch(tempState);
+            const summary = generateSummaryData(finalizedState);
+            if (summary && finalizedState.live.matchId) {
+                return { ...gameReducer(state, { type: 'SAVE_MATCH_SUMMARY', payload: { matchId: finalizedState.live.matchId, summary } }), ...finalizedState };
             }
-        }
-        
-        // If it's the end of a regular period AND the game is NOT tied, end the game.
-        if (tempLive.clock.currentPeriod >= config.numberOfRegularPeriods && tempLive.score.home !== tempLive.score.away) {
-            const newAbsoluteTime = calculateAbsoluteTimeForPeriod(tempLive.clock.currentPeriod, 0, state);
-            newState = { ...state, live: { ...tempLive,
-                clock: { ...tempLive.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
-                    absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
-                    clockStartTimeMs: null, remainingTimeAtStartCs: null, preTimeoutState: null,
-                },
-                playHornTrigger: state.live.playHornTrigger + 1
-            }};
-        }
-        // If we are in a running period before the last total period.
-        else if (tempLive.clock.currentPeriod < totalGamePeriods && tempLive.clock.periodDisplayOverride === null) {
-            const isPreOT = tempLive.clock.currentPeriod >= config.numberOfRegularPeriods;
-            const breakType = isPreOT ? 'START_PRE_OT_BREAK' : 'START_BREAK';
-            return gameReducer({ ...state, live: tempLive }, { type: breakType });
-        }
-        // If it's a TIE at the end of regulation or OT.
-        else if (tempLive.score.home === tempLive.score.away) {
-            newState = { ...state, live: { ...tempLive,
-                clock: { ...tempLive.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
-                shootout: { ...tempLive.shootout, isActive: false }
-            }};
-        }
-        // Fallback to just end the game (e.g., end of final OT with no winner yet).
-        else {
-             const newAbsoluteTime = calculateAbsoluteTimeForPeriod(tempLive.clock.currentPeriod, 0, state);
-            newState = { ...state, live: { ...tempLive,
-                clock: { ...tempLive.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'End of Game',
-                    absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
-                    clockStartTimeMs: null, remainingTimeAtStartCs: null, preTimeoutState: null,
-                },
-                playHornTrigger: state.live.playHornTrigger + 1
-            }};
-        }
-        
-        if (newState.live.clock.periodDisplayOverride === 'End of Game' && newState.live.matchId) {
-            const summary = generateSummaryData(newState);
-            if (summary) {
-                // The reducer can't dispatch. This side-effect needs to happen in an observer.
-                // We will rely on GameStateObserver to handle this.
-            }
+            newState = finalizedState;
         }
         break;
     }
@@ -1346,30 +1310,16 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'FINISH_SHOOTOUT': {
-      let finalScore = { ...state.live.score };
-      if (state.live.shootout.isActive) {
-        const homeGoals = state.live.shootout.homeAttempts.filter(a => a.isGoal).length;
-        const awayGoals = state.live.shootout.awayAttempts.filter(a => a.isGoal).length;
-
-        if (homeGoals > awayGoals) {
-          finalScore.home += 1;
-        } else if (awayGoals > homeGoals) {
-          finalScore.away += 1;
+        const finalizedState = finalizeMatch(state);
+        const summary = generateSummaryData(finalizedState);
+        if (summary && finalizedState.live.matchId) {
+            const newStateWithSummary = gameReducer(finalizedState, { type: 'SAVE_MATCH_SUMMARY', payload: { matchId: finalizedState.live.matchId, summary } });
+            newState = { ...newStateWithSummary, _lastActionOriginator: TAB_ID };
+        } else {
+            newState = finalizedState;
         }
-      }
-
-      newState = {
-        ...state,
-        live: {
-          ...state.live,
-          score: finalScore,
-          shootout: { ...state.live.shootout, isActive: false },
-          clock: { ...state.live.clock, periodDisplayOverride: 'End of Game' },
-        },
-      };
-      
-      toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
-      break;
+        toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
+        break;
     }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
       const { selectedFormatAndTimingsProfileId, formatAndTimingsProfiles } = state.config;
@@ -1565,8 +1515,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         if (t.id === tournamentId) {
           const newMatches = t.matches.map(m => {
             if (m.id === matchId) {
-              const homeScore = (summary.goals.home || []).length;
-              const awayScore = (summary.goals.away || []).length;
+              const homeScore = (summary.statsByPeriod ?? []).reduce((acc, p) => acc + (p.stats.goals?.home?.length ?? 0), 0);
+              const awayScore = (summary.statsByPeriod ?? []).reduce((acc, p) => acc + (p.stats.goals?.away?.length ?? 0), 0);
               return { ...m, summary, homeScore, awayScore, overTimeOrShootouts: summary.overTimeOrShootouts };
             }
             return m;
@@ -1707,7 +1657,6 @@ const GameStateObserver = () => {
     const { state, dispatch } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
-    const prevPeriodDisplayOverrideRef = useRef<PeriodDisplayOverrideType>();
 
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
@@ -1716,22 +1665,6 @@ const GameStateObserver = () => {
         }
     }, [state._lastToastMessage, toast]);
     
-    useEffect(() => {
-        const currentOverride = state.live?.clock?.periodDisplayOverride;
-
-        if (prevPeriodDisplayOverrideRef.current !== 'End of Game' && currentOverride === 'End of Game' && state.live.matchId) {
-             const summary = generateSummaryData(state);
-            if (summary) {
-                dispatch({
-                    type: 'SAVE_MATCH_SUMMARY',
-                    payload: { matchId: state.live.matchId, summary }
-                });
-            }
-        }
-
-        prevPeriodDisplayOverrideRef.current = currentOverride;
-    }, [state.live?.clock?.periodDisplayOverride, state.live?.matchId, state, dispatch, toast]);
-
 
     return null;
 }
@@ -1780,7 +1713,6 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
           const data: GameState = await res.json();
           dispatch({ type: 'HYDRATE_FROM_SERVER', payload: data });
         } else {
-          // If fetching fails, we might fall back to a default state or show an error
           dispatch({ type: 'HYDRATE_FROM_SERVER', payload: getInitialState() });
         }
       } catch (error) {
@@ -1961,6 +1893,7 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
 
 
 

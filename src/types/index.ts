@@ -420,7 +420,7 @@ export type GameAction =
   | { type: 'SET_CATEGORIES_FOR_TOURNAMENT'; payload: { tournamentId: string, categories: CategoryData[] } }
   | { type: 'ADD_CATEGORIES_TO_TOURNAMENT'; payload: { tournamentId: string, categories: CategoryData[] } }
   | { type: 'SET_SELECTED_MATCH_CATEGORY'; payload: string }
-  | { type: 'UPDATE_TUNNEL_STATE', payload: Partial<TunnelState> }
+  | { type: 'UPDATE_TUNNEL_STATE'; payload: Partial<TunnelState> }
   | { type: 'ADD_TOURNAMENT'; payload: { name: string; status: Tournament['status'] } }
   | { type: 'UPDATE_TOURNAMENT'; payload: { id: string; name: string; status: Tournament['status'] } }
   | { type: 'DELETE_TOURNAMENT'; payload: { id: string } }
@@ -472,3 +472,4 @@ export interface SummaryPlayerStats {
   assists: number;
   shots: number;
 }
+
