@@ -218,5 +218,9 @@
       }
     ],
     "initiator": "away"
-  }
+  },
+  "playedPeriods": [
+    "1ST",
+    "2ND"
+  ]
 }

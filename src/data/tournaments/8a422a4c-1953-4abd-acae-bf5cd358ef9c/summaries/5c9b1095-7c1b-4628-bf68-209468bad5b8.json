@@ -154,7 +154,36 @@
   },
   "homeShotsLog": [],
   "awayShotsLog": [],
-  "statsByPeriod": {},
+  "statsByPeriod": {
+    "1ST": {
+      "goals": {
+        "home": [],
+        "away": []
+      },
+      "penalties": {
+        "home": [],
+        "away": []
+      },
+      "playerStats": {
+        "home": [],
+        "away": []
+      }
+    },
+    "2ND": {
+      "goals": {
+        "home": [],
+        "away": []
+      },
+      "penalties": {
+        "home": [],
+        "away": []
+      },
+      "playerStats": {
+        "home": [],
+        "away": []
+      }
+    }
+  },
   "shootout": {
     "rounds": 5,
     "homeAttempts": [
@@ -178,5 +207,10 @@
       }
     ],
     "initiator": "home"
-  }
+  },
+  "overTimeOrShootouts": true,
+  "playedPeriods": [
+    "1ST",
+    "2ND"
+  ]
 }

@@ -29,6 +29,20 @@
   "homeShotsLog": [],
   "awayShotsLog": [],
   "statsByPeriod": {
+    "1ST": {
+      "goals": {
+        "home": [],
+        "away": []
+      },
+      "penalties": {
+        "home": [],
+        "away": []
+      },
+      "playerStats": {
+        "home": [],
+        "away": []
+      }
+    },
     "2ND": {
       "goals": {
         "home": [
@@ -55,5 +69,9 @@
       }
     }
   },
-  "overTimeOrShootouts": false
+  "overTimeOrShootouts": false,
+  "playedPeriods": [
+    "1ST",
+    "2ND"
+  ]
 }

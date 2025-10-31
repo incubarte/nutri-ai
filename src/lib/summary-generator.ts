@@ -52,16 +52,16 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         playerStats: { home: [], away: [] },
         homeShotsLog: live.gameSummary.home.homeShotsLog || [],
         awayShotsLog: live.gameSummary.away.awayShotsLog || [],
+        playedPeriods: live.playedPeriods || [],
     };
     
-    const { home: homePlayerStats, away: awayPlayerStats } = recalculateAllStatsFromLogs(baseSummary, homeTeamRoster, awayTeamRoster);
-    baseSummary.playerStats.home = homePlayerStats;
-    baseSummary.playerStats.away = awayPlayerStats;
+    const aggregatedStats = recalculateAllStatsFromLogs(baseSummary, homeTeamRoster, awayTeamRoster);
+    baseSummary.playerStats.home = aggregatedStats.home;
+    baseSummary.playerStats.away = aggregatedStats.away;
     
     const statsByPeriod: Record<string, PeriodStats> = {};
     
     (live.playedPeriods || []).forEach(periodText => {
-        // Initialize the structure for this period
         statsByPeriod[periodText] = {
             goals: { home: [], away: [] },
             penalties: { home: [], away: [] },
@@ -74,18 +74,15 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         const awayPeriodPlayerStatsMap = new Map<string, SummaryPlayerStats>();
         awayTeamRoster.forEach(p => awayPeriodPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
 
-        // Populate goals for the period
         const homeGoalsInPeriod = (baseSummary.goals.home || []).filter(g => g.periodText === periodText);
         statsByPeriod[periodText].goals.home = homeGoalsInPeriod;
 
         const awayGoalsInPeriod = (baseSummary.goals.away || []).filter(g => g.periodText === periodText);
         statsByPeriod[periodText].goals.away = awayGoalsInPeriod;
 
-        // Populate penalties for the period
         statsByPeriod[periodText].penalties.home = (baseSummary.penalties.home || []).filter(p => p.addPeriodText === periodText);
         statsByPeriod[periodText].penalties.away = (baseSummary.penalties.away || []).filter(p => p.addPeriodText === periodText);
 
-        // Calculate player stats for the period
         homeGoalsInPeriod.forEach(goal => {
             const scorerId = homeTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
             if (scorerId && homePeriodPlayerStatsMap.has(scorerId)) homePeriodPlayerStatsMap.get(scorerId)!.goals++;

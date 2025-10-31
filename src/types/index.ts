@@ -1,12 +1,5 @@
 
 
-export interface PlayerStats {
-  name: string;
-  shots: number;
-  goals: number;
-  assists: number;
-}
-
 export interface PenaltyTypeDefinition {
   id: string;
   name: string;
@@ -194,8 +187,8 @@ export interface PeriodStats {
 
 export interface GameSummary {
   attendance: {
-    home: AttendedPlayerInfo[]; 
-    away: AttendedPlayerInfo[]; 
+    home: AttendedPlayerInfo[];
+    away: AttendedPlayerInfo[];
   };
   goals: {
     home: GoalLog[];
@@ -209,12 +202,12 @@ export interface GameSummary {
     home: SummaryPlayerStats[];
     away: SummaryPlayerStats[];
   };
-  // The shot logs are internal and might not be needed in the final summary
   homeShotsLog?: ShotLog[];
   awayShotsLog?: ShotLog[];
   shootout?: Omit<ShootoutState, 'isActive'>;
   statsByPeriod?: Record<string, PeriodStats>;
   overTimeOrShootouts?: boolean;
+  playedPeriods: string[];
 }
 
 
@@ -331,12 +324,6 @@ export interface LiveState {
     text: string;
     duration: number; // in milliseconds
   } | null;
-  pendingMatchConfig?: {
-    matchId: string;
-    categoryId: string;
-    homeTeamId: string;
-    awayTeamId: string;
-  };
   matchId: string | null;
   playedPeriods: string[];
 }
@@ -453,15 +440,12 @@ export type GameAction =
   | { type: 'UPDATE_LIVE_STATE', payload: Partial<LiveState> }
   | { type: 'RESET_CONFIG_TO_DEFAULTS' }
   | { type: 'RESET_GAME_STATE' }
-  | { type: 'ADD_TEAM'; payload: Omit<TeamData, 'id' | 'players'> & { players: PlayerData[] } }
   | { type: 'ADD_TEAM_TO_TOURNAMENT'; payload: { tournamentId: string, team: Omit<TeamData, 'id'> & { id?: string } } }
   | { type: 'DELETE_TEAMS_FROM_TOURNAMENT'; payload: { tournamentId: string, teamIds: string[] } }
   | { type: 'UPDATE_TEAM_DETAILS'; payload: { teamId: string; name: string; subName?: string; category: string; logoDataUrl?: string | null } }
-  | { type: 'DELETE_TEAM'; payload: { teamId: string } }
   | { type: 'ADD_PLAYER_TO_TEAM'; payload: { teamId: string; player: Omit<PlayerData, 'id'> } }
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
-  | { type: 'LOAD_TEAMS_FROM_FILE'; payload: TeamData[] }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } }
   | { type: 'SET_PLAYER_SHOTS', payload: { team: Team; playerId: string; periodText: string; shotCount: number } };
 

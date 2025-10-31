@@ -256,5 +256,9 @@
       }
     }
   },
-  "overTimeOrShootouts": false
+  "overTimeOrShootouts": false,
+  "playedPeriods": [
+    "1ST",
+    "2ND"
+  ]
 }

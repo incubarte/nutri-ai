@@ -220,5 +220,10 @@
       }
     }
   },
-  "overTimeOrShootouts": true
+  "overTimeOrShootouts": true,
+  "playedPeriods": [
+    "1ST",
+    "2ND",
+    "OT"
+  ]
 }
