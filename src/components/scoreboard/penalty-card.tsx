@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { Penalty, ClockState } from '@/types';
@@ -139,71 +138,58 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
     statusSize: isMobile ? '0.75rem' : `${config.scoreboardLayout.penaltyTimeSize * 0.4}rem`,
   };
 
-  const penaltyLogDetails = (live.gameSummary.home.penalties.find(p => p.id === penalty.id) || live.gameSummary.away.penalties.find(p => p.id === penalty.id));
+  const penaltyLogDetails = (live.penaltiesLog?.home || []).find(p => p.id === penalty.id) || (live.penaltiesLog?.away || []).find(p => p.id === penalty.id);
   const penaltyNameForTooltip = penaltyLogDetails?.penaltyName || "Tipo desconocido";
 
 
   return (
     <Card className={cardClasses}>
-       <TooltipProvider delayDuration={200}>
-          <Tooltip>
-              <TooltipTrigger asChild>
-                  <CardContent className="p-2 md:p-3 lg:p-4 cursor-help">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <CagedUserIcon size={styles.playerIconSize} className="text-primary-foreground" />
-                        <span 
-                          className="font-semibold"
-                          style={{ fontSize: styles.playerNumberSize, lineHeight: 1 }}
-                        >
-                          {getDisplayNumber()}
-                          {renderPlayerAlias()}
-                        </span>
-                      </div>
-                      <div 
-                        className="flex items-center gap-1 md:gap-2 text-accent font-mono"
-                        style={{ fontSize: styles.timeSize, lineHeight: 1 }}
-                      >
-                        <Clock 
-                          className="text-accent"
-                          style={{
-                            height: styles.clockIconSize,
-                            width: styles.clockIconSize,
-                          }}
-                        />
-                        {formatTime(remainingTimeCs, { showTenths: false, rounding: 'up' })}
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div 
-                        className="text-muted-foreground mt-1"
-                        style={{ fontSize: styles.totalDurationSize }}
-                      >
-                        ({formatTime(penalty.initialDuration * 100, { showTenths: false })})
-                         {!penalty.reducesPlayerCount && <span className="text-blue-400 font-semibold"> (No reduce)</span>}
-                      </div>
-                      {statusText && (
-                        <div className={cn(
-                            "mt-1 italic",
-                             isPendingPuck ? "text-yellow-600 dark:text-yellow-400" : "text-muted-foreground/80"
-                          )}
-                          style={{ fontSize: styles.statusSize }}
-                        >
-                          {statusText}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-              </TooltipTrigger>
-              <TooltipContent>
-                 <div className="text-sm space-y-1">
-                    <p><strong>Tipo de Falta:</strong> {penaltyNameForTooltip}</p>
-                    <Separator className="my-1"/>
-                    <p><strong>Jugador:</strong> {getDisplayNumber()}</p>
-                 </div>
-              </TooltipContent>
-          </Tooltip>
-      </TooltipProvider>
+      <CardContent className="p-2 md:p-3 lg:p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 md:gap-3">
+            <CagedUserIcon size={styles.playerIconSize} className="text-primary-foreground" />
+            <span 
+              className="font-semibold"
+              style={{ fontSize: styles.playerNumberSize, lineHeight: 1 }}
+            >
+              {getDisplayNumber()}
+              {renderPlayerAlias()}
+            </span>
+          </div>
+          <div 
+            className="flex items-center gap-1 md:gap-2 text-accent font-mono"
+            style={{ fontSize: styles.timeSize, lineHeight: 1 }}
+          >
+            <Clock 
+              className="text-accent"
+              style={{
+                height: styles.clockIconSize,
+                width: styles.clockIconSize,
+              }}
+            />
+            {formatTime(remainingTimeCs, { showTenths: false, rounding: 'up' })}
+          </div>
+        </div>
+        <div className="flex justify-between items-center">
+          <div 
+            className="text-muted-foreground mt-1"
+            style={{ fontSize: styles.totalDurationSize }}
+          >
+            ({formatTime(penalty.initialDuration * 100, { showTenths: false })})
+             {!penalty.reducesPlayerCount && <span className="text-blue-400 font-semibold"> (No reduce)</span>}
+          </div>
+          {statusText && (
+            <div className={cn(
+                "mt-1 italic",
+                 isPendingPuck ? "text-yellow-600 dark:text-yellow-400" : "text-muted-foreground/80"
+              )}
+              style={{ fontSize: styles.statusSize }}
+            >
+              {statusText}
+            </div>
+          )}
+        </div>
+      </CardContent>
     </Card>
   );
 }
