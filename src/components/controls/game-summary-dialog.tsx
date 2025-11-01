@@ -3,7 +3,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { useGameState, formatTime, type Team, type GoalLog, type PenaltyLog, getCategoryNameById, getEndReasonText, type ShotLog, type AttendedPlayerInfo, getPeriodText } from "@/contexts/game-state-context";
-import type { PlayerData, SummaryPlayerStats } from "@/types";
+import type { PlayerData, SummaryPlayerStats, PeriodSummary } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -149,8 +149,8 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
     return Array.from(statsMap.values());
   };
 
-  const aggregatedHomeStats = useMemo(() => recalculateAllStatsFromLogs({ goals: {home: allHomeGoals, away: []}, shotsLog: {home: state.live.shotsLog.home, away: []} }, homeTeam?.players || []), [allHomeGoals, state.live.shotsLog.home, homeTeam]);
-  const aggregatedAwayStats = useMemo(() => recalculateAllStatsFromLogs({ goals: {home: [], away: allAwayGoals}, shotsLog: {home: [], away: state.live.shotsLog.away} }, awayTeam?.players || []), [allAwayGoals, state.live.shotsLog.away, awayTeam]);
+  const aggregatedHomeStats = useMemo(() => recalculateAllStatsFromLogs({ goals: {home: allHomeGoals, away: []}, home: { homeShotsLog: state.live.shotsLog.home }}, homeTeam?.players || [], []), [allHomeGoals, state.live.shotsLog.home, homeTeam]);
+  const aggregatedAwayStats = useMemo(() => recalculateAllStatsFromLogs({ goals: {home: [], away: allAwayGoals}, away: { awayShotsLog: state.live.shotsLog.away }}, [], awayTeam?.players || []), [allAwayGoals, state.live.shotsLog.away, awayTeam]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -182,22 +182,32 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
             </div>
 
             <Separator />
-
-            <div className="flex justify-end pr-2 mb-4">
-              {isAttendanceEditing ? (
-                  <div className="flex gap-2">
-                      <Button variant="default" size="sm" onClick={handleSaveAttendance}><Check className="mr-2 h-4 w-4"/>Guardar</Button>
-                      <Button variant="outline" size="sm" onClick={() => setIsAttendanceEditing(false)}><XCircle className="mr-2 h-4 w-4"/>Cancelar</Button>
-                  </div>
-              ) : (
-                  <Button variant="outline" size="sm" onClick={() => setIsAttendanceEditing(true)}>
-                      <Edit3 className="mr-2 h-4 w-4"/>Editar Asistencia
-                  </Button>
-              )}
-            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <PlayerStatsSection teamName={state.live.homeTeamName} allPlayers={homeTeam?.players} playerStats={aggregatedHomeStats} attendance={state.live.attendance.home} editable={false} isAttendanceEditing={isAttendanceEditing} onToggleAttendance={(playerId) => handleToggleAttendance('home', playerId)} />
-                <PlayerStatsSection teamName={state.live.awayTeamName} allPlayers={awayTeam?.players} playerStats={aggregatedAwayStats} attendance={state.live.attendance.away} editable={false} isAttendanceEditing={isAttendanceEditing} onToggleAttendance={(playerId) => handleToggleAttendance('away', playerId)} />
+                <PlayerStatsSection 
+                  teamName={homeTeam?.name || ''} 
+                  allPlayers={homeTeam?.players} 
+                  playerStats={aggregatedHomeStats} 
+                  attendance={state.live.attendance.home}
+                  editable={false} 
+                  showAttendanceControls={true}
+                  isAttendanceEditing={isAttendanceEditing}
+                  onToggleAttendance={(playerId) => handleToggleAttendance('home', playerId)}
+                  onEditToggle={setIsAttendanceEditing} 
+                  onSave={handleSaveAttendance}
+                />
+                <PlayerStatsSection 
+                  teamName={awayTeam?.name || ''}
+                  allPlayers={awayTeam?.players}
+                  playerStats={aggregatedAwayStats}
+                  attendance={state.live.attendance.away}
+                  editable={false}
+                  showAttendanceControls={true}
+                  isAttendanceEditing={isAttendanceEditing}
+                  onToggleAttendance={(playerId) => handleToggleAttendance('away', playerId)}
+                  onEditToggle={setIsAttendanceEditing}
+                  onSave={handleSaveAttendance}
+                />
             </div>
             
             {(state.live.shootout.homeAttempts.length > 0 || state.live.shootout.awayAttempts.length > 0) && (
@@ -226,30 +236,37 @@ export function GameSummaryDialog({ isOpen, onOpenChange }: GameSummaryDialogPro
 }
 
 // Helper to recalculate stats from logs (could be in a utils file)
-const recalculateAllStatsFromLogs = (partialSummary: Partial<{ goals: { home: GoalLog[], away: GoalLog[] }, shotsLog: { home: ShotLog[], away: ShotLog[] } }>, roster: PlayerData[]): SummaryPlayerStats[] => {
-    const statsMap = new Map<string, SummaryPlayerStats>();
-    roster.forEach(p => statsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
+const recalculateAllStatsFromLogs = (partialSummary: Partial<{ goals: { home: GoalLog[], away: GoalLog[] }, home: { homeShotsLog?: ShotLog[] }, away: { awayShotsLog?: ShotLog[] } }>, homeTeamRoster: PlayerData[], awayTeamRoster: PlayerData[]): { home: SummaryPlayerStats[], away: SummaryPlayerStats[] } => {
+    const homePlayerStatsMap = new Map<string, SummaryPlayerStats>();
+    const awayPlayerStatsMap = new Map<string, SummaryPlayerStats>();
 
+    // Initialize with all players from roster to ensure everyone is listed
+    homeTeamRoster.forEach(p => homePlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
+    awayTeamRoster.forEach(p => awayPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
+
+    // Process goals and assists
     (partialSummary.goals?.home || []).forEach(goal => {
-        const scorerId = roster.find(p => p.number === goal.scorer?.playerNumber)?.id;
-        if (scorerId && statsMap.has(scorerId)) statsMap.get(scorerId)!.goals++;
-        const assistId = roster.find(p => p.number === goal.assist?.playerNumber)?.id;
-        if (assistId && statsMap.has(assistId)) statsMap.get(assistId)!.assists++;
+        const scorerId = homeTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
+        if (scorerId && homePlayerStatsMap.has(scorerId)) homePlayerStatsMap.get(scorerId)!.goals++;
+        const assistId = homeTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
+        if (assistId && homePlayerStatsMap.has(assistId)) homePlayerStatsMap.get(assistId)!.assists++;
     });
      (partialSummary.goals?.away || []).forEach(goal => {
-        const scorerId = roster.find(p => p.number === goal.scorer?.playerNumber)?.id;
-        if (scorerId && statsMap.has(scorerId)) statsMap.get(scorerId)!.goals++;
-        const assistId = roster.find(p => p.number === goal.assist?.playerNumber)?.id;
-        if (assistId && statsMap.has(assistId)) statsMap.get(assistId)!.assists++;
+        const scorerId = awayTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
+        if (scorerId && awayPlayerStatsMap.has(scorerId)) awayPlayerStatsMap.get(scorerId)!.goals++;
+        const assistId = awayTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
+        if (assistId && awayPlayerStatsMap.has(assistId)) awayPlayerStatsMap.get(assistId)!.assists++;
     });
 
 
-    (partialSummary.shotsLog?.home || []).forEach(shot => {
-        if (shot.playerId && statsMap.has(shot.playerId)) statsMap.get(shot.playerId)!.shots++;
+    // Process shots
+    (partialSummary.home?.homeShotsLog || []).forEach(shot => {
+        if (shot.playerId && homePlayerStatsMap.has(shot.playerId)) homePlayerStatsMap.get(shot.playerId)!.shots++;
     });
-     (partialSummary.shotsLog?.away || []).forEach(shot => {
-        if (shot.playerId && statsMap.has(shot.playerId)) statsMap.get(shot.playerId)!.shots++;
+     (partialSummary.away?.awayShotsLog || []).forEach(shot => {
+        if (shot.playerId && awayPlayerStatsMap.has(shot.playerId)) awayPlayerStatsMap.get(shot.playerId)!.shots++;
     });
     
-    return Array.from(statsMap.values());
+    return { home: Array.from(homePlayerStatsMap.values()), away: Array.from(awayPlayerStatsMap.values()) };
 };
+

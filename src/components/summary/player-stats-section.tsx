@@ -5,9 +5,10 @@ import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter as UiTableFooter } from "@/components/ui/table";
 import type { SummaryPlayerStats, PlayerData, AttendedPlayerInfo } from "@/types";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Edit3, Check, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { Button } from "../ui/button";
 
 export const PlayerStatsSection = ({ 
     teamName, 
@@ -17,8 +18,11 @@ export const PlayerStatsSection = ({
     editable,
     editedStats,
     onStatChange,
+    showAttendanceControls,
     isAttendanceEditing,
     onToggleAttendance,
+    onEditToggle,
+    onSave,
 }: { 
     teamName: string; 
     allPlayers?: PlayerData[];
@@ -27,8 +31,11 @@ export const PlayerStatsSection = ({
     editable?: boolean;
     editedStats?: Record<string, { shots: string }>;
     onStatChange?: (playerId: string, field: 'shots', value: string) => void;
+    showAttendanceControls?: boolean;
     isAttendanceEditing?: boolean;
     onToggleAttendance?: (playerId: string) => void;
+    onEditToggle?: (isEditing: boolean) => void;
+    onSave?: () => void;
 }) => {
     
     const sortedPlayersWithStats = useMemo(() => {
@@ -95,8 +102,20 @@ export const PlayerStatsSection = ({
 
     return (
         <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas - {teamName}</CardTitle>
+                {showAttendanceControls && (
+                    isAttendanceEditing ? (
+                        <div className="flex gap-2">
+                            <Button variant="default" size="sm" onClick={onSave}><Check className="mr-2 h-4 w-4"/>Guardar</Button>
+                            <Button variant="outline" size="sm" onClick={() => onEditToggle?.(false)}><XCircle className="mr-2 h-4 w-4"/>Cancelar</Button>
+                        </div>
+                    ) : (
+                        <Button variant="outline" size="sm" onClick={() => onEditToggle?.(true)}>
+                            <Edit3 className="mr-2 h-4 w-4"/>Editar Asistencia
+                        </Button>
+                    )
+                )}
             </CardHeader>
             <CardContent>
                 {sortedPlayersWithStats.length > 0 ? (
@@ -153,3 +172,4 @@ export const PlayerStatsSection = ({
         </Card>
     );
 };
+
