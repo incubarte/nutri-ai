@@ -63,6 +63,8 @@ export interface Tournament {
   teams: TeamData[];
   categories: CategoryData[];
   matches: MatchData[];
+  penaltyTypes: PenaltyTypeDefinition[];
+  defaultPenaltyTypeId: string | null;
 }
 
 export interface CategoryData {
@@ -429,7 +431,8 @@ export type GameAction =
   | { type: 'UPDATE_MATCH_IN_TOURNAMENT'; payload: { tournamentId: string; match: MatchData } }
   | { type: 'DELETE_MATCH_FROM_TOURNAMENT'; payload: { tournamentId: string; matchId: string } }
   | { type: 'SAVE_MATCH_SUMMARY'; payload: { matchId: string; summary: GameSummary; } }
-  | { type: 'HYDRATE_FROM_SERVER'; payload: GameState }
+  | { type: 'HYDRATE_FROM_SERVER'; payload: Partial<GameState> }
+  | { type: 'HYDRATE_TOURNAMENT_DETAILS', payload: { tournamentData: Partial<Tournament> } }
   | { type: 'SET_STATE_FROM_LOCAL_BROADCAST'; payload: GameState }
   | { type: 'UPDATE_LIVE_STATE', payload: Partial<LiveState> }
   | { type: 'RESET_CONFIG_TO_DEFAULTS' }
@@ -441,11 +444,6 @@ export type GameAction =
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } }
-  | { type: 'SUMMARY_ADD_GOAL'; payload: { matchId: string; team: Team; periodText: string; goal: GoalLog; } }
-  | { type: 'SUMMARY_UPDATE_GOAL'; payload: { matchId: string; team: Team; periodText: string; originalGoalId: string; goal: GoalLog; } }
-  | { type: 'SUMMARY_DELETE_GOAL'; payload: { matchId: string; team: Team; periodText: string; goal: GoalLog; } }
-  | { type: 'SUMMARY_ADD_PENALTY'; payload: { matchId: string; team: Team; periodText: string; penalty: PenaltyLog; } }
-  | { type: 'SUMMARY_DELETE_PENALTY'; payload: { matchId: string; team: Team; periodText: string; penaltyId: string; } }
   | { type: 'SET_PLAYER_SHOTS'; payload: { team: Team; playerId: string; periodText: string; shotCount: number } };
 
 
@@ -472,4 +470,3 @@ export interface SummaryPlayerStats {
   assists: number;
   shots: number;
 }
-

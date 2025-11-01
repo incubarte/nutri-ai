@@ -1,11 +1,10 @@
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter as UiTableFooter } from "@/components/ui/table";
 import { formatTime } from "@/contexts/game-state-context";
-import type { GoalLog, PlayerData } from "@/types";
+import type { GoalLog, PlayerData, Team } from "@/types";
 import { Goal, PlusCircle, Trash2, Edit3, Check, XCircle } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { safeUUID } from '@/lib/utils';
-import { Label } from '../ui/label';
 
 interface EditableGoalRowProps {
     goal: GoalLog;
