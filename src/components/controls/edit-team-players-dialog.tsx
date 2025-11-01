@@ -68,11 +68,11 @@ export function EditTeamPlayersDialog({
         sortedPlayers.map(p => ({ ...p, localNumber: p.number, isModified: false }))
       );
       
-      const attendedInfo = state.live?.gameSummary?.attendance?.[teamType] || [];
+      const attendedInfo = state.live?.attendance?.[teamType] || [];
       setAttendedPlayerIds(new Set(attendedInfo.map(p => p.id)));
 
     }
-  }, [isOpen, teamDetails, state.live.gameSummary.attendance, teamType]);
+  }, [isOpen, teamDetails, state.live.attendance, teamType]);
 
   const handlePlayerNumberChange = (playerId: string, newNumber: string) => {
     if (/^\d*$/.test(newNumber)) {
@@ -164,7 +164,7 @@ export function EditTeamPlayersDialog({
       }
     });
 
-    const originalAttendedIds = new Set((state.live?.gameSummary?.attendance?.[teamType] || []).map(p => p.id));
+    const originalAttendedIds = new Set((state.live?.attendance?.[teamType] || []).map(p => p.id));
     const attendanceChanged = !(attendedPlayerIds.size === originalAttendedIds.size && [...attendedPlayerIds].every(id => originalAttendedIds.has(id)));
 
     if (attendanceChanged) {

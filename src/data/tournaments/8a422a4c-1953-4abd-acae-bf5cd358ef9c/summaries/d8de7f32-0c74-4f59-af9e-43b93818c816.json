@@ -203,7 +203,23 @@
       "period": "2ND",
       "stats": {
         "goals": {
-          "home": [],
+          "home": [
+            {
+              "id": "new-e4d24ca8-bade-452e-9679-9453d1866692",
+              "team": "home",
+              "timestamp": 0,
+              "gameTime": 0,
+              "periodText": "",
+              "scorer": {
+                "playerNumber": "99",
+                "playerName": "ESEISA MICHEL"
+              },
+              "assist": {
+                "playerNumber": "17",
+                "playerName": "SAVCHUK ROMAN"
+              }
+            }
+          ],
           "away": []
         },
         "penalties": {

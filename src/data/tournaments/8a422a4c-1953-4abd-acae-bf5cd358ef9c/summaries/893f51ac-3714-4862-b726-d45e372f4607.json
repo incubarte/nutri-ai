@@ -160,7 +160,23 @@
         },
         "penalties": {
           "home": [],
-          "away": []
+          "away": [
+            {
+              "id": "manual-c29d672e-9a74-410d-aa8d-2977de78079e",
+              "team": "away",
+              "playerNumber": "17",
+              "penaltyName": "Mayor",
+              "initialDuration": 300,
+              "reducesPlayerCount": true,
+              "clearsOnGoal": false,
+              "isBenchPenalty": false,
+              "addTimestamp": 1761793200000,
+              "addGameTime": 0,
+              "addPeriodText": "1ST",
+              "endReason": "completed",
+              "timeServed": 300
+            }
+          ]
         },
         "playerStats": {
           "home": [],

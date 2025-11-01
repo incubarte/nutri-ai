@@ -187,7 +187,23 @@
           ]
         },
         "penalties": {
-          "home": [],
+          "home": [
+            {
+              "id": "manual-5b444d22-8e6e-44e4-be31-5cdd80e1728c",
+              "team": "home",
+              "playerNumber": "17",
+              "penaltyName": "Mala Conducta",
+              "initialDuration": 600,
+              "reducesPlayerCount": false,
+              "clearsOnGoal": false,
+              "isBenchPenalty": false,
+              "addTimestamp": 1761706800000,
+              "addGameTime": 0,
+              "addPeriodText": "1ST",
+              "endReason": "completed",
+              "timeServed": 600
+            }
+          ],
           "away": []
         },
         "playerStats": {
