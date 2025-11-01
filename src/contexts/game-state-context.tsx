@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -7,10 +6,10 @@ import React, { createContext, useContext, useReducer, useEffect, useRef, useSta
 import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData, PeriodStats } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
-import { saveDataOnServer } from '@/app/actions';
+import { saveDataOnServer, saveTournamentOnServer } from '@/app/actions';
 import { safeUUID } from '@/lib/utils';
 import defaultSettings from '@/config/defaults.json';
-import { generateSummaryData, recalculateAllStatsFromLogs } from '@/lib/summary-generator';
+import { generateSummaryData } from '@/lib/summary-generator';
 
 
 // --- Constantes para la sincronización local ---
@@ -229,10 +228,18 @@ const calculateAbsoluteTimeForPeriod = (targetPeriod: number, remainingTimeInPer
 
 const finalizeMatch = (state: GameState): GameState => {
     const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
+    
+    const finishedPeriodText = getPeriodText(state.live.clock.currentPeriod, state.config.numberOfRegularPeriods);
+    let playedPeriods = [...(state.live.playedPeriods || [])];
+    if (!playedPeriods.includes(finishedPeriodText)) {
+        playedPeriods.push(finishedPeriodText);
+    }
+
     const newState = {
         ...state,
         live: {
             ...state.live,
+            playedPeriods,
             clock: {
                 ...state.live.clock,
                 currentTime: 0,
@@ -248,9 +255,13 @@ const finalizeMatch = (state: GameState): GameState => {
         }
     };
     
-    // The summary action is now part of the returned state from this reducer,
-    // and will be handled by the component that called the finalization.
-    // We cannot dispatch from within a reducer.
+    if (newState.live.matchId) {
+        const summary = generateSummaryData(newState);
+        if (summary) {
+            return gameReducer(newState, { type: 'SAVE_MATCH_SUMMARY', payload: { matchId: newState.live.matchId, summary } });
+        }
+    }
+
     return newState;
 };
 
@@ -313,9 +324,11 @@ const handleAutoTransition = (currentState: GameState): GameState => {
 
       // Add the just-finished period to the played periods list
       const finishedPeriodText = getPeriodText(currentPeriod, numberOfRegularPeriods);
-      if (!newGameStateAfterTransition.live.playedPeriods.includes(finishedPeriodText)) {
-          newGameStateAfterTransition.live.playedPeriods.push(finishedPeriodText);
+      let playedPeriods = [...(newGameStateAfterTransition.live.playedPeriods || [])];
+      if (!playedPeriods.includes(finishedPeriodText)) {
+          playedPeriods.push(finishedPeriodText);
       }
+      newGameStateAfterTransition.live.playedPeriods = playedPeriods;
 
       // Check for end of regulation or last OT
       if (currentPeriod >= totalGamePeriods) {
@@ -494,7 +507,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             absoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
             _liveAbsoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
         };
-        saveDataOnServer({ config: state.config, live: { ...state.live, clock: { ...state.live.clock, ...newClockState } } });
 
       } else { // Starting the clock
         if (currentTime > 0) {
@@ -719,13 +731,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       tempState.live.goals[team] = [...tempState.live.goals[team], newGoal];
       
       const finalizedState = finalizeMatch(tempState);
-      
-      const summary = generateSummaryData(finalizedState);
-      if (summary && finalizedState.live.matchId) {
-          newState = gameReducer(finalizedState, { type: 'SAVE_MATCH_SUMMARY', payload: { matchId: finalizedState.live.matchId, summary } });
-      } else {
-        newState = finalizedState;
-      }
+      newState = finalizedState;
       toastMessage = { title: "¡Partido Finalizado!", description: "Gol de oro registrado exitosamente." };
       break;
     }
@@ -1153,9 +1159,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'MANUAL_END_GAME': {
         const tempState = { ...state };
         const finishedPeriodText = getPeriodText(tempState.live.clock.currentPeriod, tempState.config.numberOfRegularPeriods);
-        if (!tempState.live.playedPeriods.includes(finishedPeriodText)) {
-            tempState.live.playedPeriods.push(finishedPeriodText);
+        const playedPeriods = [...(tempState.live.playedPeriods || [])];
+        if (!playedPeriods.includes(finishedPeriodText)) {
+            playedPeriods.push(finishedPeriodText);
         }
+        tempState.live.playedPeriods = playedPeriods;
 
         if (tempState.live.score.home === tempState.live.score.away) {
             newState = { ...tempState, live: { ...tempState.live,
@@ -1163,12 +1171,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 shootout: { ...tempState.live.shootout, isActive: false }
             }};
         } else {
-            const finalizedState = finalizeMatch(tempState);
-            const summary = generateSummaryData(finalizedState);
-            if (summary && finalizedState.live.matchId) {
-                return gameReducer(finalizedState, { type: 'SAVE_MATCH_SUMMARY', payload: { matchId: finalizedState.live.matchId, summary } });
-            }
-            newState = finalizedState;
+            newState = finalizeMatch(tempState);
         }
         break;
     }
@@ -1301,14 +1304,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'FINISH_SHOOTOUT': {
-        const finalizedState = finalizeMatch(state);
-        const summary = generateSummaryData(finalizedState);
-        if (summary && finalizedState.live.matchId) {
-            const newStateWithSummary = gameReducer(finalizedState, { type: 'SAVE_MATCH_SUMMARY', payload: { matchId: finalizedState.live.matchId, summary } });
-            newState = { ...newStateWithSummary, _lastActionOriginator: TAB_ID };
-        } else {
-            newState = finalizedState;
-        }
+        const tempState = { ...state };
+        const finalizedState = finalizeMatch(tempState);
+        newState = finalizedState;
         toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
         break;
     }
@@ -1627,10 +1625,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         playHornTrigger: state.live.playHornTrigger,
         playPenaltyBeepTrigger: state.live.playPenaltyBeepTrigger,
       };
-
-      // Do NOT sync to server here. This action is just about resetting the client's live state.
-      // The server will be updated on the next meaningful action (like toggling the clock).
-
       newState = { ...state, live: resetLiveState };
       break;
     }
@@ -1645,11 +1639,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
 
 const GameStateObserver = () => {
-    const { state, dispatch } = useGameState();
+    const { state } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
-    const prevClockOverrideRef = useRef(state.live?.clock.periodDisplayOverride);
-
+    
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
             toast(state._lastToastMessage);
@@ -1657,25 +1650,6 @@ const GameStateObserver = () => {
         }
     }, [state._lastToastMessage, toast]);
     
-    // Effect to save summary when game ends
-    useEffect(() => {
-        const currentOverride = state.live?.clock.periodDisplayOverride;
-        const previousOverride = prevClockOverrideRef.current;
-
-        // Trigger save only on the transition to 'End of Game'
-        if (currentOverride === 'End of Game' && previousOverride !== 'End of Game') {
-            if (state.live.matchId) {
-                const summary = generateSummaryData(state);
-                if (summary) {
-                    dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: state.live.matchId, summary } });
-                }
-            }
-        }
-        
-        prevClockOverrideRef.current = currentOverride;
-    }, [state.live?.clock.periodDisplayOverride, state.live.matchId, state, dispatch]);
-    
-
     return null;
 }
 
@@ -1686,9 +1660,27 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const [isPageVisible, setIsPageVisible] = useState(true);
   const channelRef = useRef<BroadcastChannel | null>(null);
 
-  const syncToServer = useCallback(async (stateToSync: GameState) => {
+  const syncToServer = useCallback(async (newState: GameState, oldState: GameState) => {
     try {
-        await saveDataOnServer({ config: stateToSync.config, live: stateToSync.live });
+        const hasLiveChanged = !isEqual(newState.live, oldState.live);
+        const hasConfigChanged = !isEqual(newState.config, oldState.config);
+
+        if (hasLiveChanged && !hasConfigChanged) {
+            await saveDataOnServer({ live: newState.live });
+        } else if (hasConfigChanged) {
+            // Check which tournament changed
+            const changedTournament = newState.config.tournaments.find(
+                (newT, index) => !isEqual(newT, oldState.config.tournaments[index])
+            );
+            
+            if (changedTournament) {
+                await saveTournamentOnServer(changedTournament);
+            }
+            
+            // Always save base config and live state if config changes
+            await saveDataOnServer({ config: newState.config, live: newState.live });
+        }
+
     } catch (error) {
       showToast({
         title: "Error de Sincronización",
@@ -1715,24 +1707,41 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
+      setIsLoading(true);
       try {
-        const res = await fetch('/api/db');
-        if (res.ok) {
-          const data: GameState = await res.json();
-          dispatch({ type: 'HYDRATE_FROM_SERVER', payload: data });
-        } else {
-          dispatch({ type: 'HYDRATE_FROM_SERVER', payload: getInitialState() });
+        const configRes = await fetch('/api/db');
+        if (!configRes.ok) throw new Error('Failed to fetch config');
+        const configData = await configRes.json();
+
+        // Fetch each tournament's full data
+        if (configData.config && Array.isArray(configData.config.tournaments)) {
+            const tournamentPromises = configData.config.tournaments.map(async (meta: Pick<Tournament, 'id'>) => {
+                try {
+                    const tourneyRes = await fetch(`/api/tournaments/${meta.id}`);
+                    if (!tourneyRes.ok) return null;
+                    const tourneyData = await tourneyRes.json();
+                    return tourneyData.tournament;
+                } catch {
+                    return null;
+                }
+            });
+
+            const tournamentsData = (await Promise.all(tournamentPromises)).filter(Boolean);
+            configData.config.tournaments = tournamentsData;
         }
+
+        dispatch({ type: 'HYDRATE_FROM_SERVER', payload: configData });
+
       } catch (error) {
         console.error("Failed to fetch initial state from server:", error);
         dispatch({ type: 'HYDRATE_FROM_SERVER', payload: getInitialState() });
       } finally {
         setIsLoading(false);
       }
-    };
+  }, []);
 
+  useEffect(() => {
     fetchInitialData();
 
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
@@ -1756,20 +1765,23 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
         channelRef.current?.removeEventListener('message', handleMessage);
       };
     }
-  }, []);
+  }, [fetchInitialData]);
 
-
+  const prevStateRef = useRef<GameState>(state);
   useEffect(() => {
-    if (isLoading || typeof window === 'undefined' || !state._lastActionOriginator) return;
-
-    if (state._lastActionOriginator === TAB_ID) {
-      try {
-        channelRef.current?.postMessage(state);
-        syncToServer(state);
-      } catch (error) {
-        console.error("Error broadcasting or saving state:", error);
+      const oldState = prevStateRef.current;
+      prevStateRef.current = state;
+      
+      if (isLoading || typeof window === 'undefined' || !state._lastActionOriginator) return;
+  
+      if (state._lastActionOriginator === TAB_ID) {
+          try {
+              channelRef.current?.postMessage(state);
+              syncToServer(state, oldState);
+          } catch (error) {
+              console.error("Error broadcasting or saving state:", error);
+          }
       }
-    }
   }, [state, isLoading, syncToServer]);
   
   useEffect(() => {

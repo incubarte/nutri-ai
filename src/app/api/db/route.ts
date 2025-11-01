@@ -34,101 +34,6 @@ async function writeData(filePath: string, data: any): Promise<void> {
 }
 
 
-async function readTournament(tournamentId: string): Promise<Partial<Tournament> | null> {
-    const tournamentDir = path.join(TOURNAMENTS_DIR, tournamentId);
-    const teamsFilePath = path.join(tournamentDir, 'teams.json');
-    const fixtureFilePath = path.join(tournamentDir, 'fixture.json');
-    const summariesDir = path.join(tournamentDir, 'summaries');
-
-    try {
-        await fs.access(tournamentDir); // Check if directory exists
-
-        const teamsData: { categories: CategoryData[], teams: TeamData[] } = await readData(teamsFilePath);
-        const fixtureData: { matches: MatchData[] } = await readData(fixtureFilePath);
-
-        if (fixtureData && fixtureData.matches) {
-            const matchSummaryPromises = fixtureData.matches.map(async (match) => {
-                const summaryPath = path.join(summariesDir, `${match.id}.json`);
-                try {
-                    const summary = await readData(summaryPath);
-                    return { ...match, summary: summary || undefined };
-                } catch {
-                    return match; // Return match without summary if file not found
-                }
-            });
-            fixtureData.matches = await Promise.all(matchSummaryPromises);
-        }
-        
-        return {
-            ...(teamsData || {}),
-            ...(fixtureData || {}),
-        };
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return null;
-        }
-        console.error(`Error reading tournament ${tournamentId}:`, error);
-        return null;
-    }
-}
-
-async function writeTournament(tournament: Tournament): Promise<void> {
-    const tournamentDir = path.join(TOURNAMENTS_DIR, tournament.id);
-    const teamsFilePath = path.join(tournamentDir, 'teams.json');
-    const fixtureFilePath = path.join(tournamentDir, 'fixture.json');
-    const summariesDir = path.join(tournamentDir, 'summaries');
-
-    try {
-        await fs.mkdir(summariesDir, { recursive: true });
-
-        const teamsData = {
-            categories: tournament.categories || [],
-            teams: tournament.teams || [],
-        };
-        
-        const fixtureMatches: MatchData[] = [];
-        const summaryWritePromises: Promise<void>[] = [];
-
-        (tournament.matches || []).forEach(match => {
-            const { summary, ...matchWithoutSummary } = match;
-            
-            if (summary) {
-                const summaryPath = path.join(summariesDir, `${match.id}.json`);
-                summaryWritePromises.push(writeData(summaryPath, summary));
-                
-                // Use optional chaining and nullish coalescing for safety
-                const homeScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals?.home?.length ?? 0), 0);
-                const awayScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals?.away?.length ?? 0), 0);
-                
-                matchWithoutSummary.homeScore = homeScore;
-                matchWithoutSummary.awayScore = awayScore;
-
-                // Safely determine if OT or SO happened from the summary object
-                const wentToOTOrSO = (summary.statsByPeriod && (summary.statsByPeriod).some(p => p.period.startsWith('OT'))) || 
-                                     (summary.shootout && (summary.shootout.homeAttempts.length > 0 || summary.shootout.awayAttempts.length > 0));
-
-                matchWithoutSummary.overTimeOrShootouts = wentToOTOrSO;
-            }
-            fixtureMatches.push(matchWithoutSummary);
-        });
-
-        const fixtureData = {
-            matches: fixtureMatches,
-        };
-
-        await Promise.all([
-            writeData(teamsFilePath, teamsData),
-            writeData(fixtureFilePath, fixtureData),
-            ...summaryWritePromises,
-        ]);
-
-    } catch (error) {
-         console.error(`Could not write to tournament files for ${tournament.id}:`, error);
-        throw new Error("Failed to write tournament file.");
-    }
-}
-
-
 export async function GET(request: Request) {
   try {
     const [config, liveState] = await Promise.all([
@@ -137,21 +42,6 @@ export async function GET(request: Request) {
     ]);
     
     const fullConfig = config || {};
-    if (!fullConfig.tournaments) {
-        fullConfig.tournaments = [];
-    }
-
-    const tournamentPromises = (fullConfig.tournaments || []).map(async (meta: any) => {
-        const tournamentDetails = await readTournament(meta.id);
-        return {
-            ...meta,
-            ...(tournamentDetails || { teams: [], categories: [], matches: [] }),
-        };
-    });
-
-    const fullTournaments = await Promise.all(tournamentPromises);
-    
-    fullConfig.tournaments = fullTournaments;
     
     const initialState: GameState = {
       config: fullConfig,
@@ -170,19 +60,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { config, live } = await request.json() as { config: ConfigState; live?: LiveState };
+    const { config, live } = await request.json() as { config?: ConfigState; live?: LiveState };
 
     if (config) {
+        // Save only config metadata, not the full tournament objects
         const { tournaments, ...baseConfig } = config;
         const tournamentMetas = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
-        const configToSave: Partial<ConfigState> = { ...baseConfig, tournaments: tournamentMetas as any };
+        const configToSave = { ...baseConfig, tournaments: tournamentMetas };
         
         await writeData(CONFIG_PATH, configToSave);
-
-        if (tournaments) {
-            const tournamentWritePromises = tournaments.map(t => writeTournament(t));
-            await Promise.all(tournamentWritePromises);
-        }
     }
     
     if (live) {
