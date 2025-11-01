@@ -89,7 +89,7 @@ export function StandingsDisplay() {
   const ellipsisRowHeight = rowHeightRem * 0.7; // Make ellipsis row a bit shorter
   const ellipsisFontSize = baseFontSizeRem * 2.5;
 
-  const statColumnWidth = `${baseFontSizeRem * 3}rem`;
+  const statColumnWidth = `${baseFontSizeRem * 4}rem`;
 
   return (
     <Card className="bg-card shadow-lg flex flex-col h-full">
@@ -126,7 +126,7 @@ export function StandingsDisplay() {
                     return (
                         <TableRow key={teamStat.id}>
                             <TableCell colSpan={11} className="p-0" style={{ height: `${ellipsisRowHeight}rem` }}>
-                                <div className="flex items-center justify-center h-full text-muted-foreground/50 tracking-widest" style={{ fontSize: `${ellipsisFontSize}rem`, lineHeight: 1}}>
+                                <div className="flex items-center justify-center h-full text-muted-foreground/50 tracking-widest" style={{ fontSize: `${ellipsisFontSize}rem` }}>
                                     ...
                                 </div>
                             </TableCell>
