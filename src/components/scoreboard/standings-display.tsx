@@ -89,7 +89,7 @@ export function StandingsDisplay() {
   const ellipsisRowHeight = rowHeightRem * 0.7; // Make ellipsis row a bit shorter
   const ellipsisFontSize = baseFontSizeRem * 2.5;
 
-  const statColumnWidth = `${baseFontSizeRem * 4}rem`;
+  const statColumnWidth = `${baseFontSizeRem * 5}rem`;
 
   return (
     <Card className="bg-card shadow-lg flex flex-col h-full">
@@ -111,8 +111,8 @@ export function StandingsDisplay() {
                 <TableHead className="w-1/2" style={{ fontSize: `${headerSize}rem` }}>Equipo</TableHead>
                 <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PJ</TableHead>
                 <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PG</TableHead>
-                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PG <span className="text-[0.7em] opacity-80">(OT)</span></TableHead>
-                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PP <span className="text-[0.7em] opacity-80">(OT)</span></TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PG<span className="text-[0.7em] opacity-80"> (OT)</span></TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PP<span className="text-[0.7em] opacity-80"> (OT)</span></TableHead>
                 <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PE</TableHead>
                 <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PP</TableHead>
                 <TableHead className="text-center border-l" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>GF</TableHead>
@@ -126,7 +126,7 @@ export function StandingsDisplay() {
                     return (
                         <TableRow key={teamStat.id}>
                             <TableCell colSpan={11} className="p-0" style={{ height: `${ellipsisRowHeight}rem` }}>
-                                <div className="flex items-center justify-center h-full text-muted-foreground/50 tracking-widest" style={{ fontSize: `${ellipsisFontSize}rem` }}>
+                                <div className="relative flex items-center justify-center h-full text-muted-foreground/50 tracking-widest" style={{ fontSize: `${ellipsisFontSize}rem`, bottom: '0.2em' }}>
                                     ...
                                 </div>
                             </TableCell>
