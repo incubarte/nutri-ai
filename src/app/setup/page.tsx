@@ -116,7 +116,7 @@ export default function SetupPage() {
     const availableCategories = useMemo(() => selectedTournament?.categories || [], [selectedTournament]);
 
     const teamsInCategory = useMemo(() => {
-        if (!selectedTournament || !localCategoryId) return [];
+        if (!selectedTournament || !selectedTournament.teams || !localCategoryId) return [];
         return selectedTournament.teams.filter(t => t.category === localCategoryId);
     }, [selectedTournament, localCategoryId]);
 
@@ -385,3 +385,4 @@ export default function SetupPage() {
         </div>
     );
 }
+
