@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
@@ -7,6 +8,7 @@ import { CompactHeaderScoreboard } from './compact-header-scoreboard';
 import { PenaltiesDisplay } from './penalties-display';
 import { ShootoutDisplay, MAX_DISPLAY_SLOTS } from './shootout-display';
 import { StandingsDisplay } from './standings-display'; // Importar el nuevo componente
+import { GoalCelebrationOverlay } from './goal-celebration-overlay';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -59,11 +61,22 @@ export function FullScoreboard({ className }: { className?: string }) {
     }
   }, [live?.overlayMessage, dispatch]);
 
+  useEffect(() => {
+    let timer: NodeJS.Timeout | undefined;
+    if (live?.goalCelebration) {
+        timer = setTimeout(() => {
+            dispatch({ type: 'HIDE_GOAL_CELEBRATION' });
+        }, 5000); // Overlay lasts for 5 seconds
+    }
+    return () => clearTimeout(timer);
+  }, [live?.goalCelebration, dispatch]);
+
+
   if (isLoading || !config || !live || !scoreboardLayout) {
     return null;
   }
 
-  const { penalties, homeTeamName, awayTeamName, shootout, matchId, clock } = live;
+  const { penalties, homeTeamName, awayTeamName, shootout, matchId, clock, goalCelebration } = live;
 
   const homeAttempts = shootout?.homeAttempts || [];
   const awayAttempts = shootout?.awayAttempts || [];
@@ -119,37 +132,64 @@ export function FullScoreboard({ className }: { className?: string }) {
           )}
         </AnimatePresence>
         
-        {/* Penalties/Shootout/Standings content positioned within the transparent container */}
+        {/* Penalties/Shootout/Standings/Goal Celebration content positioned within the transparent container */}
         <div className="relative z-0 h-full">
-          {showStandings ? (
-             <div className="px-4 sm:px-8 md:px-12 lg:px-16 h-full">
-                <StandingsDisplay />
-             </div>
-          ) : clock.periodDisplayOverride !== 'Shootout' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
-                <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
-                <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
-              </div>
-          ) : clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
-              <div className="flex flex-col items-center gap-4">
-              <h1 
-                  className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
-                  style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
-              >
-                  <span>Penales</span>
-                  <span 
-                      className="text-foreground/80 font-normal"
-                      style={{ fontSize: `${scoreboardLayout.periodSize * 1.5 * 0.5}rem` }}
-                  >
-                      (Ronda {currentRound})
-                  </span>
-              </h1>
-              <div className="w-full max-w-4xl space-y-4">
-                  <ShootoutDisplay team="home" teamName={homeTeamName} attempts={homeAttempts} totalRounds={totalRounds} startIdx={startIdx} />
-                  <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
-              </div>
-              </div>
-          ) : null}
+            <AnimatePresence>
+                {goalCelebration && (
+                    <motion.div
+                        key={goalCelebration.id}
+                        initial={{ opacity: 0, y: 50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -50 }}
+                        transition={{ duration: 0.5, ease: "easeInOut" }}
+                        className="absolute inset-0 z-10"
+                    >
+                        <GoalCelebrationOverlay celebration={goalCelebration} />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {!goalCelebration && (
+                     <motion.div
+                        key="main-content"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.5, delay: 0.3 }}
+                        className="h-full"
+                    >
+                        {showStandings ? (
+                            <div className="px-4 sm:px-8 md:px-12 lg:px-16 h-full">
+                                <StandingsDisplay />
+                            </div>
+                        ) : clock.periodDisplayOverride !== 'Shootout' ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
+                                <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
+                                <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
+                            </div>
+                        ) : clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
+                            <div className="flex flex-col items-center gap-4">
+                            <h1 
+                                className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
+                                style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
+                            >
+                                <span>Penales</span>
+                                <span 
+                                    className="text-foreground/80 font-normal"
+                                    style={{ fontSize: `${scoreboardLayout.periodSize * 1.5 * 0.5}rem` }}
+                                >
+                                    (Ronda {currentRound})
+                                </span>
+                            </h1>
+                            <div className="w-full max-w-4xl space-y-4">
+                                <ShootoutDisplay team="home" teamName={homeTeamName} attempts={homeAttempts} totalRounds={totalRounds} startIdx={startIdx} />
+                                <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
+                            </div>
+                            </div>
+                        ) : null}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
       </div>
     </div>

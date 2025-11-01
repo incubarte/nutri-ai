@@ -320,6 +320,11 @@ export interface LiveState {
     text: string;
     duration: number; // in milliseconds
   } | null;
+  goalCelebration: {
+    id: string;
+    goal: GoalLog;
+    teamData?: TeamData;
+  } | null;
   matchId: string | null;
   playedPeriods: string[];
 }
@@ -367,6 +372,8 @@ export type RemoteCommand =
 export type GameAction =
   | { type: 'SHOW_OVERLAY_MESSAGE'; payload: { text: string, duration: number } }
   | { type: 'HIDE_OVERLAY_MESSAGE' }
+  | { type: 'SHOW_GOAL_CELEBRATION'; payload: { goal: GoalLog, teamData?: TeamData } }
+  | { type: 'HIDE_GOAL_CELEBRATION' }
   | { type: 'TOGGLE_CLOCK' }
   | { type: 'SET_TIME'; payload: { minutes: number; seconds: number } }
   | { type: 'ADJUST_TIME'; payload: number }

@@ -129,6 +129,7 @@ const INITIAL_LIVE_DATA: LiveState = {
   playPenaltyBeepTrigger: 0,
   pendingPowerPlayGoal: null,
   overlayMessage: null,
+  goalCelebration: null,
   matchId: null,
   playedPeriods: [],
 };
@@ -468,6 +469,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'HIDE_OVERLAY_MESSAGE':
       newState = { ...state, live: { ...state.live, overlayMessage: null } };
       break;
+    case 'SHOW_GOAL_CELEBRATION':
+      newState = { ...state, live: { ...state.live, goalCelebration: { id: safeUUID(), ...action.payload } } };
+      break;
+    case 'HIDE_GOAL_CELEBRATION':
+      newState = { ...state, live: { ...state.live, goalCelebration: null } };
+      break;
     case 'HYDRATE_FROM_SERVER': {
         const serverState = action.payload;
         if (!serverState.config) {
@@ -660,10 +667,20 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           }
       }
       
+      // Goal Celebration Logic
+      let goalCelebration: LiveState['goalCelebration'] = null;
+      const isFinishingSoon = clock.isClockRunning && clock.currentTime < 500;
+      const anyPenaltyEndingSoon = [...live.penalties.home, ...live.penalties.away].some(p => p.expirationTime && (p.expirationTime - clock._liveAbsoluteElapsedTimeCs) < 1500);
+      if (!isFinishingSoon && !anyPenaltyEndingSoon) {
+          const teamData = config.tournaments.find(t => t.id === config.selectedTournamentId)?.teams.find(t => t.name === live[`${teamScored}TeamName`] && (t.subName || undefined) === (live[`${teamScored}TeamSubName`] || undefined) && t.category === config.selectedMatchCategory);
+          goalCelebration = { id: safeUUID(), goal: newGoal, teamData };
+      }
+      
       newState = { ...state, live: { ...state.live, 
         score: newScore,
         goals: newLiveGoals,
         pendingPowerPlayGoal: pendingPPGoal,
+        goalCelebration: goalCelebration,
       }};
       toastMessage = { title: "Gol Añadido", description: `Gol para el jugador #${action.payload.scorer?.playerNumber} registrado.` };
       break;
@@ -1609,7 +1626,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'REMOVE_PLAYER_FROM_TEAM': {
       const { teamId, playerId } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
       break;
     }
     case 'SET_TEAM_ATTENDANCE': {
