@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -1504,10 +1503,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       const newTournaments = state.config.tournaments.map(t => {
         if (t.id === tournamentId) {
-          const newMatches = t.matches.map(m => {
+          const newMatches = (t.matches || []).map(m => {
             if (m.id === matchId) {
-                const homeScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals?.home?.length ?? 0), 0);
-                const awayScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals?.away?.length ?? 0), 0);
+                const homeScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals.home?.length ?? 0), 0);
+                const awayScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals.away?.length ?? 0), 0);
                 return { ...m, summary, homeScore, awayScore, overTimeOrShootouts: summary.overTimeOrShootouts };
             }
             return m;
@@ -1686,7 +1685,6 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
            await updateGameStateOnServer(newState.live);
         }
         if (hasConfigChanged) {
-           // We only save the base config, without full tournament data
            const { tournaments, ...baseConfig } = newState.config;
            const tournamentsMeta = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
            await updateConfigOnServer({ ...baseConfig, tournaments: tournamentsMeta });
@@ -1721,31 +1719,18 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const fetchInitialData = useCallback(async () => {
       setIsLoading(true);
       try {
-        const configRes = await fetch('/api/db');
-        if (!configRes.ok) throw new Error('Failed to fetch config');
-        const configData = await configRes.json();
-
-        // Fetch each tournament's full data
-        if (configData.config && Array.isArray(configData.config.tournaments)) {
-            const tournamentPromises = configData.config.tournaments.map(async (meta: Pick<Tournament, 'id'>) => {
-                try {
-                    const tourneyRes = await fetch(`/api/tournaments/${meta.id}`);
-                    if (!tourneyRes.ok) return null;
-                    const tourneyData = await tourneyRes.json();
-                    return tourneyData.tournament;
-                } catch {
-                    return null;
-                }
-            });
-
-            const tournamentsData = (await Promise.all(tournamentPromises)).filter(Boolean);
-            configData.config.tournaments = tournamentsData;
-        }
-
-        dispatch({ type: 'HYDRATE_FROM_SERVER', payload: configData });
+        const res = await fetch('/api/db');
+        if (!res.ok) throw new Error('Failed to fetch initial data');
+        const data = await res.json();
+        
+        // At this point, data.config.tournaments only has metadata.
+        // We will hydrate the state with this, which is enough for most UI.
+        // The [tournamentId] page will be responsible for fetching its own detailed data.
+        dispatch({ type: 'HYDRATE_FROM_SERVER', payload: data });
 
       } catch (error) {
         console.error("Failed to fetch initial state from server:", error);
+        // If server fails, initialize with a default clean state.
         dispatch({ type: 'HYDRATE_FROM_SERVER', payload: getInitialState() });
       } finally {
         setIsLoading(false);
@@ -1788,12 +1773,25 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
       if (state._lastActionOriginator === TAB_ID) {
           try {
               channelRef.current?.postMessage(state);
-              syncToServer(state, oldState);
+              // Instead of a complex sync, we just save the relevant part.
+              const hasLiveChanged = !isEqual(state.live, oldState.live);
+              if (hasLiveChanged) {
+                  updateGameStateOnServer(state.live);
+              }
+              // Config changes are now mostly handled by their own components
+              // But we can keep a general config sync for smaller, non-tournament changes
+              const hasConfigChanged = !isEqual(state.config, oldState.config);
+              if (hasConfigChanged) {
+                 const { tournaments, ...baseConfig } = state.config;
+                 const tournamentsMeta = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
+                 updateConfigOnServer({ ...baseConfig, tournaments: tournamentsMeta });
+              }
+
           } catch (error) {
               console.error("Error broadcasting or saving state:", error);
           }
       }
-  }, [state, isLoading, syncToServer]);
+  }, [state, isLoading]);
   
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
@@ -1927,3 +1925,4 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
 
+      
