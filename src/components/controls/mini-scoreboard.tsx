@@ -695,12 +695,12 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className={cn("h-7 w-7 shrink-0 rounded-full", isWarmup && isMatchFromFixture && "animate-green-glow")}
+                            className="h-7 w-7 shrink-0 rounded-full"
                             onClick={() => setIsHomePlayersDialogOpen(true)}
                             disabled={!matchedHomeTeamId}
                             aria-label="Editar jugadores del equipo local"
                         >
-                            <ClipboardList className={cn("h-4 w-4", matchedHomeTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60")} />
+                            <ClipboardList className={cn("h-4 w-4", matchedHomeTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60", isWarmup && isMatchFromFixture && "animate-green-glow")} />
                         </Button>
                     )}
                 </div>
@@ -970,12 +970,12 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className={cn("h-7 w-7 shrink-0 rounded-full", isWarmup && isMatchFromFixture && "animate-green-glow")}
+                            className="h-7 w-7 shrink-0 rounded-full"
                             onClick={() => setIsAwayPlayersDialogOpen(true)}
                             disabled={!matchedAwayTeamId}
                             aria-label="Editar jugadores del equipo visitante"
                         >
-                            <ClipboardList className={cn("h-4 w-4", matchedAwayTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60")} />
+                            <ClipboardList className={cn("h-4 w-4", matchedAwayTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60", isWarmup && isMatchFromFixture && "animate-green-glow")} />
                         </Button>
                     )}
                 </div>
@@ -1044,3 +1044,5 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     </div>
   );
 }
+
+    
