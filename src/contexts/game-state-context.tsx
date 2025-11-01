@@ -77,8 +77,8 @@ export const INITIAL_LAYOUT_SETTINGS: ScoreboardLayoutSettings = {
   penaltyPlayerNumberSize: 3.5,
   penaltyTimeSize: 3.5,
   penaltyPlayerIconSize: 2.5,
-  standingsTableFontSize: 1,
-  standingsTableRowHeight: 3,
+  standingsTableFontSize: 1.8,
+  standingsTableRowHeight: 4.25,
   primaryColor: '223 65% 33%',
   accentColor: '40 100% 67%',
   backgroundColor: '223 70% 11%',
@@ -669,8 +669,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       // Goal Celebration Logic
       let goalCelebration: LiveState['goalCelebration'] = null;
-      const isFinishingSoon = clock.isClockRunning && clock.currentTime < 500;
-      const anyPenaltyEndingSoon = [...live.penalties.home, ...live.penalties.away].some(p => p.expirationTime && (p.expirationTime - clock._liveAbsoluteElapsedTimeCs) < 1500);
+      const isFinishingSoon = state.live.clock.isClockRunning && state.live.clock.currentTime < 500;
+      const anyPenaltyEndingSoon = [...live.penalties.home, ...live.penalties.away].some(p => p.expirationTime && (p.expirationTime - state.live.clock._liveAbsoluteElapsedTimeCs) < 1500);
       if (!isFinishingSoon && !anyPenaltyEndingSoon) {
           const teamData = config.tournaments.find(t => t.id === config.selectedTournamentId)?.teams.find(t => t.name === live[`${teamScored}TeamName`] && (t.subName || undefined) === (live[`${teamScored}TeamSubName`] || undefined) && t.category === config.selectedMatchCategory);
           goalCelebration = { id: safeUUID(), goal: newGoal, teamData };
@@ -1284,7 +1284,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'START_SHOOTOUT': {
       if (state.live.clock.periodDisplayOverride !== 'AwaitingDecision') break;
-      const finishedPeriodText = getPeriodText(state.live.clock.currentPeriod, state.config.numberOfRegularPeriods);
+      const finishedPeriodText = getPeriodText(live.clock.currentPeriod, state.config.numberOfRegularPeriods);
       const playedPeriods = [...state.live.playedPeriods];
       if (!playedPeriods.includes(finishedPeriodText)) {
           playedPeriods.push(finishedPeriodText);
@@ -1994,5 +1994,7 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
 
+
+    
 
     

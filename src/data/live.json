@@ -1,7 +1,7 @@
 {
   "score": {
     "home": 0,
-    "away": 0,
+    "away": 1,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -11,7 +11,18 @@
   },
   "goals": {
     "home": [],
-    "away": []
+    "away": [
+      {
+        "team": "away",
+        "timestamp": 1762010188004,
+        "gameTime": 119942,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "1"
+        },
+        "id": "f9aa257e-7271-4386-ae4b-0709bb5da3d5"
+      }
+    ]
   },
   "penaltiesLog": {
     "home": [],
@@ -188,15 +199,15 @@
     ]
   },
   "clock": {
-    "currentTime": 12600,
-    "currentPeriod": 0,
+    "currentTime": 119942,
+    "currentPeriod": 1,
     "isClockRunning": false,
-    "periodDisplayOverride": "Warm-up",
+    "periodDisplayOverride": null,
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 0,
-    "_liveAbsoluteElapsedTimeCs": 0,
+    "absoluteElapsedTimeCs": 58,
+    "_liveAbsoluteElapsedTimeCs": 58,
     "isFlashingZero": false
   },
   "shootout": {
@@ -208,7 +219,7 @@
   },
   "homeTeamName": "Hazard Blue",
   "awayTeamName": "Ovejas Negras Corderos",
-  "playHornTrigger": 60,
+  "playHornTrigger": 59,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
