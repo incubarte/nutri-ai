@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Info } from 'lucide-react';
 import { useStandings } from '@/hooks/use-standings';
+import { cn } from '@/lib/utils';
 
 const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName: string, categoryId: string, tournament: any }) => {
     const stats = useStandings(tournament, categoryId);
@@ -35,9 +36,9 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
                             <TableHead className="text-center">PP (OT)</TableHead>
                             <TableHead className="text-center">PE</TableHead>
                             <TableHead className="text-center">PP</TableHead>
-                            <TableHead className="text-center">GF</TableHead>
+                            <TableHead className="text-center border-l">GF</TableHead>
                             <TableHead className="text-center">GC</TableHead>
-                            <TableHead className="text-center font-bold">Puntos</TableHead>
+                            <TableHead className="text-center font-bold border-l">Puntos</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -51,9 +52,9 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
                                 <TableCell className="text-center">{team.pp_ot}</TableCell>
                                 <TableCell className="text-center">{team.pe}</TableCell>
                                 <TableCell className="text-center">{team.pp}</TableCell>
-                                <TableCell className="text-center">{team.gf}</TableCell>
+                                <TableCell className="text-center border-l">{team.gf}</TableCell>
                                 <TableCell className="text-center">{team.gc}</TableCell>
-                                <TableCell className="text-center font-bold text-lg">{team.puntos}</TableCell>
+                                <TableCell className="text-center font-bold text-lg border-l">{team.puntos}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

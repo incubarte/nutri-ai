@@ -438,11 +438,54 @@
       "stats": {
         "goals": {
           "home": [],
-          "away": []
+          "away": [
+            {
+              "id": "new-453a9ae8-fbf3-4f12-b5bb-460361e4b6d6",
+              "team": "home",
+              "timestamp": 0,
+              "gameTime": 0,
+              "periodText": "",
+              "scorer": {
+                "playerNumber": "30",
+                "playerName": "GARIBOTTO JULIAN"
+              }
+            }
+          ]
         },
         "penalties": {
           "home": [],
-          "away": []
+          "away": [
+            {
+              "id": "manual-3cd99c55-3415-4f15-b97f-d0b20c1c1701",
+              "team": "away",
+              "playerNumber": "17",
+              "penaltyName": "Menor",
+              "initialDuration": 120,
+              "reducesPlayerCount": true,
+              "clearsOnGoal": true,
+              "isBenchPenalty": false,
+              "addTimestamp": 1761966000000,
+              "addGameTime": 0,
+              "addPeriodText": "2ND",
+              "endReason": "completed",
+              "timeServed": 120
+            },
+            {
+              "id": "manual-f294841c-5c8f-40c6-9ba1-8f74fd6a745a",
+              "team": "away",
+              "playerNumber": "30",
+              "penaltyName": "Mayor",
+              "initialDuration": 300,
+              "reducesPlayerCount": true,
+              "clearsOnGoal": false,
+              "isBenchPenalty": false,
+              "addTimestamp": 1761966000000,
+              "addGameTime": 0,
+              "addPeriodText": "2ND",
+              "endReason": "completed",
+              "timeServed": 300
+            }
+          ]
         },
         "playerStats": {
           "home": [
