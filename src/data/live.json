@@ -1,7 +1,7 @@
 {
   "score": {
     "home": 0,
-    "away": 3,
+    "away": 5,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -41,6 +41,26 @@
           "playerNumber": "5"
         },
         "id": "fe51c5df-f6b8-4018-9896-f4b98c84fe6a"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762019017591,
+        "gameTime": 120000,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "6"
+        },
+        "id": "8100ed13-15f7-4e41-9e68-c793523bfaa1"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762019045508,
+        "gameTime": 120000,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "6"
+        },
+        "id": "67290c80-300e-4d9d-b1f5-3f6822bd8433"
       }
     ]
   },
@@ -204,13 +224,13 @@
     ]
   },
   "clock": {
-    "currentTime": 120000,
-    "currentPeriod": 1,
-    "isClockRunning": false,
-    "periodDisplayOverride": null,
+    "currentTime": 24663,
+    "currentPeriod": 0,
+    "isClockRunning": true,
+    "periodDisplayOverride": "Warm-up",
     "preTimeoutState": null,
-    "clockStartTimeMs": null,
-    "remainingTimeAtStartCs": null,
+    "clockStartTimeMs": 1762019116196,
+    "remainingTimeAtStartCs": 24663,
     "absoluteElapsedTimeCs": 0,
     "_liveAbsoluteElapsedTimeCs": 0,
     "isFlashingZero": false
