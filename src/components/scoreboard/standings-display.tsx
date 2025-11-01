@@ -28,8 +28,13 @@ export function StandingsDisplay() {
   const standings = useStandings(currentTournament, selectedMatchCategory);
 
   const displayedStandings = useMemo(() => {
-    if (!currentMatch || standings.length <= 5) {
-        return standings;
+    if (!currentMatch) {
+      // If there's no match context, show top 5 or all if less than 5
+      return standings.slice(0, 5);
+    }
+    
+    if (standings.length <= 5) {
+      return standings;
     }
 
     const homeTeamId = currentMatch.homeTeamId;
@@ -37,7 +42,7 @@ export function StandingsDisplay() {
 
     const homeIndex = standings.findIndex(s => s.id === homeTeamId);
     const awayIndex = standings.findIndex(s => s.id === awayTeamId);
-
+    
     if (homeIndex === -1 || awayIndex === -1) {
         return standings.slice(0, 5); // Fallback sensible
     }
@@ -92,11 +97,13 @@ export function StandingsDisplay() {
                 <TableHead className={cn("w-1/2", headerClass)}>Equipo</TableHead>
                 <TableHead className={cn("text-center", headerClass)}>PJ</TableHead>
                 <TableHead className={cn("text-center", headerClass)}>PG</TableHead>
+                <TableHead className={cn("text-center", headerClass)}>PG (OT)</TableHead>
+                <TableHead className={cn("text-center", headerClass)}>PP (OT)</TableHead>
                 <TableHead className={cn("text-center", headerClass)}>PE</TableHead>
                 <TableHead className={cn("text-center", headerClass)}>PP</TableHead>
                 <TableHead className={cn("text-center border-l", headerClass)}>GF</TableHead>
                 <TableHead className={cn("text-center", headerClass)}>GC</TableHead>
-                <TableHead className={cn("text-center font-bold border-l", headerClass)}>Puntos</TableHead>
+                <TableHead className={cn("text-center font-bold border-l", headerClass)}>Pts</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -104,7 +111,7 @@ export function StandingsDisplay() {
                 if (teamStat.isEllipsis) {
                     return (
                         <TableRow key={teamStat.id}>
-                            <TableCell colSpan={9} className="text-center text-muted-foreground py-0 h-10 text-2xl tracking-widest">
+                            <TableCell colSpan={11} className="text-center text-muted-foreground py-0 h-12 text-3xl tracking-widest">
                                 ...
                             </TableCell>
                         </TableRow>
@@ -118,9 +125,11 @@ export function StandingsDisplay() {
                         <TableCell className={cn("text-center font-bold", cellClass)}>{teamStat.rank}</TableCell>
                         <TableCell className={cn("font-medium", cellClass)}>{teamStat.name}</TableCell>
                         <TableCell className={cn("text-center", cellClass)}>{teamStat.pj}</TableCell>
-                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pg + teamStat.pg_ot}</TableCell>
+                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pg}</TableCell>
+                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pg_ot}</TableCell>
+                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pp_ot}</TableCell>
                         <TableCell className={cn("text-center", cellClass)}>{teamStat.pe}</TableCell>
-                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pp + teamStat.pp_ot}</TableCell>
+                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pp}</TableCell>
                         <TableCell className={cn("text-center border-l", cellClass)}>{teamStat.gf}</TableCell>
                         <TableCell className={cn("text-center", cellClass)}>{teamStat.gc}</TableCell>
                         <TableCell className={cn("text-center font-bold text-xl lg:text-2xl border-l", cellClass)}>{teamStat.puntos}</TableCell>
@@ -129,7 +138,7 @@ export function StandingsDisplay() {
               })}
               {displayedStandings.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center">No hay datos de posiciones.</TableCell>
+                  <TableCell colSpan={11} className="h-24 text-center">No hay datos de posiciones.</TableCell>
                 </TableRow>
               )}
             </TableBody>
