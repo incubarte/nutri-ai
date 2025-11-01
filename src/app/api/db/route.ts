@@ -2,7 +2,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { NextResponse } from 'next/server';
-import type { GameState, ConfigState, Tournament, TeamData, CategoryData, MatchData, LiveState } from '@/types';
+import type { GameState, ConfigState, Tournament, TeamData, CategoryData, MatchData, LiveState, PeriodSummary } from '@/types';
 
 const DATA_DIR = path.join(process.cwd(), 'src/data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
@@ -43,10 +43,10 @@ export async function GET(request: Request) {
     
     const fullConfig = config || {};
     
-    const initialState: GameState = {
+    const initialState: Partial<GameState> = {
       config: fullConfig,
       live: liveState || {}, 
-      _initialConfigLoadComplete: true,
+      _initialConfigLoadComplete: false,
     }
 
     return NextResponse.json(initialState);

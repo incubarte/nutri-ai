@@ -1,9 +1,10 @@
 
+
 'use client';
 
 import type { GameState, ConfigState, LiveState, Tournament } from '@/types';
 
-export async function saveDataOnServer(data: { config: ConfigState; live: LiveState }) {
+export async function saveDataOnServer(data: { config?: ConfigState; live?: LiveState }) {
   try {
     const response = await fetch('/api/db', {
       method: 'POST',
@@ -52,16 +53,11 @@ export async function saveTournamentOnServer(tournament: Tournament) {
 // These functions below are now wrappers around saveDataOnServer.
 // They can be removed if you update all call sites to use saveDataOnServer directly.
 export async function updateConfigOnServer(config: ConfigState) {
-    // This is a bit of a hack. The server expects both config and live state.
-    // We don't have live state here, so we send an empty object.
-    // The server-side logic should be robust enough to handle this.
-    return saveDataOnServer({ config, live: {} as LiveState });
+    return saveDataOnServer({ config });
 }
 
 export async function updateGameStateOnServer(live: LiveState) {
-    // This function is now a no-op as live state is not persisted on the server.
-    // The config state which is persisted is handled by updateConfigOnServer.
-    return Promise.resolve({ success: true, message: 'Live state is not persisted.' });
+    return saveDataOnServer({ live });
 }
 
 // Keep sendRemoteCommand as it's used by client components

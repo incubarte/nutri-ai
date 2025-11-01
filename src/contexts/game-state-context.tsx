@@ -1,9 +1,10 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData, PeriodStats } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { saveDataOnServer, saveTournamentOnServer } from '@/app/actions';
@@ -1504,9 +1505,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         if (t.id === tournamentId) {
           const newMatches = t.matches.map(m => {
             if (m.id === matchId) {
-              const homeScore = (summary.statsByPeriod ?? []).reduce((acc, p) => acc + (p.stats.goals?.home?.length ?? 0), 0);
-              const awayScore = (summary.statsByPeriod ?? []).reduce((acc, p) => acc + (p.stats.goals?.away?.length ?? 0), 0);
-              return { ...m, summary, homeScore, awayScore, overTimeOrShootouts: summary.overTimeOrShootouts };
+                const homeScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals?.home?.length ?? 0), 0);
+                const awayScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals?.away?.length ?? 0), 0);
+                return { ...m, summary, homeScore, awayScore, overTimeOrShootouts: summary.overTimeOrShootouts };
             }
             return m;
           });
@@ -1666,7 +1667,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
         const hasConfigChanged = !isEqual(newState.config, oldState.config);
 
         if (hasLiveChanged && !hasConfigChanged) {
-            await saveDataOnServer({ live: newState.live });
+            await updateGameStateOnServer(newState.live);
         } else if (hasConfigChanged) {
             // Check which tournament changed
             const changedTournament = newState.config.tournaments.find(
@@ -1678,7 +1679,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
             }
             
             // Always save base config and live state if config changes
-            await saveDataOnServer({ config: newState.config, live: newState.live });
+            await updateConfigOnServer(newState.config);
         }
 
     } catch (error) {
