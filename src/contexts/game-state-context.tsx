@@ -1173,26 +1173,27 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       if (live.clock.periodDisplayOverride !== null) break;
 
-      // Not the final period, start a break.
+      // Handle transition for any period that is NOT the last one
       if (live.clock.currentPeriod < totalGamePeriods) {
         const isPreOT = live.clock.currentPeriod >= config.numberOfRegularPeriods;
         const breakType = isPreOT ? 'START_PRE_OT_BREAK' : 'START_BREAK';
         return gameReducer(state, { type: breakType });
       }
 
-      // Is the final period.
-      if (live.score.home !== live.score.away) {
-        return finalizeMatch(state);
-      } else {
-        // Tie game, go to decision state.
-        newState = {
-          ...state,
-          live: {
-            ...live,
-            clock: { ...live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
-            shootout: { ...live.shootout, isActive: false }
-          }
-        };
+      // Handle the end of the very last possible period
+      if (live.clock.currentPeriod >= totalGamePeriods) {
+        if (live.score.home !== live.score.away) {
+          return finalizeMatch(state);
+        } else {
+          newState = {
+            ...state,
+            live: {
+              ...live,
+              clock: { ...live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
+              shootout: { ...live.shootout, isActive: false }
+            }
+          };
+        }
       }
       break;
     }
