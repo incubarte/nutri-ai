@@ -188,13 +188,13 @@
     ]
   },
   "clock": {
-    "currentTime": 5252,
+    "currentTime": 30000,
     "currentPeriod": 0,
-    "isClockRunning": false,
+    "isClockRunning": true,
     "periodDisplayOverride": "Warm-up",
     "preTimeoutState": null,
-    "clockStartTimeMs": null,
-    "remainingTimeAtStartCs": null,
+    "clockStartTimeMs": 1762001785768,
+    "remainingTimeAtStartCs": 30000,
     "absoluteElapsedTimeCs": 0,
     "_liveAbsoluteElapsedTimeCs": 0,
     "isFlashingZero": false
@@ -208,7 +208,7 @@
   },
   "homeTeamName": "Hazard Blue",
   "awayTeamName": "Ovejas Negras Corderos",
-  "playHornTrigger": 57,
+  "playHornTrigger": 58,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,

@@ -44,15 +44,10 @@ export function StandingsDisplay() {
 
     const indicesToShow = new Set<number>();
     
-    // Add playing teams and their direct neighbors
     [homeIndex, awayIndex].forEach(index => {
-        indicesToShow.add(index); // The team itself
-        if (index > 0) {
-            indicesToShow.add(index - 1); // The one above
-        }
-        if (index < standings.length - 1) {
-            indicesToShow.add(index + 1); // The one below
-        }
+        indicesToShow.add(index);
+        if (index > 0) indicesToShow.add(index - 1);
+        if (index < standings.length - 1) indicesToShow.add(index + 1);
     });
 
     const sortedIndices = Array.from(indicesToShow).sort((a,b) => a - b);
@@ -77,6 +72,9 @@ export function StandingsDisplay() {
   const homeTeamId = currentMatch.homeTeamId;
   const awayTeamId = currentMatch.awayTeamId;
 
+  const headerClass = "text-base lg:text-lg";
+  const cellClass = "text-base lg:text-xl py-2";
+
   return (
     <Card className="bg-card shadow-lg flex flex-col h-full">
       <CardHeader>
@@ -90,15 +88,15 @@ export function StandingsDisplay() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-center">Puesto</TableHead>
-                <TableHead className="w-1/2">Equipo</TableHead>
-                <TableHead className="text-center">PJ</TableHead>
-                <TableHead className="text-center">PG</TableHead>
-                <TableHead className="text-center">PE</TableHead>
-                <TableHead className="text-center">PP</TableHead>
-                <TableHead className="text-center border-l">GF</TableHead>
-                <TableHead className="text-center">GC</TableHead>
-                <TableHead className="text-center font-bold border-l">Puntos</TableHead>
+                <TableHead className={cn("text-center", headerClass)}>Puesto</TableHead>
+                <TableHead className={cn("w-1/2", headerClass)}>Equipo</TableHead>
+                <TableHead className={cn("text-center", headerClass)}>PJ</TableHead>
+                <TableHead className={cn("text-center", headerClass)}>PG</TableHead>
+                <TableHead className={cn("text-center", headerClass)}>PE</TableHead>
+                <TableHead className={cn("text-center", headerClass)}>PP</TableHead>
+                <TableHead className={cn("text-center border-l", headerClass)}>GF</TableHead>
+                <TableHead className={cn("text-center", headerClass)}>GC</TableHead>
+                <TableHead className={cn("text-center font-bold border-l", headerClass)}>Puntos</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -106,7 +104,7 @@ export function StandingsDisplay() {
                 if (teamStat.isEllipsis) {
                     return (
                         <TableRow key={teamStat.id}>
-                            <TableCell colSpan={9} className="text-center text-muted-foreground py-0 h-8 text-lg tracking-widest">
+                            <TableCell colSpan={9} className="text-center text-muted-foreground py-0 h-10 text-2xl tracking-widest">
                                 ...
                             </TableCell>
                         </TableRow>
@@ -116,16 +114,16 @@ export function StandingsDisplay() {
                 const isMatchTeam = teamStat.id === homeTeamId || teamStat.id === awayTeamId;
                 
                 return (
-                    <TableRow key={teamStat.id} className={cn(isMatchTeam && "bg-primary/20 text-foreground font-bold")}>
-                        <TableCell className="text-center font-bold">{teamStat.rank}</TableCell>
-                        <TableCell className="font-medium">{teamStat.name}</TableCell>
-                        <TableCell className="text-center">{teamStat.pj}</TableCell>
-                        <TableCell className="text-center">{teamStat.pg + teamStat.pg_ot}</TableCell>
-                        <TableCell className="text-center">{teamStat.pe}</TableCell>
-                        <TableCell className="text-center">{teamStat.pp + teamStat.pp_ot}</TableCell>
-                        <TableCell className="text-center border-l">{teamStat.gf}</TableCell>
-                        <TableCell className="text-center">{teamStat.gc}</TableCell>
-                        <TableCell className="text-center font-bold text-lg border-l">{teamStat.puntos}</TableCell>
+                    <TableRow key={teamStat.id} className={cn(isMatchTeam && "bg-primary/20 text-foreground font-bold", "text-lg")}>
+                        <TableCell className={cn("text-center font-bold", cellClass)}>{teamStat.rank}</TableCell>
+                        <TableCell className={cn("font-medium", cellClass)}>{teamStat.name}</TableCell>
+                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pj}</TableCell>
+                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pg + teamStat.pg_ot}</TableCell>
+                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pe}</TableCell>
+                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pp + teamStat.pp_ot}</TableCell>
+                        <TableCell className={cn("text-center border-l", cellClass)}>{teamStat.gf}</TableCell>
+                        <TableCell className={cn("text-center", cellClass)}>{teamStat.gc}</TableCell>
+                        <TableCell className={cn("text-center font-bold text-xl lg:text-2xl border-l", cellClass)}>{teamStat.puntos}</TableCell>
                     </TableRow>
                 )
               })}
