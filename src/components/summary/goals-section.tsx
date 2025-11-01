@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -29,7 +30,7 @@ const EditableGoalRow = ({ goal, players, onSave, onCancel, onDelete }: Editable
     const [scorerNumber, setScorerNumber] = useState(goal.scorer?.playerNumber || '');
     const [assistNumber, setAssistNumber] = useState(goal.assist?.playerNumber || '');
     
-    const validPlayers = players.filter(p => p.number && p.number.trim() !== '');
+    const validPlayers = useMemo(() => players.filter(p => p.number && p.number.trim() !== ''), [players]);
 
     const handleSave = () => {
         const scorer = players.find(p => p.number === scorerNumber);
@@ -71,7 +72,7 @@ const EditableGoalRow = ({ goal, players, onSave, onCancel, onDelete }: Editable
     );
 };
 
-export const GoalsSection = ({ teamName, goals, onGoalChange, editable, players }: { teamName: string; goals: GoalLog[]; onGoalChange?: (action: 'add' | 'update' | 'delete', goal: GoalLog, originalId?: string) => void; editable?: boolean; players?: PlayerData[] }) => {
+export const GoalsSection = ({ teamName, goals, onGoalChange, editable, players }: { teamName: string; goals?: GoalLog[]; onGoalChange?: (action: 'add' | 'update' | 'delete', goal: GoalLog, originalId?: string) => void; editable?: boolean; players?: PlayerData[] }) => {
     const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const safeGoals = goals || [];

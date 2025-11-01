@@ -377,7 +377,7 @@
               "id": "fc7c6551-7d6a-4ac9-9f9b-0862fd9b7d7e",
               "name": "DUPERRON SANTIAGO",
               "number": "90",
-              "shots": 0,
+              "shots": 6,
               "goals": 0,
               "assists": 0
             },
@@ -688,20 +688,31 @@
       "period": "",
       "stats": {
         "goals": {
-          "home": [],
-          "away": [
+          "home": [
             {
-              "id": "new-5cc5b54b-6815-4e5c-bf54-2bd54d8e6872",
+              "id": "new-f259d0c4-4d5e-4651-86f3-10bbb496209b",
               "team": "home",
               "timestamp": 0,
               "gameTime": 0,
               "periodText": "",
               "scorer": {
-                "playerNumber": "90",
-                "playerName": "DUPERRON SANTIAGO"
+                "playerNumber": "38",
+                "playerName": "CELLI ALEJANDRO"
+              }
+            },
+            {
+              "id": "new-0587142c-81db-4209-8522-9bd1b9f7ea60",
+              "team": "home",
+              "timestamp": 0,
+              "gameTime": 0,
+              "periodText": "",
+              "scorer": {
+                "playerNumber": "11",
+                "playerName": "DACAL ALEXIS"
               }
             }
-          ]
+          ],
+          "away": []
         },
         "penalties": {
           "home": [],

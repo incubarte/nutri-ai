@@ -268,13 +268,13 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
              <ScrollArea className="h-full pr-6 -mr-6">
                  <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <GoalsSection teamName={homeTeam?.name || ''} goals={aggregatedGoals.home} onGoalChange={(action, goal, id) => handleGoalChange(action, 'home', goal.periodText, goal, id)} editable={true} players={homeTeam?.players} />
-                      <GoalsSection teamName={awayTeam?.name || ''} goals={aggregatedGoals.away} onGoalChange={(action, goal, id) => handleGoalChange(action, 'away', goal.periodText, goal, id)} editable={true} players={awayTeam?.players} />
+                      <GoalsSection teamName={homeTeam?.name || ''} goals={aggregatedGoals.home} editable={false} />
+                      <GoalsSection teamName={awayTeam?.name || ''} goals={aggregatedGoals.away} editable={false} />
                     </div>
                     <Separator />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={aggregatedPenalties.home} onDelete={(id) => { const p = aggregatedPenalties.home.find(pen => pen.id === id); if (p) handleDeletePenalty('home', p, p.addPeriodText); }} />
-                      <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={aggregatedPenalties.away} onDelete={(id) => { const p = aggregatedPenalties.away.find(pen => pen.id === id); if (p) handleDeletePenalty('away', p, p.addPeriodText); }} />
+                      <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={aggregatedPenalties.home} />
+                      <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={aggregatedPenalties.away} />
                     </div>
                     <Separator />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
