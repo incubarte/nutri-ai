@@ -38,13 +38,23 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   const [isAddPenaltyOpen, setIsAddPenaltyOpen] = useState(false);
   const [addPenaltyContext, setAddPenaltyContext] = useState<{team: Team, period: string} | null>(null);
 
+  const [isAttendanceEditing, setIsAttendanceEditing] = useState(false);
+  const [localAttendance, setLocalAttendance] = useState<{ home: Set<string>, away: Set<string> }>({ home: new Set(), away: new Set() });
+
+
   useEffect(() => {
     if (isOpen && match?.summary) {
-      setLocalSummary(JSON.parse(JSON.stringify(match.summary))); // Deep copy
+      const summaryCopy = JSON.parse(JSON.stringify(match.summary));
+      setLocalSummary(summaryCopy);
+      setLocalAttendance({
+        home: new Set((summaryCopy.attendance?.home || []).map((p: any) => p.id)),
+        away: new Set((summaryCopy.attendance?.away || []).map((p: any) => p.id)),
+      });
     } else {
       setLocalSummary(undefined);
     }
     setIsEditing(false);
+    setIsAttendanceEditing(false);
   }, [isOpen, match]);
   
   const homeTeam = useMemo(() => tournament?.teams.find(t => t.id === match?.homeTeamId), [tournament, match]);
@@ -240,6 +250,45 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
         }));
     }
   };
+
+  const handleToggleAttendance = (team: 'home' | 'away', playerId: string) => {
+    if (!isAttendanceEditing) return;
+    setLocalAttendance(prev => {
+      const newSet = new Set(prev[team]);
+      if (newSet.has(playerId)) {
+        newSet.delete(playerId);
+      } else {
+        newSet.add(playerId);
+      }
+      return { ...prev, [team]: newSet };
+    });
+  };
+
+  const handleSaveAttendance = () => {
+    if (!localSummary) return;
+
+    setLocalSummary(prevSummary => {
+        if (!prevSummary) return undefined;
+        const newSummary = JSON.parse(JSON.stringify(prevSummary));
+        
+        const homeAttendedInfo: AttendedPlayerInfo[] = (homeTeam?.players || [])
+            .filter(p => localAttendance.home.has(p.id))
+            .map(p => ({ id: p.id, number: p.number, name: p.name }));
+        
+        const awayAttendedInfo: AttendedPlayerInfo[] = (awayTeam?.players || [])
+            .filter(p => localAttendance.away.has(p.id))
+            .map(p => ({ id: p.id, number: p.number, name: p.name }));
+
+        newSummary.attendance = {
+            home: homeAttendedInfo,
+            away: awayAttendedInfo
+        };
+        return newSummary;
+    });
+
+    toast({ title: "Asistencia Actualizada", description: "La lista de asistencia ha sido actualizada en esta vista. Guarda todos los cambios para persistir." });
+    setIsAttendanceEditing(false);
+  };
   
   if (!match || !tournament || !localSummary) return null;
 
@@ -278,8 +327,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                     </div>
                     <Separator />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <PlayerStatsSection teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={aggregatedStats.home} attendance={localSummary.attendance.home} editable={false} />
-                        <PlayerStatsSection teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={aggregatedStats.away} attendance={localSummary.attendance.away} editable={false} />
+                        <PlayerStatsSection teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={aggregatedStats.home} attendance={localSummary.attendance.home} editable={false} showAttendanceControls={true} isAttendanceEditing={isAttendanceEditing} onToggleAttendance={(playerId) => handleToggleAttendance('home', playerId)} onEditToggle={setIsAttendanceEditing} onSave={handleSaveAttendance} />
+                        <PlayerStatsSection teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={aggregatedStats.away} attendance={localSummary.attendance.away} editable={false} showAttendanceControls={true} isAttendanceEditing={isAttendanceEditing} onToggleAttendance={(playerId) => handleToggleAttendance('away', playerId)} onEditToggle={setIsAttendanceEditing} onSave={handleSaveAttendance} />
                     </div>
                     {localSummary.shootout && (localSummary.shootout.homeAttempts.length > 0 || localSummary.shootout.awayAttempts.length > 0) && (
                         <>
