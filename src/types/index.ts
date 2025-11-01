@@ -250,6 +250,7 @@ export interface PreTimeoutState {
   clockStartTimeMs: number | null;
   remainingTimeAtStartCs: number | null;
   absoluteElapsedTimeCs: number;
+  team: Team; // Team that called the timeout
 }
 
 export interface ClockState {
@@ -402,7 +403,7 @@ export type GameAction =
   | { type: 'START_BREAK' }
   | { type: 'START_PRE_OT_BREAK' }
   | { type: 'START_BREAK_AFTER_PREVIOUS_PERIOD' }
-  | { type: 'START_TIMEOUT' }
+  | { type: 'START_TIMEOUT'; payload: { team: Team } }
   | { type: 'END_TIMEOUT' }
   | { type: 'MANUAL_END_GAME' }
   | { type: 'ADD_EXTRA_OVERTIME' }

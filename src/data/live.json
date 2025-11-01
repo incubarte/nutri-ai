@@ -244,7 +244,7 @@
   },
   "homeTeamName": "Hazard Blue",
   "awayTeamName": "Hazard white",
-  "playHornTrigger": 66,
+  "playHornTrigger": 67,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,

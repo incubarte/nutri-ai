@@ -532,13 +532,13 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     setIsTimeoutConfirmOpen(true);
   };
 
-  const performStartTimeout = () => {
-    dispatch({ type: 'START_TIMEOUT' }); 
+  const performStartTimeout = (team: Team) => {
+    dispatch({ type: 'START_TIMEOUT', payload: { team } });
     const autoStart = state.config.autoStartTimeouts;
     const timeoutDurationSec = state.config.defaultTimeoutDuration / 100;
-    toast({ 
-        title: "Time Out Iniciado", 
-        description: `Time Out de ${timeoutDurationSec} segundos. Reloj ${autoStart ? 'corriendo' : 'pausado'}.`
+    toast({
+        title: "Time Out Pedido",
+        description: `Time Out para ${team === 'home' ? state.live.homeTeamName : state.live.awayTeamName}. Duración: ${timeoutDurationSec}s. Reloj ${autoStart ? 'corriendo' : 'pausado'}.`
     });
     setIsTimeoutConfirmOpen(false);
   };
@@ -550,7 +550,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     state.live.clock.periodDisplayOverride === "Shootout";
 
   const timeoutDurationInSeconds = state.config.defaultTimeoutDuration / 100;
-  const autoStartBehavior = state.config.autoStartTimeouts ? "se iniciará automáticamente" : "deberá iniciarse manually";
+  const autoStartBehavior = state.config.autoStartTimeouts ? "se iniciará automáticamente" : "deberá iniciarse manualmente";
   
   const formattedTime = state.live.clock.isFlashingZero ? "00:00" : formatTime(state.live.clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
 
@@ -621,7 +621,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
         <Button
           onClick={handlePrepareStartTimeout}
           variant="outline"
-          className="h-8 text-xs bg-card/80 border-border/50 backdrop-blur-sm"
+          className="h-8 text-xs bg-card/80 border-dashed border-white/20 backdrop-blur-sm"
           disabled={isTimeOutButtonDisabled}
           aria-label="Iniciar Time Out"
         >
@@ -636,7 +636,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
           <div className="flex-1 w-full sm:w-auto">
             <div className="flex justify-center items-center gap-1 mb-1 h-5 md:h-6 lg:h-7">
               {playersOnIceForHome > 0 && Array(playersOnIceForHome).fill(null).map((_, index) => (
-                <User key={`home-player-${index}`} className="h-5 w-5 md:h-6 md:w-6 lg:h-7 text-primary-foreground/80" />
+                <User key={`home-player-${index}`} className={cn("h-5 w-5 md:h-6 md:w-6 lg:h-7 text-primary-foreground/80", isWarmup && isMatchFromFixture && "text-green-500 animate-pulse")} />
               ))}
               {playersOnIceForHome === 0 && state.config.playersPerTeamOnIce > 0 && (
                 <span className="text-xs text-destructive animate-pulse">0 JUGADORES</span>
@@ -1034,14 +1034,16 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
             <AlertDialogHeader>
               <AlertDialogTitle>Confirmar Inicio de Time Out</AlertDialogTitle>
               <AlertDialogDescription>
-                Esto guardará el estado actual del reloj del partido, lo pausará e iniciará un Time Out de {timeoutDurationInSeconds} segundos.
-                El reloj del Time Out {autoStartBehavior}. ¿Estás seguro?
+                El reloj del Time Out de {timeoutDurationInSeconds} segundos {autoStartBehavior}. ¿Para qué equipo es el Time Out?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => setIsTimeoutConfirmOpen(false)}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={performStartTimeout}>
-                Confirmar e Iniciar Time Out
+              <AlertDialogAction onClick={() => performStartTimeout('home')}>
+                Para {state.live.homeTeamName}
+              </AlertDialogAction>
+              <AlertDialogAction onClick={() => performStartTimeout('away')}>
+                Para {state.live.awayTeamName}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

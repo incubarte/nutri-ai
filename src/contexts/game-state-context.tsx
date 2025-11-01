@@ -1166,6 +1166,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'START_TIMEOUT': {
+        const { team } = action.payload;
         let { currentTime, absoluteElapsedTimeCs, isClockRunning, clockStartTimeMs, remainingTimeAtStartCs, periodDisplayOverride } = state.live.clock;
         if (isClockRunning && clockStartTimeMs && remainingTimeAtStartCs !== null) {
             const elapsedCs = Math.floor((Date.now() - clockStartTimeMs) / 10);
@@ -1178,6 +1179,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 period: state.live.clock.currentPeriod, time: currentTime, isClockRunning: isClockRunning,
                 override: periodDisplayOverride, clockStartTimeMs: clockStartTimeMs, remainingTimeAtStartCs: remainingTimeAtStartCs,
                 absoluteElapsedTimeCs: absoluteElapsedTimeCs,
+                team,
             },
             currentTime: state.config.defaultTimeoutDuration, periodDisplayOverride: 'Time Out', isClockRunning: autoStart,
             clockStartTimeMs: autoStart ? Date.now() : null, remainingTimeAtStartCs: autoStart ? state.config.defaultTimeoutDuration : null,
