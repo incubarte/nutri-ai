@@ -272,17 +272,7 @@ export default function SetupPage() {
                                 </div>
                             </div>
                         )}
-                        <div className="flex items-center space-x-2">
-                            <Switch id="manual-team-names-switch" checked={useManualTeamNames} onCheckedChange={setUseManualTeamNames} />
-                            <Label htmlFor="manual-team-names-switch">Ingresar nombres de equipo manualmente</Label>
-                        </div>
                         
-                        <Separator />
-
-                         <div className="p-3 bg-muted/20 border border-muted/40 rounded-lg text-muted-foreground text-sm">
-                            <p><strong>Nota:</strong> Los partidos configurados manualmente (o que no se cargan desde el fixture) <strong className="text-foreground/80">NO GENERAN</strong> un archivo de resumen de partido al finalizar. Si es un partido de torneo, por favor, agrégalo al Fixture primero.</p>
-                        </div>
-
                         {useManualTeamNames ? (
                             <div className="space-y-4">
                                 <div className="grid w-full items-center gap-1.5">
@@ -292,6 +282,10 @@ export default function SetupPage() {
                                 <div className="grid w-full items-center gap-1.5">
                                     <Label htmlFor="manual-away-name">Nombre del Equipo Visitante</Label>
                                     <Input id="manual-away-name" value={manualAwayTeamName} onChange={(e) => setManualAwayTeamName(e.target.value)} />
+                                </div>
+                                 <div className="flex items-center space-x-2 pt-2">
+                                    <Switch id="manual-team-names-switch-inner" checked={useManualTeamNames} onCheckedChange={setUseManualTeamNames} />
+                                    <Label htmlFor="manual-team-names-switch-inner">Ingresar nombres de equipo manualmente</Label>
                                 </div>
                             </div>
                         ) : (
@@ -311,8 +305,19 @@ export default function SetupPage() {
                                 </div>
                                 <TeamSelector label="Equipo Local" teams={teamsInCategory} selectedTeamId={homeTeamId} onSelectTeam={setHomeTeamId} disabledTeamId={awayTeamId} disabled={!localCategoryId} />
                                 <TeamSelector label="Equipo Visitante" teams={teamsInCategory} selectedTeamId={awayTeamId} onSelectTeam={setAwayTeamId} disabledTeamId={homeTeamId} disabled={!localCategoryId} />
+                                <div className="flex items-center space-x-2 pt-2">
+                                    <Switch id="manual-team-names-switch-outer" checked={useManualTeamNames} onCheckedChange={setUseManualTeamNames} />
+                                    <Label htmlFor="manual-team-names-switch-outer">Ingresar nombres de equipo manualmente</Label>
+                                </div>
                             </div>
                         )}
+
+                        <Separator />
+
+                         <div className="p-3 bg-muted/20 border border-muted/40 rounded-lg text-muted-foreground text-sm">
+                            <p><strong>Nota:</strong> Los partidos configurados manualmente (o que no se cargan desde el fixture) <strong className="text-foreground/80">NO GENERAN</strong> un archivo de resumen de partido al finalizar. Si es un partido de torneo, por favor, agrégalo al Fixture primero.</p>
+                        </div>
+
                     </TabsContent>
 
                     <TabsContent value="rules" className="py-4 max-h-[60vh] overflow-y-auto">
