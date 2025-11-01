@@ -234,9 +234,17 @@ const finalizeMatch = (state: GameState): GameState => {
     if (!playedPeriods.includes(finishedPeriodText)) {
         playedPeriods.push(finishedPeriodText);
     }
+    
+    // Recalculate final score including any last-minute goals
+    const finalScore: ScoreState = {
+        ...state.live.score,
+        home: state.live.goals.home.length,
+        away: state.live.goals.away.length,
+    };
 
     const finalLiveState: LiveState = {
         ...state.live,
+        score: finalScore,
         playedPeriods,
         clock: {
             ...state.live.clock,
@@ -733,14 +741,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'FINISH_GAME_WITH_OT_GOAL': {
-      const newGoal: GoalLog = { ...action.payload, id: safeUUID() };
-      const team = action.payload.team;
-      
-      let tempState = { ...state };
-      tempState.live.goals[team] = [...tempState.live.goals[team], newGoal];
-      
-      const finalizedState = finalizeMatch(tempState);
-      newState = finalizedState;
+      // First, add the goal to the state
+      let tempState = gameReducer(state, { 
+        type: 'ADD_GOAL',
+        payload: action.payload 
+      });
+
+      // Then, call finalizeMatch with the updated state
+      newState = finalizeMatch(tempState);
       toastMessage = { title: "¡Partido Finalizado!", description: "Gol de oro registrado exitosamente." };
       break;
     }
@@ -1959,3 +1967,6 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+
+
+    
