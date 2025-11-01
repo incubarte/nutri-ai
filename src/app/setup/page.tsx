@@ -111,7 +111,7 @@ export default function SetupPage() {
     const [tempFormatSettings, setTempFormatSettings] = useState<Partial<FormatAndTimingsProfileData>>({});
     
     const [todaysMatches, setTodaysMatches] = useState<MatchData[]>([]);
-    const [pendingMatchConfig, setPendingMatchConfig] = useState<any>(null);
+    const [pendingMatchConfig, setPendingMatchConfig] = useState<{ matchId: string } | null>(null);
 
 
     const availableCategories = useMemo(() => selectedTournament?.categories || [], [selectedTournament]);
@@ -144,7 +144,7 @@ export default function SetupPage() {
         setLocalCategoryId(match.categoryId);
         setHomeTeamId(match.homeTeamId);
         setAwayTeamId(match.awayTeamId);
-        setPendingMatchConfig({ matchId: match.id }); // Solo necesitamos el ID para el estado final
+        setPendingMatchConfig({ matchId: match.id }); 
         setActiveTab('rules');
     };
     
@@ -163,8 +163,8 @@ export default function SetupPage() {
                     toast({ title: "Datos Incompletos", description: "Por favor, selecciona una categoría y ambos equipos para continuar.", variant: "destructive" });
                     return;
                 }
-                const newMatchId = safeUUID();
-                const newMatch: Omit<MatchData, 'id'> = {
+                const newMatch: MatchData = {
+                    id: safeUUID(),
                     date: new Date().toISOString(),
                     categoryId: localCategoryId,
                     homeTeamId: homeTeamId,
@@ -175,7 +175,7 @@ export default function SetupPage() {
                     dispatch({ type: 'ADD_MATCH_TO_TOURNAMENT', payload: { tournamentId: selectedTournamentId, match: newMatch } });
                 }
                 
-                setPendingMatchConfig({ matchId: newMatchId });
+                setPendingMatchConfig({ matchId: newMatch.id });
             }
         }
         setActiveTab(nextTab);
@@ -284,28 +284,17 @@ export default function SetupPage() {
                                 <Switch id="is-tournament-match-switch" checked={isTournamentMatch} onCheckedChange={setIsTournamentMatch} />
                                 <Label htmlFor="is-tournament-match-switch">Es un Partido de Torneo</Label>
                             </div>
-
+                            
                             {!isTournamentMatch && (
-                                 <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive-foreground">
+                                <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive-foreground">
                                     <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0"/>
                                     <div>
-                                        <p className="text-sm font-semibold text-destructive">Este partido no generará un resumen de estadísticas.</p>
+                                        <p className="text-sm font-semibold text-destructive">Los partidos que NO son de torneo no generan un resumen de estadísticas.</p>
                                     </div>
                                 </div>
                             )}
-                            
-                            {!isTournamentMatch ? (
-                                <div className="space-y-4 pt-2 border-t mt-4">
-                                    <div className="grid w-full items-center gap-1.5">
-                                        <Label htmlFor="manual-home-name">Nombre del Equipo Local</Label>
-                                        <Input id="manual-home-name" value={manualHomeTeamName} onChange={(e) => setManualHomeTeamName(e.target.value)} />
-                                    </div>
-                                    <div className="grid w-full items-center gap-1.5">
-                                        <Label htmlFor="manual-away-name">Nombre del Equipo Visitante</Label>
-                                        <Input id="manual-away-name" value={manualAwayTeamName} onChange={(e) => setManualAwayTeamName(e.target.value)} />
-                                    </div>
-                                </div>
-                            ) : (
+
+                            {isTournamentMatch ? (
                                 <div className="space-y-4 pt-2 border-t mt-4">
                                     <div className="space-y-2">
                                         <Label>Categoría</Label>
@@ -322,6 +311,17 @@ export default function SetupPage() {
                                     </div>
                                     <TeamSelector label="Equipo Local" teams={teamsInCategory} selectedTeamId={homeTeamId} onSelectTeam={setHomeTeamId} disabledTeamId={awayTeamId} disabled={!localCategoryId} />
                                     <TeamSelector label="Equipo Visitante" teams={teamsInCategory} selectedTeamId={awayTeamId} onSelectTeam={setAwayTeamId} disabledTeamId={homeTeamId} disabled={!localCategoryId} />
+                                </div>
+                            ) : (
+                                <div className="space-y-4 pt-2 border-t mt-4">
+                                    <div className="grid w-full items-center gap-1.5">
+                                        <Label htmlFor="manual-home-name">Nombre del Equipo Local</Label>
+                                        <Input id="manual-home-name" value={manualHomeTeamName} onChange={(e) => setManualHomeTeamName(e.target.value)} />
+                                    </div>
+                                    <div className="grid w-full items-center gap-1.5">
+                                        <Label htmlFor="manual-away-name">Nombre del Equipo Visitante</Label>
+                                        <Input id="manual-away-name" value={manualAwayTeamName} onChange={(e) => setManualAwayTeamName(e.target.value)} />
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -347,7 +347,7 @@ export default function SetupPage() {
                                 <AlertTriangle className="h-6 w-6 text-destructive mt-1"/>
                                 <div>
                                     <h4 className="font-bold text-destructive">¡ATENCIÓN!</h4>
-                                    <p className="text-sm">Este es un partido amistoso (no de torneo). <strong className="font-semibold">NO SE GENERARÁ UN ARCHIVO DE RESUMEN</strong> al finalizar. Si es un partido oficial, vuelve al paso anterior y selecciona la opción "Es un Partido de Torneo".</p>
+                                    <p className="text-sm">Este es un partido amistoso (no de torneo). <strong className="font-semibold">NO SE GENERARÁ UN ARCHIVO DE RESUMEN</strong> al finalizar. Si es un partido oficial, vuelve al paso anterior y selecciona "Es un Partido de Torneo".</p>
                                 </div>
                             </div>
                         )}

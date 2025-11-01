@@ -1350,9 +1350,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         }
       }
       
-      const tempState = { ...state, live: { ...state.live, score: finalScore }};
+      const tempState = { ...state, live: { ...state.live, score: finalScore, shootout: { ...state.live.shootout, isActive: false } }};
       const finalizedState = finalizeMatch(tempState);
-      newState = { ...finalizedState, live: { ...finalizedState.live, shootout: { ...finalizedState.live.shootout, isActive: false } } };
+      newState = finalizedState;
       toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
       break;
     }
@@ -1509,7 +1509,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const newTournaments = state.config.tournaments.map(t => {
             if (t.id === tournamentId) {
                 // Create a new tournament object with a new matches array
-                return { ...t, matches: [...(t.matches || []), { ...match, id: safeUUID() }] };
+                return { ...t, matches: [...(t.matches || []), match] };
             }
             return t;
         });
@@ -1959,12 +1959,3 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
-
-      
-
-    
-
-
-
-
-
