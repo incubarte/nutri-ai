@@ -893,7 +893,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
               >
                 <ChevronRight className="h-5 w-5" />
               </Button>
-              {!state.live.clock.isClockRunning && clock.currentTime > 0 && clock.periodDisplayOverride !== "End of Game" && !isShootout && !showNextActionButton && editingSegment === null && (
+              {!state.live.clock.isClockRunning && state.live.clock.currentTime > 0 && state.live.clock.periodDisplayOverride !== "End of Game" && !isShootout && !showNextActionButton && editingSegment === null && (
                 <span className="absolute top-[-0.25rem] right-1 text-[0.6rem] font-normal text-muted-foreground normal-case px-1 rounded-sm bg-background/30">
                   Paused
                 </span>
