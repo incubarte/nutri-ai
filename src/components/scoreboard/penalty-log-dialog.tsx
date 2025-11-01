@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useMemo } from "react";
@@ -32,11 +31,11 @@ export function PenaltyLogDialog({ isOpen, onOpenChange, team, teamName }: Penal
   const { state } = useGameState();
 
   const penaltyLogs = useMemo(() => {
-    const logs = state.live.gameSummary[team]?.penalties;
+    const logs = state.live.penaltiesLog[team];
     if (!logs) return [];
     // Sort by most recent first
     return [...logs].sort((a, b) => b.addTimestamp - a.addTimestamp);
-  }, [state.live.gameSummary, team]);
+  }, [state.live.penaltiesLog, team]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
