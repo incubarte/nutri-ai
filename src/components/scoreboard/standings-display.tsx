@@ -28,7 +28,9 @@ export function StandingsDisplay() {
   const standings = useStandings(currentTournament, selectedMatchCategory);
 
   const displayedStandings = useMemo(() => {
-    if (!currentMatch || standings.length === 0) return standings;
+    if (!currentMatch || standings.length <= 5) {
+        return standings;
+    }
 
     const homeTeamId = currentMatch.homeTeamId;
     const awayTeamId = currentMatch.awayTeamId;
@@ -36,20 +38,18 @@ export function StandingsDisplay() {
     const homeIndex = standings.findIndex(s => s.id === homeTeamId);
     const awayIndex = standings.findIndex(s => s.id === awayTeamId);
 
-    if (homeIndex === -1 || awayIndex === -1) return standings;
+    if (homeIndex === -1 || awayIndex === -1) {
+        return standings; // Should not happen, but a good fallback
+    }
 
     const indicesToShow = new Set<number>();
-
-    const addWithNeighbors = (index: number) => {
-        indicesToShow.add(index);
-        if (index > 0) indicesToShow.add(index - 1);
-        if (index > 1) indicesToShow.add(index - 2);
-        if (index < standings.length - 1) indicesToShow.add(index + 1);
-        if (index < standings.length - 2) indicesToShow.add(index + 2);
-    };
-
-    addWithNeighbors(homeIndex);
-    addWithNeighbors(awayIndex);
+    
+    indicesToShow.add(homeIndex);
+    indicesToShow.add(awayIndex);
+    
+    // Add one neighbor above and one below
+    if (homeIndex > 0) indicesToShow.add(homeIndex - 1);
+    if (awayIndex < standings.length - 1) indicesToShow.add(awayIndex + 1);
 
     const sortedIndices = Array.from(indicesToShow).sort((a,b) => a - b);
     
@@ -64,9 +64,11 @@ export function StandingsDisplay() {
         lastIndex = index;
     });
     
+    // Add ellipsis at the start if the first displayed team is not the first in the standings
     if (sortedIndices[0] > 0) {
         finalRows.unshift({ isEllipsis: true, id: 'ellipsis-start' });
     }
+    // Add ellipsis at the end if the last displayed team is not the last in the standings
     if (lastIndex < standings.length - 1) {
         finalRows.push({ isEllipsis: true, id: 'ellipsis-end' });
     }
@@ -109,7 +111,7 @@ export function StandingsDisplay() {
                 if (teamStat.isEllipsis) {
                     return (
                         <TableRow key={teamStat.id}>
-                            <TableCell colSpan={9} className="text-center text-muted-foreground py-1">
+                            <TableCell colSpan={9} className="text-center text-muted-foreground py-1 h-6">
                                 ...
                             </TableCell>
                         </TableRow>

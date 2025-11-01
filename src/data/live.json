@@ -1,6 +1,6 @@
 {
   "score": {
-    "home": 1,
+    "home": 0,
     "away": 0,
     "homeShots": 0,
     "awayShots": 0
@@ -10,18 +10,7 @@
     "away": []
   },
   "goals": {
-    "home": [
-      {
-        "team": "home",
-        "timestamp": 1761978787985,
-        "gameTime": 120000,
-        "periodText": "1ST",
-        "scorer": {
-          "playerNumber": "4"
-        },
-        "id": "70b681cd-329b-4a18-9138-ca3a4800f296"
-      }
-    ],
+    "home": [],
     "away": []
   },
   "penaltiesLog": {
@@ -35,114 +24,179 @@
   "attendance": {
     "home": [
       {
-        "id": "30662261-1360-4849-874d-515e085c0419",
-        "number": "7",
-        "name": "BURGESS-WEBB BENICIO"
-      },
-      {
-        "id": "3274dfee-fa07-4c6f-b620-ac7ffb371156",
-        "number": "6",
-        "name": "BURGESS-WEBB ADAM"
-      },
-      {
-        "id": "da0966f7-daa4-4b59-82f7-7868ba51f3c9",
+        "id": "58517af5-2ff8-412d-a971-10970954e7b2",
         "number": "25",
-        "name": "BARCIA SEBASTIAN"
+        "name": "SCOTTO DI CARLO NATALIA"
       },
       {
-        "id": "5862e9a2-de6c-4f03-92b5-dc4e5a742bd5",
-        "number": "17",
-        "name": "AGUIRRE LEILA"
+        "id": "6172bf1f-984c-46ca-8d54-ed62a06bf312",
+        "number": "0",
+        "name": "BONVEHI SEBASTIAN"
       },
       {
-        "id": "972f54f8-c610-48dc-8045-aa27bee6d173",
-        "number": "16",
-        "name": "CERSOSIMO MAXIMILIANO"
+        "id": "c6d4c13f-5ff5-4937-b8e7-b66f1ae0d27e",
+        "number": "29",
+        "name": "ACUÑA ERICA"
       },
       {
-        "id": "1f6ef8f8-42b8-404f-bc83-b256ee26d4e2",
-        "number": "28",
-        "name": "BERKOVICS DIEGO"
+        "id": "9f9f4e60-e7f6-49f0-8fa3-20ae919804a3",
+        "number": "77",
+        "name": "CARRERA JUAN PABLO"
       },
       {
-        "id": "cc6a242d-c9a1-4945-97cd-b7d63a65ab8a",
-        "number": "",
-        "name": "PARODI JUAN CRUZ"
+        "id": "e3feabac-afc8-4f63-98c1-6c0b802f6b06",
+        "number": "38",
+        "name": "CELLI ALEJANDRO"
+      },
+      {
+        "id": "0b6b5f4d-02e3-4fc4-9238-481285c2fcd0",
+        "number": "71",
+        "name": "CRUZ LIMA JUAN"
+      },
+      {
+        "id": "0f719073-1654-4897-8f71-dddd34c04960",
+        "number": "11",
+        "name": "DACAL ALEXIS"
+      },
+      {
+        "id": "77dc7893-0315-421f-83d6-33765c293f9e",
+        "number": "24",
+        "name": "FERRARI SOFIA"
+      },
+      {
+        "id": "b7dddce6-534d-4af2-961f-e67faa47ac0f",
+        "number": "14",
+        "name": "GALEANI MARIANO"
+      },
+      {
+        "id": "f865fa94-7a32-4e39-b67f-ba3fbddae866",
+        "number": "26",
+        "name": "MALPERI DIEGO"
+      },
+      {
+        "id": "6f5d6226-2aeb-4735-b696-e738113063cc",
+        "number": "19",
+        "name": "MOSCARDA NICOLAS"
+      },
+      {
+        "id": "e54284ce-d143-43ca-ae71-b6863cde998f",
+        "number": "43",
+        "name": "NUÑEZ FEDERICO"
+      },
+      {
+        "id": "44e21f63-2f1b-4b0f-a70e-9db09e988211",
+        "number": "21",
+        "name": "PACE EZEQUIEL"
+      },
+      {
+        "id": "f71c017d-fe8f-4f25-80e0-9e744fb70b14",
+        "number": "95",
+        "name": "PIERINI ROBERTINO"
+      },
+      {
+        "id": "5211e4cd-268c-4cc5-b7de-1a1206d8aa4d",
+        "number": "31",
+        "name": "RISSO EMANUEL"
       }
     ],
     "away": [
       {
-        "id": "880d9492-bd63-4eeb-aa5a-a972d5ff7d43",
+        "id": "98e55316-5aef-4974-ac52-4eff59239e8e",
         "number": "",
-        "name": "DÍAZ THOMPSON JUAN FRANCISCO"
+        "name": "ABEID EZEQUIEL"
       },
       {
-        "id": "72d43770-8441-440b-b657-5e389e8762e8",
+        "id": "7eea79ef-5084-4f35-bc76-c7c0b2940304",
         "number": "",
-        "name": "GALCERAN FACUNDO"
+        "name": "BLANCO LUCAS LEON"
       },
       {
-        "id": "d845a790-55fe-4b15-b83d-ed93edc0ac0b",
+        "id": "e16342ae-68ac-4b38-a63b-cda7200a9414",
         "number": "",
-        "name": "GANDO PEDRO"
+        "name": "CASTARÉS JULIETA"
       },
       {
-        "id": "6d55931a-a326-4e7b-8f2f-e074f26a7291",
+        "id": "5efcbf99-7285-47b5-a266-07df7ae98ba4",
         "number": "",
-        "name": "HIPP DEMIAN BRIAN"
+        "name": "EMERSON AXEL"
       },
       {
-        "id": "c5515596-5df0-4b08-bc3b-e4fa485940e9",
+        "id": "446a23f7-128c-491e-a3c7-afe18ecc9a4d",
         "number": "",
-        "name": "IBARRA JUAN MANUEL"
+        "name": "FERNANDEZ CINTIA"
       },
       {
-        "id": "0c51f16d-0fbd-4b06-9aaa-4adee8a719b5",
+        "id": "18f831b2-5258-4fbf-9c37-32f7ef489f59",
         "number": "",
-        "name": "LUBIAN SANTIAGO"
+        "name": "FONDACARO EZEQUIEL"
       },
       {
-        "id": "d2dc5b40-5242-4849-ab91-75a91d66585a",
+        "id": "c5133b93-4773-4cae-928d-d6128fc10126",
         "number": "",
-        "name": "MARTINEZ JUAN MANUEL"
+        "name": "FONDACARO CRISTIAN"
       },
       {
-        "id": "aca56db4-cc4b-4a91-b2ea-1e6b2bdd56b9",
+        "id": "55b8c94f-7d89-491b-a0b8-959b17f3f3a4",
         "number": "",
-        "name": "MASTROIANNI ITALO DARIO"
+        "name": "GALINSKI GUILLERMO EDUARDO"
       },
       {
-        "id": "76c44832-f195-44aa-87f3-4b90f387d7de",
+        "id": "7a1772c8-6c73-4841-865e-7b31c5b5f221",
         "number": "",
-        "name": "MEDIN FACUNDO"
+        "name": "GONZALEZ CAMILA"
       },
       {
-        "id": "d9ff9437-90d6-4d39-8447-d561ab3b7d74",
+        "id": "38612762-112f-46f3-bf4d-dca4f7cabcc8",
         "number": "",
-        "name": "NAUMANN GORGA MELISA EUGENIA"
+        "name": "LA TERZA OCTAVIO"
       },
       {
-        "id": "1ed23c7b-5375-40da-ba7e-c3468e3ed168",
+        "id": "6cc29b4a-5a7a-4698-8a6a-c9627ea51d08",
         "number": "",
-        "name": "TROFIMOV IGOR"
+        "name": "LEGUIZA MATIAS"
       },
       {
-        "id": "a5c592b9-6481-4178-ba82-a0c0bed3e7fe",
+        "id": "6b1224a7-2dcd-40a6-b997-3d2a09792fe2",
         "number": "",
-        "name": "VILLANUEVA JUAN FRANCISCO"
+        "name": "LESCANO IAN GABRIEL"
+      },
+      {
+        "id": "3e6ae920-477b-4063-bcdd-97288ec6ffcf",
+        "number": "",
+        "name": "LOTO FRANCO BENJAMÍN"
+      },
+      {
+        "id": "618fa542-1faa-4564-8477-92836d3bf240",
+        "number": "",
+        "name": "PEREZ BERNARDI ESTEBAN DANIEL"
+      },
+      {
+        "id": "995745eb-b867-4ec5-bed7-4f36fb78eb83",
+        "number": "",
+        "name": "TROFIMOV IVÁN"
+      },
+      {
+        "id": "9be33878-1c20-4a55-b0ad-4b5553e4c2fe",
+        "number": "",
+        "name": "VILLAVICENCIO MARIA ANTONELA"
+      },
+      {
+        "id": "553b3c30-de53-4b10-9e4d-88ec0f8f43ef",
+        "number": "",
+        "name": "VINCENTI MARIA EUGENIA"
       }
     ]
   },
   "clock": {
-    "currentTime": 0,
-    "currentPeriod": 2,
-    "isClockRunning": false,
-    "periodDisplayOverride": "End of Game",
+    "currentTime": 30000,
+    "currentPeriod": 0,
+    "isClockRunning": true,
+    "periodDisplayOverride": "Warm-up",
     "preTimeoutState": null,
-    "clockStartTimeMs": null,
-    "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 240000,
-    "_liveAbsoluteElapsedTimeCs": 240000,
+    "clockStartTimeMs": 1762001423040,
+    "remainingTimeAtStartCs": 30000,
+    "absoluteElapsedTimeCs": 0,
+    "_liveAbsoluteElapsedTimeCs": 0,
     "isFlashingZero": false
   },
   "shootout": {
@@ -152,15 +206,14 @@
     "awayAttempts": [],
     "initiator": null
   },
-  "homeTeamName": "ACEMHH",
-  "awayTeamName": "Ovejas Negras",
+  "homeTeamName": "Hazard Blue",
+  "awayTeamName": "Ovejas Negras Corderos",
   "playHornTrigger": 57,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
-  "matchId": "97401fe2-f4a5-444e-9c12-7be7e4fd63be",
-  "playedPeriods": [
-    "1ST",
-    "2ND"
-  ]
+  "matchId": "a436ba97-3d70-4258-8059-f4d8d3c3233a",
+  "playedPeriods": [],
+  "homeTeamSubName": "Blue",
+  "awayTeamSubName": "Corderos"
 }
