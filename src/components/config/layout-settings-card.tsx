@@ -166,6 +166,7 @@ export const LayoutSettingsCard = forwardRef<LayoutSettingsCardRef, LayoutSettin
   }));
 
   const standingsFontSize = scoreboardLayout.standingsTableFontSize ?? INITIAL_LAYOUT_SETTINGS.standingsTableFontSize;
+  const standingsRowHeight = scoreboardLayout.standingsTableRowHeight ?? INITIAL_LAYOUT_SETTINGS.standingsTableRowHeight;
 
   return (
     <ControlCardWrapper title="Diseño del Scoreboard (Vista Previa en Vivo)">
@@ -194,6 +195,7 @@ export const LayoutSettingsCard = forwardRef<LayoutSettingsCardRef, LayoutSettin
             <SliderControl label="Tiempo Penalidad" value={scoreboardLayout.penaltyTimeSize} onValueChange={(v) => handleValueChange('penaltyTimeSize', v)} min={1.5} max={7} step={0.1} />
             <SliderControl label="Icono Jugador Penalidad" value={scoreboardLayout.penaltyPlayerIconSize} onValueChange={(v) => handleValueChange('penaltyPlayerIconSize', v)} min={1} max={5} step={0.1} />
             <SliderControl label="Fuente Tabla Posiciones" value={standingsFontSize} onValueChange={(v) => handleValueChange('standingsTableFontSize', v)} min={0.5} max={3} step={0.05} />
+            <SliderControl label="Alto Fila (Tabla)" value={standingsRowHeight} onValueChange={(v) => handleValueChange('standingsTableRowHeight', v)} min={2} max={6} step={0.25} />
           </div>
         </div>
         <div className="border-t pt-6">

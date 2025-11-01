@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useMemo } from 'react';
@@ -29,7 +30,7 @@ export function StandingsDisplay() {
 
   const displayedStandings = useMemo(() => {
     if (!currentMatch) {
-      return standings.slice(0, 5);
+      return standings;
     }
     
     if (standings.length <= 5) {
@@ -47,12 +48,17 @@ export function StandingsDisplay() {
     }
     
     const indicesToShow = new Set<number>();
-    [homeIndex, awayIndex].forEach(index => {
-        if (index > 0) indicesToShow.add(index - 1);
-        indicesToShow.add(index);
-        if (index < standings.length - 1) indicesToShow.add(index + 1);
-    });
+    
+    // Add teams around the first team
+    if(homeIndex > 0) indicesToShow.add(homeIndex - 1);
+    indicesToShow.add(homeIndex);
+    if(homeIndex < standings.length - 1) indicesToShow.add(homeIndex + 1);
 
+    // Add teams around the second team
+    if(awayIndex > 0) indicesToShow.add(awayIndex - 1);
+    indicesToShow.add(awayIndex);
+    if(awayIndex < standings.length - 1) indicesToShow.add(awayIndex + 1);
+    
     const sortedIndices = Array.from(indicesToShow).sort((a,b) => a - b);
     
     const finalRows: (any | { isEllipsis: true, id: string })[] = [];
@@ -77,12 +83,16 @@ export function StandingsDisplay() {
 
   // Base font size from config
   const baseFontSizeRem = scoreboardLayout.standingsTableFontSize || 1;
+  const rowHeightRem = scoreboardLayout.standingsTableRowHeight || 3;
 
   // Proportional sizes based on the base
   const titleSize = baseFontSizeRem * 2;
   const headerSize = baseFontSizeRem * 1.1;
   const cellSize = baseFontSizeRem;
   const pointsSize = baseFontSizeRem * 1.25;
+  const ellipsisRowHeight = rowHeightRem * 0.7; // Make ellipsis row a bit shorter
+  const ellipsisFontSize = baseFontSizeRem * 1.5;
+
 
   return (
     <Card className="bg-card shadow-lg flex flex-col h-full">
@@ -100,7 +110,7 @@ export function StandingsDisplay() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>Puesto</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, height: `${rowHeightRem}rem` }}>Puesto</TableHead>
                 <TableHead className="w-1/2" style={{ fontSize: `${headerSize}rem` }}>Equipo</TableHead>
                 <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PJ</TableHead>
                 <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PG</TableHead>
@@ -118,7 +128,7 @@ export function StandingsDisplay() {
                 if (teamStat.isEllipsis) {
                     return (
                         <TableRow key={teamStat.id}>
-                            <TableCell colSpan={11} className="text-center text-muted-foreground/50 py-0 h-10 tracking-widest" style={{ fontSize: `${baseFontSizeRem * 1.5}rem` }}>
+                            <TableCell colSpan={11} className="text-center text-muted-foreground/50 py-0 tracking-widest" style={{ fontSize: `${ellipsisFontSize}rem`, height: `${ellipsisRowHeight}rem` }}>
                                 ...
                             </TableCell>
                         </TableRow>
@@ -128,7 +138,7 @@ export function StandingsDisplay() {
                 const isMatchTeam = teamStat.id === homeTeamId || teamStat.id === awayTeamId;
                 
                 return (
-                    <TableRow key={teamStat.id} className={cn(isMatchTeam && "bg-primary/20 font-bold")} style={{ fontSize: `${cellSize}rem`}}>
+                    <TableRow key={teamStat.id} className={cn(isMatchTeam && "bg-primary/20 font-bold")} style={{ fontSize: `${cellSize}rem`, height: `${rowHeightRem}rem`}}>
                         <TableCell className="text-center font-bold">{teamStat.rank}</TableCell>
                         <TableCell className="font-medium">{teamStat.name}</TableCell>
                         <TableCell className="text-center">{teamStat.pj}</TableCell>

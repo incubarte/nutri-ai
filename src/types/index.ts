@@ -115,6 +115,7 @@ export interface ScoreboardLayoutSettings {
   penaltyTimeSize: number;
   penaltyPlayerIconSize: number;
   standingsTableFontSize: number;
+  standingsTableRowHeight: number;
   primaryColor: string;
   accentColor: string;
   backgroundColor: string;
