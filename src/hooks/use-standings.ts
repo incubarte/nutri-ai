@@ -80,18 +80,23 @@ export function useStandings(tournament: Tournament | null | undefined, category
       });
 
       const rankedStats: (TeamStats & { rank: number })[] = [];
-      stats.forEach((team, index) => {
-          let rank = index + 1;
-          if (index > 0) {
-            const prevTeam = stats[index - 1];
-            const diffA = team.gf - team.gc;
+      if (stats.length > 0) {
+        rankedStats.push({ ...stats[0], rank: 1 });
+        for (let i = 1; i < stats.length; i++) {
+            const prevTeam = stats[i - 1];
+            const currentTeam = stats[i];
+            const prevRankedTeam = rankedStats[i - 1];
+
+            const diffA = currentTeam.gf - currentTeam.gc;
             const diffB = prevTeam.gf - prevTeam.gc;
-            if (team.puntos === prevTeam.puntos && team.pj === prevTeam.pj && diffA === diffB && team.gf === prevTeam.gf) {
-              rank = rankedStats[index - 1].rank;
+            
+            let rank = prevRankedTeam.rank;
+            if (currentTeam.puntos !== prevTeam.puntos || diffA !== diffB || currentTeam.gf !== prevTeam.gf) {
+                rank = i + 1;
             }
-          }
-          rankedStats.push({ ...team, rank });
-        });
+            rankedStats.push({ ...currentTeam, rank });
+        }
+      }
 
       return rankedStats;
 

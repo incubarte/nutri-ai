@@ -11,11 +11,7 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { useStandings } from '@/hooks/use-standings';
 
-interface StandingsDisplayProps {
-  teamContext: Team;
-}
-
-export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
+export function StandingsDisplay() {
   const { state } = useGameState();
   const { tournaments, selectedTournamentId, selectedMatchCategory } = state.config;
   const { matchId } = state.live;
@@ -28,20 +24,68 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
     if (!currentTournament || !matchId || !currentTournament.matches) return null;
     return currentTournament.matches.find(m => m.id === matchId);
   }, [currentTournament, matchId]);
-
-  const teamIdToShow = teamContext === 'home' ? currentMatch?.homeTeamId : currentMatch?.awayTeamId;
-  const teamToShow = (currentTournament?.teams || []).find(t => t.id === teamIdToShow);
   
   const standings = useStandings(currentTournament, selectedMatchCategory);
 
-  if (!teamToShow) return null;
+  const displayedStandings = useMemo(() => {
+    if (!currentMatch || standings.length === 0) return standings;
+
+    const homeTeamId = currentMatch.homeTeamId;
+    const awayTeamId = currentMatch.awayTeamId;
+
+    const homeIndex = standings.findIndex(s => s.id === homeTeamId);
+    const awayIndex = standings.findIndex(s => s.id === awayTeamId);
+
+    if (homeIndex === -1 || awayIndex === -1) return standings;
+
+    const indicesToShow = new Set<number>();
+
+    const addWithNeighbors = (index: number) => {
+        indicesToShow.add(index);
+        if (index > 0) indicesToShow.add(index - 1);
+        if (index > 1) indicesToShow.add(index - 2);
+        if (index < standings.length - 1) indicesToShow.add(index + 1);
+        if (index < standings.length - 2) indicesToShow.add(index + 2);
+    };
+
+    addWithNeighbors(homeIndex);
+    addWithNeighbors(awayIndex);
+
+    const sortedIndices = Array.from(indicesToShow).sort((a,b) => a - b);
+    
+    const finalRows: (any | { isEllipsis: true })[] = [];
+    let lastIndex = -1;
+
+    sortedIndices.forEach(index => {
+        if (lastIndex !== -1 && index > lastIndex + 1) {
+            finalRows.push({ isEllipsis: true, id: `ellipsis-${lastIndex}` });
+        }
+        finalRows.push(standings[index]);
+        lastIndex = index;
+    });
+    
+    if (sortedIndices[0] > 0) {
+        finalRows.unshift({ isEllipsis: true, id: 'ellipsis-start' });
+    }
+    if (lastIndex < standings.length - 1) {
+        finalRows.push({ isEllipsis: true, id: 'ellipsis-end' });
+    }
+
+    return finalRows;
+
+  }, [standings, currentMatch]);
+
+
+  if (!currentMatch) return null;
+  const homeTeamId = currentMatch.homeTeamId;
+  const awayTeamId = currentMatch.awayTeamId;
 
   return (
     <Card className="bg-card shadow-lg flex flex-col h-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-3 text-xl">
-          <Trophy className="h-6 w-6 text-amber-400" />
-          Tabla de Posiciones - {teamToShow.name}
+        <CardTitle className="flex items-center gap-3 text-xl md:text-2xl lg:text-3xl">
+          <Trophy className="h-6 w-6 lg:h-8 lg:w-8 text-amber-400" />
+          Tabla de Posiciones
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden">
@@ -55,28 +99,42 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
                 <TableHead className="text-center">PG</TableHead>
                 <TableHead className="text-center">PE</TableHead>
                 <TableHead className="text-center">PP</TableHead>
-                <TableHead className="text-center">GF</TableHead>
+                <TableHead className="text-center border-l">GF</TableHead>
                 <TableHead className="text-center">GC</TableHead>
-                <TableHead className="text-center font-bold">Puntos</TableHead>
+                <TableHead className="text-center font-bold border-l">Puntos</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {standings.map(teamStat => (
-                <TableRow key={teamStat.id} className={cn(teamStat.id === teamIdToShow && "bg-primary/20 text-foreground font-bold")}>
-                  <TableCell className="text-center font-bold">{teamStat.rank}</TableCell>
-                  <TableCell className="font-medium">{teamStat.name}</TableCell>
-                  <TableCell className="text-center">{teamStat.pj}</TableCell>
-                  <TableCell className="text-center">{teamStat.pg + teamStat.pg_ot}</TableCell>
-                  <TableCell className="text-center">{teamStat.pe}</TableCell>
-                  <TableCell className="text-center">{teamStat.pp + teamStat.pp_ot}</TableCell>
-                  <TableCell className="text-center">{teamStat.gf}</TableCell>
-                  <TableCell className="text-center">{teamStat.gc}</TableCell>
-                  <TableCell className="text-center font-bold text-lg">{teamStat.puntos}</TableCell>
-                </TableRow>
-              ))}
-              {standings.length === 0 && (
+              {displayedStandings.map(teamStat => {
+                if (teamStat.isEllipsis) {
+                    return (
+                        <TableRow key={teamStat.id}>
+                            <TableCell colSpan={9} className="text-center text-muted-foreground py-1">
+                                ...
+                            </TableCell>
+                        </TableRow>
+                    );
+                }
+                
+                const isMatchTeam = teamStat.id === homeTeamId || teamStat.id === awayTeamId;
+                
+                return (
+                    <TableRow key={teamStat.id} className={cn(isMatchTeam && "bg-primary/20 text-foreground font-bold")}>
+                        <TableCell className="text-center font-bold">{teamStat.rank}</TableCell>
+                        <TableCell className="font-medium">{teamStat.name}</TableCell>
+                        <TableCell className="text-center">{teamStat.pj}</TableCell>
+                        <TableCell className="text-center">{teamStat.pg + teamStat.pg_ot}</TableCell>
+                        <TableCell className="text-center">{teamStat.pe}</TableCell>
+                        <TableCell className="text-center">{teamStat.pp + teamStat.pp_ot}</TableCell>
+                        <TableCell className="text-center border-l">{teamStat.gf}</TableCell>
+                        <TableCell className="text-center">{teamStat.gc}</TableCell>
+                        <TableCell className="text-center font-bold text-lg border-l">{teamStat.puntos}</TableCell>
+                    </TableRow>
+                )
+              })}
+              {displayedStandings.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">No hay datos de posiciones.</TableCell>
+                  <TableCell colSpan={9} className="h-24 text-center">No hay datos de posiciones.</TableCell>
                 </TableRow>
               )}
             </TableBody>

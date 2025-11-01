@@ -122,9 +122,8 @@ export function FullScoreboard({ className }: { className?: string }) {
         {/* Penalties/Shootout/Standings content positioned within the transparent container */}
         <div className="relative z-0 h-full">
           {showStandings ? (
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
-                <StandingsDisplay teamContext="home" />
-                <StandingsDisplay teamContext="away" />
+             <div className="px-4 sm:px-8 md:px-12 lg:px-16 h-full">
+                <StandingsDisplay />
              </div>
           ) : clock.periodDisplayOverride !== 'Shootout' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
