@@ -12,6 +12,7 @@ interface PlayerStats {
   goals: number;
   assists: number;
   points: number;
+  shots: number;
   penaltyCount: number;
   penaltyMinutes: number;
 }
@@ -42,6 +43,7 @@ export function usePlayerStats(tournament: Tournament | null | undefined, catego
                         goals: 0,
                         assists: 0,
                         points: 0,
+                        shots: 0,
                         penaltyCount: 0,
                         penaltyMinutes: 0
                     });
@@ -54,12 +56,12 @@ export function usePlayerStats(tournament: Tournament | null | undefined, catego
         if (!match.summary || !match.summary.statsByPeriod) return;
 
         match.summary.statsByPeriod.forEach(period => {
-            // Process goals and assists
             ['home', 'away'].forEach(teamStr => {
                 const teamId = teamStr === 'home' ? match.homeTeamId : match.awayTeamId;
                 const team = allTeams.find(t => t.id === teamId);
                 if (!team) return;
 
+                // Process goals and assists
                 (period.stats.goals[teamStr as 'home' | 'away'] || []).forEach(goal => {
                     const scorer = team.players.find(p => p.number === goal.scorer?.playerNumber);
                     if (scorer && statsMap.has(scorer.id)) {
@@ -80,6 +82,14 @@ export function usePlayerStats(tournament: Tournament | null | undefined, catego
                         stat.penaltyMinutes += (penalty.initialDuration || 0) / 60;
                     }
                 });
+
+                // Process player stats (shots)
+                (period.stats.playerStats[teamStr as 'home' | 'away'] || []).forEach(playerStat => {
+                    if (statsMap.has(playerStat.id)) {
+                        const stat = statsMap.get(playerStat.id)!;
+                        stat.shots += playerStat.shots;
+                    }
+                });
             });
         });
     });
@@ -88,11 +98,12 @@ export function usePlayerStats(tournament: Tournament | null | undefined, catego
     const statsArray = Array.from(statsMap.values()).map(stat => ({
       ...stat,
       points: (stat.goals * 2) + stat.assists,
+      penaltyMinutes: Math.round(stat.penaltyMinutes),
     }));
 
     // Filter out players with no activity
     const activePlayers = statsArray.filter(
-        stat => stat.goals > 0 || stat.assists > 0 || stat.penaltyCount > 0
+        stat => stat.goals > 0 || stat.assists > 0 || stat.penaltyCount > 0 || stat.shots > 0
     );
 
     // Sort by points, then goals, then assists
@@ -104,11 +115,26 @@ export function usePlayerStats(tournament: Tournament | null | undefined, catego
         return a.playerName.localeCompare(b.playerName);
     });
 
-    // Add rank
-    return activePlayers.map((stat, index) => ({
-      ...stat,
-      rank: index + 1
-    }));
+    // Add rank, allowing for ties
+    if (activePlayers.length === 0) return [];
+
+    const rankedStats = [{...activePlayers[0], rank: 1}];
+    for (let i = 1; i < activePlayers.length; i++) {
+        const prev = activePlayers[i-1];
+        const current = activePlayers[i];
+        let rank = i + 1;
+        if (
+            current.points === prev.points &&
+            current.goals === prev.goals &&
+            current.assists === prev.assists &&
+            current.penaltyMinutes === prev.penaltyMinutes
+        ) {
+            rank = rankedStats[i - 1].rank;
+        }
+        rankedStats.push({ ...current, rank });
+    }
+
+    return rankedStats;
 
   }, [tournament, categoryId]);
 

@@ -63,6 +63,7 @@ export function PlayerStatsTab() {
                             <TableHead>Equipo</TableHead>
                             <TableHead className="text-center">G</TableHead>
                             <TableHead className="text-center">A</TableHead>
+                            <TableHead className="text-center">Tiros</TableHead>
                             <TableHead className="text-center"># Pen.</TableHead>
                             <TableHead className="text-center">T. Pen. (min)</TableHead>
                             <TableHead className="text-center font-bold">Puntos</TableHead>
@@ -76,14 +77,15 @@ export function PlayerStatsTab() {
                                 <TableCell className="text-sm text-muted-foreground">{stat.teamName}</TableCell>
                                 <TableCell className="text-center font-mono">{stat.goals}</TableCell>
                                 <TableCell className="text-center font-mono">{stat.assists}</TableCell>
+                                <TableCell className="text-center font-mono">{stat.shots}</TableCell>
                                 <TableCell className="text-center font-mono">{stat.penaltyCount}</TableCell>
-                                <TableCell className="text-center font-mono">{stat.penaltyMinutes.toFixed(1)}</TableCell>
+                                <TableCell className="text-center font-mono">{stat.penaltyMinutes}</TableCell>
                                 <TableCell className="text-center font-bold text-lg">{stat.points}</TableCell>
                             </TableRow>
                         ))}
                          {playerStats.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={8} className="h-24 text-center">No hay estadísticas para mostrar.</TableCell>
+                                <TableCell colSpan={9} className="h-24 text-center">No hay estadísticas para mostrar.</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
