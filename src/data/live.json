@@ -1,6 +1,6 @@
 {
   "score": {
-    "home": 1,
+    "home": 0,
     "away": 0,
     "homeShots": 0,
     "awayShots": 0
@@ -10,18 +10,7 @@
     "away": []
   },
   "goals": {
-    "home": [
-      {
-        "team": "home",
-        "timestamp": 1761958464143,
-        "gameTime": 120000,
-        "periodText": "1ST",
-        "scorer": {
-          "playerNumber": "1"
-        },
-        "id": "01e26fd2-bd2b-4685-92e0-854c1f993284"
-      }
-    ],
+    "home": [],
     "away": []
   },
   "penaltiesLog": {
@@ -194,10 +183,10 @@
     ]
   },
   "clock": {
-    "currentTime": 30000,
-    "currentPeriod": 3,
+    "currentTime": 6000,
+    "currentPeriod": 2,
     "isClockRunning": false,
-    "periodDisplayOverride": null,
+    "periodDisplayOverride": "Pre-OT Break",
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
@@ -214,7 +203,7 @@
   },
   "homeTeamName": "Fantasy Skate",
   "awayTeamName": "ACEMHH",
-  "playHornTrigger": 30,
+  "playHornTrigger": 33,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,

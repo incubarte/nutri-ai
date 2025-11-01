@@ -1168,23 +1168,19 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'MANUAL_END_GAME': {
+      if (state.live.clock.periodDisplayOverride !== null) break;
+
       const { live, config } = state;
       const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
 
-      if (live.clock.periodDisplayOverride !== null) break;
-
-      // Handle transition for any period that is NOT the last one
       if (live.clock.currentPeriod < totalGamePeriods) {
         const isPreOT = live.clock.currentPeriod >= config.numberOfRegularPeriods;
         const breakType = isPreOT ? 'START_PRE_OT_BREAK' : 'START_BREAK';
         return gameReducer(state, { type: breakType });
       }
 
-      // Handle the end of the very last possible period
       if (live.clock.currentPeriod >= totalGamePeriods) {
-        if (live.score.home !== live.score.away) {
-          return finalizeMatch(state);
-        } else {
+        if (live.score.home === live.score.away) {
           newState = {
             ...state,
             live: {
@@ -1193,6 +1189,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
               shootout: { ...live.shootout, isActive: false }
             }
           };
+        } else {
+          return finalizeMatch(state);
         }
       }
       break;
@@ -1777,6 +1775,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
       if (state._lastActionOriginator === TAB_ID) {
           try {
               channelRef.current?.postMessage(state);
+              
               const hasLiveChanged = !isEqual(state.live, oldState.live);
               if (hasLiveChanged) {
                   updateGameStateOnServer(state.live);
@@ -1789,9 +1788,10 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
               }
               // Logic to save individual tournament if it changes
               const changedTournament = state.config.tournaments.find((newTournament, index) => {
-                const oldTournament = oldState.config.tournaments[index];
+                const oldTournament = oldState.config.tournaments.find(t => t.id === newTournament.id);
                 return oldTournament && !isEqual(newTournament, oldTournament);
               });
+
               if(changedTournament) {
                 saveTournamentOnServer(changedTournament);
               }
@@ -1937,3 +1937,4 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
       
 
     
+

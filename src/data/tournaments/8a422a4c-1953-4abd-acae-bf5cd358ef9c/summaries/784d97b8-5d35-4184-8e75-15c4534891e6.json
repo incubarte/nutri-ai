@@ -165,148 +165,11 @@
       "period": "1ST",
       "stats": {
         "goals": {
-          "home": [
-            {
-              "team": "home",
-              "timestamp": 1761952103689,
-              "gameTime": 120000,
-              "periodText": "1ST",
-              "scorer": {
-                "playerNumber": "3"
-              },
-              "id": "a1f631fe-a85d-4302-9a0e-92b17acddd13"
-            }
-          ],
-          "away": [
-            {
-              "team": "away",
-              "timestamp": 1761952317788,
-              "gameTime": 112732,
-              "periodText": "1ST",
-              "scorer": {
-                "playerNumber": "4"
-              },
-              "id": "ef5ce626-9236-4706-8de4-21fd9695b5b1"
-            }
-          ]
+          "home": [],
+          "away": []
         },
         "penalties": {
-          "home": [
-            {
-              "id": "e44beece-c513-4fd2-a46e-e0fe4eda3b6c",
-              "team": "home",
-              "playerNumber": "13",
-              "playerName": "MISHIN ALEX",
-              "penaltyName": "Menor",
-              "initialDuration": 120,
-              "reducesPlayerCount": true,
-              "clearsOnGoal": true,
-              "isBenchPenalty": false,
-              "addTimestamp": 1761952220375,
-              "addGameTime": 119896,
-              "addPeriodText": "1ST",
-              "endTimestamp": 1761952234114,
-              "endGameTime": 119896,
-              "endPeriodText": "1ST",
-              "endReason": "deleted",
-              "timeServed": 0
-            },
-            {
-              "id": "d150d765-4349-42e0-bbba-01e9703f25cb",
-              "team": "home",
-              "playerNumber": "9",
-              "playerName": "TIBAUDIN GUIDO",
-              "penaltyName": "Menor",
-              "initialDuration": 120,
-              "reducesPlayerCount": true,
-              "clearsOnGoal": true,
-              "isBenchPenalty": false,
-              "addTimestamp": 1761952237342,
-              "addGameTime": 119896,
-              "addPeriodText": "1ST",
-              "endTimestamp": 1761952329766,
-              "endGameTime": 107873,
-              "endPeriodText": "1ST",
-              "endReason": "completed",
-              "timeServed": 120
-            },
-            {
-              "id": "f974b551-0797-469c-80a5-42d53f2d69ec",
-              "team": "home",
-              "playerNumber": "17",
-              "playerName": "MOGOLLÓN LUIS",
-              "penaltyName": "Menor",
-              "initialDuration": 120,
-              "reducesPlayerCount": true,
-              "clearsOnGoal": true,
-              "isBenchPenalty": false,
-              "addTimestamp": 1761952243289,
-              "addGameTime": 119454,
-              "addPeriodText": "1ST",
-              "endTimestamp": 1761952329766,
-              "endGameTime": 107433,
-              "endPeriodText": "1ST",
-              "endReason": "completed",
-              "timeServed": 120
-            },
-            {
-              "id": "5f4f7abc-e556-43cc-9c62-b186bb462cfd",
-              "team": "home",
-              "playerNumber": "13",
-              "playerName": "MISHIN ALEX",
-              "penaltyName": "Menor",
-              "initialDuration": 120,
-              "reducesPlayerCount": true,
-              "clearsOnGoal": true,
-              "isBenchPenalty": false,
-              "addTimestamp": 1761952247174,
-              "addGameTime": 119083,
-              "addPeriodText": "1ST",
-              "endTimestamp": 1761952321202,
-              "endGameTime": 112395,
-              "endPeriodText": "1ST",
-              "endReason": "goal_on_pp",
-              "timeServed": 67
-            },
-            {
-              "id": "d883be98-f006-45d4-92d3-d3b1b2979912",
-              "team": "home",
-              "playerNumber": "17",
-              "playerName": "MOGOLLÓN LUIS",
-              "penaltyName": "Menor",
-              "initialDuration": 120,
-              "reducesPlayerCount": true,
-              "clearsOnGoal": true,
-              "isBenchPenalty": false,
-              "addTimestamp": 1761952251135,
-              "addGameTime": 118688,
-              "addPeriodText": "1ST",
-              "endTimestamp": 1761952293854,
-              "endGameTime": 114740,
-              "endPeriodText": "1ST",
-              "endReason": "deleted",
-              "timeServed": 0
-            },
-            {
-              "id": "d7837830-2911-4371-85a4-5f413639a52d",
-              "team": "home",
-              "playerNumber": "32",
-              "playerName": "GIOVANELLI CHRISTIAN",
-              "penaltyName": "Menor",
-              "initialDuration": 120,
-              "reducesPlayerCount": true,
-              "clearsOnGoal": true,
-              "isBenchPenalty": false,
-              "addTimestamp": 1761952303023,
-              "addGameTime": 114214,
-              "addPeriodText": "1ST",
-              "endTimestamp": 1761952329766,
-              "endGameTime": 101841,
-              "endPeriodText": "1ST",
-              "endReason": "completed",
-              "timeServed": 120
-            }
-          ],
+          "home": [],
           "away": []
         },
         "playerStats": {
@@ -569,20 +432,19 @@
       "period": "2ND",
       "stats": {
         "goals": {
-          "home": [],
-          "away": [
+          "home": [
             {
-              "team": "away",
-              "timestamp": 1761952341074,
+              "team": "home",
+              "timestamp": 1761958898537,
               "gameTime": 120000,
               "periodText": "2ND",
               "scorer": {
-                "playerNumber": "17",
-                "playerName": "AGUIRRE LEILA"
+                "playerNumber": "1"
               },
-              "id": "c401107c-d1e8-43f7-8416-e562f3b14950"
+              "id": "0dc597ae-2246-42c3-9d55-20e5c932b8af"
             }
-          ]
+          ],
+          "away": []
         },
         "penalties": {
           "home": [],
@@ -781,7 +643,7 @@
               "name": "AGUIRRE LEILA",
               "number": "17",
               "shots": 0,
-              "goals": 1,
+              "goals": 0,
               "assists": 0
             },
             {
