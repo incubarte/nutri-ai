@@ -101,18 +101,6 @@ export default {
             '0%, 100%': { opacity: '1' },
             '50%': { opacity: '0.2' },
         },
-        'green-glow': {
-          '0%, 100%': {
-            boxShadow: '0 0 2px rgba(74, 222, 128, 0.5), inset 0 0 2px rgba(74, 222, 128, 0.5)',
-            backgroundColor: 'rgba(74, 222, 128, 0.1)',
-            color: 'hsl(145, 63%, 49%)'
-          },
-          '50%': {
-            boxShadow: '0 0 8px rgba(74, 222, 128, 0.7), inset 0 0 5px rgba(74, 222, 128, 0.7)',
-            backgroundColor: 'rgba(74, 222, 128, 0.2)',
-            color: 'hsl(145, 63%, 60%)'
-          },
-        },
         'pass-puck': {
           '0%': { transform: 'translateX(0px)' },
           '100%': { transform: 'translateX(110px)' },
@@ -133,7 +121,6 @@ export default {
         'score-flash': 'score-flash 0.5s ease-in-out',
         'flashing-border': 'flashing-border 1.5s ease-in-out infinite',
         'flashing-clock': 'flashing-clock 1s ease-in-out infinite',
-        'green-glow': 'green-glow 1.5s ease-in-out infinite',
         'pass-puck': 'pass-puck 1s ease-in-out infinite alternate',
         'slide-in-pulse-out': 'slide-in-pulse-out 4s ease-in-out forwards',
       },
