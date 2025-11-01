@@ -332,7 +332,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                           teamName={homeTeam?.name || ''} 
                           allPlayers={homeTeam?.players} 
                           playerStats={aggregatedStats.home} 
-                          attendance={localSummary.attendance.home} 
+                          attendance={localSummary.attendance.home}
+                          editingAttendanceSet={localAttendance.home} 
                           editable={false} 
                           showAttendanceControls={true} 
                           isAttendanceEditing={isAttendanceEditing}
@@ -346,6 +347,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                           allPlayers={awayTeam?.players}
                           playerStats={aggregatedStats.away}
                           attendance={localSummary.attendance.away}
+                          editingAttendanceSet={localAttendance.away}
                           editable={false}
                           showAttendanceControls={true}
                           isAttendanceEditing={isAttendanceEditing}

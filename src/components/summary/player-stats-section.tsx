@@ -16,6 +16,7 @@ export const PlayerStatsSection = ({
     allPlayers,
     playerStats, 
     attendance,
+    editingAttendanceSet,
     editable,
     editedStats,
     onStatChange,
@@ -30,6 +31,7 @@ export const PlayerStatsSection = ({
     allPlayers?: PlayerData[];
     playerStats?: SummaryPlayerStats[]; 
     attendance?: AttendedPlayerInfo[];
+    editingAttendanceSet?: Set<string>;
     editable?: boolean;
     editedStats?: Record<string, { shots: string }>;
     onStatChange?: (playerId: string, field: 'shots', value: string) => void;
@@ -42,7 +44,7 @@ export const PlayerStatsSection = ({
     
     const sortedPlayersWithStats = useMemo(() => {
         const fullRoster = allPlayers || [];
-        const attendanceSet = new Set((attendance || []).map(p => p.id));
+        const attendanceSet = isAttendanceEditing ? editingAttendanceSet : new Set((attendance || []).map(p => p.id));
         const statsMap = new Map<string, SummaryPlayerStats>();
 
         // Pre-populate map with stats from playerStats prop
@@ -63,7 +65,7 @@ export const PlayerStatsSection = ({
                 ...stat,
                 name: rosterPlayer?.name || stat.name, // Prefer roster name
                 number: rosterPlayer?.number || stat.number, // Prefer roster number
-                attended: attendanceSet.has(stat.id),
+                attended: attendanceSet ? attendanceSet.has(stat.id) : false,
             }
         });
 
@@ -83,7 +85,7 @@ export const PlayerStatsSection = ({
             if (!isNaN(numA) && isNaN(numB)) return -1;
             return a.name.localeCompare(b.name);
         });
-    }, [allPlayers, playerStats, attendance, isAttendanceEditing]);
+    }, [allPlayers, playerStats, attendance, isAttendanceEditing, editingAttendanceSet]);
 
     const totals = useMemo(() => {
         return sortedPlayersWithStats.reduce((acc, player) => {
