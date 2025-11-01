@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo } from "react";
@@ -15,7 +16,9 @@ export const PlayerStatsSection = ({
     attendance,
     editable,
     editedStats,
-    onStatChange
+    onStatChange,
+    isAttendanceEditing,
+    onToggleAttendance,
 }: { 
     teamName: string; 
     allPlayers?: PlayerData[];
@@ -24,6 +27,8 @@ export const PlayerStatsSection = ({
     editable?: boolean;
     editedStats?: Record<string, { shots: string }>;
     onStatChange?: (playerId: string, field: 'shots', value: string) => void;
+    isAttendanceEditing?: boolean;
+    onToggleAttendance?: (playerId: string) => void;
 }) => {
     
     const sortedPlayersWithStats = useMemo(() => {
@@ -55,8 +60,10 @@ export const PlayerStatsSection = ({
 
         return combinedList.sort((a, b) => {
             // Sort attended players first
-            if (a.attended && !b.attended) return -1;
-            if (!a.attended && b.attended) return 1;
+            if (isAttendanceEditing) {
+                if (a.attended && !b.attended) return -1;
+                if (!a.attended && b.attended) return 1;
+            }
 
             // Then sort by number
             const numA = parseInt(a.number, 10);
@@ -67,7 +74,7 @@ export const PlayerStatsSection = ({
             if (!isNaN(numA) && isNaN(numB)) return -1;
             return a.name.localeCompare(b.name);
         });
-    }, [allPlayers, playerStats, attendance]);
+    }, [allPlayers, playerStats, attendance, isAttendanceEditing]);
 
     const totals = useMemo(() => {
         return sortedPlayersWithStats.reduce((acc, player) => {
@@ -108,7 +115,15 @@ export const PlayerStatsSection = ({
                                 const playerEditedStats = editable && editedStats ? editedStats[player.id] : null;
 
                                 return (
-                                    <TableRow key={player.id} className={cn(!player.attended && "text-muted-foreground opacity-50")}>
+                                    <TableRow 
+                                        key={player.id} 
+                                        className={cn(
+                                            (!player.attended && !isAttendanceEditing) && "hidden",
+                                            isAttendanceEditing && !player.attended && "text-muted-foreground opacity-50",
+                                            isAttendanceEditing && "cursor-pointer"
+                                        )}
+                                        onClick={isAttendanceEditing ? () => onToggleAttendance?.(player.id) : undefined}
+                                    >
                                         <TableCell className="font-semibold">{player.number || 'S/N'}</TableCell>
                                         <TableCell className="text-xs">{player.name}</TableCell>
                                         <TableCell className="text-center font-mono">{player.goals || 0}</TableCell>
@@ -122,9 +137,9 @@ export const PlayerStatsSection = ({
                                 )}
                             )}
                         </TableBody>
-                        <UiTableFooter>
+                         <UiTableFooter>
                             <TableRow>
-                                <TableCell colSpan={2} className="text-right font-bold">TOTAL</TableCell>
+                                <TableCell colSpan={2} className="text-right font-bold">TOTAL (Asistentes)</TableCell>
                                 <TableCell className="text-center font-bold font-mono">{totals.goals}</TableCell>
                                 <TableCell className="text-center font-bold font-mono">{totals.assists}</TableCell>
                                 <TableCell className="text-center font-bold font-mono">{totals.shots}</TableCell>
