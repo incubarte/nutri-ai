@@ -1,8 +1,11 @@
+
 import { promises as fs } from 'fs';
 import path from 'path';
 import { NextResponse } from 'next/server';
 import type { Tournament, TeamData, CategoryData, MatchData, PeriodSummary } from '@/types';
 
+const DATA_DIR = path.join(process.cwd(), 'src/data');
+const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 const TOURNAMENTS_DIR = path.join(process.cwd(), 'src/data/tournaments');
 
 async function readData(filePath: string): Promise<any> {
@@ -126,10 +129,14 @@ export async function GET(request: Request, { params }: { params: { id: string }
         const tournamentDetails = await readTournament(tournamentId);
 
         if (!tournamentDetails) {
-            // If tournament directory doesn't exist, return success with empty details
-            // so the frontend can handle a new/empty tournament gracefully.
+            // If tournament directory doesn't exist, we find its metadata and return a valid empty structure.
             const config = await readData(CONFIG_PATH);
             const tournamentMeta = (config?.tournaments || []).find((t: any) => t.id === tournamentId);
+
+            if (!tournamentMeta) {
+                 return NextResponse.json({ message: `Tournament metadata with id ${tournamentId} not found in config.json` }, { status: 404 });
+            }
+            // Return a valid, empty tournament structure. This is NOT an error.
             return NextResponse.json({ tournament: { ...tournamentMeta, teams: [], categories: [], matches: [] } });
         }
 
@@ -169,3 +176,4 @@ export async function POST(request: Request, { params }: { params: { id: string 
         return NextResponse.json({ message: 'An unknown server error occurred.' }, { status: 500 });
     }
 }
+
