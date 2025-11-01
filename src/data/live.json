@@ -224,13 +224,13 @@
     ]
   },
   "clock": {
-    "currentTime": 30000,
-    "currentPeriod": 0,
-    "isClockRunning": true,
-    "periodDisplayOverride": "Warm-up",
+    "currentTime": 120000,
+    "currentPeriod": 1,
+    "isClockRunning": false,
+    "periodDisplayOverride": null,
     "preTimeoutState": null,
-    "clockStartTimeMs": 1762019729339,
-    "remainingTimeAtStartCs": 30000,
+    "clockStartTimeMs": null,
+    "remainingTimeAtStartCs": null,
     "absoluteElapsedTimeCs": 0,
     "_liveAbsoluteElapsedTimeCs": 0,
     "isFlashingZero": false
@@ -244,7 +244,7 @@
   },
   "homeTeamName": "Hazard Blue",
   "awayTeamName": "Hazard white",
-  "playHornTrigger": 65,
+  "playHornTrigger": 66,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,

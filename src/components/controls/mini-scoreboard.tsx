@@ -700,7 +700,10 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                             disabled={!matchedHomeTeamId}
                             aria-label="Editar jugadores del equipo local"
                         >
-                             {isWarmup && isMatchFromFixture ? <Check className="h-5 w-5 text-green-500 animate-pulse" /> : <ClipboardList className={cn("h-4 w-4", matchedHomeTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60")} />}
+                            <ClipboardList className={cn(
+                                "h-4 w-4",
+                                isWarmup && isMatchFromFixture ? "text-green-500 animate-pulse" : (matchedHomeTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60")
+                            )} />
                         </Button>
                     )}
                 </div>
@@ -729,7 +732,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
           {/* Clock & Period Section */}
           <div className="flex-1 space-y-2 text-center">
-            <div className={cn("w-full max-w-[200px] mx-auto mb-2 h-9", !showNextActionButton && "invisible")}>
+            <div className={cn("w-full max-w-[180px] mx-auto mb-2 h-9", !showNextActionButton && "invisible")}>
                 {showNextActionButton && (
                     <Button
                         onClick={handleNextAction}
@@ -975,7 +978,10 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                             disabled={!matchedAwayTeamId}
                             aria-label="Editar jugadores del equipo visitante"
                         >
-                            {isWarmup && isMatchFromFixture ? <Check className="h-5 w-5 text-green-500 animate-pulse" /> : <ClipboardList className={cn("h-4 w-4", matchedAwayTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60")} />}
+                            <ClipboardList className={cn(
+                                "h-4 w-4",
+                                isWarmup && isMatchFromFixture ? "text-green-500 animate-pulse" : (matchedAwayTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60")
+                            )} />
                         </Button>
                     )}
                 </div>
