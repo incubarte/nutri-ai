@@ -249,15 +249,15 @@
     ]
   },
   "clock": {
-    "currentTime": 0,
-    "currentPeriod": 2,
+    "currentTime": 30000,
+    "currentPeriod": 4,
     "isClockRunning": false,
-    "periodDisplayOverride": "End of Game",
+    "periodDisplayOverride": null,
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 240000,
-    "_liveAbsoluteElapsedTimeCs": 240000,
+    "absoluteElapsedTimeCs": 270000,
+    "_liveAbsoluteElapsedTimeCs": 270000,
     "isFlashingZero": false
   },
   "shootout": {
@@ -269,7 +269,7 @@
   },
   "homeTeamName": "Fantasy Skate CM",
   "awayTeamName": "Ovejas Negras Corderos",
-  "playHornTrigger": 41,
+  "playHornTrigger": 42,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,

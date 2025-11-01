@@ -22,6 +22,7 @@ import { PenaltySettingsCard } from '@/components/config/penalty-settings-card';
 import { StoppedTimeAlertCard } from '@/components/config/stopped-time-alert-card';
 import { isToday, format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { safeUUID } from '@/lib/utils';
 
 const TeamSelector = ({
     label,
@@ -100,7 +101,7 @@ export default function SetupPage() {
     const { selectedTournamentId, tournaments } = state.config;
     const selectedTournament = useMemo(() => tournaments.find(t => t.id === selectedTournamentId), [tournaments, selectedTournamentId]);
     
-    const [useManualTeamNames, setUseManualTeamNames] = useState(false);
+    const [isTournamentMatch, setIsTournamentMatch] = useState(true);
     const [manualHomeTeamName, setManualHomeTeamName] = useState('Local');
     const [manualAwayTeamName, setManualAwayTeamName] = useState('Visitante');
     const [localCategoryId, setLocalCategoryId] = useState('');
@@ -140,7 +141,7 @@ export default function SetupPage() {
     }, [state.config.selectedTournamentId]);
 
     const handleLoadMatchConfig = (match: MatchData) => {
-        setUseManualTeamNames(false);
+        setIsTournamentMatch(true);
         setLocalCategoryId(match.categoryId);
         setHomeTeamId(match.homeTeamId);
         setAwayTeamId(match.awayTeamId);
@@ -155,26 +156,38 @@ export default function SetupPage() {
     
     const handleNextStep = (nextTab: 'rules' | 'summary') => {
         if (activeTab === 'teams') {
-            if (useManualTeamNames) {
+            if (!isTournamentMatch) {
                 const homeName = manualHomeTeamName.trim() || 'Local';
                 const awayName = manualAwayTeamName.trim() || 'Visitante';
                 if (homeName.toLowerCase() === awayName.toLowerCase()) {
                     toast({ title: "Nombres Iguales", description: "Los nombres de los equipos no pueden ser el mismo.", variant: "destructive" });
                     return;
                 }
+                setPendingMatchConfig({ matchId: null, isTournamentMatch: false });
             } else {
-                 if (!pendingMatchConfig && (!homeTeamId || !awayTeamId || !localCategoryId)) {
+                 if (!homeTeamId || !awayTeamId || !localCategoryId) {
                     toast({ title: "Datos Incompletos", description: "Por favor, selecciona una categoría y ambos equipos para continuar.", variant: "destructive" });
                     return;
                 }
-                 if (!pendingMatchConfig) {
-                    setPendingMatchConfig({
-                        matchId: null, // This is not a fixture match
-                        categoryId: localCategoryId,
-                        homeTeamId: homeTeamId,
-                        awayTeamId: awayTeamId,
-                    });
+                const newMatchId = safeUUID();
+                const newMatch: Omit<MatchData, 'id'> = {
+                    date: new Date().toISOString(),
+                    categoryId: localCategoryId,
+                    homeTeamId: homeTeamId,
+                    awayTeamId: awayTeamId,
+                    playersPerTeam: parseInt(String(tempFormatSettings.playersPerTeamOnIce) || '5', 10)
+                };
+                if (selectedTournamentId) {
+                    dispatch({ type: 'ADD_MATCH_TO_TOURNAMENT', payload: { tournamentId: selectedTournamentId, match: newMatch } });
                 }
+                
+                setPendingMatchConfig({
+                    matchId: newMatchId,
+                    isTournamentMatch: true,
+                    categoryId: localCategoryId,
+                    homeTeamId: homeTeamId,
+                    awayTeamId: awayTeamId,
+                });
             }
         }
         setActiveTab(nextTab);
@@ -185,7 +198,7 @@ export default function SetupPage() {
         
         let matchIdToSet: string | null = null;
         
-        if (useManualTeamNames) {
+        if (!isTournamentMatch) {
             const homeName = manualHomeTeamName.trim() || 'Local';
             const awayName = manualAwayTeamName.trim() || 'Visitante';
             dispatch({ type: 'SET_HOME_TEAM_NAME', payload: homeName });
@@ -248,7 +261,7 @@ export default function SetupPage() {
                             <div className="space-y-3 p-4 border-2 border-dashed rounded-lg bg-muted/30">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
                                     <CalendarCheck className="h-5 w-5 text-primary"/>
-                                    Partidos Programados para Hoy
+                                    Cargar Partido Programado
                                 </h3>
                                 <div className="grid grid-cols-1 gap-2">
                                      {todaysMatches.map(match => {
@@ -273,49 +286,47 @@ export default function SetupPage() {
                             </div>
                         )}
                         
-                        {useManualTeamNames ? (
-                            <div className="space-y-4">
-                                <div className="grid w-full items-center gap-1.5">
-                                    <Label htmlFor="manual-home-name">Nombre del Equipo Local</Label>
-                                    <Input id="manual-home-name" value={manualHomeTeamName} onChange={(e) => setManualHomeTeamName(e.target.value)} />
-                                </div>
-                                <div className="grid w-full items-center gap-1.5">
-                                    <Label htmlFor="manual-away-name">Nombre del Equipo Visitante</Label>
-                                    <Input id="manual-away-name" value={manualAwayTeamName} onChange={(e) => setManualAwayTeamName(e.target.value)} />
-                                </div>
-                                 <div className="flex items-center space-x-2 pt-2">
-                                    <Switch id="manual-team-names-switch-inner" checked={useManualTeamNames} onCheckedChange={setUseManualTeamNames} />
-                                    <Label htmlFor="manual-team-names-switch-inner">Ingresar nombres de equipo manualmente</Label>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>Categoría</Label>
-                                    <Select value={localCategoryId} onValueChange={setLocalCategoryId}>
-                                        <SelectTrigger className="w-full h-11">
-                                            <SelectValue placeholder={availableCategories.length > 0 ? "Seleccionar categoría..." : "Sin categorías"} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {availableCategories.map(cat => (
-                                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <TeamSelector label="Equipo Local" teams={teamsInCategory} selectedTeamId={homeTeamId} onSelectTeam={setHomeTeamId} disabledTeamId={awayTeamId} disabled={!localCategoryId} />
-                                <TeamSelector label="Equipo Visitante" teams={teamsInCategory} selectedTeamId={awayTeamId} onSelectTeam={setAwayTeamId} disabledTeamId={homeTeamId} disabled={!localCategoryId} />
-                                <div className="flex items-center space-x-2 pt-2">
-                                    <Switch id="manual-team-names-switch-outer" checked={useManualTeamNames} onCheckedChange={setUseManualTeamNames} />
-                                    <Label htmlFor="manual-team-names-switch-outer">Ingresar nombres de equipo manualmente</Label>
-                                </div>
-                            </div>
-                        )}
-
                         <Separator />
-
-                         <div className="p-3 bg-muted/20 border border-muted/40 rounded-lg text-muted-foreground text-sm">
-                            <p><strong>Nota:</strong> Los partidos configurados manualmente (o que no se cargan desde el fixture) <strong className="text-foreground/80">NO GENERAN</strong> un archivo de resumen de partido al finalizar. Si es un partido de torneo, por favor, agrégalo al Fixture primero.</p>
+                        
+                        <div className="space-y-4">
+                             <h3 className="text-lg font-semibold flex items-center gap-2">
+                                Configurar Partido Manualmente
+                            </h3>
+                            <div className="flex items-center space-x-2 pt-2">
+                                <Switch id="is-tournament-match-switch" checked={isTournamentMatch} onCheckedChange={setIsTournamentMatch} />
+                                <Label htmlFor="is-tournament-match-switch">Es un Partido de Torneo</Label>
+                            </div>
+                            
+                            {!isTournamentMatch ? (
+                                <div className="space-y-4 pt-2 border-t mt-4">
+                                    <div className="grid w-full items-center gap-1.5">
+                                        <Label htmlFor="manual-home-name">Nombre del Equipo Local</Label>
+                                        <Input id="manual-home-name" value={manualHomeTeamName} onChange={(e) => setManualHomeTeamName(e.target.value)} />
+                                    </div>
+                                    <div className="grid w-full items-center gap-1.5">
+                                        <Label htmlFor="manual-away-name">Nombre del Equipo Visitante</Label>
+                                        <Input id="manual-away-name" value={manualAwayTeamName} onChange={(e) => setManualAwayTeamName(e.target.value)} />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4 pt-2 border-t mt-4">
+                                    <div className="space-y-2">
+                                        <Label>Categoría</Label>
+                                        <Select value={localCategoryId} onValueChange={setLocalCategoryId}>
+                                            <SelectTrigger className="w-full h-11">
+                                                <SelectValue placeholder={availableCategories.length > 0 ? "Seleccionar categoría..." : "Sin categorías"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {availableCategories.map(cat => (
+                                                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <TeamSelector label="Equipo Local" teams={teamsInCategory} selectedTeamId={homeTeamId} onSelectTeam={setHomeTeamId} disabledTeamId={awayTeamId} disabled={!localCategoryId} />
+                                    <TeamSelector label="Equipo Visitante" teams={teamsInCategory} selectedTeamId={awayTeamId} onSelectTeam={setAwayTeamId} disabledTeamId={homeTeamId} disabled={!localCategoryId} />
+                                </div>
+                            )}
                         </div>
 
                     </TabsContent>
@@ -334,12 +345,12 @@ export default function SetupPage() {
                     <TabsContent value="summary" className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
                         <h3 className="text-lg font-semibold">Resumen de Configuración</h3>
 
-                        {!pendingMatchConfig?.matchId && (
+                        {!pendingMatchConfig?.isTournamentMatch && (
                             <div className="flex items-start gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive-foreground">
                                 <AlertTriangle className="h-6 w-6 text-destructive mt-1"/>
                                 <div>
                                     <h4 className="font-bold text-destructive">¡ATENCIÓN!</h4>
-                                    <p className="text-sm">Este partido no se cargó desde el Fixture. <strong className="font-semibold">NO SE GENERARÁ UN ARCHIVO DE RESUMEN</strong> al finalizar. Si es un partido oficial, cancélalo y cárgalo desde la lista de "Partidos Programados para Hoy".</p>
+                                    <p className="text-sm">Este es un partido amistoso (no de torneo). <strong className="font-semibold">NO SE GENERARÁ UN ARCHIVO DE RESUMEN</strong> al finalizar. Si es un partido oficial, vuelve al paso anterior y selecciona la opción "Es un Partido de Torneo".</p>
                                 </div>
                             </div>
                         )}
@@ -348,14 +359,14 @@ export default function SetupPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <h4 className="font-medium">Equipo Local</h4>
-                                    <p className="text-muted-foreground">{useManualTeamNames ? manualHomeTeamName : teamsInCategory.find(t => t.id === homeTeamId)?.name || 'N/A'}</p>
+                                    <p className="text-muted-foreground">{!isTournamentMatch ? manualHomeTeamName : teamsInCategory.find(t => t.id === homeTeamId)?.name || 'N/A'}</p>
                                 </div>
                                 <div>
                                     <h4 className="font-medium">Equipo Visitante</h4>
-                                    <p className="text-muted-foreground">{useManualTeamNames ? manualAwayTeamName : teamsInCategory.find(t => t.id === awayTeamId)?.name || 'N/A'}</p>
+                                    <p className="text-muted-foreground">{!isTournamentMatch ? manualAwayTeamName : teamsInCategory.find(t => t.id === awayTeamId)?.name || 'N/A'}</p>
                                 </div>
                             </div>
-                            {!useManualTeamNames && (
+                            {isTournamentMatch && (
                                 <div>
                                     <h4 className="font-medium">Categoría</h4>
                                     <p className="text-muted-foreground">{availableCategories.find(c => c.id === localCategoryId)?.name || 'N/A'}</p>
