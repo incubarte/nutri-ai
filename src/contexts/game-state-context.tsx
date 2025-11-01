@@ -235,25 +235,24 @@ const finalizeMatch = (state: GameState): GameState => {
         playedPeriods.push(finishedPeriodText);
     }
 
-    const newState = {
-        ...state,
-        live: {
-            ...state.live,
-            playedPeriods,
-            clock: {
-                ...state.live.clock,
-                currentTime: 0,
-                isClockRunning: false,
-                periodDisplayOverride: 'End of Game' as PeriodDisplayOverrideType,
-                absoluteElapsedTimeCs: newAbsoluteTime,
-                _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
-                clockStartTimeMs: null,
-                remainingTimeAtStartCs: null,
-                preTimeoutState: null,
-            },
-            playHornTrigger: state.live.playHornTrigger + 1
-        }
+    const finalLiveState: LiveState = {
+        ...state.live,
+        playedPeriods,
+        clock: {
+            ...state.live.clock,
+            currentTime: 0,
+            isClockRunning: false,
+            periodDisplayOverride: 'End of Game' as PeriodDisplayOverrideType,
+            absoluteElapsedTimeCs: newAbsoluteTime,
+            _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
+            clockStartTimeMs: null,
+            remainingTimeAtStartCs: null,
+            preTimeoutState: null,
+        },
+        playHornTrigger: state.live.playHornTrigger + 1
     };
+
+    let newState = gameReducer(state, { type: 'UPDATE_LIVE_STATE', payload: finalLiveState });
     
     if (newState.live.matchId) {
         const summary = generateSummaryData(newState);
@@ -1952,6 +1951,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
       
 
     
+
 
 
 

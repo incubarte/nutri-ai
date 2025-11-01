@@ -56,15 +56,15 @@
     "away": []
   },
   "clock": {
-    "currentTime": 118375,
-    "currentPeriod": 2,
-    "isClockRunning": true,
+    "currentTime": 25200,
+    "currentPeriod": 4,
+    "isClockRunning": false,
     "periodDisplayOverride": null,
     "preTimeoutState": null,
-    "clockStartTimeMs": 1761975909613,
-    "remainingTimeAtStartCs": 118375,
-    "absoluteElapsedTimeCs": 121625,
-    "_liveAbsoluteElapsedTimeCs": 121625,
+    "clockStartTimeMs": null,
+    "remainingTimeAtStartCs": null,
+    "absoluteElapsedTimeCs": 274800,
+    "_liveAbsoluteElapsedTimeCs": 274800,
     "isFlashingZero": false
   },
   "shootout": {
@@ -76,12 +76,13 @@
   },
   "homeTeamName": "Local",
   "awayTeamName": "Visitante",
-  "playHornTrigger": 45,
+  "playHornTrigger": 46,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
   "matchId": null,
   "playedPeriods": [
-    "1ST"
+    "1ST",
+    "2ND"
   ]
 }
