@@ -5,7 +5,7 @@ import React, { useMemo } from 'react';
 import { useGameState } from '@/contexts/game-state-context';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy } from 'lucide-react';
+import { Trophy, Info } from 'lucide-react';
 import type { Team } from '@/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
@@ -25,7 +25,7 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
   }, [tournaments, selectedTournamentId]);
 
   const currentMatch = useMemo(() => {
-    if (!currentTournament || !matchId) return null;
+    if (!currentTournament || !matchId || !currentTournament.matches) return null;
     return currentTournament.matches.find(m => m.id === matchId);
   }, [currentTournament, matchId]);
 
