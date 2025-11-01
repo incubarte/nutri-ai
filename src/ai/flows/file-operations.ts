@@ -11,6 +11,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import fs from 'fs/promises';
 import path from 'path';
+import type { GameSummary } from '@/types';
 
 // --- Save Full Game Summary (JSON) ---
 const GameSummaryInputSchema = z.object({
@@ -47,19 +48,29 @@ const saveGameSummaryFlow = ai.defineFlow(
       const sanitizedFileName = fileName.replace(/[/\\?%*:|"<>]/g, '-');
       const filePath = path.join(summariesDir, sanitizedFileName);
 
+      // El gameSummary ya viene en el formato correcto
+      const summary: GameSummary = input.gameSummary;
+      
+      const homeScore = (summary.statsByPeriod || []).reduce((acc, period) => acc + (period.stats.goals.home?.length ?? 0), 0) 
+        + (summary.shootout?.homeAttempts?.filter(a => a.isGoal).length ?? 0);
+      const awayScore = (summary.statsByPeriod || []).reduce((acc, period) => acc + (period.stats.goals.away?.length ?? 0), 0)
+        + (summary.shootout?.awayAttempts?.filter(a => a.isGoal).length ?? 0);
+      
+
       const contentToSave = {
         date: date.toISOString(),
         category: input.categoryName,
         homeTeam: input.homeTeamName,
         awayTeam: input.awayTeamName,
-        finalScore: `${input.homeScore} - ${input.awayScore}`,
-        summary: input.gameSummary,
+        finalScore: `${homeScore} - ${awayScore}`,
+        summary: summary,
       };
 
       await fs.writeFile(filePath, JSON.stringify(contentToSave, null, 2), 'utf-8');
 
       return { success: true, message: `Resumen JSON guardado en ${filePath}`, filePath };
     } catch (error) {
+      console.error("Error saving game summary:", error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       return { success: false, message: `Error guardando resumen JSON: ${errorMessage}` };
     }
@@ -84,7 +95,7 @@ const CsvSummaryInputSchema = z.object({
   goalsAgainst: z.number(),
   playerStats: z.array(PlayerStatsSchema),
 });
-export type CsvSummaryInput = z.infer<typeof CsvSummaryInputSchema>;
+export type CsvSummaryInput = z-infer<typeof CsvSummaryInputSchema>;
 
 export async function saveTeamCsvSummary(input: CsvSummaryInput): Promise<{ success: boolean; message: string; filePath?: string; }> {
   return saveTeamCsvSummaryFlow(input);
