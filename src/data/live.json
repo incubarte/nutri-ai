@@ -1,7 +1,7 @@
 {
   "score": {
     "home": 1,
-    "away": 1,
+    "away": 0,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -13,89 +13,19 @@
     "home": [
       {
         "team": "home",
-        "timestamp": 1761977995436,
-        "gameTime": 119724,
-        "periodText": "2ND",
+        "timestamp": 1761978787985,
+        "gameTime": 120000,
+        "periodText": "1ST",
         "scorer": {
-          "playerNumber": "1"
+          "playerNumber": "4"
         },
-        "id": "32aa2cbd-2e11-4d08-bf67-0a0bc0411e4c"
-      },
-      {
-        "team": "home",
-        "timestamp": 1761978019084,
-        "gameTime": 30000,
-        "periodText": "OT",
-        "scorer": {
-          "playerNumber": "55"
-        },
-        "id": "a3e2d122-0a33-4a8b-a325-a629d25f718b"
-      },
-      {
-        "team": "home",
-        "timestamp": 1761978019084,
-        "gameTime": 30000,
-        "periodText": "OT",
-        "scorer": {
-          "playerNumber": "55"
-        },
-        "id": "39efcdbb-f8bd-4b6a-b53b-7b0ea6d4caf2"
+        "id": "70b681cd-329b-4a18-9138-ca3a4800f296"
       }
     ],
-    "away": [
-      {
-        "team": "away",
-        "timestamp": 1761977997588,
-        "gameTime": 119724,
-        "periodText": "2ND",
-        "scorer": {
-          "playerNumber": "1"
-        },
-        "id": "eecd53ac-7a92-4fce-a5b4-cc590b813fce"
-      }
-    ]
+    "away": []
   },
   "penaltiesLog": {
-    "home": [
-      {
-        "id": "69fe3b1f-76bb-444c-8d1f-e2406349424a",
-        "team": "home",
-        "playerNumber": "14",
-        "playerName": "WYTRZES JUAN PABLO",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761977955269,
-        "addGameTime": 120000,
-        "addPeriodText": "1ST",
-        "endTimestamp": 1761977999402,
-        "endGameTime": 119724,
-        "endPeriodText": "2ND",
-        "endReason": "goal_on_pp",
-        "timeServed": 3
-      },
-      {
-        "id": "fe3a2391-e9dd-4f8e-9f04-bd39fa025ac3",
-        "team": "home",
-        "playerNumber": "16",
-        "playerName": "MURIAS MATEO",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761977960678,
-        "addGameTime": 119657,
-        "addPeriodText": "1ST",
-        "endTimestamp": 1761977980836,
-        "endGameTime": 107287,
-        "endPeriodText": "1ST",
-        "endReason": "completed",
-        "timeServed": 120
-      }
-    ],
+    "home": [],
     "away": []
   },
   "shotsLog": {
@@ -105,214 +35,114 @@
   "attendance": {
     "home": [
       {
-        "id": "0eab1227-c6d9-45c1-ac74-3a3dc8353fe2",
-        "number": "92",
-        "name": "RUSSO SEBASTIAN"
+        "id": "30662261-1360-4849-874d-515e085c0419",
+        "number": "7",
+        "name": "BURGESS-WEBB BENICIO"
       },
       {
-        "id": "842a3998-2c03-45ce-ab8e-29dd6c2e6c11",
+        "id": "3274dfee-fa07-4c6f-b620-ac7ffb371156",
+        "number": "6",
+        "name": "BURGESS-WEBB ADAM"
+      },
+      {
+        "id": "da0966f7-daa4-4b59-82f7-7868ba51f3c9",
+        "number": "25",
+        "name": "BARCIA SEBASTIAN"
+      },
+      {
+        "id": "5862e9a2-de6c-4f03-92b5-dc4e5a742bd5",
+        "number": "17",
+        "name": "AGUIRRE LEILA"
+      },
+      {
+        "id": "972f54f8-c610-48dc-8045-aa27bee6d173",
         "number": "16",
-        "name": "MURIAS MATEO"
+        "name": "CERSOSIMO MAXIMILIANO"
       },
       {
-        "id": "a3ac6ac5-712f-4e3c-86df-7fd342d4ea20",
-        "number": "89",
-        "name": "ASTORT PABLO"
-      },
-      {
-        "id": "e82a6414-9019-4048-8449-b8ed4837e9fe",
-        "number": "69",
-        "name": "BAENA DIEGO"
-      },
-      {
-        "id": "3e404912-a888-4406-8f3b-f56175f04557",
-        "number": "29",
-        "name": "BRITOS IÑAKI"
-      },
-      {
-        "id": "3e505d69-8bad-46fb-94c8-8d06f96801ee",
-        "number": "23",
-        "name": "BRITOS MARTIN"
-      },
-      {
-        "id": "ee58283f-0fe9-47c1-bca1-2862b0bae48c",
-        "number": "",
-        "name": "BOGGIO JULIAN"
-      },
-      {
-        "id": "217ac014-aa08-47d6-912a-dad6f8a9e836",
-        "number": "19",
-        "name": "BUSTOS WILDE LISANDRO  JOSE"
-      },
-      {
-        "id": "1575c62a-2c58-4d9d-ab20-24282e2cc91a",
+        "id": "1f6ef8f8-42b8-404f-bc83-b256ee26d4e2",
         "number": "28",
-        "name": "CHOMER DAMIAN"
+        "name": "BERKOVICS DIEGO"
       },
       {
-        "id": "604a9347-b148-4f1c-9860-ae91c51441fe",
-        "number": "87",
-        "name": "DESLARME FACUNDO MARTIN"
-      },
-      {
-        "id": "f75e4c76-8ed5-497f-a4f2-c9930337a287",
+        "id": "cc6a242d-c9a1-4945-97cd-b7d63a65ab8a",
         "number": "",
-        "name": "JIMENEZ FRANCISCO"
-      },
-      {
-        "id": "0d4d3785-2aa5-4605-b26f-4c370a4d21cf",
-        "number": "9",
-        "name": "LAGUARDA ALEXIS"
-      },
-      {
-        "id": "4404522a-8547-484b-b061-be346e741545",
-        "number": "80",
-        "name": "MENDIVIL TOMAS"
-      },
-      {
-        "id": "9063de33-be2d-4f69-9484-fa03c2b5f746",
-        "number": "33",
-        "name": "SACRAMENTO AGUSTIN"
-      },
-      {
-        "id": "ad02237a-6aa5-4354-bb82-81956cdfecd5",
-        "number": "77",
-        "name": "SILES FABIAN ARIEL"
-      },
-      {
-        "id": "132132f3-960e-470d-a541-bb3bd8130bcd",
-        "number": "14",
-        "name": "WYTRZES JUAN PABLO"
-      },
-      {
-        "id": "9eb0e515-6220-4c2e-9260-1ebc32391436",
-        "number": "",
-        "name": "MAUGER JEAN RAYMOND"
+        "name": "PARODI JUAN CRUZ"
       }
     ],
     "away": [
       {
-        "id": "f4c12318-e87d-4080-b548-70852e61ab20",
-        "number": "15",
-        "name": "PIPMAN ALEJANDRO"
-      },
-      {
-        "id": "e49c5875-dcee-4e39-8c83-a2d984bfc4de",
-        "number": "87",
-        "name": "FREIRE AGUSTIN"
-      },
-      {
-        "id": "6adee623-8b26-4e75-8503-11bc2dcf4999",
-        "number": "50",
-        "name": "PINELA FACUNDO JOAQUIN"
-      },
-      {
-        "id": "60eb5889-97f8-4c97-83db-9aa95e27aa71",
-        "number": "10",
-        "name": "LUDOVICO AGUSTIN JOSE"
-      },
-      {
-        "id": "da79c4e9-a19a-415d-a6d1-ad76e529a249",
-        "number": "96",
-        "name": "BAÑA JONATHAN"
-      },
-      {
-        "id": "252e6ea2-4ae1-4b28-b6c6-196cbec2b12c",
-        "number": "22",
-        "name": "SOLIMANO CARLOS"
-      },
-      {
-        "id": "a1987da5-5345-4b9d-acbc-a1ee4a2a180e",
-        "number": "27",
-        "name": "SPATOLA SERGIO"
-      },
-      {
-        "id": "24bd1875-fa10-45e0-b0d4-acf55b4844c9",
-        "number": "17",
-        "name": "KNYAZEV ALEXANDER"
-      },
-      {
-        "id": "12f0ed70-d52e-4169-8889-3eeb42a5670f",
-        "number": "6",
-        "name": "SOLIMANO BRIAN"
-      },
-      {
-        "id": "a39c9de8-338f-4047-8336-bd0fac2022a7",
-        "number": "11",
-        "name": "SVERDLICK TOMAS"
-      },
-      {
-        "id": "df2411b1-afe8-4e07-9d88-4f72bae51b15",
-        "number": "14",
-        "name": "FEDOROVSKY MANUEL"
-      },
-      {
-        "id": "8fa5a65d-e4af-4b76-87f3-52358b5b07b4",
-        "number": "86",
-        "name": "SAN ROMÁN GUSTAVO"
-      },
-      {
-        "id": "65331d04-63de-4e1c-91c8-7fba0709b606",
-        "number": "98",
-        "name": "SENILLOSA DANIELA"
-      },
-      {
-        "id": "954d549c-5a3d-471b-8453-0b39bbd9ff2f",
-        "number": "23",
-        "name": "MALETTI SEBASTIÁN"
-      },
-      {
-        "id": "c21f9b48-80c8-4328-9a7c-326bdeae7b4b",
-        "number": "99",
-        "name": "GUTIÉRREZ MATÍAS"
-      },
-      {
-        "id": "9e955daa-5e1f-49de-b954-d146865dcfbd",
+        "id": "880d9492-bd63-4eeb-aa5a-a972d5ff7d43",
         "number": "",
-        "name": "RUBEN JUNIOR ESPOSITO VIGO"
+        "name": "DÍAZ THOMPSON JUAN FRANCISCO"
       },
       {
-        "id": "88019a37-4a47-4944-8420-306ffd932156",
+        "id": "72d43770-8441-440b-b657-5e389e8762e8",
         "number": "",
-        "name": "CEJAS BRIAN"
+        "name": "GALCERAN FACUNDO"
       },
       {
-        "id": "6505e71c-6c8e-42ab-bef2-6132189fc7fc",
+        "id": "d845a790-55fe-4b15-b83d-ed93edc0ac0b",
         "number": "",
-        "name": "GUILLERMO RIVERA (GK)"
+        "name": "GANDO PEDRO"
       },
       {
-        "id": "f95f2ca2-461c-4643-a177-34f3869c8334",
+        "id": "6d55931a-a326-4e7b-8f2f-e074f26a7291",
         "number": "",
-        "name": "PABLO VILLANUEVA (GK)"
+        "name": "HIPP DEMIAN BRIAN"
       },
       {
-        "id": "1b89485c-9fed-4dfb-8fec-2a91eed09224",
-        "number": "16",
-        "name": "MARTINEZ SANTIAGO"
-      },
-      {
-        "id": "09b25ec2-fdea-4132-8b08-a71199e72463",
-        "number": "25",
-        "name": "NICOLAS MENGOCHEA"
-      },
-      {
-        "id": "e5f46afc-dcb2-4322-87be-e7f9cbb480d2",
+        "id": "c5515596-5df0-4b08-bc3b-e4fa485940e9",
         "number": "",
-        "name": "GUTIERREZ GONZALO ANDRÉS"
+        "name": "IBARRA JUAN MANUEL"
+      },
+      {
+        "id": "0c51f16d-0fbd-4b06-9aaa-4adee8a719b5",
+        "number": "",
+        "name": "LUBIAN SANTIAGO"
+      },
+      {
+        "id": "d2dc5b40-5242-4849-ab91-75a91d66585a",
+        "number": "",
+        "name": "MARTINEZ JUAN MANUEL"
+      },
+      {
+        "id": "aca56db4-cc4b-4a91-b2ea-1e6b2bdd56b9",
+        "number": "",
+        "name": "MASTROIANNI ITALO DARIO"
+      },
+      {
+        "id": "76c44832-f195-44aa-87f3-4b90f387d7de",
+        "number": "",
+        "name": "MEDIN FACUNDO"
+      },
+      {
+        "id": "d9ff9437-90d6-4d39-8447-d561ab3b7d74",
+        "number": "",
+        "name": "NAUMANN GORGA MELISA EUGENIA"
+      },
+      {
+        "id": "1ed23c7b-5375-40da-ba7e-c3468e3ed168",
+        "number": "",
+        "name": "TROFIMOV IGOR"
+      },
+      {
+        "id": "a5c592b9-6481-4178-ba82-a0c0bed3e7fe",
+        "number": "",
+        "name": "VILLANUEVA JUAN FRANCISCO"
       }
     ]
   },
   "clock": {
     "currentTime": 0,
-    "currentPeriod": 3,
+    "currentPeriod": 2,
     "isClockRunning": false,
     "periodDisplayOverride": "End of Game",
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 270000,
-    "_liveAbsoluteElapsedTimeCs": 270000,
+    "absoluteElapsedTimeCs": 240000,
+    "_liveAbsoluteElapsedTimeCs": 240000,
     "isFlashingZero": false
   },
   "shootout": {
@@ -322,16 +152,15 @@
     "awayAttempts": [],
     "initiator": null
   },
-  "homeTeamName": "Hazard",
-  "awayTeamName": "Winter",
-  "playHornTrigger": 55,
+  "homeTeamName": "ACEMHH",
+  "awayTeamName": "Ovejas Negras",
+  "playHornTrigger": 57,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
-  "matchId": "be1549ba-91b6-49fd-855c-614104b28a4a",
+  "matchId": "97401fe2-f4a5-444e-9c12-7be7e4fd63be",
   "playedPeriods": [
     "1ST",
-    "2ND",
-    "OT"
+    "2ND"
   ]
 }
