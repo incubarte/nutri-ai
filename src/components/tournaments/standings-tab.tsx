@@ -32,8 +32,8 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
                             <TableHead className="w-1/2">Equipo</TableHead>
                             <TableHead className="text-center">PJ</TableHead>
                             <TableHead className="text-center">PG</TableHead>
-                            <TableHead className="text-center">PG (OT)</TableHead>
-                            <TableHead className="text-center">PP (OT)</TableHead>
+                            <TableHead className="text-center">PG <span className="text-xs opacity-80">(OT)</span></TableHead>
+                            <TableHead className="text-center">PP <span className="text-xs opacity-80">(OT)</span></TableHead>
                             <TableHead className="text-center">PE</TableHead>
                             <TableHead className="text-center">PP</TableHead>
                             <TableHead className="text-center border-l">GF</TableHead>

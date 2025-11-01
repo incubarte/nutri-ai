@@ -90,7 +90,7 @@ export function StandingsDisplay() {
   const cellSize = baseFontSizeRem;
   const pointsSize = baseFontSizeRem * 1.25;
   const ellipsisRowHeight = rowHeightRem * 0.7; // Make ellipsis row a bit shorter
-  const ellipsisFontSize = baseFontSizeRem * 1.8;
+  const ellipsisFontSize = baseFontSizeRem * 2.5;
 
 
   return (
@@ -113,8 +113,8 @@ export function StandingsDisplay() {
                 <TableHead className="w-1/2" style={{ fontSize: `${headerSize}rem` }}>Equipo</TableHead>
                 <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PJ</TableHead>
                 <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PG</TableHead>
-                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PG (OT)</TableHead>
-                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PP (OT)</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PG <span className="text-[0.7em] opacity-80">(OT)</span></TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PP <span className="text-[0.7em] opacity-80">(OT)</span></TableHead>
                 <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PE</TableHead>
                 <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PP</TableHead>
                 <TableHead className="text-center border-l" style={{ fontSize: `${headerSize}rem` }}>GF</TableHead>
@@ -164,4 +164,3 @@ export function StandingsDisplay() {
     </Card>
   );
 }
-
