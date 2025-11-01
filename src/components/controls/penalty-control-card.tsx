@@ -187,7 +187,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
             )}
         >
             <div className="flex justify-between items-center w-full gap-2">
-                <div className="flex items-center gap-3">
+                 <div className="flex items-center gap-3">
                     {isDeleteSelectionMode && (
                         <Checkbox
                             checked={isSelectedForDeletion}
@@ -218,7 +218,7 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                                     <div>
                                         <p className="font-semibold text-card-foreground truncate flex items-center">
                                             {displayPenaltyNumber}
-                                            {state.config.enablePlayerSelectionForPenalties && state.config.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && !penalty.isBenchPenalty && (
+                                            {state.config.showAliasInPenaltyPlayerSelector && state.config.showAliasInControlsPenaltyList && matchedPlayerForPenaltyDisplay && matchedPlayerForPenaltyDisplay.name && !penalty.isBenchPenalty && (
                                                 <span className="ml-1 text-xs text-muted-foreground font-normal">
                                                     - {matchedPlayerForPenaltyDisplay.name}
                                                 </span>
@@ -541,7 +541,6 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
           type: 'REORDER_PENALTIES',
           payload: { team, startIndex, endIndex },
         });
-        toast({ title: "Penalidades Reordenadas", description: `Orden de penalidades para ${teamName} actualizado.` });
       }
     }
     setDraggedPenaltyId(null);
@@ -587,7 +586,6 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
   const handleConfirmPowerPlayGoal = () => {
     if (!pendingPPGoal) return;
     dispatch({ type: 'END_PENALTY_FOR_GOAL', payload: { team: pendingPPGoal.team, penaltyId: pendingPPGoal.penaltyId } });
-    toast({ title: "Penalidad Finalizada", description: "La penalidad se eliminó por el gol en Power Play." });
   };
   
   const handleDismissPowerPlayGoal = () => {

@@ -6,7 +6,20 @@
     "awayShots": 0
   },
   "penalties": {
-    "home": [],
+    "home": [
+      {
+        "id": "d3b3b415-24c0-4a42-9d89-69e975ce5f8e",
+        "playerNumber": "55",
+        "initialDuration": 120,
+        "reducesPlayerCount": true,
+        "clearsOnGoal": true,
+        "isBenchPenalty": false,
+        "_status": "running",
+        "startTime": 120022,
+        "expirationTime": 130738,
+        "_doesNotReducePlayerCountOverride": false
+      }
+    ],
     "away": []
   },
   "goals": {
@@ -99,7 +112,21 @@
     ]
   },
   "penaltiesLog": {
-    "home": [],
+    "home": [
+      {
+        "id": "d3b3b415-24c0-4a42-9d89-69e975ce5f8e",
+        "team": "home",
+        "playerNumber": "55",
+        "penaltyName": "Menor",
+        "initialDuration": 120,
+        "reducesPlayerCount": true,
+        "clearsOnGoal": true,
+        "isBenchPenalty": false,
+        "addTimestamp": 1762014763037,
+        "addGameTime": 120000,
+        "addPeriodText": "2ND"
+      }
+    ],
     "away": []
   },
   "shotsLog": {
@@ -273,15 +300,15 @@
     ]
   },
   "clock": {
-    "currentTime": 121441,
+    "currentTime": 119562,
     "currentPeriod": 2,
     "isClockRunning": false,
     "periodDisplayOverride": null,
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 118559,
-    "_liveAbsoluteElapsedTimeCs": 118559,
+    "absoluteElapsedTimeCs": 120438,
+    "_liveAbsoluteElapsedTimeCs": 120438,
     "isFlashingZero": false
   },
   "shootout": {
