@@ -1167,29 +1167,48 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'MANUAL_END_GAME': {
-      const { live, config } = state;
-      const { clock, score } = live;
+        const { live, config } = state;
+        const { clock, score } = live;
 
-      // This action should only be triggered from an active period
-      if (clock.periodDisplayOverride !== null) break;
+        // This action should only be triggered from an active period
+        if (clock.periodDisplayOverride !== null) break;
 
-      const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
+        const isLastRegularPeriod = clock.currentPeriod === config.numberOfRegularPeriods;
 
-      if (clock.currentPeriod >= totalGamePeriods) {
-        // We are at or beyond the last configured period
-        if (score.home !== score.away) {
-          return finalizeMatch(state);
+        if (isLastRegularPeriod) {
+            if (score.home !== score.away) {
+                return finalizeMatch(state);
+            } else {
+                if (config.numberOfOvertimePeriods > 0) {
+                    return gameReducer(state, { type: 'START_PRE_OT_BREAK' });
+                } else {
+                    // No OTs configured, go straight to decision
+                    return { ...state, live: { ...live, clock: { ...clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' } } };
+                }
+            }
+        } else if (clock.currentPeriod < config.numberOfRegularPeriods) {
+            // Not the last regular period, so just start a normal break
+            return gameReducer(state, { type: 'START_BREAK' });
         } else {
-          newState = { ...state, live: { ...live, clock: { ...clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' }, shootout: { ...live.shootout, isActive: false } } };
+            // This is an OT period
+             const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
+             if(clock.currentPeriod >= totalGamePeriods) {
+                if (score.home !== score.away) {
+                  return finalizeMatch(state);
+                } else {
+                  return { ...state, live: { ...live, clock: { ...clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' } } };
+                }
+             } else {
+                // Not the final OT, but tied. Go to next break.
+                if(score.home === score.away) {
+                  return gameReducer(state, { type: 'START_PRE_OT_BREAK' });
+                } else {
+                  // Game ends on golden goal in OT.
+                  return finalizeMatch(state);
+                }
+             }
         }
-      } else {
-        // We are not at the final period, so we should go to a break.
-        const isPreOT = clock.currentPeriod >= config.numberOfRegularPeriods;
-        const breakType = isPreOT ? 'START_PRE_OT_BREAK' : 'START_BREAK';
-        // This directly calls the reducer logic for starting a break
-        return gameReducer(state, { type: breakType });
-      }
-      break;
+        break;
     }
     case 'ADD_EXTRA_OVERTIME': {
       if (state.live.clock.periodDisplayOverride !== 'AwaitingDecision') break;
@@ -1933,5 +1952,6 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
       
 
     
+
 
 

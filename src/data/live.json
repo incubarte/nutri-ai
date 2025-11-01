@@ -13,13 +13,13 @@
     "home": [
       {
         "team": "home",
-        "timestamp": 1761959154954,
+        "timestamp": 1761959536445,
         "gameTime": 120000,
-        "periodText": "2ND",
+        "periodText": "1ST",
         "scorer": {
           "playerNumber": "1"
         },
-        "id": "973f19a9-7c15-4e02-9ee9-0bebf10bb97a"
+        "id": "996340d5-e40a-40dc-8418-bd3d34abeaf3"
       }
     ],
     "away": []
