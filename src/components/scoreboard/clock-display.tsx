@@ -26,26 +26,21 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
   const preTimeoutTimeCs = clock.preTimeoutState?.time;
   const isPreTimeoutLastMinute = typeof preTimeoutTimeCs === 'number' && preTimeoutTimeCs < 6000 && preTimeoutTimeCs >= 0;
 
-  const getWinnerText = () => {
+  const getStatusText = () => {
     if (clock.periodDisplayOverride === 'Time Out' && clock.preTimeoutState?.team) {
         return `TIMEOUT ${clock.preTimeoutState.team === 'home' ? homeTeamName : awayTeamName}`;
     }
-    if (clock.periodDisplayOverride !== 'End of Game') {
-      return getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout);
-    }
-    
-    if (score.home > score.away) {
-      return <span className="truncate">{homeTeamName || 'Local'}</span>;
-    } else if (score.away > score.home) {
-      return <span className="truncate">{awayTeamName || 'Visitante'}</span>;
-    } else {
+    if (clock.periodDisplayOverride === 'End of Game') {
+      if (score.home > score.away) return <span className="truncate">{homeTeamName || 'Local'}</span>;
+      if (score.away > score.home) return <span className="truncate">{awayTeamName || 'Visitante'}</span>;
       return "EMPATE";
     }
+    return getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout);
   };
 
   const isWinnerState = clock.periodDisplayOverride === 'End of Game' && score.home !== score.away;
   const formattedTime = clock.isFlashingZero ? "00:00" : formatTime(clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
-  const showClock = !isWinnerState && clock.periodDisplayOverride !== 'AwaitingDecision' && clock.periodDisplayOverride !== "End of Game" && clock.periodDisplayOverride !== 'Time Out';
+  const showClock = !isWinnerState && clock.periodDisplayOverride !== 'AwaitingDecision' && clock.periodDisplayOverride !== "End of Game";
 
   return (
     <div className={cn("text-center", className)}>
@@ -70,7 +65,7 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
       >
         <div className="inline-block relative">
           <span>
-            {getWinnerText()}
+            {getStatusText()}
           </span>
           {!clock.isClockRunning && clock.currentTime > 0 && clock.periodDisplayOverride !== "End of Game" && clock.periodDisplayOverride !== 'AwaitingDecision' && !clock.isFlashingZero && (
             <span
@@ -89,7 +84,7 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
           )}
           style={{ fontSize: `${scoreboardLayout.periodSize * 0.45}rem` }}
           >
-          {getPeriodText(clock.preTimeoutState.period, state.config.numberOfRegularPeriods)} - {formatTime(clock.preTimeoutState.time, { showTenths: isPreTimeoutLastMinute, includeMinutesForTenths: false })}
+          Retornando a: {getPeriodText(clock.preTimeoutState.period, state.config.numberOfRegularPeriods)} - {formatTime(clock.preTimeoutState.time, { showTenths: isPreTimeoutLastMinute, includeMinutesForTenths: false })}
           {clock.preTimeoutState.override ? ` (${clock.preTimeoutState.override})` : ''}
         </div>
       )}

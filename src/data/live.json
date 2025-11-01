@@ -224,11 +224,20 @@
     ]
   },
   "clock": {
-    "currentTime": 120000,
+    "currentTime": 826,
     "currentPeriod": 1,
     "isClockRunning": false,
-    "periodDisplayOverride": null,
-    "preTimeoutState": null,
+    "periodDisplayOverride": "Time Out",
+    "preTimeoutState": {
+      "period": 1,
+      "time": 120000,
+      "isClockRunning": false,
+      "override": null,
+      "clockStartTimeMs": null,
+      "remainingTimeAtStartCs": null,
+      "absoluteElapsedTimeCs": 0,
+      "team": "home"
+    },
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
     "absoluteElapsedTimeCs": 0,

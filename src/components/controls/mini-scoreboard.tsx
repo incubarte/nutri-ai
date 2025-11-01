@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Minus, Play, Pause, ChevronLeft, ChevronRight, ChevronsRight, User, ListFilter, Search, ClipboardList, ChevronsUpDown, Check, TimerOff, PlusCircle, Swords } from 'lucide-react';
+import { Plus, Minus, Play, Pause, ChevronLeft, ChevronRight, ChevronsRight, User, ListFilter, Search, ClipboardList, ChevronsUpDown, Check, TimerOff, PlusCircle, Swords, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
@@ -621,7 +621,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
         <Button
           onClick={handlePrepareStartTimeout}
           variant="outline"
-          className="h-8 text-xs bg-card/80 border-dashed border-white/20 backdrop-blur-sm"
+          className="h-8 text-xs bg-card/80 border-dashed border-white/40 backdrop-blur-sm"
           disabled={isTimeOutButtonDisabled}
           aria-label="Iniciar Time Out"
         >
@@ -893,7 +893,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
               >
                 <ChevronRight className="h-5 w-5" />
               </Button>
-              {!state.live.clock.isClockRunning && state.live.clock.currentTime > 0 && state.live.clock.periodDisplayOverride !== "End of Game" && !isShootout && !showNextActionButton && editingSegment === null && (
+              {!state.live.clock.isClockRunning && clock.currentTime > 0 && clock.periodDisplayOverride !== "End of Game" && !isShootout && !showNextActionButton && editingSegment === null && (
                 <span className="absolute top-[-0.25rem] right-1 text-[0.6rem] font-normal text-muted-foreground normal-case px-1 rounded-sm bg-background/30">
                   Paused
                 </span>
