@@ -13,7 +13,7 @@ import { useStandings } from '@/hooks/use-standings';
 
 export function StandingsDisplay() {
   const { state } = useGameState();
-  const { tournaments, selectedTournamentId, selectedMatchCategory } = state.config;
+  const { tournaments, selectedTournamentId, selectedMatchCategory, scoreboardLayout } = state.config;
   const { matchId } = state.live;
 
   const currentTournament = useMemo(() => {
@@ -73,12 +73,12 @@ export function StandingsDisplay() {
   }, [standings, currentMatch]);
 
 
-  if (!currentMatch) return null;
+  if (!currentMatch || !scoreboardLayout) return null;
   const homeTeamId = currentMatch.homeTeamId;
   const awayTeamId = currentMatch.awayTeamId;
 
   const headerClass = "text-base lg:text-lg";
-  const cellClass = "text-base lg:text-xl py-2";
+  const cellClass = "py-2";
 
   return (
     <Card className="bg-card shadow-lg flex flex-col h-full">
@@ -90,7 +90,7 @@ export function StandingsDisplay() {
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden">
         <ScrollArea className="h-full">
-          <Table>
+          <Table style={{ fontSize: `${scoreboardLayout.standingsTableFontSize}rem` }}>
             <TableHeader>
               <TableRow>
                 <TableHead className={cn("text-center", headerClass)}>Puesto</TableHead>
@@ -121,7 +121,7 @@ export function StandingsDisplay() {
                 const isMatchTeam = teamStat.id === homeTeamId || teamStat.id === awayTeamId;
                 
                 return (
-                    <TableRow key={teamStat.id} className={cn(isMatchTeam && "bg-primary/20 text-foreground font-bold", "text-lg")}>
+                    <TableRow key={teamStat.id} className={cn(isMatchTeam && "bg-primary/20 font-bold", "text-lg")}>
                         <TableCell className={cn("text-center font-bold", cellClass)}>{teamStat.rank}</TableCell>
                         <TableCell className={cn("font-medium", cellClass)}>{teamStat.name}</TableCell>
                         <TableCell className={cn("text-center", cellClass)}>{teamStat.pj}</TableCell>
@@ -132,7 +132,7 @@ export function StandingsDisplay() {
                         <TableCell className={cn("text-center", cellClass)}>{teamStat.pp}</TableCell>
                         <TableCell className={cn("text-center border-l", cellClass)}>{teamStat.gf}</TableCell>
                         <TableCell className={cn("text-center", cellClass)}>{teamStat.gc}</TableCell>
-                        <TableCell className={cn("text-center font-bold text-xl lg:text-2xl border-l", cellClass)}>{teamStat.puntos}</TableCell>
+                        <TableCell className={cn("text-center font-bold border-l", cellClass)} style={{ fontSize: `${scoreboardLayout.standingsTableFontSize * 1.25}rem`}}>{teamStat.puntos}</TableCell>
                     </TableRow>
                 )
               })}

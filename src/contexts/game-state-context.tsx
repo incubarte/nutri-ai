@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -76,6 +77,7 @@ export const INITIAL_LAYOUT_SETTINGS: ScoreboardLayoutSettings = {
   penaltyPlayerNumberSize: 3.5,
   penaltyTimeSize: 3.5,
   penaltyPlayerIconSize: 2.5,
+  standingsTableFontSize: 1,
   primaryColor: '223 65% 33%',
   accentColor: '40 100% 67%',
   backgroundColor: '223 70% 11%',

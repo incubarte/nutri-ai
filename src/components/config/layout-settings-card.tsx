@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useMemo, forwardRef, useImperativeHandle, useState, useEffect } from "react";
@@ -190,6 +191,7 @@ export const LayoutSettingsCard = forwardRef<LayoutSettingsCardRef, LayoutSettin
             <SliderControl label="Nº Jugador Penalidad" value={scoreboardLayout.penaltyPlayerNumberSize} onValueChange={(v) => handleValueChange('penaltyPlayerNumberSize', v)} min={1.5} max={7} step={0.1} />
             <SliderControl label="Tiempo Penalidad" value={scoreboardLayout.penaltyTimeSize} onValueChange={(v) => handleValueChange('penaltyTimeSize', v)} min={1.5} max={7} step={0.1} />
             <SliderControl label="Icono Jugador Penalidad" value={scoreboardLayout.penaltyPlayerIconSize} onValueChange={(v) => handleValueChange('penaltyPlayerIconSize', v)} min={1} max={5} step={0.1} />
+            <SliderControl label="Fuente Tabla Posiciones" value={scoreboardLayout.standingsTableFontSize} onValueChange={(v) => handleValueChange('standingsTableFontSize', v)} min={0.5} max={3} step={0.05} />
           </div>
         </div>
         <div className="border-t pt-6">
