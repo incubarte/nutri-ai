@@ -328,6 +328,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                     <Separator />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <PlayerStatsSection 
+                          team="home"
                           teamName={homeTeam?.name || ''} 
                           allPlayers={homeTeam?.players} 
                           playerStats={aggregatedStats.home} 
@@ -335,11 +336,12 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                           editable={false} 
                           showAttendanceControls={true} 
                           isAttendanceEditing={isAttendanceEditing}
-                          onToggleAttendance={(playerId) => handleToggleAttendance('home', playerId)}
+                          onToggleAttendance={handleToggleAttendance}
                           onEditToggle={setIsAttendanceEditing} 
                           onSave={handleSaveAttendance} 
                         />
-                        <PlayerStatsSection 
+                        <PlayerStatsSection
+                          team="away"
                           teamName={awayTeam?.name || ''}
                           allPlayers={awayTeam?.players}
                           playerStats={aggregatedStats.away}
@@ -347,7 +349,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                           editable={false}
                           showAttendanceControls={true}
                           isAttendanceEditing={isAttendanceEditing}
-                          onToggleAttendance={(playerId) => handleToggleAttendance('away', playerId)}
+                          onToggleAttendance={handleToggleAttendance}
                           onEditToggle={setIsAttendanceEditing}
                           onSave={handleSaveAttendance}
                         />
@@ -424,8 +426,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                       <div key={`stats-${periodText}`} className="space-y-4">
                         <h3 className="text-xl font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <PlayerStatsSection teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={periodData?.stats.playerStats.home} attendance={localSummary.attendance.home} editable={isEditing} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
-                            <PlayerStatsSection teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={periodData?.stats.playerStats.away} attendance={localSummary.attendance.away} editable={isEditing} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
+                            <PlayerStatsSection team="home" teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={periodData?.stats.playerStats.home} attendance={localSummary.attendance.home} editable={isEditing} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
+                            <PlayerStatsSection team="away" teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={periodData?.stats.playerStats.away} attendance={localSummary.attendance.away} editable={isEditing} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
                         </div>
                       </div>
                     );

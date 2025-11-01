@@ -4,13 +4,14 @@
 import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter as UiTableFooter } from "@/components/ui/table";
-import type { SummaryPlayerStats, PlayerData, AttendedPlayerInfo } from "@/types";
+import type { SummaryPlayerStats, PlayerData, AttendedPlayerInfo, Team } from "@/types";
 import { BarChart3, Edit3, Check, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 
 export const PlayerStatsSection = ({ 
+    team,
     teamName, 
     allPlayers,
     playerStats, 
@@ -24,6 +25,7 @@ export const PlayerStatsSection = ({
     onEditToggle,
     onSave,
 }: { 
+    team: Team;
     teamName: string; 
     allPlayers?: PlayerData[];
     playerStats?: SummaryPlayerStats[]; 
@@ -33,7 +35,7 @@ export const PlayerStatsSection = ({
     onStatChange?: (playerId: string, field: 'shots', value: string) => void;
     showAttendanceControls?: boolean;
     isAttendanceEditing?: boolean;
-    onToggleAttendance?: (playerId: string) => void;
+    onToggleAttendance?: (team: Team, playerId: string) => void;
     onEditToggle?: (isEditing: boolean) => void;
     onSave?: () => void;
 }) => {
@@ -141,7 +143,7 @@ export const PlayerStatsSection = ({
                                             isAttendanceEditing && !player.attended && "text-muted-foreground opacity-50",
                                             isAttendanceEditing && "cursor-pointer"
                                         )}
-                                        onClick={isAttendanceEditing ? () => onToggleAttendance?.(player.id) : undefined}
+                                        onClick={isAttendanceEditing ? () => onToggleAttendance?.(team, player.id) : undefined}
                                     >
                                         <TableCell className="font-semibold">{player.number || 'S/N'}</TableCell>
                                         <TableCell className="text-xs">{player.name}</TableCell>
