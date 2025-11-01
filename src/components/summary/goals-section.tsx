@@ -30,6 +30,8 @@ interface EditableGoalRowProps {
 const EditableGoalRow = ({ goal, players, onSave, onCancel, onDelete }: EditableGoalRowProps) => {
     const [scorerNumber, setScorerNumber] = useState(goal.scorer?.playerNumber || '');
     const [assistNumber, setAssistNumber] = useState(goal.assist?.playerNumber || '');
+    
+    const validPlayers = players.filter(p => p.number && p.number.trim() !== '');
 
     const handleSave = () => {
         const scorer = players.find(p => p.number === scorerNumber);
@@ -49,16 +51,16 @@ const EditableGoalRow = ({ goal, players, onSave, onCancel, onDelete }: Editable
                 <Select value={scorerNumber} onValueChange={setScorerNumber}>
                     <SelectTrigger><SelectValue placeholder="Goleador" /></SelectTrigger>
                     <SelectContent>
-                        {players.map(p => <SelectItem key={p.id} value={p.number}>#{p.number} {p.name}</SelectItem>)}
+                        {validPlayers.map(p => <SelectItem key={p.id} value={p.number}>#{p.number} {p.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
             </TableCell>
             <TableCell>
-                <Select value={assistNumber} onValueChange={setAssistNumber}>
+                <Select value={assistNumber} onValueChange={(value) => setAssistNumber(value === "no-assist" ? "" : value)}>
                     <SelectTrigger><SelectValue placeholder="Asistente" /></SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="">-- Sin Asistencia --</SelectItem>
-                        {players.map(p => <SelectItem key={p.id} value={p.number} disabled={p.number === scorerNumber}>#{p.number} {p.name}</SelectItem>)}
+                        <SelectItem value="no-assist">-- Sin Asistencia --</SelectItem>
+                        {validPlayers.map(p => <SelectItem key={p.id} value={p.number} disabled={p.number === scorerNumber}>#{p.number} {p.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
             </TableCell>

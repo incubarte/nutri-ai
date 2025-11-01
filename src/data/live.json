@@ -1,7 +1,7 @@
 {
   "score": {
     "home": 0,
-    "away": 0,
+    "away": 1,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -11,10 +11,41 @@
   },
   "goals": {
     "home": [],
-    "away": []
+    "away": [
+      {
+        "team": "away",
+        "timestamp": 1761971821099,
+        "gameTime": 119543,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "1"
+        },
+        "id": "92245746-7a65-4dab-84c2-5c5e6bfcb995"
+      }
+    ]
   },
   "penaltiesLog": {
-    "home": [],
+    "home": [
+      {
+        "id": "36a469d5-eb48-4a55-95af-8a850fe3002d",
+        "team": "home",
+        "playerNumber": "26",
+        "playerName": "MALPERI DIEGO",
+        "penaltyName": "Menor",
+        "initialDuration": 120,
+        "reducesPlayerCount": true,
+        "clearsOnGoal": true,
+        "isBenchPenalty": false,
+        "addTimestamp": 1761971814181,
+        "addGameTime": 120000,
+        "addPeriodText": "1ST",
+        "endTimestamp": 1761971822700,
+        "endGameTime": 119390,
+        "endPeriodText": "1ST",
+        "endReason": "goal_on_pp",
+        "timeServed": 6
+      }
+    ],
     "away": []
   },
   "shotsLog": {
@@ -173,15 +204,15 @@
     ]
   },
   "clock": {
-    "currentTime": 30000,
-    "currentPeriod": 0,
-    "isClockRunning": true,
-    "periodDisplayOverride": "Warm-up",
+    "currentTime": 0,
+    "currentPeriod": 2,
+    "isClockRunning": false,
+    "periodDisplayOverride": "End of Game",
     "preTimeoutState": null,
-    "clockStartTimeMs": 1761970926081,
-    "remainingTimeAtStartCs": 30000,
-    "absoluteElapsedTimeCs": 0,
-    "_liveAbsoluteElapsedTimeCs": 0,
+    "clockStartTimeMs": null,
+    "remainingTimeAtStartCs": null,
+    "absoluteElapsedTimeCs": 240000,
+    "_liveAbsoluteElapsedTimeCs": 240000,
     "isFlashingZero": false
   },
   "shootout": {
@@ -193,12 +224,15 @@
   },
   "homeTeamName": "Hazard Blue",
   "awayTeamName": "Hazard white",
-  "playHornTrigger": 36,
+  "playHornTrigger": 38,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
   "matchId": "d072b765-7557-4fce-b90a-2b1466ece00e",
-  "playedPeriods": [],
+  "playedPeriods": [
+    "1ST",
+    "2ND"
+  ],
   "homeTeamSubName": "Blue",
   "awayTeamSubName": "white"
 }

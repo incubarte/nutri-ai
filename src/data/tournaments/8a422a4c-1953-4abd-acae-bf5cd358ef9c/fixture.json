@@ -113,7 +113,10 @@
       "homeTeamId": "bcae9647-593b-4f67-b70b-671e9b4a26a4",
       "awayTeamId": "9935eae8-7e9b-4e11-b483-a368ac743287",
       "playersPerTeam": 5,
-      "id": "d072b765-7557-4fce-b90a-2b1466ece00e"
+      "id": "d072b765-7557-4fce-b90a-2b1466ece00e",
+      "homeScore": 0,
+      "awayScore": 1,
+      "overTimeOrShootouts": false
     }
   ]
 }
