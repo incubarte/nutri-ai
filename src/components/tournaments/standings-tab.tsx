@@ -32,6 +32,7 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
                             <TableHead className="text-center">PJ</TableHead>
                             <TableHead className="text-center">PG</TableHead>
                             <TableHead className="text-center">PG (OT)</TableHead>
+                            <TableHead className="text-center">PP (OT)</TableHead>
                             <TableHead className="text-center">PE</TableHead>
                             <TableHead className="text-center">PP</TableHead>
                             <TableHead className="text-center">GF</TableHead>
@@ -47,8 +48,9 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
                                 <TableCell className="text-center">{team.pj}</TableCell>
                                 <TableCell className="text-center">{team.pg}</TableCell>
                                 <TableCell className="text-center">{team.pg_ot}</TableCell>
+                                <TableCell className="text-center">{team.pp_ot}</TableCell>
                                 <TableCell className="text-center">{team.pe}</TableCell>
-                                <TableCell className="text-center">{team.pp + team.pp_ot}</TableCell>
+                                <TableCell className="text-center">{team.pp}</TableCell>
                                 <TableCell className="text-center">{team.gf}</TableCell>
                                 <TableCell className="text-center">{team.gc}</TableCell>
                                 <TableCell className="text-center font-bold text-lg">{team.puntos}</TableCell>
@@ -66,13 +68,13 @@ export function StandingsTab() {
   const { tournaments, selectedTournamentId } = state.config;
 
   const selectedTournament = useMemo(() => {
-    return tournaments.find(t => t.id === selectedTournamentId);
+    return (tournaments || []).find(t => t.id === selectedTournamentId);
   }, [tournaments, selectedTournamentId]);
 
   const categoriesWithTeams = useMemo(() => {
     if (!selectedTournament) return [];
     return selectedTournament.categories.filter(cat => 
-        selectedTournament.teams.some(team => team.category === cat.id)
+        (selectedTournament.teams || []).some(team => team.category === cat.id)
     );
   }, [selectedTournament]);
 
