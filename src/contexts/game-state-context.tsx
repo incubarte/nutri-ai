@@ -625,15 +625,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         break;
     }
     case 'ADD_GOAL': {
-      const { clock, config, live } = state;
+      const { live, config } = state;
 
       let periodTextForLog: string;
       if (action.payload.periodText) {
           periodTextForLog = action.payload.periodText;
       } else {
-          periodTextForLog = getActualPeriodText(clock.currentPeriod, clock.periodDisplayOverride, config.numberOfRegularPeriods || 2, live.shootout);
-          if (clock.periodDisplayOverride === 'Break' || clock.periodDisplayOverride === 'Pre-OT Break') {
-            periodTextForLog = getPeriodText(clock.currentPeriod, config.numberOfRegularPeriods || 2);
+          periodTextForLog = getActualPeriodText(live.clock.currentPeriod, live.clock.periodDisplayOverride, config.numberOfRegularPeriods || 2, live.shootout);
+          if (live.clock.periodDisplayOverride === 'Break' || live.clock.periodDisplayOverride === 'Pre-OT Break') {
+            periodTextForLog = getPeriodText(live.clock.currentPeriod, config.numberOfRegularPeriods || 2);
           }
       }
 
@@ -1283,7 +1283,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'START_SHOOTOUT': {
       if (state.live.clock.periodDisplayOverride !== 'AwaitingDecision') break;
-      const finishedPeriodText = getPeriodText(live.clock.currentPeriod, state.config.numberOfRegularPeriods);
+      const { live, config } = state;
+      const finishedPeriodText = getPeriodText(live.clock.currentPeriod, config.numberOfRegularPeriods);
       const playedPeriods = [...live.playedPeriods];
       if (!playedPeriods.includes(finishedPeriodText)) {
           playedPeriods.push(finishedPeriodText);
