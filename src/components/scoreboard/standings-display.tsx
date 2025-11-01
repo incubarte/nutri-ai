@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo } from 'react';
@@ -48,13 +47,11 @@ export function StandingsDisplay() {
     
     const indicesToShow = new Set<number>();
     
-    // Add teams around the first team
-    if(homeIndex > 0) indicesToShow.add(homeIndex - 1);
+    indicesToShow.add(homeIndex > 0 ? homeIndex - 1 : homeIndex);
     indicesToShow.add(homeIndex);
     if(homeIndex < standings.length - 1) indicesToShow.add(homeIndex + 1);
 
-    // Add teams around the second team
-    if(awayIndex > 0) indicesToShow.add(awayIndex - 1);
+    indicesToShow.add(awayIndex > 0 ? awayIndex - 1 : awayIndex);
     indicesToShow.add(awayIndex);
     if(awayIndex < standings.length - 1) indicesToShow.add(awayIndex + 1);
     
@@ -92,6 +89,7 @@ export function StandingsDisplay() {
   const ellipsisRowHeight = rowHeightRem * 0.7; // Make ellipsis row a bit shorter
   const ellipsisFontSize = baseFontSizeRem * 2.5;
 
+  const statColumnWidth = `${baseFontSizeRem * 3}rem`;
 
   return (
     <Card className="bg-card shadow-lg flex flex-col h-full">
@@ -109,17 +107,17 @@ export function StandingsDisplay() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, height: `${rowHeightRem}rem` }}>Puesto</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, height: `${rowHeightRem}rem`, width: statColumnWidth }}>Puesto</TableHead>
                 <TableHead className="w-1/2" style={{ fontSize: `${headerSize}rem` }}>Equipo</TableHead>
-                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PJ</TableHead>
-                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PG</TableHead>
-                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PG <span className="text-[0.7em] opacity-80">(OT)</span></TableHead>
-                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PP <span className="text-[0.7em] opacity-80">(OT)</span></TableHead>
-                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PE</TableHead>
-                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PP</TableHead>
-                <TableHead className="text-center border-l" style={{ fontSize: `${headerSize}rem` }}>GF</TableHead>
-                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>GC</TableHead>
-                <TableHead className="text-center font-bold border-l" style={{ fontSize: `${headerSize}rem` }}>Puntos</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PJ</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PG</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PG <span className="text-[0.7em] opacity-80">(OT)</span></TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PP <span className="text-[0.7em] opacity-80">(OT)</span></TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PE</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>PP</TableHead>
+                <TableHead className="text-center border-l" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>GF</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>GC</TableHead>
+                <TableHead className="text-center font-bold border-l" style={{ fontSize: `${headerSize}rem`, width: statColumnWidth }}>Puntos</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -128,7 +126,7 @@ export function StandingsDisplay() {
                     return (
                         <TableRow key={teamStat.id}>
                             <TableCell colSpan={11} className="p-0" style={{ height: `${ellipsisRowHeight}rem` }}>
-                                <div className="flex items-center justify-center h-full text-muted-foreground/50 tracking-widest" style={{ fontSize: `${ellipsisFontSize}rem`}}>
+                                <div className="flex items-center justify-center h-full text-muted-foreground/50 tracking-widest" style={{ fontSize: `${ellipsisFontSize}rem`, lineHeight: 1}}>
                                     ...
                                 </div>
                             </TableCell>
