@@ -39,6 +39,11 @@
     ],
     "away": [
       {
+        "id": "72d43770-8441-440b-b657-5e389e8762e8",
+        "number": "",
+        "name": "GALCERAN FACUNDO"
+      },
+      {
         "id": "d845a790-55fe-4b15-b83d-ed93edc0ac0b",
         "number": "",
         "name": "GANDO PEDRO"
@@ -52,6 +57,11 @@
         "id": "c5515596-5df0-4b08-bc3b-e4fa485940e9",
         "number": "",
         "name": "IBARRA JUAN MANUEL"
+      },
+      {
+        "id": "0c51f16d-0fbd-4b06-9aaa-4adee8a719b5",
+        "number": "",
+        "name": "LUBIAN SANTIAGO"
       },
       {
         "id": "d2dc5b40-5242-4849-ab91-75a91d66585a",

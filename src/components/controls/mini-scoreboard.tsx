@@ -56,7 +56,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   }
   
   const isMatchFromFixture = !!state.live.matchId;
-
+  const isWarmup = state.live.clock.periodDisplayOverride === 'Warm-up';
 
   const [pendingConfirmation, setPendingConfirmation] = useState<{
     title: string;
@@ -416,10 +416,6 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     
     dispatch({ type: 'SET_TIME', payload: { minutes: payloadMinutes, seconds: payloadSeconds } });
     
-    toast({
-      title: "Reloj Actualizado",
-      description: `Tiempo establecido a ${formatTime(newTimeCs, { showTenths: newTimeCs < 6000, includeMinutesForTenths: true })}`,
-    });
     setEditingSegment(null);
   };
 
@@ -699,7 +695,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className={cn("h-7 w-7 shrink-0")}
+                            className={cn("h-7 w-7 shrink-0 rounded-full", isWarmup && isMatchFromFixture && "animate-green-glow")}
                             onClick={() => setIsHomePlayersDialogOpen(true)}
                             disabled={!matchedHomeTeamId}
                             aria-label="Editar jugadores del equipo local"
@@ -974,7 +970,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className={cn("h-7 w-7 shrink-0")}
+                            className={cn("h-7 w-7 shrink-0 rounded-full", isWarmup && isMatchFromFixture && "animate-green-glow")}
                             onClick={() => setIsAwayPlayersDialogOpen(true)}
                             disabled={!matchedAwayTeamId}
                             aria-label="Editar jugadores del equipo visitante"
