@@ -601,7 +601,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             absoluteElapsedTimeCs: newAbsoluteTime,
             _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
         }}};
-        toastMessage = { title: "Reloj Ajustado", description: `Tiempo ajustado en ${action.payload / 100 > 0 ? '+' : ''}${action.payload / 100} segundo(s).` };
         break;
     }
     case 'SET_PERIOD': {
@@ -1285,7 +1284,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'START_SHOOTOUT': {
       if (state.live.clock.periodDisplayOverride !== 'AwaitingDecision') break;
       const finishedPeriodText = getPeriodText(live.clock.currentPeriod, state.config.numberOfRegularPeriods);
-      const playedPeriods = [...state.live.playedPeriods];
+      const playedPeriods = [...live.playedPeriods];
       if (!playedPeriods.includes(finishedPeriodText)) {
           playedPeriods.push(finishedPeriodText);
       }
