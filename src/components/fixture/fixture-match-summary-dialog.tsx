@@ -28,7 +28,7 @@ interface FixtureMatchSummaryDialogProps {
 type EditableStats = Record<string, Record<string, { shots: string }>>;
 
 export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournament }: FixtureMatchSummaryDialogProps) {
-  const { dispatch } = useGameState();
+  const { state, dispatch } = useGameState();
   const { toast } = useToast();
   
   const [localSummary, setLocalSummary] = useState<GameSummary | undefined>(undefined);
@@ -155,8 +155,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   };
   
   const handleAddPenaltySubmit = (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs?: number, periodText?: string) => {
-    if(!match || !tournament || !addPenaltyContext) return;
-    const penaltyDef = tournament.penaltyTypes.find(p => p.id === penaltyTypeId);
+    if(!match || !addPenaltyContext) return;
+    const penaltyDef = state.config.penaltyTypes.find(p => p.id === penaltyTypeId);
     if (!penaltyDef) return;
 
     const penaltyLog: PenaltyLog = {
@@ -297,7 +297,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
           <TabsContent value="goalsByPeriod" className="flex-grow overflow-hidden mt-4">
             <ScrollArea className="h-full pr-6 -mr-6">
               <div className="space-y-8">
-                  {playedPeriods?.map(periodText => {
+                  {(playedPeriods || []).map(periodText => {
                     const periodData = statsByPeriod?.find(p => p.period === periodText);
                     return (
                       <div key={`goals-${periodText}`} className="space-y-4">
@@ -316,7 +316,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
           <TabsContent value="penaltiesByPeriod" className="flex-grow overflow-hidden mt-4">
              <ScrollArea className="h-full pr-6 -mr-6">
                  <div className="space-y-8">
-                  {playedPeriods?.map(periodText => {
+                  {(playedPeriods || []).map(periodText => {
                     const periodData = statsByPeriod?.find(p => p.period === periodText);
                     return (
                       <div key={`penalties-${periodText}`} className="space-y-4">
@@ -347,7 +347,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                     )}
                 </div>
                  <div className="space-y-8">
-                  {playedPeriods?.map(periodText => {
+                  {(playedPeriods || []).map(periodText => {
                     const periodData = statsByPeriod?.find(p => p.period === periodText);
                     return (
                       <div key={`stats-${periodText}`} className="space-y-4">
@@ -383,8 +383,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
             <AddPenaltyForm
               homeTeamName={homeTeam?.name || 'Local'}
               awayTeamName={awayTeam?.name || 'Visitante'}
-              penaltyTypes={tournament.penaltyTypes || []}
-              defaultPenaltyTypeId={tournament.defaultPenaltyTypeId || null}
+              penaltyTypes={state.config.penaltyTypes || []}
+              defaultPenaltyTypeId={state.config.defaultPenaltyTypeId || null}
               onPenaltySent={handleAddPenaltySubmit}
               preselectedTeam={addPenaltyContext.team}
               showTimeInput={true}
