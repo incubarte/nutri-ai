@@ -127,7 +127,7 @@ export function StandingsDisplay() {
                 if (teamStat.isEllipsis) {
                     return (
                         <TableRow key={teamStat.id}>
-                            <TableCell colSpan={11} className="text-center text-muted-foreground/50 py-0 tracking-widest" style={{ fontSize: `${ellipsisFontSize}rem`, height: `${ellipsisRowHeight}rem` }}>
+                            <TableCell colSpan={11} className="text-center text-muted-foreground/50 tracking-widest align-middle" style={{ fontSize: `${ellipsisFontSize}rem`, height: `${ellipsisRowHeight}rem`, lineHeight: '0' }}>
                                 ...
                             </TableCell>
                         </TableRow>
