@@ -83,7 +83,7 @@ async function writeTournament(tournament: Tournament): Promise<void> {
             teams: tournament.teams || [],
         };
         
-        const fixtureMatches: MatchData[] = [];
+        const fixtureMatches: Omit<MatchData, 'summary'>[] = [];
         const summaryWritePromises: Promise<void>[] = [];
 
         (tournament.matches || []).forEach(match => {
@@ -93,15 +93,12 @@ async function writeTournament(tournament: Tournament): Promise<void> {
                 const summaryPath = path.join(summariesDir, `${match.id}.json`);
                 summaryWritePromises.push(writeData(summaryPath, summary));
                 
-                const homeScore = (summary.statsByPeriod || []).reduce((acc: number, p: PeriodSummary) => acc + (p.stats.goals.home?.length ?? 0), 0);
-                const awayScore = (summary.statsByPeriod || []).reduce((acc: number, p: PeriodSummary) => acc + (p.stats.goals.away?.length ?? 0), 0);
+                const homeScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals.home?.length ?? 0), 0);
+                const awayScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals.away?.length ?? 0), 0);
                 
                 matchWithoutSummary.homeScore = homeScore;
                 matchWithoutSummary.awayScore = awayScore;
-
-                const wentToOTOrSO = (summary.playedPeriods || []).some(p => p.startsWith('OT')) || (summary.shootout && (summary.shootout.homeAttempts.length > 0 || summary.shootout.awayAttempts.length > 0));
-
-                matchWithoutSummary.overTimeOrShootouts = wentToOTOrSO;
+                matchWithoutSummary.overTimeOrShootouts = summary.overTimeOrShootouts;
             }
             fixtureMatches.push(matchWithoutSummary);
         });
@@ -129,7 +126,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
         const tournamentDetails = await readTournament(tournamentId);
 
         if (!tournamentDetails) {
-            return NextResponse.json({ message: "Tournament not found" }, { status: 404 });
+            // If tournament directory doesn't exist, return success with empty details
+            // so the frontend can handle a new/empty tournament gracefully.
+            const config = await readData(CONFIG_PATH);
+            const tournamentMeta = (config?.tournaments || []).find((t: any) => t.id === tournamentId);
+            return NextResponse.json({ tournament: { ...tournamentMeta, teams: [], categories: [], matches: [] } });
         }
 
         const config = await readData(CONFIG_PATH);
