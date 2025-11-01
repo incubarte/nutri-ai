@@ -14,6 +14,7 @@ import { FixtureCalendarView } from '@/components/fixture/fixture-calendar-view'
 import { FixtureListView } from '@/components/fixture/fixture-list-view';
 import { Separator } from '@/components/ui/separator';
 import { StandingsTab } from '@/components/tournaments/standings-tab';
+import { PlayerStatsTab } from '@/components/tournaments/player-stats-tab';
 
 export default function TournamentDetailPage() {
   const params = useParams();
@@ -35,7 +36,8 @@ export default function TournamentDetailPage() {
   
   useEffect(() => {
     const newTab = searchParams.get('tab');
-    if (newTab === 'fixture' || newTab === 'teamsAndCategories' || newTab === 'standings') {
+    const validTabs = ['teamsAndCategories', 'fixture', 'standings', 'playerStats'];
+    if (newTab && validTabs.includes(newTab)) {
       setActiveTab(newTab);
     }
   }, [searchParams]);
@@ -78,10 +80,11 @@ export default function TournamentDetailPage() {
       <Separator />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="teamsAndCategories">Equipos y Categorías</TabsTrigger>
           <TabsTrigger value="fixture">Fixture</TabsTrigger>
           <TabsTrigger value="standings">Tabla de Posiciones</TabsTrigger>
+          <TabsTrigger value="playerStats">Estadísticas Jugadores</TabsTrigger>
         </TabsList>
         <TabsContent value="teamsAndCategories" className="mt-6">
           <div className="space-y-8">
@@ -112,8 +115,10 @@ export default function TournamentDetailPage() {
         <TabsContent value="standings" className="mt-6">
             <StandingsTab />
         </TabsContent>
+        <TabsContent value="playerStats" className="mt-6">
+            <PlayerStatsTab />
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
-
