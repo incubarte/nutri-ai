@@ -224,24 +224,15 @@
     ]
   },
   "clock": {
-    "currentTime": 826,
-    "currentPeriod": 1,
+    "currentTime": 30000,
+    "currentPeriod": 3,
     "isClockRunning": false,
-    "periodDisplayOverride": "Time Out",
-    "preTimeoutState": {
-      "period": 1,
-      "time": 120000,
-      "isClockRunning": false,
-      "override": null,
-      "clockStartTimeMs": null,
-      "remainingTimeAtStartCs": null,
-      "absoluteElapsedTimeCs": 0,
-      "team": "home"
-    },
+    "periodDisplayOverride": null,
+    "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 0,
-    "_liveAbsoluteElapsedTimeCs": 0,
+    "absoluteElapsedTimeCs": 240000,
+    "_liveAbsoluteElapsedTimeCs": 240000,
     "isFlashingZero": false
   },
   "shootout": {
@@ -253,13 +244,16 @@
   },
   "homeTeamName": "Hazard Blue",
   "awayTeamName": "Hazard white",
-  "playHornTrigger": 67,
+  "playHornTrigger": 68,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
   "goalCelebration": null,
   "matchId": "d072b765-7557-4fce-b90a-2b1466ece00e",
-  "playedPeriods": [],
+  "playedPeriods": [
+    "1ST",
+    "2ND"
+  ],
   "homeTeamSubName": "Blue",
   "awayTeamSubName": "white"
 }

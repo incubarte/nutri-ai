@@ -194,11 +194,18 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     }
     
     if (state.live.clock.periodDisplayOverride === "End of Game") {
-       if (state.live.score.home === state.live.score.away) {
-         dispatch({ type: 'MANUAL_END_GAME' });
-       } else {
-         dispatch({ type: 'SET_PERIOD', payload: MAX_TOTAL_GAME_PERIODS });
-       }
+        const lastPlayedPeriodText = (state.live.playedPeriods || []).slice(-1)[0];
+        if (lastPlayedPeriodText) {
+            let lastPeriodNumber = 0;
+            if (lastPlayedPeriodText.startsWith('OT')) {
+                lastPeriodNumber = state.config.numberOfRegularPeriods + (parseInt(lastPlayedPeriodText.replace('OT', ''), 10) || 1);
+            } else {
+                lastPeriodNumber = parseInt(lastPlayedPeriodText.replace(/\D/g, ''), 10) || 0;
+            }
+            if(lastPeriodNumber > 0) {
+                 dispatch({ type: 'SET_PERIOD', payload: lastPeriodNumber });
+            }
+        }
        return;
     }
     
@@ -550,7 +557,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     state.live.clock.periodDisplayOverride === "Shootout";
 
   const timeoutDurationInSeconds = state.config.defaultTimeoutDuration / 100;
-  const autoStartBehavior = state.config.autoStartTimeouts ? "se iniciará automáticamente" : "deberá iniciarse manualmente";
+  const autoStartBehavior = state.config.autoStartTimeouts ? "se iniciará automáticamente" : "deberá iniciarse manually";
   
   const formattedTime = state.live.clock.isFlashingZero ? "00:00" : formatTime(state.live.clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
 
@@ -636,7 +643,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
           <div className="flex-1 w-full sm:w-auto">
             <div className="flex justify-center items-center gap-1 mb-1 h-5 md:h-6 lg:h-7">
               {playersOnIceForHome > 0 && Array(playersOnIceForHome).fill(null).map((_, index) => (
-                <User key={`home-player-${index}`} className={cn("h-5 w-5 md:h-6 md:w-6 lg:h-7 text-primary-foreground/80", isWarmup && isMatchFromFixture && "text-green-500 animate-pulse")} />
+                <User key={`home-player-${index}`} className={cn("h-5 w-5 md:h-6 md:w-6 lg:h-7 text-primary-foreground/80", isWarmup && isMatchFromFixture && "animate-green-glow text-green-500")} />
               ))}
               {playersOnIceForHome === 0 && state.config.playersPerTeamOnIce > 0 && (
                 <span className="text-xs text-destructive animate-pulse">0 JUGADORES</span>
@@ -700,10 +707,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                             disabled={!matchedHomeTeamId}
                             aria-label="Editar jugadores del equipo local"
                         >
-                            <ClipboardList className={cn(
-                                "h-4 w-4",
-                                isWarmup && isMatchFromFixture ? "text-green-500 animate-pulse" : (matchedHomeTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60")
-                            )} />
+                            <ClipboardList className={cn("h-4 w-4", isWarmup && isMatchFromFixture ? "animate-pulse text-green-500" : (matchedHomeTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60"))} />
                         </Button>
                     )}
                 </div>
@@ -978,10 +982,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                             disabled={!matchedAwayTeamId}
                             aria-label="Editar jugadores del equipo visitante"
                         >
-                            <ClipboardList className={cn(
-                                "h-4 w-4",
-                                isWarmup && isMatchFromFixture ? "text-green-500 animate-pulse" : (matchedAwayTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60")
-                            )} />
+                            <ClipboardList className={cn("h-4 w-4", isWarmup && isMatchFromFixture ? "animate-pulse text-green-500" : (matchedAwayTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60"))} />
                         </Button>
                     )}
                 </div>

@@ -114,8 +114,8 @@
       "awayTeamId": "9935eae8-7e9b-4e11-b483-a368ac743287",
       "playersPerTeam": 5,
       "id": "d072b765-7557-4fce-b90a-2b1466ece00e",
-      "homeScore": 2,
-      "awayScore": 2,
+      "homeScore": 0,
+      "awayScore": 5,
       "overTimeOrShootouts": false
     },
     {

@@ -159,38 +159,58 @@
           "away": [
             {
               "team": "away",
-              "timestamp": 1761971821099,
-              "gameTime": 119543,
+              "timestamp": 1762018981321,
+              "gameTime": 120000,
               "periodText": "1ST",
               "scorer": {
                 "playerNumber": "1"
               },
-              "id": "92245746-7a65-4dab-84c2-5c5e6bfcb995"
+              "id": "267161a5-129d-482d-b132-9e15c6462186"
+            },
+            {
+              "team": "away",
+              "timestamp": 1762018993647,
+              "gameTime": 120000,
+              "periodText": "1ST",
+              "scorer": {
+                "playerNumber": "4"
+              },
+              "id": "b3659c5b-a6fb-42ee-8fb6-50a140dde8d2"
+            },
+            {
+              "team": "away",
+              "timestamp": 1762019003479,
+              "gameTime": 120000,
+              "periodText": "1ST",
+              "scorer": {
+                "playerNumber": "5"
+              },
+              "id": "fe51c5df-f6b8-4018-9896-f4b98c84fe6a"
+            },
+            {
+              "team": "away",
+              "timestamp": 1762019017591,
+              "gameTime": 120000,
+              "periodText": "1ST",
+              "scorer": {
+                "playerNumber": "6"
+              },
+              "id": "8100ed13-15f7-4e41-9e68-c793523bfaa1"
+            },
+            {
+              "team": "away",
+              "timestamp": 1762019045508,
+              "gameTime": 120000,
+              "periodText": "1ST",
+              "scorer": {
+                "playerNumber": "6"
+              },
+              "id": "67290c80-300e-4d9d-b1f5-3f6822bd8433"
             }
           ]
         },
         "penalties": {
-          "home": [
-            {
-              "id": "36a469d5-eb48-4a55-95af-8a850fe3002d",
-              "team": "home",
-              "playerNumber": "26",
-              "playerName": "MALPERI DIEGO",
-              "penaltyName": "Menor",
-              "initialDuration": 120,
-              "reducesPlayerCount": true,
-              "clearsOnGoal": true,
-              "isBenchPenalty": false,
-              "addTimestamp": 1761971814181,
-              "addGameTime": 120000,
-              "addPeriodText": "1ST",
-              "endTimestamp": 1761971822700,
-              "endGameTime": 119390,
-              "endPeriodText": "1ST",
-              "endReason": "goal_on_pp",
-              "timeServed": 6
-            }
-          ],
+          "home": [],
           "away": []
         },
         "playerStats": {
@@ -353,7 +373,7 @@
               "id": "e9a6ecf0-5ff3-482b-b526-46fc064e47ad",
               "name": "CARIMATTO JESICA",
               "number": "17",
-              "shots": 1,
+              "shots": 0,
               "goals": 0,
               "assists": 0
             },
@@ -377,7 +397,7 @@
               "id": "fc7c6551-7d6a-4ac9-9f9b-0862fd9b7d7e",
               "name": "DUPERRON SANTIAGO",
               "number": "90",
-              "shots": 6,
+              "shots": 0,
               "goals": 0,
               "assists": 0
             },
@@ -401,7 +421,7 @@
               "id": "681bc4ec-d842-4c62-bc3c-14c7d5530e94",
               "name": "HERRERA JAVIER",
               "number": "7",
-              "shots": 3,
+              "shots": 0,
               "goals": 0,
               "assists": 0
             },
@@ -438,54 +458,11 @@
       "stats": {
         "goals": {
           "home": [],
-          "away": [
-            {
-              "id": "new-453a9ae8-fbf3-4f12-b5bb-460361e4b6d6",
-              "team": "home",
-              "timestamp": 0,
-              "gameTime": 0,
-              "periodText": "",
-              "scorer": {
-                "playerNumber": "30",
-                "playerName": "GARIBOTTO JULIAN"
-              }
-            }
-          ]
+          "away": []
         },
         "penalties": {
           "home": [],
-          "away": [
-            {
-              "id": "manual-3cd99c55-3415-4f15-b97f-d0b20c1c1701",
-              "team": "away",
-              "playerNumber": "17",
-              "penaltyName": "Menor",
-              "initialDuration": 120,
-              "reducesPlayerCount": true,
-              "clearsOnGoal": true,
-              "isBenchPenalty": false,
-              "addTimestamp": 1761966000000,
-              "addGameTime": 0,
-              "addPeriodText": "2ND",
-              "endReason": "completed",
-              "timeServed": 120
-            },
-            {
-              "id": "manual-f294841c-5c8f-40c6-9ba1-8f74fd6a745a",
-              "team": "away",
-              "playerNumber": "30",
-              "penaltyName": "Mayor",
-              "initialDuration": 300,
-              "reducesPlayerCount": true,
-              "clearsOnGoal": false,
-              "isBenchPenalty": false,
-              "addTimestamp": 1761966000000,
-              "addGameTime": 0,
-              "addPeriodText": "2ND",
-              "endReason": "completed",
-              "timeServed": 300
-            }
-          ]
+          "away": []
         },
         "playerStats": {
           "home": [
@@ -663,7 +640,7 @@
               "id": "7c2b9f49-8e9a-4ca7-a985-c64d5e613c57",
               "name": "DE LA VEGA FLAVIA MICHELLE",
               "number": "18",
-              "shots": 2,
+              "shots": 0,
               "goals": 0,
               "assists": 0
             },
@@ -695,7 +672,7 @@
               "id": "681bc4ec-d842-4c62-bc3c-14c7d5530e94",
               "name": "HERRERA JAVIER",
               "number": "7",
-              "shots": 3,
+              "shots": 0,
               "goals": 0,
               "assists": 0
             },
@@ -724,46 +701,6 @@
               "assists": 0
             }
           ]
-        }
-      }
-    },
-    {
-      "period": "",
-      "stats": {
-        "goals": {
-          "home": [
-            {
-              "id": "new-f259d0c4-4d5e-4651-86f3-10bbb496209b",
-              "team": "home",
-              "timestamp": 0,
-              "gameTime": 0,
-              "periodText": "",
-              "scorer": {
-                "playerNumber": "38",
-                "playerName": "CELLI ALEJANDRO"
-              }
-            },
-            {
-              "id": "new-0587142c-81db-4209-8522-9bd1b9f7ea60",
-              "team": "home",
-              "timestamp": 0,
-              "gameTime": 0,
-              "periodText": "",
-              "scorer": {
-                "playerNumber": "11",
-                "playerName": "DACAL ALEXIS"
-              }
-            }
-          ],
-          "away": []
-        },
-        "penalties": {
-          "home": [],
-          "away": []
-        },
-        "playerStats": {
-          "home": [],
-          "away": []
         }
       }
     }
