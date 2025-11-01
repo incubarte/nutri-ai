@@ -29,7 +29,6 @@ export function StandingsDisplay() {
 
   const displayedStandings = useMemo(() => {
     if (!currentMatch) {
-      // If there's no match context, show top 5 or all if less than 5
       return standings.slice(0, 5);
     }
     
@@ -44,20 +43,19 @@ export function StandingsDisplay() {
     const awayIndex = standings.findIndex(s => s.id === awayTeamId);
     
     if (homeIndex === -1 || awayIndex === -1) {
-        return standings.slice(0, 5); // Fallback sensible
+        return standings.slice(0, 5);
     }
-
-    const indicesToShow = new Set<number>();
     
+    const indicesToShow = new Set<number>();
     [homeIndex, awayIndex].forEach(index => {
-        indicesToShow.add(index);
         if (index > 0) indicesToShow.add(index - 1);
+        indicesToShow.add(index);
         if (index < standings.length - 1) indicesToShow.add(index + 1);
     });
 
     const sortedIndices = Array.from(indicesToShow).sort((a,b) => a - b);
     
-    const finalRows: (any | { isEllipsis: true })[] = [];
+    const finalRows: (any | { isEllipsis: true, id: string })[] = [];
     let lastIndex = -1;
 
     sortedIndices.forEach(index => {
@@ -77,33 +75,42 @@ export function StandingsDisplay() {
   const homeTeamId = currentMatch.homeTeamId;
   const awayTeamId = currentMatch.awayTeamId;
 
-  const headerClass = "text-base lg:text-lg";
-  const cellClass = "py-2";
+  // Base font size from config
+  const baseFontSizeRem = scoreboardLayout.standingsTableFontSize || 1;
+
+  // Proportional sizes based on the base
+  const titleSize = baseFontSizeRem * 2;
+  const headerSize = baseFontSizeRem * 1.1;
+  const cellSize = baseFontSizeRem;
+  const pointsSize = baseFontSizeRem * 1.25;
 
   return (
     <Card className="bg-card shadow-lg flex flex-col h-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-3 text-xl md:text-2xl lg:text-3xl">
-          <Trophy className="h-6 w-6 lg:h-8 lg:w-8 text-amber-400" />
+        <CardTitle 
+          className="flex items-center gap-3"
+          style={{ fontSize: `${titleSize}rem` }}
+        >
+          <Trophy className="h-[1em] w-[1em] text-amber-400" />
           Tabla de Posiciones
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden">
         <ScrollArea className="h-full">
-          <Table style={{ fontSize: `${scoreboardLayout.standingsTableFontSize}rem` }}>
+          <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className={cn("text-center", headerClass)}>Puesto</TableHead>
-                <TableHead className={cn("w-1/2", headerClass)}>Equipo</TableHead>
-                <TableHead className={cn("text-center", headerClass)}>PJ</TableHead>
-                <TableHead className={cn("text-center", headerClass)}>PG</TableHead>
-                <TableHead className={cn("text-center", headerClass)}>PG (OT)</TableHead>
-                <TableHead className={cn("text-center", headerClass)}>PP (OT)</TableHead>
-                <TableHead className={cn("text-center", headerClass)}>PE</TableHead>
-                <TableHead className={cn("text-center", headerClass)}>PP</TableHead>
-                <TableHead className={cn("text-center border-l", headerClass)}>GF</TableHead>
-                <TableHead className={cn("text-center", headerClass)}>GC</TableHead>
-                <TableHead className={cn("text-center font-bold border-l", headerClass)}>Pts</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>Puesto</TableHead>
+                <TableHead className="w-1/2" style={{ fontSize: `${headerSize}rem` }}>Equipo</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PJ</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PG</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PG (OT)</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PP (OT)</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PE</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PP</TableHead>
+                <TableHead className="text-center border-l" style={{ fontSize: `${headerSize}rem` }}>GF</TableHead>
+                <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>GC</TableHead>
+                <TableHead className="text-center font-bold border-l" style={{ fontSize: `${headerSize}rem` }}>Pts</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -111,7 +118,7 @@ export function StandingsDisplay() {
                 if (teamStat.isEllipsis) {
                     return (
                         <TableRow key={teamStat.id}>
-                            <TableCell colSpan={11} className="text-center text-muted-foreground py-0 h-12 text-3xl tracking-widest">
+                            <TableCell colSpan={11} className="text-center text-muted-foreground/50 py-0 h-10 tracking-widest" style={{ fontSize: `${baseFontSizeRem * 1.5}rem` }}>
                                 ...
                             </TableCell>
                         </TableRow>
@@ -121,18 +128,18 @@ export function StandingsDisplay() {
                 const isMatchTeam = teamStat.id === homeTeamId || teamStat.id === awayTeamId;
                 
                 return (
-                    <TableRow key={teamStat.id} className={cn(isMatchTeam && "bg-primary/20 font-bold", "text-lg")}>
-                        <TableCell className={cn("text-center font-bold", cellClass)}>{teamStat.rank}</TableCell>
-                        <TableCell className={cn("font-medium", cellClass)}>{teamStat.name}</TableCell>
-                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pj}</TableCell>
-                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pg}</TableCell>
-                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pg_ot}</TableCell>
-                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pp_ot}</TableCell>
-                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pe}</TableCell>
-                        <TableCell className={cn("text-center", cellClass)}>{teamStat.pp}</TableCell>
-                        <TableCell className={cn("text-center border-l", cellClass)}>{teamStat.gf}</TableCell>
-                        <TableCell className={cn("text-center", cellClass)}>{teamStat.gc}</TableCell>
-                        <TableCell className={cn("text-center font-bold border-l", cellClass)} style={{ fontSize: `${scoreboardLayout.standingsTableFontSize * 1.25}rem`}}>{teamStat.puntos}</TableCell>
+                    <TableRow key={teamStat.id} className={cn(isMatchTeam && "bg-primary/20 font-bold")} style={{ fontSize: `${cellSize}rem`}}>
+                        <TableCell className="text-center font-bold">{teamStat.rank}</TableCell>
+                        <TableCell className="font-medium">{teamStat.name}</TableCell>
+                        <TableCell className="text-center">{teamStat.pj}</TableCell>
+                        <TableCell className="text-center">{teamStat.pg}</TableCell>
+                        <TableCell className="text-center">{teamStat.pg_ot}</TableCell>
+                        <TableCell className="text-center">{teamStat.pp_ot}</TableCell>
+                        <TableCell className="text-center">{teamStat.pe}</TableCell>
+                        <TableCell className="text-center">{teamStat.pp}</TableCell>
+                        <TableCell className="text-center border-l">{teamStat.gf}</TableCell>
+                        <TableCell className="text-center">{teamStat.gc}</TableCell>
+                        <TableCell className="text-center font-bold border-l" style={{ fontSize: `${pointsSize}rem`}}>{teamStat.puntos}</TableCell>
                     </TableRow>
                 )
               })}
