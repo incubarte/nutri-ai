@@ -136,10 +136,6 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const handleTimeAdjust = (deltaSeconds: number) => {
     if (state.live.clock.periodDisplayOverride === "End of Game") return;
     dispatch({ type: 'ADJUST_TIME', payload: deltaSeconds * 100 });
-    toast({
-      title: "Reloj Ajustado",
-      description: `Tiempo ajustado en ${deltaSeconds > 0 ? '+' : ''}${deltaSeconds} segundo${Math.abs(deltaSeconds) === 1 ? '' : 's'}.`
-    });
   };
 
   const handleToggleClock = () => {
