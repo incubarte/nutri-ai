@@ -1171,18 +1171,20 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const { live, config } = state;
       const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
 
-      if (live.clock.periodDisplayOverride !== null) break; 
-      
-      // If we are NOT in the final game period, start a break.
+      if (live.clock.periodDisplayOverride !== null) break;
+
+      // Not the final period, start a break.
       if (live.clock.currentPeriod < totalGamePeriods) {
         const isPreOT = live.clock.currentPeriod >= config.numberOfRegularPeriods;
         const breakType = isPreOT ? 'START_PRE_OT_BREAK' : 'START_BREAK';
         return gameReducer(state, { type: breakType });
       }
-      
-      // If we ARE in the final game period.
-      if (live.score.home === live.score.away) {
-        // If tied, go to decision state.
+
+      // Is the final period.
+      if (live.score.home !== live.score.away) {
+        return finalizeMatch(state);
+      } else {
+        // Tie game, go to decision state.
         newState = {
           ...state,
           live: {
@@ -1191,9 +1193,6 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             shootout: { ...live.shootout, isActive: false }
           }
         };
-      } else {
-        // If not tied, end the game.
-        return finalizeMatch(state);
       }
       break;
     }
@@ -1781,12 +1780,21 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
               if (hasLiveChanged) {
                   updateGameStateOnServer(state.live);
               }
-              const hasBaseConfigChanged = !isEqual(state.config, oldState.config);
-              if(hasBaseConfigChanged) {
+              const hasConfigChanged = !isEqual(state.config, oldState.config);
+              if(hasConfigChanged) {
                   const { tournaments, ...baseConfig } = state.config;
                   const tournamentsMeta = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
                   updateConfigOnServer({ ...baseConfig, tournaments: tournamentsMeta });
               }
+              // Logic to save individual tournament if it changes
+              const changedTournament = state.config.tournaments.find((newTournament, index) => {
+                const oldTournament = oldState.config.tournaments[index];
+                return oldTournament && !isEqual(newTournament, oldTournament);
+              });
+              if(changedTournament) {
+                saveTournamentOnServer(changedTournament);
+              }
+
           } catch (error) {
               console.error("Error broadcasting or saving state:", error);
           }
