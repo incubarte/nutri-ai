@@ -1,7 +1,7 @@
 {
   "score": {
     "home": 0,
-    "away": 2,
+    "away": 1,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -14,139 +14,33 @@
     "away": [
       {
         "team": "away",
-        "timestamp": 1761974808371,
-        "gameTime": 118906,
-        "periodText": "2ND",
+        "timestamp": 1761975881745,
+        "gameTime": 120000,
+        "periodText": "1ST",
         "scorer": {
-          "playerNumber": "34"
+          "playerNumber": "3"
         },
-        "id": "bac7a95f-7b46-49d3-874e-77689f50e357"
-      },
-      {
-        "team": "away",
-        "timestamp": 1761974849955,
-        "gameTime": 114742,
-        "periodText": "2ND",
-        "scorer": {
-          "playerNumber": "4"
-        },
-        "id": "94e0d116-1937-4ea6-8b8e-5b41b4e70213"
+        "id": "2ec38e57-4132-4495-9639-9e0e772c3fc5"
       }
     ]
   },
   "penaltiesLog": {
-    "home": [
-      {
-        "id": "5c0cc25d-14b6-46bf-be62-d3b0852818d3",
-        "team": "home",
-        "playerNumber": "24",
-        "playerName": "TAPIA NATALIA",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761974802504,
-        "addGameTime": 119487,
-        "addPeriodText": "2ND",
-        "endTimestamp": 1761974810011,
-        "endGameTime": 118752,
-        "endPeriodText": "2ND",
-        "endReason": "goal_on_pp",
-        "timeServed": 7
-      },
-      {
-        "id": "7daa28b7-efb4-472a-861d-549fcac938c0",
-        "team": "home",
-        "playerNumber": "27",
-        "playerName": "LINK NAIKE",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761974816975,
-        "addGameTime": 118045,
-        "addPeriodText": "2ND",
-        "endTimestamp": 1761974833203,
-        "endGameTime": 116427,
-        "endPeriodText": "2ND",
-        "endReason": "goal_on_pp",
-        "timeServed": 16
-      },
-      {
-        "id": "c0b2526c-5c67-4354-9c73-549f8bc30fdb",
-        "team": "home",
-        "playerNumber": "30",
-        "playerName": "GEREZ NICOLÁS",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761974818432,
-        "addGameTime": 117895,
-        "addPeriodText": "2ND",
-        "endTimestamp": 1761974845920,
-        "endGameTime": 115157,
-        "endPeriodText": "2ND",
-        "endReason": "goal_on_pp",
-        "timeServed": 27
-      },
-      {
-        "id": "68e1d7ce-4aba-4a55-abf0-bf49d462760e",
-        "team": "home",
-        "playerNumber": "27",
-        "playerName": "LINK NAIKE",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761974820828,
-        "addGameTime": 117657,
-        "addPeriodText": "2ND",
-        "endTimestamp": 1761974896545,
-        "endGameTime": 104404,
-        "endPeriodText": "2ND",
-        "endReason": "completed",
-        "timeServed": 120
-      },
-      {
-        "id": "13f18021-fbf1-4027-8bbe-f9cde2a1c115",
-        "team": "home",
-        "playerNumber": "31",
-        "playerName": "SOLARI MALENA",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761974841043,
-        "addGameTime": 115636,
-        "addPeriodText": "2ND",
-        "endTimestamp": 1761974851602,
-        "endGameTime": 114581,
-        "endPeriodText": "2ND",
-        "endReason": "goal_on_pp",
-        "timeServed": 9
-      }
-    ],
+    "home": [],
     "away": [
       {
-        "id": "7a436797-8901-4417-aecb-0492f863b5ad",
+        "id": "7c6de44d-4492-4610-ac3b-606102b02866",
         "team": "away",
-        "playerNumber": "45",
+        "playerNumber": "4",
         "penaltyName": "Menor",
         "initialDuration": 120,
         "reducesPlayerCount": true,
         "clearsOnGoal": true,
         "isBenchPenalty": false,
-        "addTimestamp": 1761974779070,
-        "addGameTime": 101906,
+        "addTimestamp": 1761975884951,
+        "addGameTime": 120000,
         "addPeriodText": "1ST",
-        "endTimestamp": 1761974793248,
-        "endGameTime": 91281,
+        "endTimestamp": 1761975888958,
+        "endGameTime": 107978,
         "endPeriodText": "1ST",
         "endReason": "completed",
         "timeServed": 120
@@ -158,106 +52,19 @@
     "away": []
   },
   "attendance": {
-    "home": [
-      {
-        "id": "c3a0bff1-5fe0-4551-87b5-f92be24b845e",
-        "number": "18",
-        "name": "ROJAS ROXANA"
-      },
-      {
-        "id": "0cc7435f-feb1-41cf-972a-794bc966537d",
-        "number": "27",
-        "name": "LINK NAIKE"
-      },
-      {
-        "id": "18bc8585-a426-458b-8347-2c08115282d8",
-        "number": "31",
-        "name": "SOLARI MALENA"
-      },
-      {
-        "id": "83d48cad-229a-4fbb-84db-ac0914629cb1",
-        "number": "24",
-        "name": "TAPIA NATALIA"
-      },
-      {
-        "id": "981dc489-1ffe-451d-9515-4e59694644c0",
-        "number": "7",
-        "name": "SOTO CAROLINA"
-      },
-      {
-        "id": "1fb40c93-d166-435c-a026-7d7de92f7143",
-        "number": "84",
-        "name": "MICUCCI LUCIANO"
-      },
-      {
-        "id": "7b591745-b844-4e53-8d20-5a84e07d188e",
-        "number": "37",
-        "name": "CODELLA MARIA CECILIA"
-      },
-      {
-        "id": "b202d7f3-0707-4c57-98b0-0ad1b1a11b9d",
-        "number": "30",
-        "name": "GEREZ NICOLÁS"
-      },
-      {
-        "id": "1ae44cdc-1182-413c-a61d-23791841f8bb",
-        "number": "33",
-        "name": "MOMPO MACARENA"
-      },
-      {
-        "id": "05a5057c-5420-4bd5-b66b-c5bf60436af8",
-        "number": "12",
-        "name": "FORNARI MARIANO"
-      }
-    ],
-    "away": [
-      {
-        "id": "98e55316-5aef-4974-ac52-4eff59239e8e",
-        "number": "",
-        "name": "ABEID EZEQUIEL"
-      },
-      {
-        "id": "18f831b2-5258-4fbf-9c37-32f7ef489f59",
-        "number": "",
-        "name": "FONDACARO EZEQUIEL"
-      },
-      {
-        "id": "c5133b93-4773-4cae-928d-d6128fc10126",
-        "number": "",
-        "name": "FONDACARO CRISTIAN"
-      },
-      {
-        "id": "55b8c94f-7d89-491b-a0b8-959b17f3f3a4",
-        "number": "",
-        "name": "GALINSKI GUILLERMO EDUARDO"
-      },
-      {
-        "id": "7a1772c8-6c73-4841-865e-7b31c5b5f221",
-        "number": "",
-        "name": "GONZALEZ CAMILA"
-      },
-      {
-        "id": "9be33878-1c20-4a55-b0ad-4b5553e4c2fe",
-        "number": "",
-        "name": "VILLAVICENCIO MARIA ANTONELA"
-      },
-      {
-        "id": "553b3c30-de53-4b10-9e4d-88ec0f8f43ef",
-        "number": "",
-        "name": "VINCENTI MARIA EUGENIA"
-      }
-    ]
+    "home": [],
+    "away": []
   },
   "clock": {
-    "currentTime": 30000,
-    "currentPeriod": 4,
-    "isClockRunning": false,
+    "currentTime": 118375,
+    "currentPeriod": 2,
+    "isClockRunning": true,
     "periodDisplayOverride": null,
     "preTimeoutState": null,
-    "clockStartTimeMs": null,
-    "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 270000,
-    "_liveAbsoluteElapsedTimeCs": 270000,
+    "clockStartTimeMs": 1761975909613,
+    "remainingTimeAtStartCs": 118375,
+    "absoluteElapsedTimeCs": 121625,
+    "_liveAbsoluteElapsedTimeCs": 121625,
     "isFlashingZero": false
   },
   "shootout": {
@@ -267,16 +74,14 @@
     "awayAttempts": [],
     "initiator": null
   },
-  "homeTeamName": "Fantasy Skate CM",
-  "awayTeamName": "Ovejas Negras Corderos",
-  "playHornTrigger": 42,
+  "homeTeamName": "Local",
+  "awayTeamName": "Visitante",
+  "playHornTrigger": 45,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
   "matchId": null,
   "playedPeriods": [
-    "1ST",
-    "2ND"
-  ],
-  "awayTeamSubName": "Corderos"
+    "1ST"
+  ]
 }

@@ -133,24 +133,18 @@ export default function SetupPage() {
     }, [state.config.tournaments, state.config.selectedTournamentId]);
 
      useEffect(() => {
-        // This effect runs only when the page loads or the active tournament changes.
         setLocalCategoryId(state.config.selectedMatchCategory || availableCategories[0]?.id || '');
         const currentProfile = state.config.formatAndTimingsProfiles.find(p => p.id === state.config.selectedFormatAndTimingsProfileId) || state.config;
         setTempFormatSettings(currentProfile);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state.config.selectedTournamentId]);
+    }, [state.config.selectedTournamentId, state.config.selectedMatchCategory, state.config.formatAndTimingsProfiles, state.config.selectedFormatAndTimingsProfileId, availableCategories]);
 
     const handleLoadMatchConfig = (match: MatchData) => {
-        setIsTournamentMatch(true);
+        // Al cargar un partido existente, siempre es de torneo
+        setIsTournamentMatch(true); 
         setLocalCategoryId(match.categoryId);
         setHomeTeamId(match.homeTeamId);
         setAwayTeamId(match.awayTeamId);
-        setPendingMatchConfig({
-            matchId: match.id,
-            categoryId: match.categoryId,
-            homeTeamId: match.homeTeamId,
-            awayTeamId: match.awayTeamId,
-        });
+        setPendingMatchConfig({ matchId: match.id }); // Solo necesitamos el ID para el estado final
         setActiveTab('rules');
     };
     
@@ -163,7 +157,7 @@ export default function SetupPage() {
                     toast({ title: "Nombres Iguales", description: "Los nombres de los equipos no pueden ser el mismo.", variant: "destructive" });
                     return;
                 }
-                setPendingMatchConfig({ matchId: null, isTournamentMatch: false });
+                setPendingMatchConfig(null);
             } else {
                  if (!homeTeamId || !awayTeamId || !localCategoryId) {
                     toast({ title: "Datos Incompletos", description: "Por favor, selecciona una categoría y ambos equipos para continuar.", variant: "destructive" });
@@ -181,13 +175,7 @@ export default function SetupPage() {
                     dispatch({ type: 'ADD_MATCH_TO_TOURNAMENT', payload: { tournamentId: selectedTournamentId, match: newMatch } });
                 }
                 
-                setPendingMatchConfig({
-                    matchId: newMatchId,
-                    isTournamentMatch: true,
-                    categoryId: localCategoryId,
-                    homeTeamId: homeTeamId,
-                    awayTeamId: awayTeamId,
-                });
+                setPendingMatchConfig({ matchId: newMatchId });
             }
         }
         setActiveTab(nextTab);
@@ -296,6 +284,15 @@ export default function SetupPage() {
                                 <Switch id="is-tournament-match-switch" checked={isTournamentMatch} onCheckedChange={setIsTournamentMatch} />
                                 <Label htmlFor="is-tournament-match-switch">Es un Partido de Torneo</Label>
                             </div>
+
+                            {!isTournamentMatch && (
+                                 <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive-foreground">
+                                    <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0"/>
+                                    <div>
+                                        <p className="text-sm font-semibold text-destructive">Este partido no generará un resumen de estadísticas.</p>
+                                    </div>
+                                </div>
+                            )}
                             
                             {!isTournamentMatch ? (
                                 <div className="space-y-4 pt-2 border-t mt-4">
@@ -345,7 +342,7 @@ export default function SetupPage() {
                     <TabsContent value="summary" className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
                         <h3 className="text-lg font-semibold">Resumen de Configuración</h3>
 
-                        {!pendingMatchConfig?.isTournamentMatch && (
+                        {!isTournamentMatch && (
                             <div className="flex items-start gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive-foreground">
                                 <AlertTriangle className="h-6 w-6 text-destructive mt-1"/>
                                 <div>
