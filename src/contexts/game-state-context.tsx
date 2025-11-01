@@ -424,20 +424,26 @@ const applyFormatAndTimingsProfileToState = (state: GameState, profileId: string
 };
 
 const applyScoreboardLayoutProfileToState = (state: GameState, profileId: string | null): GameState => {
-  const profiles = state.config.scoreboardLayoutProfiles || [];
-  const profileToApply = profiles.find(p => p.id === profileId) || profiles[0] || createDefaultScoreboardLayoutProfile();
-  if (!profileToApply) return state;
+    const profiles = state.config.scoreboardLayoutProfiles || [];
+    const profileToApply = profiles.find(p => p.id === profileId) || profiles[0] || createDefaultScoreboardLayoutProfile();
+    if (!profileToApply) return state;
 
-  const { id, name, ...layoutSettings } = profileToApply;
+    // Ensure all properties from INITIAL_LAYOUT_SETTINGS have a default
+    const layoutSettingsWithDefaults = {
+        ...INITIAL_LAYOUT_SETTINGS,
+        ...profileToApply,
+    };
+    
+    const { id, name, ...layoutSettings } = layoutSettingsWithDefaults;
 
-  return {
-    ...state,
-    config: {
-        ...state.config,
-        selectedScoreboardLayoutProfileId: id,
-        scoreboardLayout: layoutSettings,
-    }
-  };
+    return {
+        ...state,
+        config: {
+            ...state.config,
+            selectedScoreboardLayoutProfileId: id,
+            scoreboardLayout: layoutSettings,
+        }
+    };
 };
 
 
