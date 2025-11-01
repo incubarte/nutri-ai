@@ -6,7 +6,7 @@ import React, { createContext, useContext, useReducer, useEffect, useRef, useSta
 import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
-import { updateConfigOnServer, updateGameStateOnServer, saveTournamentOnServer } from '@/app/actions';
+import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
 import { safeUUID } from '@/lib/utils';
 import defaultSettings from '@/config/defaults.json';
 import { generateSummaryData } from '@/lib/summary-generator';
@@ -471,6 +471,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
         newState = applyFormatAndTimingsProfileToState(finalState, finalState.config.selectedFormatAndTimingsProfileId);
         newState = applyScoreboardLayoutProfileToState(newState, finalState.config.selectedScoreboardLayoutProfileId);
+        break;
+    }
+    case 'HYDRATE_TOURNAMENT_DETAILS': {
+        const { tournamentData } = action.payload;
+        if (!tournamentData) return state;
+        const newTournaments = state.config.tournaments.map(t =>
+            t.id === tournamentData.id ? { ...t, ...tournamentData } : t
+        );
+        newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
         break;
     }
     case 'SET_STATE_FROM_LOCAL_BROADCAST': {
@@ -1631,7 +1640,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
   }
 
-  const nonOriginatingActionTypes: GameAction['type'][] = ['HYDRATE_FROM_SERVER', 'SET_STATE_FROM_LOCAL_BROADCAST'];
+  const nonOriginatingActionTypes: GameAction['type'][] = ['HYDRATE_FROM_SERVER', 'HYDRATE_TOURNAMENT_DETAILS', 'SET_STATE_FROM_LOCAL_BROADCAST'];
   if (action.type === 'TICK') return newState;
   if (nonOriginatingActionTypes.includes(action.type)) return { ...newState, _lastActionOriginator: undefined };
   
@@ -1643,7 +1652,6 @@ const GameStateObserver = () => {
     const { state, dispatch } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
-    const prevGameStateRef = useRef<GameState>(state);
     
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
@@ -1652,20 +1660,6 @@ const GameStateObserver = () => {
         }
     }, [state._lastToastMessage, toast]);
     
-    useEffect(() => {
-      const prevState = prevGameStateRef.current;
-      // Check if the game has just finished
-      if (prevState.live.clock.periodDisplayOverride !== 'End of Game' && state.live.clock.periodDisplayOverride === 'End of Game') {
-        if (state.live.matchId) {
-          const summary = generateSummaryData(state);
-          if (summary) {
-            dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: state.live.matchId, summary } });
-          }
-        }
-      }
-      prevGameStateRef.current = state;
-    }, [state, dispatch]);
-
     return null;
 }
 
@@ -1675,30 +1669,6 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPageVisible, setIsPageVisible] = useState(true);
   const channelRef = useRef<BroadcastChannel | null>(null);
-
-  const syncToServer = useCallback(async (newState: GameState, oldState: GameState) => {
-    try {
-        const hasLiveChanged = !isEqual(newState.live, oldState.live);
-        const hasConfigChanged = !isEqual(newState.config, oldState.config);
-
-        if (hasLiveChanged) {
-           await updateGameStateOnServer(newState.live);
-        }
-        if (hasConfigChanged) {
-           const { tournaments, ...baseConfig } = newState.config;
-           const tournamentsMeta = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
-           await updateConfigOnServer({ ...baseConfig, tournaments: tournamentsMeta });
-        }
-
-    } catch (error) {
-      showToast({
-        title: "Error de Sincronización",
-        description: "No se pudo guardar la configuración en el servidor.",
-        variant: "destructive",
-        duration: 2000,
-      });
-    }
-  }, []);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1723,18 +1693,27 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
         if (!res.ok) throw new Error('Failed to fetch initial data');
         const data = await res.json();
         
-        // At this point, data.config.tournaments only has metadata.
-        // We will hydrate the state with this, which is enough for most UI.
-        // The [tournamentId] page will be responsible for fetching its own detailed data.
         dispatch({ type: 'HYDRATE_FROM_SERVER', payload: data });
 
       } catch (error) {
         console.error("Failed to fetch initial state from server:", error);
-        // If server fails, initialize with a default clean state.
         dispatch({ type: 'HYDRATE_FROM_SERVER', payload: getInitialState() });
       } finally {
         setIsLoading(false);
       }
+  }, []);
+
+  const fetchTournamentDetails = useCallback(async (tournamentId: string) => {
+    try {
+        const res = await fetch(`/api/tournaments/${tournamentId}`);
+        if (!res.ok) throw new Error(`Failed to fetch details for tournament ${tournamentId}`);
+        const data = await res.json();
+        if (data.tournament) {
+            dispatch({ type: 'HYDRATE_TOURNAMENT_DETAILS', payload: { tournamentData: data.tournament }});
+        }
+    } catch (error) {
+        console.error("Error fetching tournament details:", error);
+    }
   }, []);
 
   useEffect(() => {
@@ -1763,6 +1742,19 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [fetchInitialData]);
 
+  // Effect to fetch full tournament data when selectedTournamentId changes
+  useEffect(() => {
+    const { selectedTournamentId, tournaments } = state.config;
+    if (selectedTournamentId) {
+        const tournament = tournaments.find(t => t.id === selectedTournamentId);
+        // Fetch details only if we don't have them (i.e., no teams or matches array)
+        if (tournament && !tournament.teams) {
+            fetchTournamentDetails(selectedTournamentId);
+        }
+    }
+  }, [state.config.selectedTournamentId, state.config.tournaments, fetchTournamentDetails]);
+
+
   const prevStateRef = useRef<GameState>(state);
   useEffect(() => {
       const oldState = prevStateRef.current;
@@ -1773,20 +1765,16 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
       if (state._lastActionOriginator === TAB_ID) {
           try {
               channelRef.current?.postMessage(state);
-              // Instead of a complex sync, we just save the relevant part.
               const hasLiveChanged = !isEqual(state.live, oldState.live);
               if (hasLiveChanged) {
                   updateGameStateOnServer(state.live);
               }
-              // Config changes are now mostly handled by their own components
-              // But we can keep a general config sync for smaller, non-tournament changes
-              const hasConfigChanged = !isEqual(state.config, oldState.config);
-              if (hasConfigChanged) {
-                 const { tournaments, ...baseConfig } = state.config;
-                 const tournamentsMeta = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
-                 updateConfigOnServer({ ...baseConfig, tournaments: tournamentsMeta });
+              const hasBaseConfigChanged = !isEqual(state.config, oldState.config);
+              if(hasBaseConfigChanged) {
+                  const { tournaments, ...baseConfig } = state.config;
+                  const tournamentsMeta = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
+                  updateConfigOnServer({ ...baseConfig, tournaments: tournamentsMeta });
               }
-
           } catch (error) {
               console.error("Error broadcasting or saving state:", error);
           }

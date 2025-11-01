@@ -93,9 +93,8 @@ async function writeTournament(tournament: Tournament): Promise<void> {
                 const summaryPath = path.join(summariesDir, `${match.id}.json`);
                 summaryWritePromises.push(writeData(summaryPath, summary));
                 
-                const homeScore = (summary.statsByPeriod ?? []).reduce((acc: number, p: PeriodSummary) => acc + (p.stats.goals?.home?.length ?? 0), 0);
-                const awayScore = (summary.statsByPeriod ?? []).reduce((acc: number, p: PeriodSummary) => acc + (p.stats.goals?.away?.length ?? 0), 0);
-
+                const homeScore = (summary.statsByPeriod || []).reduce((acc: number, p: PeriodSummary) => acc + (p.stats.goals.home?.length ?? 0), 0);
+                const awayScore = (summary.statsByPeriod || []).reduce((acc: number, p: PeriodSummary) => acc + (p.stats.goals.away?.length ?? 0), 0);
                 
                 matchWithoutSummary.homeScore = homeScore;
                 matchWithoutSummary.awayScore = awayScore;
