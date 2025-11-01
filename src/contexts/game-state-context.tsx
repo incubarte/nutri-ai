@@ -7,7 +7,7 @@ import React, { createContext, useContext, useReducer, useEffect, useRef, useSta
 import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
-import { saveDataOnServer, saveTournamentOnServer } from '@/app/actions';
+import { updateConfigOnServer, updateGameStateOnServer, saveTournamentOnServer } from '@/app/actions';
 import { safeUUID } from '@/lib/utils';
 import defaultSettings from '@/config/defaults.json';
 import { generateSummaryData } from '@/lib/summary-generator';
@@ -259,6 +259,7 @@ const finalizeMatch = (state: GameState): GameState => {
     if (newState.live.matchId) {
         const summary = generateSummaryData(newState);
         if (summary) {
+            // Return a new state that includes the summary to be saved
             return gameReducer(newState, { type: 'SAVE_MATCH_SUMMARY', payload: { matchId: newState.live.matchId, summary } });
         }
     }
@@ -1640,9 +1641,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
 
 const GameStateObserver = () => {
-    const { state } = useGameState();
+    const { state, dispatch } = useGameState();
     const { toast } = showToast();
     const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
+    const prevGameStateRef = useRef<GameState>(state);
     
     useEffect(() => {
         if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
@@ -1651,6 +1653,20 @@ const GameStateObserver = () => {
         }
     }, [state._lastToastMessage, toast]);
     
+    useEffect(() => {
+      const prevState = prevGameStateRef.current;
+      // Check if the game has just finished
+      if (prevState.live.clock.periodDisplayOverride !== 'End of Game' && state.live.clock.periodDisplayOverride === 'End of Game') {
+        if (state.live.matchId) {
+          const summary = generateSummaryData(state);
+          if (summary) {
+            dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: state.live.matchId, summary } });
+          }
+        }
+      }
+      prevGameStateRef.current = state;
+    }, [state, dispatch]);
+
     return null;
 }
 
@@ -1666,20 +1682,14 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
         const hasLiveChanged = !isEqual(newState.live, oldState.live);
         const hasConfigChanged = !isEqual(newState.config, oldState.config);
 
-        if (hasLiveChanged && !hasConfigChanged) {
-            await updateGameStateOnServer(newState.live);
-        } else if (hasConfigChanged) {
-            // Check which tournament changed
-            const changedTournament = newState.config.tournaments.find(
-                (newT, index) => !isEqual(newT, oldState.config.tournaments[index])
-            );
-            
-            if (changedTournament) {
-                await saveTournamentOnServer(changedTournament);
-            }
-            
-            // Always save base config and live state if config changes
-            await updateConfigOnServer(newState.config);
+        if (hasLiveChanged) {
+           await updateGameStateOnServer(newState.live);
+        }
+        if (hasConfigChanged) {
+           // We only save the base config, without full tournament data
+           const { tournaments, ...baseConfig } = newState.config;
+           const tournamentsMeta = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
+           await updateConfigOnServer({ ...baseConfig, tournaments: tournamentsMeta });
         }
 
     } catch (error) {
@@ -1916,3 +1926,4 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 };
 
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
+

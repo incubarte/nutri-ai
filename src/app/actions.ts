@@ -4,28 +4,53 @@
 
 import type { GameState, ConfigState, LiveState, Tournament } from '@/types';
 
-export async function saveDataOnServer(data: { config?: ConfigState; live?: LiveState }) {
+export async function updateConfigOnServer(config: ConfigState) {
   try {
+    // Exclude full tournament data from the main config save
+    const { tournaments, ...baseConfig } = config;
+    const tournamentMetas = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
+    const configToSave = { ...baseConfig, tournaments: tournamentMetas };
+
     const response = await fetch('/api/db', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ config: configToSave }),
     });
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save data.');
+        throw new Error(errorData.message || 'Failed to save config data.');
     }
     return await response.json();
   } catch (error) {
-     console.error('Failed to save data on server:', error);
+     console.error('Failed to save config on server:', error);
      if (error instanceof Error) {
         return { success: false, message: error.message };
     }
-    return { success: false, message: 'An unknown error occurred while saving data.' };
+    return { success: false, message: 'An unknown error occurred while saving config data.' };
   }
 }
+
+export async function updateGameStateOnServer(live: LiveState) {
+    try {
+        const response = await fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ live }),
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to save live game state.');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to save live game state on server:', error);
+        if (error instanceof Error) {
+            return { success: false, message: error.message };
+        }
+        return { success: false, message: 'An unknown error occurred while saving live game state.' };
+    }
+}
+
 
 export async function saveTournamentOnServer(tournament: Tournament) {
   try {
@@ -48,16 +73,6 @@ export async function saveTournamentOnServer(tournament: Tournament) {
     }
     return { success: false, message: 'An unknown error occurred while saving tournament data.' };
   }
-}
-
-// These functions below are now wrappers around saveDataOnServer.
-// They can be removed if you update all call sites to use saveDataOnServer directly.
-export async function updateConfigOnServer(config: ConfigState) {
-    return saveDataOnServer({ config });
-}
-
-export async function updateGameStateOnServer(live: LiveState) {
-    return saveDataOnServer({ live });
 }
 
 // Keep sendRemoteCommand as it's used by client components
