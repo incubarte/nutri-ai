@@ -9,6 +9,7 @@ interface PlayerStats {
   playerName: string;
   teamId: string;
   teamName: string;
+  categoryName: string;
   goals: number;
   assists: number;
   points: number;
@@ -29,10 +30,12 @@ export function usePlayerStats(tournament: Tournament | null | undefined, catego
 
     const statsMap = new Map<string, PlayerStats>();
     const allTeams = tournament.teams || [];
+    const allCategories = tournament.categories || [];
 
     // Initialize all players
     allTeams.forEach(team => {
         if (!categoryId || team.category === categoryId) {
+            const category = allCategories.find(c => c.id === team.category);
             team.players.forEach(player => {
                 if (!statsMap.has(player.id)) {
                     statsMap.set(player.id, {
@@ -40,6 +43,7 @@ export function usePlayerStats(tournament: Tournament | null | undefined, catego
                         playerName: player.name,
                         teamId: team.id,
                         teamName: team.name,
+                        categoryName: category?.name || 'N/A',
                         goals: 0,
                         assists: 0,
                         points: 0,
@@ -120,16 +124,16 @@ export function usePlayerStats(tournament: Tournament | null | undefined, catego
 
     const rankedStats = [{...activePlayers[0], rank: 1}];
     for (let i = 1; i < activePlayers.length; i++) {
-        const prev = activePlayers[i-1];
+        const prev = rankedStats[i - 1];
         const current = activePlayers[i];
-        let rank = i + 1;
+        let rank = prev.rank;
         if (
-            current.points === prev.points &&
-            current.goals === prev.goals &&
-            current.assists === prev.assists &&
-            current.penaltyMinutes === prev.penaltyMinutes
+            current.points !== prev.points ||
+            current.goals !== prev.goals ||
+            current.assists !== prev.assists ||
+            current.penaltyMinutes !== prev.penaltyMinutes
         ) {
-            rank = rankedStats[i - 1].rank;
+            rank = i + 1;
         }
         rankedStats.push({ ...current, rank });
     }

@@ -60,6 +60,7 @@ export function PlayerStatsTab() {
                         <TableRow>
                             <TableHead className="text-center w-16">Puesto</TableHead>
                             <TableHead>Jugador</TableHead>
+                            <TableHead>Categoría</TableHead>
                             <TableHead>Equipo</TableHead>
                             <TableHead className="text-center">G</TableHead>
                             <TableHead className="text-center">A</TableHead>
@@ -74,6 +75,7 @@ export function PlayerStatsTab() {
                             <TableRow key={stat.playerId}>
                                 <TableCell className="text-center font-bold">{stat.rank}</TableCell>
                                 <TableCell className="font-medium">{stat.playerName}</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">{stat.categoryName}</TableCell>
                                 <TableCell className="text-sm text-muted-foreground">{stat.teamName}</TableCell>
                                 <TableCell className="text-center font-mono">{stat.goals}</TableCell>
                                 <TableCell className="text-center font-mono">{stat.assists}</TableCell>
@@ -85,7 +87,7 @@ export function PlayerStatsTab() {
                         ))}
                          {playerStats.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={9} className="h-24 text-center">No hay estadísticas para mostrar.</TableCell>
+                                <TableCell colSpan={10} className="h-24 text-center">No hay estadísticas para mostrar.</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
