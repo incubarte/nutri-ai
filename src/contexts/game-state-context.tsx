@@ -1,12 +1,13 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData, PeriodSummary } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
-import { updateConfigOnServer, updateGameStateOnServer } from '@/app/actions';
+import { updateConfigOnServer, updateGameStateOnServer, saveTournamentOnServer } from '@/app/actions';
 import { safeUUID } from '@/lib/utils';
 import defaultSettings from '@/config/defaults.json';
 import { generateSummaryData } from '@/lib/summary-generator';
@@ -1167,23 +1168,34 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'MANUAL_END_GAME': {
-        const tempState = { ...state };
-        const finishedPeriodText = getPeriodText(tempState.live.clock.currentPeriod, tempState.config.numberOfRegularPeriods);
-        const playedPeriods = [...(tempState.live.playedPeriods || [])];
-        if (!playedPeriods.includes(finishedPeriodText)) {
-            playedPeriods.push(finishedPeriodText);
-        }
-        tempState.live.playedPeriods = playedPeriods;
+      const { live, config } = state;
+      const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
 
-        if (tempState.live.score.home === tempState.live.score.away) {
-            newState = { ...tempState, live: { ...tempState.live,
-                clock: { ...tempState.live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
-                shootout: { ...tempState.live.shootout, isActive: false }
-            }};
-        } else {
-            newState = finalizeMatch(tempState);
-        }
-        break;
+      if (live.clock.periodDisplayOverride !== null) break; 
+      
+      // If we are NOT in the final game period, start a break.
+      if (live.clock.currentPeriod < totalGamePeriods) {
+        const isPreOT = live.clock.currentPeriod >= config.numberOfRegularPeriods;
+        const breakType = isPreOT ? 'START_PRE_OT_BREAK' : 'START_BREAK';
+        return gameReducer(state, { type: breakType });
+      }
+      
+      // If we ARE in the final game period.
+      if (live.score.home === live.score.away) {
+        // If tied, go to decision state.
+        newState = {
+          ...state,
+          live: {
+            ...live,
+            clock: { ...live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
+            shootout: { ...live.shootout, isActive: false }
+          }
+        };
+      } else {
+        // If not tied, end the game.
+        return finalizeMatch(state);
+      }
+      break;
     }
     case 'ADD_EXTRA_OVERTIME': {
       if (state.live.clock.periodDisplayOverride !== 'AwaitingDecision') break;
@@ -1914,3 +1926,5 @@ export const getCategoryNameById = (categoryId: string, availableCategories: Cat
 export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProfile };
 
       
+
+    
