@@ -5,24 +5,11 @@ import React, { useMemo } from 'react';
 import { useGameState } from '@/contexts/game-state-context';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Info } from 'lucide-react';
-import type { TeamData, Team } from '@/types';
+import { Trophy } from 'lucide-react';
+import type { Team } from '@/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
-
-interface TeamStats {
-  id: string;
-  name: string;
-  pj: number; // Partidos Jugados
-  pg: number; // Partidos Ganados en tiempo regular
-  pe: number; // Partidos Empatados
-  pp: number; // Partidos Perdidos en tiempo regular
-  pg_ot: number; // Partidos Ganados en OT/SO
-  pp_ot: number; // Partidos Perdidos en OT/SO
-  gf: number; // Goles a Favor
-  gc: number; // Goles en Contra
-  puntos: number;
-}
+import { useStandings } from '@/hooks/use-standings';
 
 interface StandingsDisplayProps {
   teamContext: Team;
@@ -44,81 +31,9 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
 
   const teamIdToShow = teamContext === 'home' ? currentMatch?.homeTeamId : currentMatch?.awayTeamId;
   const teamToShow = currentTournament?.teams.find(t => t.id === teamIdToShow);
-
-  const standings = useMemo(() => {
-    if (!currentTournament || !selectedMatchCategory) return [];
-
-    const finishedMatches = currentTournament.matches.filter(m => m.summary && m.categoryId === selectedMatchCategory);
-    const teamsInCategory = currentTournament.teams.filter(t => t.category === selectedMatchCategory);
-      
-    const stats: TeamStats[] = teamsInCategory.map(team => {
-        const teamStats: TeamStats = {
-          id: team.id, name: team.name, pj: 0, pg: 0, pe: 0, pp: 0, pg_ot: 0, pp_ot: 0, gf: 0, gc: 0, puntos: 0
-        };
-
-        finishedMatches
-          .filter(m => m.homeTeamId === team.id || m.awayTeamId === team.id)
-          .forEach(match => {
-            teamStats.pj++;
-            const homeScore = match.summary?.home.goals.length || 0;
-            const awayScore = match.summary?.away.goals.length || 0;
-            const wentToOTOrSO = (match.summary?.statsByPeriod && Object.keys(match.summary.statsByPeriod).some(p => p.startsWith('OT'))) || 
-                                 (match.summary?.shootout && (match.summary.shootout.homeAttempts.length > 0 || match.summary.shootout.awayAttempts.length > 0));
-
-            const isHome = match.homeTeamId === team.id;
-            
-            teamStats.gf += isHome ? homeScore : awayScore;
-            teamStats.gc += isHome ? awayScore : homeScore;
-
-            if (homeScore > awayScore) { // Team won
-              if (isHome) {
-                if (wentToOTOrSO) teamStats.pg_ot++; else teamStats.pg++;
-              } else { // Team is away, and lost
-                if (wentToOTOrSO) teamStats.pp_ot++; else teamStats.pp++;
-              }
-            } else if (awayScore > homeScore) { // Team lost
-              if (!isHome) { // Team is away, and won
-                if (wentToOTOrSO) teamStats.pg_ot++; else teamStats.pg++;
-              } else { // Team is home, and lost
-                if (wentToOTOrSO) teamStats.pp_ot++; else teamStats.pp++;
-              }
-            } else { // Tie
-              teamStats.pe++;
-            }
-          });
-        
-        teamStats.puntos = (teamStats.pg * 3) + (teamStats.pe * 1) + (teamStats.pg_ot * 2) + (teamStats.pp_ot * 1);
-        return teamStats;
-      });
-
-      // Sort stats
-      stats.sort((a, b) => {
-        if (b.puntos !== a.puntos) return b.puntos - a.puntos;
-        const diffA = a.gf - a.gc;
-        const diffB = b.gf - b.gc;
-        if(diffB !== diffA) return diffB - diffA;
-        if (b.gf !== a.gf) return b.gf - a.gf;
-        return a.pj - b.pj;
-      });
-
-      const rankedStats: (TeamStats & { rank: number })[] = [];
-      stats.forEach((team, index) => {
-          let rank = index + 1;
-          if (index > 0) {
-            const prevTeam = stats[index - 1];
-            const diffA = team.gf - team.gc;
-            const diffB = prevTeam.gf - prevTeam.gc;
-            if (team.puntos === prevTeam.puntos && team.pj === prevTeam.pj && diffA === diffB && team.gf === prevTeam.gf) {
-              rank = rankedStats[index - 1].rank;
-            }
-          }
-          rankedStats.push({ ...team, rank });
-        });
-
-      return rankedStats;
-
-  }, [currentTournament, selectedMatchCategory]);
   
+  const standings = useStandings(currentTournament, selectedMatchCategory);
+
   if (!teamToShow) return null;
 
   return (
