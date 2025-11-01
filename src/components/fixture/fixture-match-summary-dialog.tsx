@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
@@ -101,7 +102,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
       });
     });
 
-    return { home: Array.from(statsMap.values()), away: Array.from(statsMap.values()) };
+    return { home: Array.from(statsMap.home.values()), away: Array.from(statsMap.away.values()) };
   }, [localSummary, homeTeam, awayTeam]);
 
   const handleGoalChange = (action: 'add' | 'update' | 'delete', team: Team, periodText: string, goal: GoalLog, originalGoalId?: string) => {
@@ -362,3 +363,5 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
     </>
   );
 }
+
+    
