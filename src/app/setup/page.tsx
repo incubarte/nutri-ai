@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import type { TeamData, MatchData } from '@/types';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Check, ChevronsUpDown, CalendarCheck, ArrowLeft } from 'lucide-react';
+import { Check, ChevronsUpDown, CalendarCheck, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -163,7 +163,7 @@ export default function SetupPage() {
                     return;
                 }
             } else {
-                if (!homeTeamId || !awayTeamId || !localCategoryId) {
+                 if (!pendingMatchConfig && (!homeTeamId || !awayTeamId || !localCategoryId)) {
                     toast({ title: "Datos Incompletos", description: "Por favor, selecciona una categoría y ambos equipos para continuar.", variant: "destructive" });
                     return;
                 }
@@ -279,6 +279,10 @@ export default function SetupPage() {
                         
                         <Separator />
 
+                         <div className="p-3 bg-muted/20 border border-muted/40 rounded-lg text-muted-foreground text-sm">
+                            <p><strong>Nota:</strong> Los partidos configurados manualmente (o que no se cargan desde el fixture) <strong className="text-foreground/80">NO GENERAN</strong> un archivo de resumen de partido al finalizar. Si es un partido de torneo, por favor, agrégalo al Fixture primero.</p>
+                        </div>
+
                         {useManualTeamNames ? (
                             <div className="space-y-4">
                                 <div className="grid w-full items-center gap-1.5">
@@ -324,6 +328,17 @@ export default function SetupPage() {
 
                     <TabsContent value="summary" className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
                         <h3 className="text-lg font-semibold">Resumen de Configuración</h3>
+
+                        {!pendingMatchConfig?.matchId && (
+                            <div className="flex items-start gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive-foreground">
+                                <AlertTriangle className="h-6 w-6 text-destructive mt-1"/>
+                                <div>
+                                    <h4 className="font-bold text-destructive">¡ATENCIÓN!</h4>
+                                    <p className="text-sm">Este partido no se cargó desde el Fixture. <strong className="font-semibold">NO SE GENERARÁ UN ARCHIVO DE RESUMEN</strong> al finalizar. Si es un partido oficial, cancélalo y cárgalo desde la lista de "Partidos Programados para Hoy".</p>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="space-y-4 rounded-md border p-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -365,5 +380,3 @@ export default function SetupPage() {
         </div>
     );
 }
-
-    
