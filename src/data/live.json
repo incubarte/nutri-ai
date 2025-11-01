@@ -188,13 +188,13 @@
     ]
   },
   "clock": {
-    "currentTime": 30000,
+    "currentTime": 5252,
     "currentPeriod": 0,
-    "isClockRunning": true,
+    "isClockRunning": false,
     "periodDisplayOverride": "Warm-up",
     "preTimeoutState": null,
-    "clockStartTimeMs": 1762001423040,
-    "remainingTimeAtStartCs": 30000,
+    "clockStartTimeMs": null,
+    "remainingTimeAtStartCs": null,
     "absoluteElapsedTimeCs": 0,
     "_liveAbsoluteElapsedTimeCs": 0,
     "isFlashingZero": false
