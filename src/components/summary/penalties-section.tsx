@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,11 +8,11 @@ import type { PenaltyLog, Team } from "@/types";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Trash2, Siren } from "lucide-react";
 
-export const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }: { team: Team; teamName: string; penalties: PenaltyLog[]; onAdd?: () => void; onDelete?: (logId: string) => void; }) => {
+export const PenaltiesSection = ({ team, teamName, penalties, onAdd, onDelete }: { team: Team; teamName: string; penalties?: PenaltyLog[]; onAdd?: () => void; onDelete?: (logId: string) => void; }) => {
     const safePenalties = penalties || [];
     return (
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="flex items-center gap-2 text-xl"><Siren className="h-5 w-5" />Penalidades</CardTitle>
                 {onAdd && (
                     <Button variant="ghost" size="icon" onClick={onAdd} className="h-8 w-8 text-primary hover:text-primary/80">

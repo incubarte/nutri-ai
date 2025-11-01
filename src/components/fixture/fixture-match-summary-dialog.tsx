@@ -8,7 +8,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, Edit3, Check, XCircle } from "lucide-react";
 import type { MatchData, Tournament, GameSummary, SummaryPlayerStats, PlayerData, PeriodStats, Team, GoalLog, PenaltyLog, PeriodSummary } from "@/types";
 import { useGameState, getCategoryNameById } from "@/contexts/game-state-context";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { GoalsSection } from "../summary/goals-section";
 import { PenaltiesSection } from "../summary/penalties-section";
 import { PlayerStatsSection } from "../summary/player-stats-section";
@@ -156,7 +155,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   };
   
   const handleAddPenaltySubmit = (team: Team, playerNumber: string, penaltyTypeId: string, gameTimeCs?: number, periodText?: string) => {
-    if(!match || !tournament) return;
+    if(!match || !tournament || !addPenaltyContext) return;
     const penaltyDef = tournament.penaltyTypes.find(p => p.id === penaltyTypeId);
     if (!penaltyDef) return;
 
@@ -165,11 +164,11 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
       team, playerNumber, penaltyName: penaltyDef.name, initialDuration: penaltyDef.duration,
       reducesPlayerCount: penaltyDef.reducesPlayerCount, clearsOnGoal: penaltyDef.clearsOnGoal,
       isBenchPenalty: penaltyDef.isBenchPenalty, addTimestamp: new Date(match.date).getTime(),
-      addGameTime: gameTimeCs || 0, addPeriodText: periodText || 'N/A', endReason: 'completed',
+      addGameTime: gameTimeCs || 0, addPeriodText: addPenaltyContext.period, endReason: 'completed',
       timeServed: penaltyDef.duration,
     };
     
-    handlePenaltyChange('add', team, periodText || 'N/A', penaltyLog);
+    handlePenaltyChange('add', team, addPenaltyContext.period, penaltyLog);
     toast({ title: "Penalidad Añadida", description: "La penalidad se ha añadido manualmente al resumen."});
     setIsAddPenaltyOpen(false);
   };
@@ -215,7 +214,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
             ['home', 'away'].forEach(teamStr => {
                 const team = teamStr as Team;
                 periodSummary.stats.playerStats[team] = (periodSummary.stats.playerStats[team] || []).map((pStat: SummaryPlayerStats) => {
-                    if (editedShots[periodSummary.period][pStat.id]) {
+                    if (editedShots[periodSummary.period]?.[pStat.id]) {
                         return { ...pStat, shots: parseInt(editedShots[periodSummary.period][pStat.id].shots, 10) || 0 };
                     }
                     return pStat;
@@ -258,10 +257,13 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
         </DialogHeader>
         
         <Tabs defaultValue="general" className="w-full flex-grow flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">Resumen General</TabsTrigger>
-            <TabsTrigger value="byPeriod">Desglose por Período</TabsTrigger>
+            <TabsTrigger value="goalsByPeriod">Goles por Período</TabsTrigger>
+            <TabsTrigger value="penaltiesByPeriod">Faltas por Período</TabsTrigger>
+            <TabsTrigger value="statsByPeriod">Estadísticas por Período</TabsTrigger>
           </TabsList>
+          
           <TabsContent value="general" className="flex-grow overflow-hidden mt-4">
              <ScrollArea className="h-full pr-6 -mr-6">
                  <div className="space-y-6">
@@ -269,21 +271,16 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                       <GoalsSection teamName={homeTeam?.name || ''} goals={aggregatedGoals.home} onGoalChange={(action, goal, id) => handleGoalChange(action, 'home', goal.periodText, goal, id)} editable={true} players={homeTeam?.players} />
                       <GoalsSection teamName={awayTeam?.name || ''} goals={aggregatedGoals.away} onGoalChange={(action, goal, id) => handleGoalChange(action, 'away', goal.periodText, goal, id)} editable={true} players={awayTeam?.players} />
                     </div>
-                    
                     <Separator />
-                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={aggregatedPenalties.home} onDelete={(id) => { const p = aggregatedPenalties.home.find(pen => pen.id === id); if (p) handleDeletePenalty('home', p, p.addPeriodText); }} />
                       <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={aggregatedPenalties.away} onDelete={(id) => { const p = aggregatedPenalties.away.find(pen => pen.id === id); if (p) handleDeletePenalty('away', p, p.addPeriodText); }} />
                     </div>
-
                     <Separator />
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <PlayerStatsSection teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={aggregatedStats.home} attendance={localSummary.attendance.home} editable={false} />
                         <PlayerStatsSection teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={aggregatedStats.away} attendance={localSummary.attendance.away} editable={false} />
                     </div>
-                    
                     {localSummary.shootout && (localSummary.shootout.homeAttempts.length > 0 || localSummary.shootout.awayAttempts.length > 0) && (
                         <>
                           <Separator />
@@ -296,7 +293,46 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                  </div>
              </ScrollArea>
           </TabsContent>
-          <TabsContent value="byPeriod" className="flex-grow overflow-hidden mt-4">
+          
+          <TabsContent value="goalsByPeriod" className="flex-grow overflow-hidden mt-4">
+            <ScrollArea className="h-full pr-6 -mr-6">
+              <div className="space-y-8">
+                  {playedPeriods?.map(periodText => {
+                    const periodData = statsByPeriod?.find(p => p.period === periodText);
+                    return (
+                      <div key={`goals-${periodText}`} className="space-y-4">
+                        <h3 className="text-xl font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <GoalsSection teamName={homeTeam?.name || ''} goals={periodData?.stats.goals.home} onGoalChange={(action, goal, id) => handleGoalChange(action, 'home', periodText, goal, id)} editable={true} players={homeTeam?.players} />
+                          <GoalsSection teamName={awayTeam?.name || ''} goals={periodData?.stats.goals.away} onGoalChange={(action, goal, id) => handleGoalChange(action, 'away', periodText, goal, id)} editable={true} players={awayTeam?.players} />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="penaltiesByPeriod" className="flex-grow overflow-hidden mt-4">
+             <ScrollArea className="h-full pr-6 -mr-6">
+                 <div className="space-y-8">
+                  {playedPeriods?.map(periodText => {
+                    const periodData = statsByPeriod?.find(p => p.period === periodText);
+                    return (
+                      <div key={`penalties-${periodText}`} className="space-y-4">
+                        <h3 className="text-xl font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={periodData?.stats.penalties.home} onDelete={(id) => handleDeletePenalty('home', {id} as PenaltyLog, periodText)} onAdd={() => handleAddPenaltyClick('home', periodText)} />
+                           <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={periodData?.stats.penalties.away} onDelete={(id) => handleDeletePenalty('away', {id} as PenaltyLog, periodText)} onAdd={() => handleAddPenaltyClick('away', periodText)} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                 </div>
+              </ScrollArea>
+          </TabsContent>
+          
+          <TabsContent value="statsByPeriod" className="flex-grow overflow-hidden mt-4">
              <ScrollArea className="h-full pr-6 -mr-6">
                 <div className="flex justify-end pr-2 mb-4">
                     {isEditing ? (
@@ -314,10 +350,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                   {playedPeriods?.map(periodText => {
                     const periodData = statsByPeriod?.find(p => p.period === periodText);
                     return (
-                      <div key={periodText} className="space-y-4">
-                        <h3 className="text-xl font-semibold text-center text-primary-foreground border-b pb-2 mb-4">
-                          {periodText}
-                        </h3>
+                      <div key={`stats-${periodText}`} className="space-y-4">
+                        <h3 className="text-xl font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <PlayerStatsSection teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={periodData?.stats.playerStats.home} attendance={localSummary.attendance.home} editable={isEditing} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
                             <PlayerStatsSection teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={periodData?.stats.playerStats.away} attendance={localSummary.attendance.away} editable={isEditing} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
@@ -363,5 +397,3 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
     </>
   );
 }
-
-    
