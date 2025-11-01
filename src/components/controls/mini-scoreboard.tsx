@@ -54,6 +54,9 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   if (!state.live || !state.config) {
     return null; 
   }
+  
+  const isMatchFromFixture = !!state.live.matchId;
+
 
   const [pendingConfirmation, setPendingConfirmation] = useState<{
     title: string;
@@ -500,8 +503,8 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     return matched ? matched.id : null;
   }, [state.live.awayTeamName, state.live.awayTeamSubName, state.config.tournaments, state.config.selectedTournamentId, state.config.selectedMatchCategory, state.config.enableTeamSelectionInMiniScoreboard]);
 
-  const showHomeSearchIcon = state.config.enableTeamSelectionInMiniScoreboard && state.config.tournaments.length > 0;
-  const showAwaySearchIcon = state.config.enableTeamSelectionInMiniScoreboard && state.config.tournaments.length > 0;
+  const showHomeSearchIcon = state.config.enableTeamSelectionInMiniScoreboard && state.config.tournaments.length > 0 && !isMatchFromFixture;
+  const showAwaySearchIcon = state.config.enableTeamSelectionInMiniScoreboard && state.config.tournaments.length > 0 && !isMatchFromFixture;
   const showHomePlayersIcon = state.config.enableTeamSelectionInMiniScoreboard;
   const showAwayPlayersIcon = state.config.enableTeamSelectionInMiniScoreboard;
 
@@ -572,7 +575,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
       <div className="absolute top-0 left-0 p-2 sm:p-3 md:p-4 z-20">
         <div className="flex items-center gap-2">
           {availableCategories.length > 0 ? (
-              <Select value={state.config.selectedMatchCategory} onValueChange={handleMatchCategoryChange}>
+              <Select value={state.config.selectedMatchCategory} onValueChange={handleMatchCategoryChange} disabled={isMatchFromFixture}>
                   <SelectTrigger className="w-auto min-w-[120px] max-w-[200px] h-8 text-xs bg-card/80 border-border/50 backdrop-blur-sm">
                       <div className="flex items-center gap-1.5 truncate">
                           <ListFilter className="h-3.5 w-3.5 text-muted-foreground" />
@@ -650,10 +653,12 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
              <div className="relative w-full max-w-xs mx-auto my-1">
                  <div className="flex items-center justify-center">
                     {showHomeSearchIcon && (
-                        <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0")} asChild>
+                        <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0", isMatchFromFixture && "opacity-50 cursor-not-allowed")} asChild>
                              <Popover open={isHomeTeamSearchOpen} onOpenChange={setIsHomeTeamSearchOpen}>
                                 <PopoverTrigger asChild>
-                                    <Search className="h-4 w-4 text-muted-foreground" />
+                                    <button disabled={isMatchFromFixture} aria-label="Buscar equipo local">
+                                        <Search className="h-4 w-4 text-muted-foreground" />
+                                    </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[240px] p-0" align="start">
                                     <Command>
@@ -692,6 +697,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                         )}
                         aria-label="Nombre del equipo local"
                         autoComplete="off"
+                        disabled={isMatchFromFixture}
                     />
                     {showHomePlayersIcon && (
                         <Button
@@ -922,10 +928,12 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
              <div className="relative w-full max-w-xs mx-auto my-1">
                 <div className="flex items-center justify-center">
                     {showAwaySearchIcon && (
-                        <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0")} asChild>
+                        <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0", isMatchFromFixture && "opacity-50 cursor-not-allowed")} asChild>
                             <Popover open={isAwayTeamSearchOpen} onOpenChange={setIsAwayTeamSearchOpen}>
                                 <PopoverTrigger asChild>
-                                    <Search className="h-4 w-4 text-muted-foreground" />
+                                    <button disabled={isMatchFromFixture} aria-label="Buscar equipo visitante">
+                                        <Search className="h-4 w-4 text-muted-foreground" />
+                                    </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[240px] p-0" align="start">
                                     <Command>
@@ -964,6 +972,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                         )}
                         aria-label="Nombre del equipo visitante"
                         autoComplete="off"
+                        disabled={isMatchFromFixture}
                     />
                      {showAwayPlayersIcon && (
                         <Button

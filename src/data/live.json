@@ -1,7 +1,7 @@
 {
   "score": {
-    "home": 0,
-    "away": 1,
+    "home": 3,
+    "away": 5,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -10,7 +10,41 @@
     "away": []
   },
   "goals": {
-    "home": [],
+    "home": [
+      {
+        "team": "home",
+        "timestamp": 1762011203996,
+        "gameTime": 114249,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "14",
+          "playerName": "GALEANI MARIANO"
+        },
+        "id": "f9c7b401-410d-49b6-85cd-fcfa68b7d094"
+      },
+      {
+        "team": "home",
+        "timestamp": 1762011244626,
+        "gameTime": 110206,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "14",
+          "playerName": "GALEANI MARIANO"
+        },
+        "id": "7f06c90e-4a73-499f-bebd-2cc3c096032f"
+      },
+      {
+        "team": "home",
+        "timestamp": 1762011404036,
+        "gameTime": 94246,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "17",
+          "playerName": "BEREZYUK RUSLAN"
+        },
+        "id": "4c5a8cc8-4e75-4127-b683-a8db13c2bd16"
+      }
+    ],
     "away": [
       {
         "team": "away",
@@ -21,6 +55,46 @@
           "playerNumber": "1"
         },
         "id": "f9aa257e-7271-4386-ae4b-0709bb5da3d5"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762011063440,
+        "gameTime": 119942,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "3"
+        },
+        "id": "b145cb9b-b1c2-41d2-b3dc-b37d1e7a43a3"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762011077077,
+        "gameTime": 119942,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "5"
+        },
+        "id": "eb54daa9-462f-4230-8fe6-4e3bbb87ea2c"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762011099928,
+        "gameTime": 119942,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "5"
+        },
+        "id": "312a496a-85a1-4328-97d2-bc75a214b214"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762011150392,
+        "gameTime": 119615,
+        "periodText": "1ST",
+        "scorer": {
+          "playerNumber": "7"
+        },
+        "id": "3cfe6cb2-d853-4c82-a817-c0da5310a241"
       }
     ]
   },
@@ -199,15 +273,15 @@
     ]
   },
   "clock": {
-    "currentTime": 119942,
+    "currentTime": 93748,
     "currentPeriod": 1,
-    "isClockRunning": false,
+    "isClockRunning": true,
     "periodDisplayOverride": null,
     "preTimeoutState": null,
-    "clockStartTimeMs": null,
-    "remainingTimeAtStartCs": null,
+    "clockStartTimeMs": 1762011147047,
+    "remainingTimeAtStartCs": 119942,
     "absoluteElapsedTimeCs": 58,
-    "_liveAbsoluteElapsedTimeCs": 58,
+    "_liveAbsoluteElapsedTimeCs": 26252,
     "isFlashingZero": false
   },
   "shootout": {
@@ -217,7 +291,7 @@
     "awayAttempts": [],
     "initiator": null
   },
-  "homeTeamName": "Hazard Blue",
+  "homeTeamName": "ACEMHH C2",
   "awayTeamName": "Ovejas Negras Corderos",
   "playHornTrigger": 59,
   "playPenaltyBeepTrigger": 0,
@@ -225,6 +299,6 @@
   "overlayMessage": null,
   "matchId": "a436ba97-3d70-4258-8059-f4d8d3c3233a",
   "playedPeriods": [],
-  "homeTeamSubName": "Blue",
-  "awayTeamSubName": "Corderos"
+  "awayTeamSubName": "Corderos",
+  "goalCelebration": null
 }
