@@ -1,6 +1,6 @@
 {
   "score": {
-    "home": 0,
+    "home": 1,
     "away": 0,
     "homeShots": 0,
     "awayShots": 0
@@ -10,7 +10,18 @@
     "away": []
   },
   "goals": {
-    "home": [],
+    "home": [
+      {
+        "team": "home",
+        "timestamp": 1761959154954,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "1"
+        },
+        "id": "973f19a9-7c15-4e02-9ee9-0bebf10bb97a"
+      }
+    ],
     "away": []
   },
   "penaltiesLog": {

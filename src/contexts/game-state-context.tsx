@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -1168,30 +1167,27 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'MANUAL_END_GAME': {
-      if (state.live.clock.periodDisplayOverride !== null) break;
-
       const { live, config } = state;
+      const { clock, score } = live;
+
+      // This action should only be triggered from an active period
+      if (clock.periodDisplayOverride !== null) break;
+
       const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
 
-      if (live.clock.currentPeriod < totalGamePeriods) {
-        const isPreOT = live.clock.currentPeriod >= config.numberOfRegularPeriods;
-        const breakType = isPreOT ? 'START_PRE_OT_BREAK' : 'START_BREAK';
-        return gameReducer(state, { type: breakType });
-      }
-
-      if (live.clock.currentPeriod >= totalGamePeriods) {
-        if (live.score.home === live.score.away) {
-          newState = {
-            ...state,
-            live: {
-              ...live,
-              clock: { ...live.clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' },
-              shootout: { ...live.shootout, isActive: false }
-            }
-          };
-        } else {
+      if (clock.currentPeriod >= totalGamePeriods) {
+        // We are at or beyond the last configured period
+        if (score.home !== score.away) {
           return finalizeMatch(state);
+        } else {
+          newState = { ...state, live: { ...live, clock: { ...clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' }, shootout: { ...live.shootout, isActive: false } } };
         }
+      } else {
+        // We are not at the final period, so we should go to a break.
+        const isPreOT = clock.currentPeriod >= config.numberOfRegularPeriods;
+        const breakType = isPreOT ? 'START_PRE_OT_BREAK' : 'START_BREAK';
+        // This directly calls the reducer logic for starting a break
+        return gameReducer(state, { type: breakType });
       }
       break;
     }
@@ -1937,4 +1933,5 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
       
 
     
+
 
