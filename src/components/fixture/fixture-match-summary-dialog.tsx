@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, Edit3, Check, XCircle } from "lucide-react";
-import type { MatchData, Tournament, GameSummary, SummaryPlayerStats, PlayerData, PeriodStats, Team, GoalLog, PenaltyLog, PeriodSummary } from "@/types";
+import type { MatchData, Tournament, GameSummary, SummaryPlayerStats, PlayerData, PeriodStats, Team, GoalLog, PenaltyLog, PeriodSummary, AttendedPlayerInfo } from "@/types";
 import { useGameState, getCategoryNameById } from "@/contexts/game-state-context";
 import { GoalsSection } from "../summary/goals-section";
 import { PenaltiesSection } from "../summary/penalties-section";
@@ -327,8 +327,30 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                     </div>
                     <Separator />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <PlayerStatsSection teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={aggregatedStats.home} attendance={localSummary.attendance.home} editable={false} showAttendanceControls={true} isAttendanceEditing={isAttendanceEditing} onToggleAttendance={(playerId) => handleToggleAttendance('home', playerId)} onEditToggle={setIsAttendanceEditing} onSave={handleSaveAttendance} />
-                        <PlayerStatsSection teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={aggregatedStats.away} attendance={localSummary.attendance.away} editable={false} showAttendanceControls={true} isAttendanceEditing={isAttendanceEditing} onToggleAttendance={(playerId) => handleToggleAttendance('away', playerId)} onEditToggle={setIsAttendanceEditing} onSave={handleSaveAttendance} />
+                        <PlayerStatsSection 
+                          teamName={homeTeam?.name || ''} 
+                          allPlayers={homeTeam?.players} 
+                          playerStats={aggregatedStats.home} 
+                          attendance={localSummary.attendance.home} 
+                          editable={false} 
+                          showAttendanceControls={true} 
+                          isAttendanceEditing={isAttendanceEditing}
+                          onToggleAttendance={(playerId) => handleToggleAttendance('home', playerId)}
+                          onEditToggle={setIsAttendanceEditing} 
+                          onSave={handleSaveAttendance} 
+                        />
+                        <PlayerStatsSection 
+                          teamName={awayTeam?.name || ''}
+                          allPlayers={awayTeam?.players}
+                          playerStats={aggregatedStats.away}
+                          attendance={localSummary.attendance.away}
+                          editable={false}
+                          showAttendanceControls={true}
+                          isAttendanceEditing={isAttendanceEditing}
+                          onToggleAttendance={(playerId) => handleToggleAttendance('away', playerId)}
+                          onEditToggle={setIsAttendanceEditing}
+                          onSave={handleSaveAttendance}
+                        />
                     </div>
                     {localSummary.shootout && (localSummary.shootout.homeAttempts.length > 0 || localSummary.shootout.awayAttempts.length > 0) && (
                         <>
