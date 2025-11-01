@@ -89,6 +89,7 @@
     "penaltyTimeSize": 3.5,
     "penaltyPlayerIconSize": 2.5,
     "standingsTableFontSize": 2,
+    "standingsTableRowHeight": 4.75,
     "primaryColor": "223 65% 33%",
     "accentColor": "40 100% 67%",
     "backgroundColor": "223 70% 11%",
@@ -117,7 +118,8 @@
       "backgroundColor": "223 70% 11%",
       "mainContentGap": 3,
       "scoreLabelGap": -2,
-      "standingsTableFontSize": 2
+      "standingsTableFontSize": 2,
+      "standingsTableRowHeight": 4.75
     }
   ],
   "selectedScoreboardLayoutProfileId": "default-layout-profile",

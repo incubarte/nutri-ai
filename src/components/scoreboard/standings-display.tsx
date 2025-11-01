@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useMemo } from 'react';
@@ -91,7 +90,7 @@ export function StandingsDisplay() {
   const cellSize = baseFontSizeRem;
   const pointsSize = baseFontSizeRem * 1.25;
   const ellipsisRowHeight = rowHeightRem * 0.7; // Make ellipsis row a bit shorter
-  const ellipsisFontSize = baseFontSizeRem * 1.5;
+  const ellipsisFontSize = baseFontSizeRem * 1.8;
 
 
   return (
@@ -120,7 +119,7 @@ export function StandingsDisplay() {
                 <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>PP</TableHead>
                 <TableHead className="text-center border-l" style={{ fontSize: `${headerSize}rem` }}>GF</TableHead>
                 <TableHead className="text-center" style={{ fontSize: `${headerSize}rem` }}>GC</TableHead>
-                <TableHead className="text-center font-bold border-l" style={{ fontSize: `${headerSize}rem` }}>Pts</TableHead>
+                <TableHead className="text-center font-bold border-l" style={{ fontSize: `${headerSize}rem` }}>Puntos</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -138,7 +137,7 @@ export function StandingsDisplay() {
                 const isMatchTeam = teamStat.id === homeTeamId || teamStat.id === awayTeamId;
                 
                 return (
-                    <TableRow key={teamStat.id} className={cn(isMatchTeam && "bg-primary/20 font-bold")} style={{ fontSize: `${cellSize}rem`, height: `${rowHeightRem}rem`}}>
+                    <TableRow key={teamStat.id} className={cn(isMatchTeam ? "bg-primary/20 font-bold" : "text-muted-foreground/80 opacity-80")} style={{ fontSize: `${cellSize}rem`, height: `${rowHeightRem}rem`}}>
                         <TableCell className="text-center font-bold">{teamStat.rank}</TableCell>
                         <TableCell className="font-medium">{teamStat.name}</TableCell>
                         <TableCell className="text-center">{teamStat.pj}</TableCell>
@@ -165,3 +164,4 @@ export function StandingsDisplay() {
     </Card>
   );
 }
+
