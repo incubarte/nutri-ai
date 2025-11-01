@@ -198,7 +198,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
         if (lastPlayedPeriodText) {
             let lastPeriodNumber = 0;
             if (lastPlayedPeriodText.startsWith('OT')) {
-                lastPeriodNumber = state.config.numberOfRegularPeriods + (parseInt(lastPlayedPeriodText.replace('OT', ''), 10) || 1);
+                lastPeriodNumber = state.config.numberOfRegularPeriods + (parseInt(lastPlayedPeriodText.replace('OT', '') || '1', 10));
             } else {
                 lastPeriodNumber = parseInt(lastPlayedPeriodText.replace(/\D/g, ''), 10) || 0;
             }
@@ -643,7 +643,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
           <div className="flex-1 w-full sm:w-auto">
             <div className="flex justify-center items-center gap-1 mb-1 h-5 md:h-6 lg:h-7">
               {playersOnIceForHome > 0 && Array(playersOnIceForHome).fill(null).map((_, index) => (
-                <User key={`home-player-${index}`} className={cn("h-5 w-5 md:h-6 md:w-6 lg:h-7 text-primary-foreground/80", isWarmup && isMatchFromFixture && "animate-green-glow text-green-500")} />
+                <User key={`home-player-${index}`} className="h-5 w-5 md:h-6 md:w-6 lg:h-7 text-primary-foreground/80" />
               ))}
               {playersOnIceForHome === 0 && state.config.playersPerTeamOnIce > 0 && (
                 <span className="text-xs text-destructive animate-pulse">0 JUGADORES</span>
@@ -884,9 +884,11 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
               >
                 <ChevronLeft className="h-5 w-5" />
               </Button>
-              <p className="text-lg text-primary-foreground uppercase w-36 truncate text-center">
-                {getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout)}
-              </p>
+              <div
+                className="text-lg text-primary-foreground uppercase w-36 truncate text-center"
+              >
+                 {getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout)}
+              </div>
               <Button
                 onClick={handleNextAction}
                 variant="ghost"
@@ -897,19 +899,20 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
               >
                 <ChevronRight className="h-5 w-5" />
               </Button>
-              {!state.live.clock.isClockRunning && state.live.clock.currentTime > 0 && state.live.clock.periodDisplayOverride !== "End of Game" && !isShootout && !showNextActionButton && editingSegment === null && (
+              {!state.live.clock.isClockRunning && state.live.clock.currentTime > 0 && state.live.clock.periodDisplayOverride === null && !isShootout && !showNextActionButton && editingSegment === null && (
                 <span className="absolute top-[-0.25rem] right-1 text-[0.6rem] font-normal text-muted-foreground normal-case px-1 rounded-sm bg-background/30">
                   Paused
                 </span>
               )}
             </div>
-            {state.live.clock.preTimeoutState && state.live.clock.periodDisplayOverride !== "End of Game" && (
-              <div className={cn(
-                  "text-xs mt-1 normal-case tracking-normal",
-                  isPreTimeoutLastMinute ? "text-orange-500/80" : "text-muted-foreground"
-                )}>
-                Retornando a: {getPeriodText(state.live.clock.preTimeoutState.period, state.config.numberOfRegularPeriods)} - {formatTime(state.live.clock.preTimeoutState.time, { showTenths: isPreTimeoutLastMinute, includeMinutesForTenths: false })}
-                {state.live.clock.preTimeoutState.override ? ` (${state.live.clock.preTimeoutState.override})` : ''}
+            {state.live.clock.preTimeoutState && state.live.clock.periodDisplayOverride === "Time Out" && (
+              <div 
+                className={cn(
+                    "text-xs mt-1 normal-case tracking-normal",
+                    isPreTimeoutLastMinute ? "text-orange-500/80" : "text-muted-foreground"
+                )}
+              >
+                TIMEOUT {state.live.clock.preTimeoutState.team === 'home' ? state.live.homeTeamName : state.live.awayTeamName}
               </div>
             )}
           </div>
