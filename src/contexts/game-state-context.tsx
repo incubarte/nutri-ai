@@ -1338,11 +1338,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'FINISH_SHOOTOUT': {
-        const tempState = { ...state };
-        const finalizedState = finalizeMatch(tempState);
-        newState = finalizedState;
-        toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
-        break;
+      let finalScore = { ...state.live.score };
+      if (state.live.shootout.isActive) {
+        const homeGoals = state.live.shootout.homeAttempts.filter(a => a.isGoal).length;
+        const awayGoals = state.live.shootout.awayAttempts.filter(a => a.isGoal).length;
+
+        if (homeGoals > awayGoals) {
+          finalScore.home += 1;
+        } else if (awayGoals > homeGoals) {
+          finalScore.away += 1;
+        }
+      }
+      
+      const tempState = { ...state, live: { ...state.live, score: finalScore }};
+      const finalizedState = finalizeMatch(tempState);
+      newState = { ...finalizedState, live: { ...finalizedState.live, shootout: { ...finalizedState.live.shootout, isActive: false } } };
+      toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
+      break;
     }
     case 'UPDATE_SELECTED_FT_PROFILE_DATA': {
       const { selectedFormatAndTimingsProfileId, formatAndTimingsProfiles } = state.config;
@@ -1538,8 +1550,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         if (t.id === tournamentId) {
           const newMatches = (t.matches || []).map(m => {
             if (m.id === matchId) {
-                const homeScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals.home?.length ?? 0), 0);
-                const awayScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals.away?.length ?? 0), 0);
+                const homeScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals.home?.length ?? 0), 0) + (summary.shootout?.homeAttempts.filter(a => a.isGoal).length ?? 0);
+                const awayScore = (summary.statsByPeriod || []).reduce((acc, p) => acc + (p.stats.goals.away?.length ?? 0), 0) + (summary.shootout?.awayAttempts.filter(a => a.isGoal).length ?? 0);
                 return { ...m, summary, homeScore, awayScore, overTimeOrShootouts: summary.overTimeOrShootouts };
             }
             return m;
@@ -1951,6 +1963,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
       
 
     
+
 
 
 

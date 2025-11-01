@@ -1,6 +1,6 @@
 {
   "score": {
-    "home": 0,
+    "home": 1,
     "away": 1,
     "homeShots": 0,
     "awayShots": 0
@@ -10,42 +10,34 @@
     "away": []
   },
   "goals": {
-    "home": [],
+    "home": [
+      {
+        "team": "home",
+        "timestamp": 1761976281844,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "1"
+        },
+        "id": "762e5186-dde1-437b-9fb0-721022ac799d"
+      }
+    ],
     "away": [
       {
         "team": "away",
-        "timestamp": 1761975881745,
+        "timestamp": 1761976239875,
         "gameTime": 120000,
         "periodText": "1ST",
         "scorer": {
-          "playerNumber": "3"
+          "playerNumber": "2"
         },
-        "id": "2ec38e57-4132-4495-9639-9e0e772c3fc5"
+        "id": "97e9eb9c-ec99-4808-ace4-cce43204efe1"
       }
     ]
   },
   "penaltiesLog": {
     "home": [],
-    "away": [
-      {
-        "id": "7c6de44d-4492-4610-ac3b-606102b02866",
-        "team": "away",
-        "playerNumber": "4",
-        "penaltyName": "Menor",
-        "initialDuration": 120,
-        "reducesPlayerCount": true,
-        "clearsOnGoal": true,
-        "isBenchPenalty": false,
-        "addTimestamp": 1761975884951,
-        "addGameTime": 120000,
-        "addPeriodText": "1ST",
-        "endTimestamp": 1761975888958,
-        "endGameTime": 107978,
-        "endPeriodText": "1ST",
-        "endReason": "completed",
-        "timeServed": 120
-      }
-    ]
+    "away": []
   },
   "shotsLog": {
     "home": [],
@@ -56,33 +48,100 @@
     "away": []
   },
   "clock": {
-    "currentTime": 25200,
+    "currentTime": 0,
     "currentPeriod": 4,
     "isClockRunning": false,
-    "periodDisplayOverride": null,
+    "periodDisplayOverride": "End of Game",
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 274800,
-    "_liveAbsoluteElapsedTimeCs": 274800,
+    "absoluteElapsedTimeCs": 300000,
+    "_liveAbsoluteElapsedTimeCs": 300000,
     "isFlashingZero": false
   },
   "shootout": {
-    "isActive": false,
+    "isActive": true,
     "rounds": 5,
-    "homeAttempts": [],
-    "awayAttempts": [],
-    "initiator": null
+    "homeAttempts": [
+      {
+        "id": "1111ffdc-82cd-40f8-95d9-6ee3978a6aa6",
+        "round": 1,
+        "playerId": "unknown-34",
+        "playerNumber": "34",
+        "isGoal": true
+      },
+      {
+        "id": "9e1d59da-c457-43a8-9321-0f8b95627ffe",
+        "round": 2,
+        "playerId": "unknown-4",
+        "playerNumber": "4",
+        "isGoal": true
+      },
+      {
+        "id": "d69c8508-c4bc-4946-a8f8-1e7ef4a1fc2c",
+        "round": 3,
+        "playerId": "unknown-5",
+        "playerNumber": "5",
+        "isGoal": false
+      },
+      {
+        "id": "c106c782-69a9-4580-9ff5-404be50554ca",
+        "round": 4,
+        "playerId": "unknown-6",
+        "playerNumber": "6",
+        "isGoal": false
+      },
+      {
+        "id": "b164f219-fe40-44ee-bae4-9c6259d3b029",
+        "round": 5,
+        "playerId": "unknown-1",
+        "playerNumber": "1",
+        "isGoal": true
+      },
+      {
+        "id": "5b34fbcd-8806-437e-a100-3f2e944584cd",
+        "round": 6,
+        "playerId": "unknown-55",
+        "playerNumber": "55",
+        "isGoal": true
+      }
+    ],
+    "awayAttempts": [
+      {
+        "id": "05719dda-d3f1-4283-98cf-feab8a6a061e",
+        "round": 1,
+        "playerId": "unknown-51",
+        "playerNumber": "51",
+        "isGoal": false
+      },
+      {
+        "id": "28096ab6-f208-4c12-9d2b-a039370573db",
+        "round": 2,
+        "playerId": "unknown-6",
+        "playerNumber": "6",
+        "isGoal": false
+      },
+      {
+        "id": "d40a43a5-bf10-4a3c-9929-ac037b8b1389",
+        "round": 3,
+        "playerId": "unknown-75",
+        "playerNumber": "75",
+        "isGoal": false
+      }
+    ],
+    "initiator": "home"
   },
   "homeTeamName": "Local",
   "awayTeamName": "Visitante",
-  "playHornTrigger": 46,
+  "playHornTrigger": 49,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
   "matchId": null,
   "playedPeriods": [
     "1ST",
-    "2ND"
+    "2ND",
+    "OT",
+    "OT2"
   ]
 }
