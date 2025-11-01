@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { useGameState, getCategoryNameById } from '@/contexts/game-state-context';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { Edit, Trash2, ChevronLeft, ChevronRight, FileText, ListFilter, Search, X } from 'lucide-react';
 import { addMonths, subMonths, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AddEditMatchDialog } from './add-edit-match-dialog';
@@ -14,6 +14,10 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { FixtureMatchSummaryDialog } from './fixture-match-summary-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Checkbox } from '../ui/checkbox';
+import { Input } from '../ui/input';
 
 export function FixtureCalendarView() {
   const { state, dispatch } = useGameState();
@@ -27,6 +31,10 @@ export function FixtureCalendarView() {
   const [dialogSelectedDate, setDialogSelectedDate] = useState<Date | undefined>(undefined);
   const [matchToShowSummary, setMatchToShowSummary] = useState<MatchData | null>(null);
 
+  // Filter states
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [teamSearch, setTeamSearch] = useState('');
+
   const selectedTournament = useMemo(() => {
     return tournaments.find(t => t.id === selectedTournamentId);
   }, [tournaments, selectedTournamentId]);
@@ -34,6 +42,29 @@ export function FixtureCalendarView() {
   const matches = useMemo(() => {
     return selectedTournament?.matches || [];
   }, [selectedTournament]);
+
+  const filteredMatchIds = useMemo(() => {
+    const isAnyFilterActive = categoryFilter.length > 0 || teamSearch.trim() !== '';
+    if (!isAnyFilterActive) return null; // Return null if no filters are active
+
+    const lowerCaseSearch = teamSearch.toLowerCase();
+    
+    return new Set(
+      matches
+        .filter(match => {
+          const categoryMatch = categoryFilter.length === 0 || categoryFilter.includes(match.categoryId);
+          
+          const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
+          const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
+          const teamMatch = !lowerCaseSearch ||
+            homeTeam?.name.toLowerCase().includes(lowerCaseSearch) ||
+            awayTeam?.name.toLowerCase().includes(lowerCaseSearch);
+
+          return categoryMatch && teamMatch;
+        })
+        .map(match => match.id)
+    );
+  }, [matches, categoryFilter, teamSearch, selectedTournament?.teams]);
 
   const handleDayClick = (day: Date) => {
     setDialogSelectedDate(day);
@@ -64,15 +95,67 @@ export function FixtureCalendarView() {
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
   const days = eachDayOfInterval({ start: startDate, end: endDate });
+  
+  const clearFilters = () => {
+    setCategoryFilter([]);
+    setTeamSearch('');
+  };
+  
+  const isAnyFilterActive = categoryFilter.length > 0 || teamSearch.trim() !== '';
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center px-2">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-2">
         <h3 className="text-xl font-semibold">{format(currentMonth, "MMMM yyyy", { locale: es })}</h3>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={prevMonth}><ChevronLeft className="h-4 w-4" /></Button>
           <Button variant="outline" size="icon" onClick={nextMonth}><ChevronRight className="h-4 w-4" /></Button>
         </div>
+      </div>
+      
+       <div className="flex flex-col sm:flex-row gap-2">
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-auto justify-start">
+                    <ListFilter className="mr-2 h-4 w-4" />
+                    Categorías ({categoryFilter.length || 'Todas'})
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-0" align="start">
+                <Command>
+                    <CommandInput placeholder="Buscar categoría..." />
+                    <CommandList>
+                        <CommandEmpty>No se encontraron categorías.</CommandEmpty>
+                        <CommandGroup>
+                        {(selectedTournament?.categories || []).map(cat => (
+                            <CommandItem key={cat.id} onSelect={() => {
+                                setCategoryFilter(prev => 
+                                    prev.includes(cat.id) ? prev.filter(id => id !== cat.id) : [...prev, cat.id]
+                                );
+                            }}>
+                                <Checkbox checked={categoryFilter.includes(cat.id)} className="mr-2" />
+                                <span>{cat.name}</span>
+                            </CommandItem>
+                        ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+        <div className="relative flex-grow">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+                placeholder="Buscar por equipo..." 
+                value={teamSearch}
+                onChange={(e) => setTeamSearch(e.target.value)}
+                className="pl-10"
+            />
+        </div>
+         {isAnyFilterActive && (
+            <Button variant="ghost" onClick={clearFilters} className="text-destructive hover:text-destructive">
+                <X className="mr-2 h-4 w-4" /> Limpiar Filtros
+            </Button>
+         )}
       </div>
       
       <div className="grid grid-cols-7 border-t border-l">
@@ -104,9 +187,17 @@ export function FixtureCalendarView() {
                     const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
                     const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
                     const hasSummary = !!match.summary;
+                    
+                    const isHighlighted = filteredMatchIds ? filteredMatchIds.has(match.id) : true;
 
                     return (
-                      <div key={match.id} className="text-xs p-1 rounded-md bg-background/50 border border-border/50">
+                      <div 
+                        key={match.id} 
+                        className={cn(
+                          "text-xs p-1 rounded-md bg-background/50 border border-border/50 transition-all duration-300",
+                          !isHighlighted && "opacity-30"
+                        )}
+                      >
                         <div className="font-semibold truncate">{format(new Date(match.date), 'HH:mm')} - {homeTeam?.name || '?'} vs {awayTeam?.name || '?'}</div>
                         <div className="flex justify-between items-center text-muted-foreground">
                             <span className="truncate">Cat: {getCategoryNameById(match.categoryId, selectedTournament?.categories) || 'N/A'}</span>

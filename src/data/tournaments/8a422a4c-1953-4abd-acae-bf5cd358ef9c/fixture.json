@@ -188,6 +188,14 @@
       "homeTeamId": "bcae9647-593b-4f67-b70b-671e9b4a26a4",
       "awayTeamId": "394ecaa4-e8dd-45ad-9c25-cfce4a5af537",
       "playersPerTeam": 4
+    },
+    {
+      "id": "685bcfa1-234d-4b5e-aa13-8a23d7bd36db",
+      "date": "2025-11-01T15:47:31.607Z",
+      "categoryId": "6fd778ac-7682-4740-99af-131551aff7a2",
+      "homeTeamId": "a3a33ad9-1227-4336-8d16-2a565095597c",
+      "awayTeamId": "8a6b5d71-d0fe-40a2-b5a2-995b07bb40e3",
+      "playersPerTeam": 4
     }
   ]
 }
