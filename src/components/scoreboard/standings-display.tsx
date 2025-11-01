@@ -21,7 +21,7 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
   const { matchId } = state.live;
 
   const currentTournament = useMemo(() => {
-    return tournaments.find(t => t.id === selectedTournamentId);
+    return (tournaments || []).find(t => t.id === selectedTournamentId);
   }, [tournaments, selectedTournamentId]);
 
   const currentMatch = useMemo(() => {
@@ -30,7 +30,7 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
   }, [currentTournament, matchId]);
 
   const teamIdToShow = teamContext === 'home' ? currentMatch?.homeTeamId : currentMatch?.awayTeamId;
-  const teamToShow = currentTournament?.teams.find(t => t.id === teamIdToShow);
+  const teamToShow = (currentTournament?.teams || []).find(t => t.id === teamIdToShow);
   
   const standings = useStandings(currentTournament, selectedMatchCategory);
 
@@ -53,8 +53,11 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
                 <TableHead className="w-1/2">Equipo</TableHead>
                 <TableHead className="text-center">PJ</TableHead>
                 <TableHead className="text-center">PG</TableHead>
+                <TableHead className="text-center">PE</TableHead>
                 <TableHead className="text-center">PP</TableHead>
-                <TableHead className="text-center">Pts</TableHead>
+                <TableHead className="text-center">GF</TableHead>
+                <TableHead className="text-center">GC</TableHead>
+                <TableHead className="text-center font-bold">Puntos</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -64,7 +67,10 @@ export function StandingsDisplay({ teamContext }: StandingsDisplayProps) {
                   <TableCell className="font-medium">{teamStat.name}</TableCell>
                   <TableCell className="text-center">{teamStat.pj}</TableCell>
                   <TableCell className="text-center">{teamStat.pg + teamStat.pg_ot}</TableCell>
+                  <TableCell className="text-center">{teamStat.pe}</TableCell>
                   <TableCell className="text-center">{teamStat.pp + teamStat.pp_ot}</TableCell>
+                  <TableCell className="text-center">{teamStat.gf}</TableCell>
+                  <TableCell className="text-center">{teamStat.gc}</TableCell>
                   <TableCell className="text-center font-bold text-lg">{teamStat.puntos}</TableCell>
                 </TableRow>
               ))}
