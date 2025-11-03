@@ -39,6 +39,7 @@ export function TeamScoreDisplay({
   
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
     if (score !== prevScore) {
@@ -58,45 +59,48 @@ export function TeamScoreDisplay({
     };
     
     checkOverflow();
+    // Re-check on window resize, for instance.
+    window.addEventListener('resize', checkOverflow);
+    return () => window.removeEventListener('resize', checkOverflow);
 
-    const resizeObserver = new ResizeObserver(checkOverflow);
-    if(containerRef.current) {
-        resizeObserver.observe(containerRef.current);
-    }
-    
-    return () => resizeObserver.disconnect();
   }, [teamActualName, layout?.teamNameWidth]);
 
 
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    if (animationTimeoutRef.current) {
+      clearTimeout(animationTimeoutRef.current);
+    }
+    
     if (isOverflowing) {
-        interval = setInterval(() => {
+        const delay = isAtStart ? 5000 : 2500;
+        animationTimeoutRef.current = setTimeout(() => {
             setIsAtStart(prev => !prev);
-        }, 5000); // Wait for 5 seconds at each end
+        }, delay);
     } else {
+      // If not overflowing, ensure it's at the start position without animation
       setIsAtStart(true);
     }
+
     return () => {
-        if (interval) {
-            clearInterval(interval);
-        }
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
     };
-  }, [isOverflowing]);
+  }, [isOverflowing, isAtStart]);
 
   if (!layout) {
     return null;
   }
   
-  const spanStyle: React.CSSProperties = {};
+  const style: React.CSSProperties = {};
   if (isOverflowing) {
     let translateX = '0px';
     if (!isAtStart && containerRef.current && textRef.current) {
       const maxScroll = textRef.current.scrollWidth - containerRef.current.clientWidth;
       translateX = `-${maxScroll}px`;
     }
-    spanStyle.transform = `translateX(${translateX})`;
-    spanStyle.transition = 'transform 1500ms ease-in-out';
+    style.transform = `translateX(${translateX})`;
+    style.transition = 'transform 1500ms ease-in-out';
   }
 
   return (
@@ -140,7 +144,7 @@ export function TeamScoreDisplay({
             ref={containerRef} 
             className={cn(
               "w-full h-[1.2em] relative overflow-hidden",
-              !isOverflowing && "flex justify-center" // Center only if not overflowing
+              !isOverflowing && "flex justify-center" 
             )}
             style={{ fontSize: `${layout.teamNameSize}rem` }}
             title={teamActualName}
@@ -149,9 +153,9 @@ export function TeamScoreDisplay({
                 ref={textRef}
                 className={cn(
                   "font-bold whitespace-nowrap",
-                  isOverflowing && "absolute left-0 top-0"
+                  isOverflowing ? "absolute left-0 top-0" : "text-center w-full"
                 )}
-                style={spanStyle}
+                style={style}
               >
                 {teamActualName}
               </span>
