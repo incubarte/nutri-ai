@@ -152,14 +152,14 @@ export default function ReplaysPage() {
         }
     }, [selectedReplay]);
 
-    const handleDownloadVideo = async (urlToDownload: string, downloadDate?: Date) => {
+    const handleDownloadVideo = async (urlToDownload: string, filename: string, downloadDate?: Date) => {
         if (!urlToDownload) {
             toast({ title: "URL Requerida", description: "Por favor, ingresa la URL del video.", variant: "destructive" });
-            return;
+            return { success: false };
         }
         setDownloadStatus('downloading');
         try {
-            const body: { url: string, date?: string } = { url: urlToDownload };
+            const body: { url: string, date?: string, filename: string } = { url: urlToDownload, filename };
             if (downloadDate) {
                 body.date = format(downloadDate, 'yyyy-MM-dd');
             }
@@ -174,7 +174,9 @@ export default function ReplaysPage() {
             if (!response.ok) throw new Error(data.message || 'Error en el servidor');
 
             setDownloadStatus('success');
-            setVideoUrl(''); 
+            if (urlToDownload === videoUrl) { // Clear input only if it was a manual download
+              setVideoUrl(''); 
+            }
             return { success: true, newFilePath: data.path };
 
         } catch (error) {
@@ -190,14 +192,14 @@ export default function ReplaysPage() {
         const downloadedFiles: string[] = [];
         
         for (const replay of newReplays) {
-            const result = await handleDownloadVideo(replay.url, syncDate);
+            const result = await handleDownloadVideo(replay.url, replay.filename, syncDate);
             if (result.success && result.newFilePath) {
                 downloadedFiles.push(result.newFilePath.replace('/replays/', ''));
             }
         }
         
         if (downloadedFiles.length > 0) {
-            setAllReplayFiles(prev => [...prev, ...downloadedFiles]);
+            setAllReplayFiles(prev => [...prev, ...downloadedFiles].sort((a, b) => b.localeCompare(a)));
         }
         
         setNewReplays([]);
@@ -241,7 +243,7 @@ export default function ReplaysPage() {
                               }}
                               placeholder="https://example.com/video.mp4" 
                             />
-                             <Button onClick={() => handleDownloadVideo(videoUrl)} disabled={downloadStatus === 'downloading' || !videoUrl}>
+                             <Button onClick={() => handleDownloadVideo(videoUrl, `manual-${Date.now()}.mp4`)} disabled={downloadStatus === 'downloading' || !videoUrl}>
                                 {downloadStatus === 'downloading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                                 Descargar
                             </Button>

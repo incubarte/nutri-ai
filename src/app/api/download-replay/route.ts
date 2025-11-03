@@ -4,7 +4,7 @@ import path from 'path';
 
 export async function POST(request: Request) {
     try {
-        const { url, date } = await request.json();
+        const { url, date, filename: providedFilename } = await request.json();
 
         if (!url) {
             return NextResponse.json({ message: 'URL del video es requerida.' }, { status: 400 });
@@ -23,10 +23,8 @@ export async function POST(request: Request) {
         const targetDir = date ? path.join(baseDir, date) : baseDir;
         await fs.mkdir(targetDir, { recursive: true });
         
-        // Corrected Logic: Extract filename from URL *before* decoding.
-        const urlPath = new URL(url).pathname;
-        const encodedFilename = urlPath.split('/').pop()?.split('?')[0] || `replay-${Date.now()}.mp4`;
-        const filename = decodeURIComponent(encodedFilename);
+        // Use the provided filename, or fallback to extracting it from the URL
+        const filename = providedFilename || decodeURIComponent(new URL(url).pathname.split('/').pop()?.split('?')[0] || `replay-${Date.now()}.mp4`);
 
         const filePath = path.join(targetDir, filename);
         
