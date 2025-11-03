@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -39,8 +38,7 @@ export function TeamScoreDisplay({
   
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
-  const animationIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
+  
   useEffect(() => {
     if (score !== prevScore) {
       setFlash(true);
@@ -57,34 +55,28 @@ export function TeamScoreDisplay({
         setIsOverflowing(isOverflow);
       }
     };
-    
-    // Check initially and on name change
-    checkOverflow();
-
-    // Also check on window resize
+    // A small delay to ensure rendering is complete before measuring
+    const timeoutId = setTimeout(checkOverflow, 50);
     window.addEventListener('resize', checkOverflow);
-    return () => window.removeEventListener('resize', checkOverflow);
-
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', checkOverflow);
+    };
   }, [teamActualName]);
 
   useEffect(() => {
-    if (animationIntervalRef.current) {
-        clearInterval(animationIntervalRef.current);
-    }
-    
+    let timeout: NodeJS.Timeout | null = null;
     if (isOverflowing) {
-        setIsAtStart(true); // Reset to start
-        animationIntervalRef.current = setInterval(() => {
+        timeout = setTimeout(() => {
             setIsAtStart(prev => !prev);
-        }, 4000); // Toggle every 4 seconds (2s scroll, 2s pause)
+        }, isAtStart ? 2000 : 4000); // Pause at start, longer pause after scroll
     }
-
     return () => {
-        if (animationIntervalRef.current) {
-            clearInterval(animationIntervalRef.current);
+        if (timeout) {
+            clearTimeout(timeout);
         }
     };
-  }, [isOverflowing]);
+  }, [isOverflowing, isAtStart]);
 
   if (!layout) {
     return null;
@@ -138,7 +130,7 @@ export function TeamScoreDisplay({
           <div
             className={cn(
               "font-bold text-foreground uppercase tracking-wide w-full h-[1.2em] relative overflow-hidden",
-              !isOverflowing && "flex justify-center"
+              !isOverflowing && "flex justify-center" // Center text if not overflowing
             )}
             ref={containerRef} 
             title={teamActualName}
@@ -146,10 +138,12 @@ export function TeamScoreDisplay({
           >
               <span
                 ref={textRef}
-                className="whitespace-nowrap absolute left-0 top-0"
+                className={cn(
+                  "whitespace-nowrap absolute left-0 top-0",
+                  "transition-transform duration-[1500ms] ease-in-out" // Use CSS transition
+                )}
                 style={{
                   transform: getTransform(),
-                  transition: 'transform 1.5s ease-in-out',
                 }}
               >
                 {teamActualName}
