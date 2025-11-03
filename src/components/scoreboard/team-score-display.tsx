@@ -56,18 +56,24 @@ export function TeamScoreDisplay({
         setIsOverflowing(isOverflow);
       }
     };
-    // We need a timeout to ensure the browser has rendered and calculated the widths
-    const timer = setTimeout(checkOverflow, 50);
+    
+    checkOverflow();
 
-    return () => clearTimeout(timer);
+    const resizeObserver = new ResizeObserver(checkOverflow);
+    if(containerRef.current) {
+        resizeObserver.observe(containerRef.current);
+    }
+    
+    return () => resizeObserver.disconnect();
   }, [teamActualName, layout?.teamNameWidth]);
+
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (isOverflowing) {
         interval = setInterval(() => {
             setIsAtStart(prev => !prev);
-        }, 2500); // Pause for 2.5s at each end
+        }, 5000); // Wait for 5 seconds at each end
     } else {
       setIsAtStart(true);
     }
@@ -142,8 +148,8 @@ export function TeamScoreDisplay({
               <span
                 ref={textRef}
                 className={cn(
-                  "whitespace-nowrap font-bold",
-                   isOverflowing && "absolute left-0 top-0"
+                  "font-bold whitespace-nowrap",
+                  isOverflowing && "absolute left-0 top-0"
                 )}
                 style={spanStyle}
               >
