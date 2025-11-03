@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { User } from 'lucide-react';
 import type { ScoreboardLayoutSettings } from '@/types';
@@ -48,18 +48,18 @@ export function TeamScoreDisplay({
     }
   }, [score, prevScore]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const checkOverflow = () => {
       if (containerRef.current && textRef.current) {
         const isOverflow = textRef.current.scrollWidth > containerRef.current.clientWidth;
         setIsOverflowing(isOverflow);
       }
     };
-    // A small delay to ensure rendering is complete before measuring
-    const timeoutId = setTimeout(checkOverflow, 50);
+
+    // Run check immediately and on resize
+    checkOverflow();
     window.addEventListener('resize', checkOverflow);
     return () => {
-      clearTimeout(timeoutId);
       window.removeEventListener('resize', checkOverflow);
     };
   }, [teamActualName]);
@@ -128,22 +128,22 @@ export function TeamScoreDisplay({
             </div>
 
           <div
-            className={cn(
-              "font-bold text-foreground uppercase tracking-wide w-full h-[1.2em] relative overflow-hidden",
-              !isOverflowing && "flex justify-center" // Center text if not overflowing
-            )}
             ref={containerRef} 
-            title={teamActualName}
+            className={cn(
+              "w-full h-[1.2em] relative overflow-hidden",
+              !isOverflowing && "flex justify-center" // Center the container's content if not overflowing
+            )}
             style={{ fontSize: `${layout.teamNameSize}rem` }}
+            title={teamActualName}
           >
               <span
                 ref={textRef}
                 className={cn(
-                  "whitespace-nowrap absolute left-0 top-0",
-                  "transition-transform duration-[1500ms] ease-in-out" // Use CSS transition
+                  "whitespace-nowrap transition-transform duration-[1500ms] ease-in-out",
+                  isOverflowing && "absolute left-0 top-0" // Only position absolutely when animating
                 )}
                 style={{
-                  transform: getTransform(),
+                  transform: isOverflowing ? getTransform() : 'none',
                 }}
               >
                 {teamActualName}
