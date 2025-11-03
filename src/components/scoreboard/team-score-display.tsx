@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
@@ -66,7 +67,6 @@ export function TeamScoreDisplay({
 
 
   useEffect(() => {
-    // Clear any existing timeouts when the effect re-runs or unmounts
     if (animationTimeoutRef.current) {
       clearTimeout(animationTimeoutRef.current);
     }
@@ -81,7 +81,6 @@ export function TeamScoreDisplay({
         };
         animate();
     } else {
-      // If not overflowing, ensure it's at the start position without starting timers.
       setIsAtStart(true);
     }
 
@@ -105,7 +104,7 @@ export function TeamScoreDisplay({
       translateX = `-${maxScroll}px`;
     }
     style.transform = `translateX(${translateX})`;
-    style.transition = 'transform 1500ms ease-in-out';
+    style.transition = 'transform 1950ms ease-in-out';
   }
 
   return (

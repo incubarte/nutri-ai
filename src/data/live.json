@@ -173,15 +173,15 @@
     ]
   },
   "clock": {
-    "currentTime": 120000,
+    "currentTime": 117960,
     "currentPeriod": 2,
     "isClockRunning": false,
     "periodDisplayOverride": null,
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 120000,
-    "_liveAbsoluteElapsedTimeCs": 120000,
+    "absoluteElapsedTimeCs": 122040,
+    "_liveAbsoluteElapsedTimeCs": 122040,
     "isFlashingZero": false
   },
   "shootout": {
