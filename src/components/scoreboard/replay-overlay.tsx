@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useRef, useEffect } from 'react';
@@ -16,7 +15,9 @@ export function ReplayOverlay({ url, onFinish }: ReplayOverlayProps) {
     const videoElement = videoRef.current;
     if (videoElement) {
       videoElement.play().catch(error => {
-        console.error("Error attempting to play video automatically:", error);
+        // This error is expected if user hasn't interacted with the page.
+        // It will still play muted.
+        console.warn("Error attempting to play video automatically (this is often expected):", error);
       });
     }
   }, [url]);
@@ -35,6 +36,7 @@ export function ReplayOverlay({ url, onFinish }: ReplayOverlayProps) {
         className="w-full h-full object-contain"
         autoPlay
         playsInline
+        muted // Muted to allow autoplay in most browsers
       >
         <source src={url} type="video/mp4" />
         Tu navegador no soporta el tag de video.
@@ -42,5 +44,3 @@ export function ReplayOverlay({ url, onFinish }: ReplayOverlayProps) {
     </motion.div>
   );
 }
-
-    

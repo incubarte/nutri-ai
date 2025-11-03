@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -109,32 +108,68 @@ function PerformanceSettingsCard() {
     )
 }
 
+type DownloadStatus = 'idle' | 'downloading' | 'success' | 'error';
+
 function ScoreboardToolsCard() {
     const { toast } = useToast();
     const [videoUrl, setVideoUrl] = useState('');
+    const [localReplayPath, setLocalReplayPath] = useState<string | null>(null);
+    const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle');
 
-    const handleShowReplay = async () => {
+    const handleDownloadVideo = async () => {
         if (!videoUrl) {
             toast({ title: "URL Requerida", description: "Por favor, ingresa la URL del video.", variant: "destructive" });
             return;
         }
-        await sendRemoteCommand({ type: 'START_LOADING_REPLAY', payload: { url: videoUrl } });
-        toast({ title: "Comando Enviado", description: "El scoreboard ha recibido la orden de precargar y mostrar la repetición." });
+        setDownloadStatus('downloading');
+        setLocalReplayPath(null);
+        try {
+            const response = await fetch('/api/download-replay', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: videoUrl })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Error en el servidor');
+            }
+
+            setLocalReplayPath(data.path);
+            setDownloadStatus('success');
+            toast({ title: "Video Descargado", description: "Listo para reproducir en el scoreboard." });
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "No se pudo conectar con el servidor.";
+            setDownloadStatus('error');
+            toast({ title: "Error de Descarga", description: errorMessage, variant: "destructive" });
+        }
     };
 
-    const handleTestOverlay = async () => {
-        await sendRemoteCommand({ type: 'SHOW_OVERLAY_MESSAGE', payload: { text: "Valentino Caffe", duration: 5000 } });
-        toast({ title: "Overlay de prueba enviado", description: "El mensaje 'Valentino Caffe' debería aparecer en el scoreboard." });
+    const handleShowReplay = async () => {
+        if (!localReplayPath) {
+            toast({ title: "Video no listo", description: "Por favor, descarga el video primero.", variant: "destructive" });
+            return;
+        }
+        await sendRemoteCommand({ type: 'START_LOADING_REPLAY', payload: { url: localReplayPath } });
+        toast({ title: "Comando Enviado", description: "El scoreboard ha recibido la orden de mostrar la repetición." });
+    };
+
+    const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setVideoUrl(e.target.value);
+        setDownloadStatus('idle'); // Reset status if URL changes
+        setLocalReplayPath(null);
     };
 
     return (
         <Card>
             <CardHeader>
                  <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" /> Herramientas de Scoreboard
+                    <Clapperboard className="h-5 w-5" /> Herramientas de Repetición y Overlays
                 </CardTitle>
                 <CardDescription>
-                    Acciones para probar funcionalidades del scoreboard.
+                    Controla repeticiones y mensajes en el scoreboard.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -143,17 +178,25 @@ function ScoreboardToolsCard() {
                     <Input 
                       id="replayUrl" 
                       value={videoUrl} 
-                      onChange={(e) => setVideoUrl(e.target.value)} 
+                      onChange={handleUrlChange}
                       placeholder="https://example.com/video.mp4" 
                       className="flex-grow"
                     />
                 </div>
-                 <div className="flex items-center gap-2">
-                    <Button onClick={handleShowReplay}>
+                 <div className="flex items-center gap-4">
+                    <Button onClick={handleDownloadVideo} disabled={downloadStatus === 'downloading' || !videoUrl}>
+                        {downloadStatus === 'downloading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                        Descargar Video
+                    </Button>
+
+                    {downloadStatus === 'success' && <CheckCircle className="h-6 w-6 text-green-500" />}
+                    {downloadStatus === 'error' && <XCircle className="h-6 w-6 text-destructive" />}
+
+                    <Button onClick={handleShowReplay} disabled={downloadStatus !== 'success'}>
                         <Play className="mr-2 h-4 w-4" /> Mostrar Repetición
                     </Button>
                 </div>
-                <Button variant="secondary" onClick={handleTestOverlay}>
+                <Button variant="secondary" onClick={() => sendRemoteCommand({ type: 'SHOW_OVERLAY_MESSAGE', payload: { text: "Valentino Caffe", duration: 5000 } })}>
                     <MessageSquare className="mr-2 h-4 w-4" /> Mostrar Overlay de Prueba
                 </Button>
             </CardContent>
@@ -342,5 +385,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    

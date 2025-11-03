@@ -173,15 +173,15 @@
     ]
   },
   "clock": {
-    "currentTime": 120000,
+    "currentTime": 12000,
     "currentPeriod": 1,
     "isClockRunning": true,
-    "periodDisplayOverride": null,
+    "periodDisplayOverride": "Break",
     "preTimeoutState": null,
-    "clockStartTimeMs": 1762184556843,
-    "remainingTimeAtStartCs": 120000,
-    "absoluteElapsedTimeCs": 0,
-    "_liveAbsoluteElapsedTimeCs": 0,
+    "clockStartTimeMs": 1762185761988,
+    "remainingTimeAtStartCs": 12000,
+    "absoluteElapsedTimeCs": 120000,
+    "_liveAbsoluteElapsedTimeCs": 120000,
     "isFlashingZero": false
   },
   "shootout": {
@@ -193,13 +193,15 @@
   },
   "homeTeamName": "Ovejas Negras Carneros",
   "awayTeamName": "ACEMHH C1",
-  "playHornTrigger": 76,
+  "playHornTrigger": 77,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
   "goalCelebration": null,
   "replayOverlay": null,
   "matchId": "8230d768-7d4b-4572-ad25-3c259e0f512d",
-  "playedPeriods": [],
+  "playedPeriods": [
+    "1ST"
+  ],
   "homeTeamSubName": "Carneros"
 }
