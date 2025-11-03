@@ -6,12 +6,13 @@ import { useGameState, type GameAction } from '@/contexts/game-state-context';
 import { CompactHeaderScoreboard } from './compact-header-scoreboard';
 import { PenaltiesDisplay } from './penalties-display';
 import { ShootoutDisplay, MAX_DISPLAY_SLOTS } from './shootout-display';
-import { StandingsDisplay } from './standings-display'; // Importar el nuevo componente
+import { StandingsDisplay } from './standings-display';
 import { GoalCelebrationOverlay } from './goal-celebration-overlay';
 import { ReplayOverlay } from './replay-overlay';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { RemoteCommand } from '@/types';
+import { HockeyPuckSpinner } from '../ui/hockey-puck-spinner';
 
 const ValentinoCaffeAd = () => {
     return (
@@ -59,11 +60,7 @@ export function FullScoreboard({ className }: { className?: string }) {
         const command: RemoteCommand = JSON.parse(event.data);
         
         if (command.type === 'START_LOADING_REPLAY') {
-            const videoUrl = command.payload.url;
-            if (videoPreloaderRef.current) {
-                videoPreloaderRef.current.src = videoUrl;
-                videoPreloaderRef.current.load();
-            }
+             dispatch({ type: 'START_LOADING_REPLAY', payload: command.payload });
         }
         else if (command.type === 'SHOW_OVERLAY_MESSAGE') {
              dispatch({ type: 'SHOW_OVERLAY_MESSAGE', payload: command.payload });
@@ -86,7 +83,7 @@ export function FullScoreboard({ className }: { className?: string }) {
   // Effect to handle video preloading and showing the overlay
   useEffect(() => {
     const videoElement = videoPreloaderRef.current;
-    if (videoElement) {
+    if (videoElement && live.replayLoadRequest?.url) {
         const canPlayHandler = () => {
             if(videoElement.src) {
                 dispatch({ type: 'SHOW_REPLAY_OVERLAY', payload: { url: videoElement.src } });
@@ -95,11 +92,14 @@ export function FullScoreboard({ className }: { className?: string }) {
         
         videoElement.addEventListener('canplaythrough', canPlayHandler);
         
+        videoElement.src = live.replayLoadRequest.url;
+        videoElement.load();
+        
         return () => {
             videoElement.removeEventListener('canplaythrough', canPlayHandler);
         }
     }
-  }, [dispatch]);
+  }, [live.replayLoadRequest, dispatch]);
 
   
   useEffect(() => {
@@ -132,7 +132,7 @@ export function FullScoreboard({ className }: { className?: string }) {
     return null;
   }
 
-  const { penalties, homeTeamName, awayTeamName, shootout, matchId, clock, goalCelebration, replayOverlay } = live;
+  const { penalties, homeTeamName, awayTeamName, shootout, matchId, clock, goalCelebration, replayLoadRequest, replayOverlay } = live;
 
   const homeAttempts = shootout?.homeAttempts || [];
   const awayAttempts = shootout?.awayAttempts || [];
@@ -159,6 +159,16 @@ export function FullScoreboard({ className }: { className?: string }) {
       }}
     >
        <video ref={videoPreloaderRef} style={{ display: 'none' }} muted playsInline />
+       
+       {/* --- TEMPORARY LOADING INDICATOR --- */}
+       {replayLoadRequest && !replayOverlay && (
+           <div className="absolute top-4 left-4 z-50 flex items-center gap-2 p-2 bg-blue-900/50 text-white rounded-lg backdrop-blur-sm">
+                <HockeyPuckSpinner className="h-6 w-6" />
+                <span className="text-sm font-medium">Cargando replay...</span>
+           </div>
+       )}
+       {/* --- END TEMPORARY --- */}
+
       <div 
         className="relative z-10" // Header container
         style={{

@@ -203,5 +203,6 @@
   "playedPeriods": [
     "1ST"
   ],
-  "homeTeamSubName": "Carneros"
+  "homeTeamSubName": "Carneros",
+  "replayLoadRequest": null
 }
