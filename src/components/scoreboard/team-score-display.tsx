@@ -7,6 +7,8 @@ import { User } from 'lucide-react';
 import type { ScoreboardLayoutSettings } from '@/types';
 import { Button } from '../ui/button';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
+
 
 interface TeamScoreDisplayProps {
   teamActualName: string;
@@ -35,11 +37,9 @@ export function TeamScoreDisplay({
   const [prevScore, setPrevScore] = useState(score);
   
   const [isOverflowing, setIsOverflowing] = useState(false);
-  const [isAtStart, setIsAtStart] = useState(true);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
-  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
     if (score !== prevScore) {
@@ -55,58 +55,26 @@ export function TeamScoreDisplay({
       if (containerRef.current && textRef.current) {
         const isOverflow = textRef.current.scrollWidth > containerRef.current.clientWidth;
         setIsOverflowing(isOverflow);
+      } else {
+        setIsOverflowing(false);
       }
     };
     
-    // Check on mount and on any change that could affect size
     checkOverflow();
-    window.addEventListener('resize', checkOverflow);
-    return () => window.removeEventListener('resize', checkOverflow);
+    const resizeObserver = new ResizeObserver(checkOverflow);
+    if(containerRef.current) {
+        resizeObserver.observe(containerRef.current);
+    }
+    
+    return () => resizeObserver.disconnect();
 
   }, [teamActualName, layout?.teamNameWidth]);
-
-
-  useEffect(() => {
-    if (animationTimeoutRef.current) {
-      clearTimeout(animationTimeoutRef.current);
-    }
-
-    if (isOverflowing) {
-        const animate = () => {
-            const timeoutDuration = isAtStart ? 10000 : 5000;
-            
-            animationTimeoutRef.current = setTimeout(() => {
-                setIsAtStart(prev => !prev);
-            }, timeoutDuration);
-        };
-        animate();
-    } else {
-      setIsAtStart(true);
-    }
-
-    return () => {
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current);
-      }
-    };
-  }, [isOverflowing, isAtStart]);
 
 
   if (!layout) {
     return null;
   }
   
-  const style: React.CSSProperties = {};
-  if (isOverflowing) {
-    let translateX = '0px';
-    if (!isAtStart && containerRef.current && textRef.current) {
-      const maxScroll = textRef.current.scrollWidth - containerRef.current.clientWidth;
-      translateX = `-${maxScroll}px`;
-    }
-    style.transform = `translateX(${translateX})`;
-    style.transition = 'transform 1950ms ease-in-out';
-  }
-
   return (
     <div className={cn(
         "relative flex flex-col items-center text-center p-4 rounded-lg",
@@ -153,16 +121,24 @@ export function TeamScoreDisplay({
             style={{ fontSize: `${layout.teamNameSize}rem` }}
             title={teamActualName}
           >
-              <span
+              <motion.span
                 ref={textRef}
                 className={cn(
                   "font-bold uppercase whitespace-nowrap",
-                  isOverflowing ? "absolute left-0 top-0" : "text-center w-full"
+                  isOverflowing ? "absolute left-0" : "text-center w-full"
                 )}
-                style={isOverflowing ? style : {}}
+                 animate={isOverflowing ? {
+                  x: [0, -(textRef.current!.scrollWidth - containerRef.current!.clientWidth), 0],
+                } : {}}
+                transition={isOverflowing ? {
+                  duration: 8,
+                  ease: "linear",
+                  repeat: Infinity,
+                  repeatDelay: 2
+                } : {}}
               >
                 {teamActualName}
-              </span>
+              </motion.span>
           </div>
 
           <p 

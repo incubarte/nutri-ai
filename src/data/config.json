@@ -91,12 +91,12 @@
     "penaltyPlayerIconSize": 2.5,
     "standingsTableFontSize": 1.8,
     "standingsTableRowHeight": 4.25,
-    "teamLogoOpacity": 40,
+    "teamLogoOpacity": 0,
     "primaryColor": "223 65% 33%",
     "accentColor": "40 100% 67%",
     "backgroundColor": "223 70% 11%",
     "mainContentGap": 1.5,
-    "scoreLabelGap": 2.95
+    "scoreLabelGap": 2
   },
   "scoreboardLayoutProfiles": [
     {
