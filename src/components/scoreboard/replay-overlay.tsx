@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
 
 interface ReplayOverlayProps {
@@ -11,31 +11,6 @@ interface ReplayOverlayProps {
 export function ReplayOverlay({ url, onFinish }: ReplayOverlayProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  useEffect(() => {
-    const videoElement = videoRef.current;
-    if (videoElement) {
-      const handleCanPlay = () => {
-        videoElement.currentTime = 4; // Start from the 4-second mark
-        videoElement.play().catch(error => {
-          console.warn("Error attempting to play video automatically:", error);
-        });
-      };
-      
-      videoElement.addEventListener('canplaythrough', handleCanPlay);
-
-      // In case canplaythrough doesn't fire, loadedmetadata is a good fallback.
-      const handleMetadata = () => {
-        videoElement.currentTime = 4;
-      };
-      videoElement.addEventListener('loadedmetadata', handleMetadata);
-
-      return () => {
-        videoElement.removeEventListener('canplaythrough', handleCanPlay);
-        videoElement.removeEventListener('loadedmetadata', handleMetadata);
-      }
-    }
-  }, [url]);
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -45,12 +20,15 @@ export function ReplayOverlay({ url, onFinish }: ReplayOverlayProps) {
     >
       <video
         ref={videoRef}
-        key={url} // Important to re-mount the video element on URL change
+        key={url}
         onEnded={onFinish}
+        onLoadedMetadata={(e) => {
+          e.currentTarget.currentTime = 4;
+        }}
         className="w-full h-full object-contain"
         autoPlay
-        playsInline
-        muted // Muted to allow autoplay in most browsers
+        muted
+        playsInline 
       >
         <source src={url} type="video/mp4" />
         Tu navegador no soporta el tag de video.
