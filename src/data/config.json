@@ -78,7 +78,8 @@
     "scoreboardVerticalPosition": 0.5,
     "scoreboardHorizontalPosition": 0,
     "clockSize": 12,
-    "teamNameSize": 3,
+    "teamNameSize": 3.1,
+    "teamNameWidth": 30,
     "scoreSize": 8,
     "periodSize": 4.5,
     "playersOnIceIconSize": 1.75,
@@ -90,7 +91,7 @@
     "penaltyPlayerIconSize": 2.5,
     "standingsTableFontSize": 1.8,
     "standingsTableRowHeight": 4.25,
-    "teamLogoOpacity": 60,
+    "teamLogoOpacity": 40,
     "primaryColor": "223 65% 33%",
     "accentColor": "40 100% 67%",
     "backgroundColor": "223 70% 11%",
@@ -120,7 +121,9 @@
       "mainContentGap": 1.5,
       "scoreLabelGap": 2,
       "standingsTableFontSize": 1.8,
-      "standingsTableRowHeight": 4.25
+      "standingsTableRowHeight": 4.25,
+      "teamNameWidth": 23.5,
+      "teamLogoOpacity": 40
     }
   ],
   "selectedScoreboardLayoutProfileId": "default-layout-profile",
