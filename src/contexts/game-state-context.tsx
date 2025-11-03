@@ -67,6 +67,7 @@ export const INITIAL_LAYOUT_SETTINGS: ScoreboardLayoutSettings = {
   scoreboardHorizontalPosition: 0,
   clockSize: 12,
   teamNameSize: 3,
+  teamNameWidth: 16,
   scoreSize: 8,
   periodSize: 4.5,
   playersOnIceIconSize: 1.75,

@@ -115,9 +115,10 @@ export function TeamScoreDisplay({
   return (
     <div className={cn(
         "relative flex flex-col items-center text-center p-4 rounded-lg",
-        "min-w-[120px] sm:min-w-[140px] md:min-w-[160px] lg:min-w-[180px] xl:min-w-[200px]",
         className
-      )}>
+      )}
+      style={{ minWidth: `${layout.teamNameWidth}rem`}}
+      >
         {logoDataUrl && (
             <Image
                 src={logoDataUrl}

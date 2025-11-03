@@ -183,6 +183,7 @@ export const LayoutSettingsCard = forwardRef<LayoutSettingsCardRef, LayoutSettin
            <div className="space-y-4">
             <SliderControl label="Reloj Principal" value={scoreboardLayout.clockSize} onValueChange={(v) => handleValueChange('clockSize', v)} min={6} max={20} step={0.5} />
             <SliderControl label="Nombre Equipo" value={scoreboardLayout.teamNameSize} onValueChange={(v) => handleValueChange('teamNameSize', v)} min={1.5} max={6} step={0.1} />
+            <SliderControl label="Ancho Nombre Equipo" value={scoreboardLayout.teamNameWidth} onValueChange={(v) => handleValueChange('teamNameWidth', v)} min={8} max={30} step={0.5} />
             <SliderControl label="Puntuación (Goles)" value={scoreboardLayout.scoreSize} onValueChange={(v) => handleValueChange('scoreSize', v)} min={4} max={12} step={0.25} />
             <SliderControl label="Espacio Goles/Label" value={scoreboardLayout.scoreLabelGap} onValueChange={(v) => handleValueChange('scoreLabelGap', v)} min={-2} max={2} step={0.05} />
             <SliderControl label="Período" value={scoreboardLayout.periodSize} onValueChange={(v) => handleValueChange('periodSize', v)} min={2} max={8} step={0.1} />

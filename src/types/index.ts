@@ -106,6 +106,7 @@ export interface ScoreboardLayoutSettings {
   scoreboardHorizontalPosition: number;
   clockSize: number;
   teamNameSize: number;
+  teamNameWidth: number;
   scoreSize: number;
   periodSize: number;
   playersOnIceIconSize: number;
