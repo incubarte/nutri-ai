@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useGameState, getCategoryNameById } from '@/contexts/game-state-context';
@@ -30,7 +29,7 @@ export function CompactHeaderScoreboard() {
   }, [tournaments, selectedTournamentId]);
 
   const homeTeamData = useMemo(() => {
-    if (!selectedTournament) return null;
+    if (!selectedTournament || !selectedTournament.teams) return null;
     return selectedTournament.teams.find(t =>
       t.name === homeTeamName &&
       (t.subName || undefined) === (homeTeamSubName || undefined) &&
@@ -39,7 +38,7 @@ export function CompactHeaderScoreboard() {
   }, [selectedTournament, homeTeamName, homeTeamSubName, selectedMatchCategory]);
 
   const awayTeamData = useMemo(() => {
-    if (!selectedTournament) return null;
+    if (!selectedTournament || !selectedTournament.teams) return null;
     return selectedTournament.teams.find(t =>
       t.name === awayTeamName &&
       (t.subName || undefined) === (awayTeamSubName || undefined) &&
