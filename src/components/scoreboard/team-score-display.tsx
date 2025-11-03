@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
@@ -58,6 +57,7 @@ export function TeamScoreDisplay({
       }
     };
     
+    // Check on mount and on any change that could affect size
     checkOverflow();
     window.addEventListener('resize', checkOverflow);
     return () => window.removeEventListener('resize', checkOverflow);
@@ -66,16 +66,22 @@ export function TeamScoreDisplay({
 
 
   useEffect(() => {
+    // Clear any existing timeouts when the effect re-runs or unmounts
     if (animationTimeoutRef.current) {
       clearTimeout(animationTimeoutRef.current);
     }
-    
+
     if (isOverflowing) {
-        const delay = isAtStart ? 10000 : 5000;
-        animationTimeoutRef.current = setTimeout(() => {
-            setIsAtStart(prev => !prev);
-        }, delay);
+        const animate = () => {
+            const timeoutDuration = isAtStart ? 10000 : 5000;
+            
+            animationTimeoutRef.current = setTimeout(() => {
+                setIsAtStart(prev => !prev);
+            }, timeoutDuration);
+        };
+        animate();
     } else {
+      // If not overflowing, ensure it's at the start position without starting timers.
       setIsAtStart(true);
     }
 
@@ -85,6 +91,7 @@ export function TeamScoreDisplay({
       }
     };
   }, [isOverflowing, isAtStart]);
+
 
   if (!layout) {
     return null;
@@ -150,10 +157,10 @@ export function TeamScoreDisplay({
               <span
                 ref={textRef}
                 className={cn(
-                  "font-bold whitespace-nowrap",
-                   isOverflowing ? "absolute left-0 top-0" : "text-center w-full"
+                  "font-bold uppercase whitespace-nowrap",
+                  isOverflowing ? "absolute left-0 top-0" : "text-center w-full"
                 )}
-                style={style}
+                style={isOverflowing ? style : {}}
               >
                 {teamActualName}
               </span>
