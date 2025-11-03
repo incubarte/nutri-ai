@@ -59,7 +59,6 @@ export function TeamScoreDisplay({
     };
     
     checkOverflow();
-    // Re-check on window resize, for instance.
     window.addEventListener('resize', checkOverflow);
     return () => window.removeEventListener('resize', checkOverflow);
 
@@ -72,12 +71,11 @@ export function TeamScoreDisplay({
     }
     
     if (isOverflowing) {
-        const delay = isAtStart ? 5000 : 2500;
+        const delay = isAtStart ? 10000 : 5000;
         animationTimeoutRef.current = setTimeout(() => {
             setIsAtStart(prev => !prev);
         }, delay);
     } else {
-      // If not overflowing, ensure it's at the start position without animation
       setIsAtStart(true);
     }
 
@@ -153,7 +151,7 @@ export function TeamScoreDisplay({
                 ref={textRef}
                 className={cn(
                   "font-bold whitespace-nowrap",
-                  isOverflowing ? "absolute left-0 top-0" : "text-center w-full"
+                   isOverflowing ? "absolute left-0 top-0" : "text-center w-full"
                 )}
                 style={style}
               >
