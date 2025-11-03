@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { sendRemoteCommand } from '@/app/actions';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 type LoadingStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -28,7 +28,8 @@ interface FirebaseReplay {
 }
 
 export default function ReplaysPage() {
-    const [replayFiles, setReplayFiles] = useState<string[]>([]);
+    const [allReplayFiles, setAllReplayFiles] = useState<string[]>([]);
+    const [filteredReplayFiles, setFilteredReplayFiles] = useState<string[]>([]);
     const [selectedReplay, setSelectedReplay] = useState<string | null>(null);
     const [status, setStatus] = useState<LoadingStatus>('loading');
     const [error, setError] = useState<string | null>(null);
@@ -53,7 +54,7 @@ export default function ReplaysPage() {
             const response = await fetch('/api/replays');
             const data = await response.json();
             if (data.success) {
-                setReplayFiles(data.files);
+                setAllReplayFiles(data.files);
                 setStatus('success');
             } else {
                 throw new Error(data.message || 'Error en el servidor');
@@ -68,6 +69,14 @@ export default function ReplaysPage() {
         fetchReplays();
     }, [fetchReplays]);
     
+     useEffect(() => {
+        const dateString = format(syncDate, 'yyyy-MM-dd');
+        setFilteredReplayFiles(
+            allReplayFiles.filter(file => file.includes(dateString))
+        );
+        setSelectedReplay(null); // Deselect video when date changes
+    }, [syncDate, allReplayFiles]);
+
     const convertGsToHttps = (gsPath: string): string => {
         if (!gsPath.startsWith('gs://')) return '';
         const pathWithoutPrefix = gsPath.substring(5);
@@ -101,7 +110,7 @@ export default function ReplaysPage() {
                     for (const replayId in dayData[camId]) {
                         const location = dayData[camId][replayId].location;
                         if (location && location.startsWith('gs://')) {
-                            const filename = location.split('/').pop() || `replay-${replayId}.mp4`;
+                            const filename = location.split('/').pop()?.replace(/%20/g, ' ') || `replay-${replayId}.mp4`;
                             const httpsUrl = convertGsToHttps(location);
                             if (httpsUrl) {
                                 fetchedReplays.push({
@@ -109,7 +118,7 @@ export default function ReplaysPage() {
                                     location,
                                     url: httpsUrl,
                                     filename,
-                                    isNew: !replayFiles.includes(filename) && !replayFiles.includes(decodeURIComponent(filename))
+                                    isNew: !allReplayFiles.includes(filename) && !allReplayFiles.includes(decodeURIComponent(filename))
                                 });
                             }
                         }
@@ -124,11 +133,11 @@ export default function ReplaysPage() {
             }
         };
 
-        sync(); // Initial sync
-        const interval = setInterval(sync, 10000); // Sync every 10 seconds
+        sync();
+        const interval = setInterval(sync, 10000);
 
         return () => clearInterval(interval);
-    }, [isSyncActive, syncDate, replayFiles, firebaseReplayUrl]);
+    }, [isSyncActive, syncDate, allReplayFiles, firebaseReplayUrl]);
 
 
     const handleSelectReplay = (replayFile: string) => {
@@ -158,35 +167,37 @@ export default function ReplaysPage() {
             if (!response.ok) throw new Error(data.message || 'Error en el servidor');
 
             setDownloadStatus('success');
-            toast({ title: "Video Descargado", description: "El video está disponible en la lista de repeticiones." });
-            await fetchReplays();
             setVideoUrl(''); 
-            return true;
+            return { success: true, newFilePath: data.path };
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "No se pudo conectar con el servidor.";
             setDownloadStatus('error');
             toast({ title: "Error de Descarga", description: errorMessage, variant: "destructive" });
-            return false;
+            return { success: false };
         }
     };
     
     const handleMassDownload = async () => {
         setIsMassDownloading(true);
-        let successCount = 0;
-        let errorCount = 0;
+        const downloadedFiles: string[] = [];
         
         for (const replay of newReplays) {
-            const success = await handleDownloadVideo(replay.url);
-            if (success) successCount++;
-            else errorCount++;
+            const result = await handleDownloadVideo(replay.url);
+            if (result.success && result.newFilePath) {
+                downloadedFiles.push(result.newFilePath.replace('/replays/', ''));
+            }
         }
-
+        
+        if (downloadedFiles.length > 0) {
+            setAllReplayFiles(prev => [...prev, ...downloadedFiles]);
+        }
+        
+        setNewReplays([]);
         setIsMassDownloading(false);
         toast({
             title: "Descarga Masiva Completa",
-            description: `${successCount} videos descargados. ${errorCount > 0 ? `${errorCount} errores.` : ''}`,
-            variant: errorCount > 0 ? "destructive" : "default",
+            description: `${downloadedFiles.length} videos descargados.`,
         });
     };
     
@@ -200,7 +211,7 @@ export default function ReplaysPage() {
     };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-8rem)] w-full max-w-7xl mx-auto py-8 gap-6">
+        <div className="w-full max-w-7xl mx-auto py-8 space-y-6">
             <div className="flex items-center gap-4">
                 <Video className="h-8 w-8 text-primary"/>
                 <h1 className="text-3xl font-bold text-primary-foreground">Mesa de VAR - Repeticiones</h1>
@@ -277,7 +288,7 @@ export default function ReplaysPage() {
                  </Card>
             )}
 
-            <div className="flex-grow grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 overflow-hidden">
+            <div className="flex-grow grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 <Card className="col-span-1 flex flex-col">
                     <CardHeader className="flex-row items-center justify-between">
                         <CardTitle className="text-lg flex items-center gap-2"><ListVideo className="h-5 w-5"/> Videos Descargados</CardTitle>
@@ -290,9 +301,9 @@ export default function ReplaysPage() {
                             {status === 'loading' && <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/></div>}
                             {status === 'error' && <div className="text-destructive text-center p-4">{error}</div>}
                             {status === 'success' && (
-                                replayFiles.length > 0 ? (
+                                filteredReplayFiles.length > 0 ? (
                                     <div className="space-y-2">
-                                        {replayFiles.map(file => (
+                                        {filteredReplayFiles.map(file => (
                                             <Button
                                                 key={file}
                                                 variant={selectedReplay === `/replays/${file}` ? 'secondary' : 'ghost'}
@@ -304,7 +315,7 @@ export default function ReplaysPage() {
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="text-center text-muted-foreground py-10">No hay repeticiones descargadas.</div>
+                                    <div className="text-center text-muted-foreground py-10">No hay repeticiones descargadas para la fecha seleccionada.</div>
                                 )
                             )}
                         </ScrollArea>
@@ -320,6 +331,7 @@ export default function ReplaysPage() {
                                 className="w-full h-full object-contain"
                                 controls
                                 autoPlay
+                                onLoadedMetadata={(e) => { e.currentTarget.currentTime = 4; }}
                             >
                                 <source src={selectedReplay} type="video/mp4" />
                                 Tu navegador no soporta el tag de video.
@@ -341,4 +353,3 @@ export default function ReplaysPage() {
         </div>
     );
 }
-
