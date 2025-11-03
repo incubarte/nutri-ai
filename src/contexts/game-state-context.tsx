@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -79,6 +78,7 @@ export const INITIAL_LAYOUT_SETTINGS: ScoreboardLayoutSettings = {
   penaltyPlayerIconSize: 2.5,
   standingsTableFontSize: 1.8,
   standingsTableRowHeight: 4.25,
+  teamLogoOpacity: 10,
   primaryColor: '223 65% 33%',
   accentColor: '40 100% 67%',
   backgroundColor: '223 70% 11%',
@@ -891,7 +891,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newPenaltiesLog[team] = newPenaltiesLog[team].map(p =>
         p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'goal_on_pp', timeServed } : p
       );
-      
+
       newState = { ...state, live: { ...state.live,
         penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId))},
         penaltiesLog: newPenaltiesLog,
@@ -2000,3 +2000,4 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+

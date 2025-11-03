@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useMemo, forwardRef, useImperativeHandle, useState, useEffect } from "react";
@@ -86,7 +85,7 @@ const SliderControl = ({ label, value, onValueChange, min, max, step, unit = "re
       max={max}
       step={step}
     />
-    <span className="text-sm text-muted-foreground tabular-nums">{value.toFixed(2)} {unit}</span>
+    <span className="text-sm text-muted-foreground tabular-nums">{value.toFixed(unit === '%' ? 0 : 2)} {unit}</span>
   </div>
 );
 
@@ -199,11 +198,12 @@ export const LayoutSettingsCard = forwardRef<LayoutSettingsCardRef, LayoutSettin
           </div>
         </div>
         <div className="border-t pt-6">
-           <h4 className="text-base font-semibold mb-3">Colores Principales</h4>
+           <h4 className="text-base font-semibold mb-3">Colores y Opacidad</h4>
            <div className="space-y-3">
              <ColorControl label="Color de Fondo" value={scoreboardLayout.backgroundColor} onValueChange={(v) => handleValueChange('backgroundColor', v)} defaultValue={INITIAL_LAYOUT_SETTINGS.backgroundColor} />
              <ColorControl label="Color Primario" value={scoreboardLayout.primaryColor} onValueChange={(v) => handleValueChange('primaryColor', v)} defaultValue={INITIAL_LAYOUT_SETTINGS.primaryColor} />
              <ColorControl label="Color de Acento" value={scoreboardLayout.accentColor} onValueChange={(v) => handleValueChange('accentColor', v)} defaultValue={INITIAL_LAYOUT_SETTINGS.accentColor} />
+             <SliderControl label="Opacidad Logo de Fondo" value={scoreboardLayout.teamLogoOpacity} onValueChange={(v) => handleValueChange('teamLogoOpacity', v)} min={0} max={100} step={1} unit="%" />
            </div>
         </div>
       </div>

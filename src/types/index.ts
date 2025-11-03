@@ -1,4 +1,5 @@
 
+"use client";
 
 export interface PenaltyTypeDefinition {
   id: string;
@@ -116,6 +117,7 @@ export interface ScoreboardLayoutSettings {
   penaltyPlayerIconSize: number;
   standingsTableFontSize: number;
   standingsTableRowHeight: number;
+  teamLogoOpacity: number;
   primaryColor: string;
   accentColor: string;
   backgroundColor: string;

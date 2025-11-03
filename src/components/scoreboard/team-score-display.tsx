@@ -124,7 +124,8 @@ export function TeamScoreDisplay({
                 alt={`${teamActualName} background logo`}
                 layout="fill"
                 objectFit="contain"
-                className="absolute inset-0 z-0 opacity-10 pointer-events-none"
+                className="absolute inset-0 z-0 pointer-events-none"
+                style={{ opacity: layout.teamLogoOpacity / 100 }}
             />
         )}
         <div className="relative z-10 w-full flex flex-col items-center">

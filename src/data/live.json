@@ -24,152 +24,187 @@
   "attendance": {
     "home": [
       {
-        "id": "e7f3aa3f-40a2-4a90-8a5d-90051d45b555",
-        "number": "51",
-        "name": "KITAURA ANDRES"
-      },
-      {
-        "id": "3b86a9f3-ae7e-4f11-a406-398f640ee6fe",
-        "number": "91",
-        "name": "MAZZALUPO ADRIAN"
-      },
-      {
-        "id": "ef9927aa-db93-4408-a4e8-cfc38863a2dd",
+        "id": "a6bc065e-a0b8-4a40-b567-f03081d20d09",
         "number": "",
-        "name": "DRESCO JAVIER"
+        "name": "BOTTERO CARCACCI MERLINA"
       },
       {
-        "id": "95a807e7-0b78-449b-9618-f546b2e23307",
-        "number": "94",
-        "name": "DI LEONE DANIEL"
-      },
-      {
-        "id": "03e0a5d5-f864-4129-810b-5a75b96f8bd7",
-        "number": "11",
-        "name": "SANCHEZ HÉCTOR"
-      },
-      {
-        "id": "0444c677-915f-4f95-8beb-befd52e1cfc0",
-        "number": "58",
-        "name": "DIGANGI DANIEL"
-      },
-      {
-        "id": "54e20849-b2b6-4215-afbe-10ab2f811ff5",
-        "number": "3",
-        "name": "ROMERO ANTÓN"
-      },
-      {
-        "id": "dfc70fdc-cfe9-49c6-b8c2-6cb2ffea2c11",
-        "number": "21",
-        "name": "SANZ BENICIO"
-      },
-      {
-        "id": "ff663f4b-db21-4bb4-a855-d5a2a35e89da",
-        "number": "81",
-        "name": "PIAGGIO SANTIAGO"
-      },
-      {
-        "id": "b55105c9-d97d-4623-b658-ae49360da56b",
+        "id": "57ebff8c-a746-4329-b6c3-8b8ea1b2f491",
         "number": "",
-        "name": "MAMANI NAZARENO"
+        "name": "CANITROT VICENTE"
       },
       {
-        "id": "06795990-7200-4687-912d-e474fd818dc5",
+        "id": "4ce849a2-0084-4fbf-9e7b-5287e8aa72fc",
         "number": "",
-        "name": "ESPOSITO FACUNDO"
+        "name": "DÍAZ DIDIER"
       },
       {
-        "id": "f3e1863f-8d7c-4af4-9591-b9d74cc8f209",
+        "id": "6e412465-9077-455b-ac35-eaa35e15edd4",
         "number": "",
-        "name": "ZAMBRANO HUMBERTO"
+        "name": "FIGUEROA JUAN MANUEL"
+      },
+      {
+        "id": "69556ada-dc48-4c62-af00-410d566a771d",
+        "number": "",
+        "name": "GARCIA CANEPA SEBASTIAN"
+      },
+      {
+        "id": "a28323d5-ee29-41e1-9653-aec18b0cb13d",
+        "number": "",
+        "name": "GIORDANI LIZA"
+      },
+      {
+        "id": "148bdb93-4b8d-4212-b993-8fa9c1574e45",
+        "number": "",
+        "name": "GUTIERREZ JIMENEZ FERMIN"
+      },
+      {
+        "id": "f6c96532-c5cd-4aa0-b3aa-f8da7c7499c5",
+        "number": "",
+        "name": "MARTIN ALEJO NICOLÁS"
+      },
+      {
+        "id": "fe9e4fc1-9e85-4584-a5c2-76e031f24527",
+        "number": "",
+        "name": "MARTINEZ DIAZ PABLO SALVADOR"
+      },
+      {
+        "id": "3ae65bb6-22d3-419f-890f-abce6c415d91",
+        "number": "",
+        "name": "MARTINEZ DIS FERNANDO"
+      },
+      {
+        "id": "07205c0b-6471-42d4-bb49-15eaa4b520bf",
+        "number": "",
+        "name": "MAZZUCCHELLI CAMILA"
+      },
+      {
+        "id": "41985ed2-0706-4ce2-9a73-42c499bf421b",
+        "number": "",
+        "name": "OKIER SEBASTIAN MANUEL"
+      },
+      {
+        "id": "29b90776-830c-4bbb-b4e4-b06da28a166a",
+        "number": "",
+        "name": "PANGIONE NICOLÁS"
+      },
+      {
+        "id": "e724ea30-9f6c-40c2-b2c9-312aadbcf534",
+        "number": "",
+        "name": "PELUFFO ELIAS"
+      },
+      {
+        "id": "7a15a35c-df0f-44a3-a87b-1d63c5024b5a",
+        "number": "",
+        "name": "PUGA NICOLÁS"
+      },
+      {
+        "id": "c1cc3fad-e967-48f5-8d0f-7b72978384ad",
+        "number": "",
+        "name": "RAMÍREZ AZUL CAMILA"
+      },
+      {
+        "id": "32b5b292-b6c3-4772-9fc7-d723a238cbda",
+        "number": "",
+        "name": "ROST AGUSTÍN"
       }
     ],
     "away": [
       {
-        "id": "58517af5-2ff8-412d-a971-10970954e7b2",
-        "number": "25",
-        "name": "SCOTTO DI CARLO NATALIA"
+        "id": "98e55316-5aef-4974-ac52-4eff59239e8e",
+        "number": "",
+        "name": "ABEID EZEQUIEL"
       },
       {
-        "id": "6172bf1f-984c-46ca-8d54-ed62a06bf312",
-        "number": "0",
-        "name": "BONVEHI SEBASTIAN"
+        "id": "7eea79ef-5084-4f35-bc76-c7c0b2940304",
+        "number": "",
+        "name": "BLANCO LUCAS LEON"
       },
       {
-        "id": "c6d4c13f-5ff5-4937-b8e7-b66f1ae0d27e",
-        "number": "29",
-        "name": "ACUÑA ERICA"
+        "id": "e16342ae-68ac-4b38-a63b-cda7200a9414",
+        "number": "",
+        "name": "CASTARÉS JULIETA"
       },
       {
-        "id": "9f9f4e60-e7f6-49f0-8fa3-20ae919804a3",
-        "number": "77",
-        "name": "CARRERA JUAN PABLO"
+        "id": "5efcbf99-7285-47b5-a266-07df7ae98ba4",
+        "number": "",
+        "name": "EMERSON AXEL"
       },
       {
-        "id": "e3feabac-afc8-4f63-98c1-6c0b802f6b06",
-        "number": "38",
-        "name": "CELLI ALEJANDRO"
+        "id": "446a23f7-128c-491e-a3c7-afe18ecc9a4d",
+        "number": "",
+        "name": "FERNANDEZ CINTIA"
       },
       {
-        "id": "0b6b5f4d-02e3-4fc4-9238-481285c2fcd0",
-        "number": "71",
-        "name": "CRUZ LIMA JUAN"
+        "id": "18f831b2-5258-4fbf-9c37-32f7ef489f59",
+        "number": "",
+        "name": "FONDACARO EZEQUIEL"
       },
       {
-        "id": "0f719073-1654-4897-8f71-dddd34c04960",
-        "number": "11",
-        "name": "DACAL ALEXIS"
+        "id": "c5133b93-4773-4cae-928d-d6128fc10126",
+        "number": "",
+        "name": "FONDACARO CRISTIAN"
       },
       {
-        "id": "77dc7893-0315-421f-83d6-33765c293f9e",
-        "number": "24",
-        "name": "FERRARI SOFIA"
+        "id": "55b8c94f-7d89-491b-a0b8-959b17f3f3a4",
+        "number": "",
+        "name": "GALINSKI GUILLERMO EDUARDO"
       },
       {
-        "id": "b7dddce6-534d-4af2-961f-e67faa47ac0f",
-        "number": "14",
-        "name": "GALEANI MARIANO"
+        "id": "7a1772c8-6c73-4841-865e-7b31c5b5f221",
+        "number": "",
+        "name": "GONZALEZ CAMILA"
       },
       {
-        "id": "f865fa94-7a32-4e39-b67f-ba3fbddae866",
-        "number": "26",
-        "name": "MALPERI DIEGO"
+        "id": "38612762-112f-46f3-bf4d-dca4f7cabcc8",
+        "number": "",
+        "name": "LA TERZA OCTAVIO"
       },
       {
-        "id": "6f5d6226-2aeb-4735-b696-e738113063cc",
-        "number": "19",
-        "name": "MOSCARDA NICOLAS"
+        "id": "6cc29b4a-5a7a-4698-8a6a-c9627ea51d08",
+        "number": "",
+        "name": "LEGUIZA MATIAS"
       },
       {
-        "id": "e54284ce-d143-43ca-ae71-b6863cde998f",
-        "number": "43",
-        "name": "NUÑEZ FEDERICO"
+        "id": "6b1224a7-2dcd-40a6-b997-3d2a09792fe2",
+        "number": "",
+        "name": "LESCANO IAN GABRIEL"
       },
       {
-        "id": "44e21f63-2f1b-4b0f-a70e-9db09e988211",
-        "number": "21",
-        "name": "PACE EZEQUIEL"
+        "id": "3e6ae920-477b-4063-bcdd-97288ec6ffcf",
+        "number": "",
+        "name": "LOTO FRANCO BENJAMÍN"
       },
       {
-        "id": "f71c017d-fe8f-4f25-80e0-9e744fb70b14",
-        "number": "95",
-        "name": "PIERINI ROBERTINO"
+        "id": "618fa542-1faa-4564-8477-92836d3bf240",
+        "number": "",
+        "name": "PEREZ BERNARDI ESTEBAN DANIEL"
       },
       {
-        "id": "5211e4cd-268c-4cc5-b7de-1a1206d8aa4d",
-        "number": "31",
-        "name": "RISSO EMANUEL"
+        "id": "995745eb-b867-4ec5-bed7-4f36fb78eb83",
+        "number": "",
+        "name": "TROFIMOV IVÁN"
+      },
+      {
+        "id": "9be33878-1c20-4a55-b0ad-4b5553e4c2fe",
+        "number": "",
+        "name": "VILLAVICENCIO MARIA ANTONELA"
+      },
+      {
+        "id": "553b3c30-de53-4b10-9e4d-88ec0f8f43ef",
+        "number": "",
+        "name": "VINCENTI MARIA EUGENIA"
       }
     ]
   },
   "clock": {
-    "currentTime": 30000,
+    "currentTime": 25571,
     "currentPeriod": 0,
-    "isClockRunning": true,
+    "isClockRunning": false,
     "periodDisplayOverride": "Warm-up",
     "preTimeoutState": null,
-    "clockStartTimeMs": 1762144777244,
-    "remainingTimeAtStartCs": 30000,
+    "clockStartTimeMs": null,
+    "remainingTimeAtStartCs": null,
     "absoluteElapsedTimeCs": 0,
     "_liveAbsoluteElapsedTimeCs": 0,
     "isFlashingZero": false
@@ -181,14 +216,15 @@
     "awayAttempts": [],
     "initiator": null
   },
-  "homeTeamName": "ACEMHH C1",
-  "awayTeamName": "Hazard Blue",
+  "homeTeamName": "Ovejas Negras Carneros",
+  "awayTeamName": "Ovejas Negras Corderos",
   "playHornTrigger": 72,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
   "goalCelebration": null,
-  "matchId": "3da1e903-eeae-467e-87cb-87a4da393bfe",
+  "matchId": "16261077-cfe7-4f14-bf0f-7c86e977b81a",
   "playedPeriods": [],
-  "awayTeamSubName": "Blue"
+  "homeTeamSubName": "Carneros",
+  "awayTeamSubName": "Corderos"
 }
