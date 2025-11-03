@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -7,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { User } from 'lucide-react';
 import type { ScoreboardLayoutSettings } from '@/types';
 import { Button } from '../ui/button';
+import Image from 'next/image';
 
 interface TeamScoreDisplayProps {
   teamActualName: string;
@@ -15,6 +15,7 @@ interface TeamScoreDisplayProps {
   playersOnIce?: number;
   configuredPlayersPerTeam?: number;
   layout?: ScoreboardLayoutSettings;
+  logoDataUrl?: string | null;
   className?: string;
   onScoreClick?: () => void;
 }
@@ -31,6 +32,7 @@ export function TeamScoreDisplay({
   playersOnIce = 0,
   configuredPlayersPerTeam = 0,
   layout,
+  logoDataUrl,
   className,
   onScoreClick
 }: TeamScoreDisplayProps) {
@@ -112,77 +114,88 @@ export function TeamScoreDisplay({
 
   return (
     <div className={cn(
-        "flex flex-col items-center text-center",
+        "relative flex flex-col items-center text-center p-4 rounded-lg",
         "min-w-[120px] sm:min-w-[140px] md:min-w-[160px] lg:min-w-[180px] xl:min-w-[200px]",
         className
       )}>
-        <div className="flex items-center gap-4">
-            <div className="flex justify-center items-center gap-1 mb-1 h-5 md:h-6 lg:h-7">
-                {playersOnIce > 0 && Array(playersOnIce).fill(null).map((_, index) => (
-                <User 
-                    key={index} 
-                    className="text-primary-foreground/80" 
-                    style={{ 
-                    height: `${layout.playersOnIceIconSize}rem`,
-                    width: `${layout.playersOnIceIconSize}rem`
-                    }}
-                />
-                ))}
-                {configuredPlayersPerTeam > 0 && playersOnIce === 0 && (
-                <span className="text-sm md:text-base lg:text-lg text-destructive animate-pulse">0 JUGADORES</span>
-                )}
+        {logoDataUrl && (
+            <Image
+                src={logoDataUrl}
+                alt={`${teamActualName} background logo`}
+                layout="fill"
+                objectFit="contain"
+                className="absolute inset-0 z-0 opacity-10 pointer-events-none"
+            />
+        )}
+        <div className="relative z-10 w-full flex flex-col items-center">
+            <div className="flex items-center gap-4">
+                <div className="flex justify-center items-center gap-1 mb-1 h-5 md:h-6 lg:h-7">
+                    {playersOnIce > 0 && Array(playersOnIce).fill(null).map((_, index) => (
+                    <User 
+                        key={index} 
+                        className="text-primary-foreground/80" 
+                        style={{ 
+                        height: `${layout.playersOnIceIconSize}rem`,
+                        width: `${layout.playersOnIceIconSize}rem`
+                        }}
+                    />
+                    ))}
+                    {configuredPlayersPerTeam > 0 && playersOnIce === 0 && (
+                    <span className="text-sm md:text-base lg:text-lg text-destructive animate-pulse">0 JUGADORES</span>
+                    )}
+                </div>
             </div>
-        </div>
 
-      <div
-        className={cn(
-          "font-bold text-foreground uppercase tracking-wide w-full h-[1.2em] relative",
-          isLongName ? "overflow-hidden" : "text-center"
-        )}
-        ref={isLongName ? containerRef : null} 
-        title={teamActualName}
-        style={{ fontSize: `${layout.teamNameSize}rem` }}
-      >
-        {isLongName ? (
-          <span
-            ref={textRef}
-            className="whitespace-nowrap absolute left-0 top-0"
-            style={{
-              transform: `translateX(${currentScrollX}px)`,
-              transitionProperty: 'transform',
-              transitionDuration: `${SCROLL_ANIMATION_DURATION_MS}ms`,
-              transitionTimingFunction: 'ease-in-out',
-            }}
-          >
-            {teamActualName}
-          </span>
-        ) : (
-          <span className="truncate">
-            {teamActualName}
-          </span>
-        )}
-      </div>
-
-      <p 
-        className="text-muted-foreground -mt-0.5 md:-mt-1"
-        style={{ fontSize: `${layout.teamLabelSize}rem`}}
-      >
-        ({teamDisplayName})
-      </p>
-       <Button 
-          variant="link" 
-          onClick={onScoreClick} 
-          className={cn(
-              "font-bold font-headline text-accent tabular-nums tracking-tighter p-0 h-auto hover:no-underline hover:text-accent/80",
-              flash && "animate-score-flash"
+          <div
+            className={cn(
+              "font-bold text-foreground uppercase tracking-wide w-full h-[1.2em] relative",
+              isLongName ? "overflow-hidden" : "text-center"
             )}
-          style={{
-            fontSize: `${layout.scoreSize}rem`,
-            marginTop: `${layout.scoreLabelGap}rem`
-          }}
-        >
-        {score}
-      </Button>
+            ref={isLongName ? containerRef : null} 
+            title={teamActualName}
+            style={{ fontSize: `${layout.teamNameSize}rem` }}
+          >
+            {isLongName ? (
+              <span
+                ref={textRef}
+                className="whitespace-nowrap absolute left-0 top-0"
+                style={{
+                  transform: `translateX(${currentScrollX}px)`,
+                  transitionProperty: 'transform',
+                  transitionDuration: `${SCROLL_ANIMATION_DURATION_MS}ms`,
+                  transitionTimingFunction: 'ease-in-out',
+                }}
+              >
+                {teamActualName}
+              </span>
+            ) : (
+              <span className="truncate">
+                {teamActualName}
+              </span>
+            )}
+          </div>
+
+          <p 
+            className="text-muted-foreground -mt-0.5 md:-mt-1"
+            style={{ fontSize: `${layout.teamLabelSize}rem`}}
+          >
+            ({teamDisplayName})
+          </p>
+           <Button 
+              variant="link" 
+              onClick={onScoreClick} 
+              className={cn(
+                  "font-bold font-headline text-accent tabular-nums tracking-tighter p-0 h-auto hover:no-underline hover:text-accent/80",
+                  flash && "animate-score-flash"
+                )}
+              style={{
+                fontSize: `${layout.scoreSize}rem`,
+                marginTop: `${layout.scoreLabelGap}rem`
+              }}
+            >
+            {score}
+          </Button>
+        </div>
     </div>
   );
 }

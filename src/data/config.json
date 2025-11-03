@@ -75,7 +75,7 @@
   "enableDebugMode": false,
   "tickIntervalMs": 200,
   "scoreboardLayout": {
-    "scoreboardVerticalPosition": -4,
+    "scoreboardVerticalPosition": 0.5,
     "scoreboardHorizontalPosition": 0,
     "clockSize": 12,
     "teamNameSize": 3,
@@ -93,14 +93,14 @@
     "primaryColor": "223 65% 33%",
     "accentColor": "40 100% 67%",
     "backgroundColor": "223 70% 11%",
-    "mainContentGap": 3,
-    "scoreLabelGap": -2
+    "mainContentGap": 1.5,
+    "scoreLabelGap": 2
   },
   "scoreboardLayoutProfiles": [
     {
       "id": "default-layout-profile",
       "name": "Diseño Predeterminado (App)",
-      "scoreboardVerticalPosition": -4,
+      "scoreboardVerticalPosition": 0.5,
       "scoreboardHorizontalPosition": 0,
       "clockSize": 12,
       "teamNameSize": 3,
@@ -116,8 +116,8 @@
       "primaryColor": "223 65% 33%",
       "accentColor": "40 100% 67%",
       "backgroundColor": "223 70% 11%",
-      "mainContentGap": 3,
-      "scoreLabelGap": -2,
+      "mainContentGap": 1.5,
+      "scoreLabelGap": 2,
       "standingsTableFontSize": 1.8,
       "standingsTableRowHeight": 4.25
     }
@@ -145,7 +145,7 @@
   "autoStartPreOTBreaks": false,
   "autoStartTimeouts": true,
   "numberOfRegularPeriods": 2,
-  "numberOfOvertimePeriods": 3,
+  "numberOfOvertimePeriods": 2,
   "maxConcurrentPenalties": 1,
   "playersPerTeamOnIce": 4,
   "enableMaxPenaltiesLimit": true,

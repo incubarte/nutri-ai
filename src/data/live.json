@@ -1,7 +1,7 @@
 {
   "score": {
-    "home": 2,
-    "away": 2,
+    "home": 0,
+    "away": 0,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -10,50 +10,8 @@
     "away": []
   },
   "goals": {
-    "home": [
-      {
-        "team": "home",
-        "timestamp": 1762022784263,
-        "gameTime": 120000,
-        "periodText": "2ND",
-        "scorer": {
-          "playerNumber": "1"
-        },
-        "id": "c4b60a89-773c-4a9d-a79c-2ba442023f15"
-      },
-      {
-        "team": "home",
-        "timestamp": 1762022789357,
-        "gameTime": 30000,
-        "periodText": "OT",
-        "scorer": {
-          "playerNumber": "2"
-        },
-        "id": "01bfb683-6dab-4aad-997c-cfa19ab95e96"
-      }
-    ],
-    "away": [
-      {
-        "team": "away",
-        "timestamp": 1762022775005,
-        "gameTime": 120000,
-        "periodText": "1ST",
-        "scorer": {
-          "playerNumber": "1"
-        },
-        "id": "40246c2d-c993-421a-8f5e-b8a1cde148c1"
-      },
-      {
-        "team": "away",
-        "timestamp": 1762022797757,
-        "gameTime": 30000,
-        "periodText": "OT",
-        "scorer": {
-          "playerNumber": "2"
-        },
-        "id": "f693aa18-661d-402f-9c8a-00f71383338c"
-      }
-    ]
+    "home": [],
+    "away": []
   },
   "penaltiesLog": {
     "home": [],
@@ -195,15 +153,15 @@
     ]
   },
   "clock": {
-    "currentTime": 30000,
-    "currentPeriod": 5,
+    "currentTime": 119948,
+    "currentPeriod": 1,
     "isClockRunning": false,
     "periodDisplayOverride": null,
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 300000,
-    "_liveAbsoluteElapsedTimeCs": 300000,
+    "absoluteElapsedTimeCs": 52,
+    "_liveAbsoluteElapsedTimeCs": 52,
     "isFlashingZero": false
   },
   "shootout": {
@@ -221,11 +179,5 @@
   "overlayMessage": null,
   "goalCelebration": null,
   "matchId": "6f6d9c95-91fd-494d-b850-5493348d6017",
-  "playedPeriods": [
-    "1ST",
-    "2ND",
-    "OT",
-    "OT2",
-    "OT3"
-  ]
+  "playedPeriods": []
 }
