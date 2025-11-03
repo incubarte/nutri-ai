@@ -20,11 +20,6 @@ interface TeamScoreDisplayProps {
   onScoreClick?: () => void;
 }
 
-const LONG_NAME_THRESHOLD = 8; 
-const SCROLL_ANIMATION_DURATION_MS = 1500; 
-const PAUSE_AT_START_DURATION_MS = 5000;   
-const PAUSE_AT_END_DURATION_MS = 2000;     
-
 export function TeamScoreDisplay({
   teamActualName,
   teamDisplayName,
@@ -38,13 +33,13 @@ export function TeamScoreDisplay({
 }: TeamScoreDisplayProps) {
   const [flash, setFlash] = useState(false);
   const [prevScore, setPrevScore] = useState(score);
-
+  
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const [isAtStart, setIsAtStart] = useState(true);
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
-  const [currentScrollX, setCurrentScrollX] = useState(0);
-  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const isLongName = teamActualName.length > LONG_NAME_THRESHOLD;
+  const animationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (score !== prevScore) {
@@ -56,68 +51,60 @@ export function TeamScoreDisplay({
   }, [score, prevScore]);
 
   useEffect(() => {
-    const clearCurrentAnimationTimeout = () => {
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current);
-        animationTimeoutRef.current = null;
+    const checkOverflow = () => {
+      if (containerRef.current && textRef.current) {
+        const isOverflow = textRef.current.scrollWidth > containerRef.current.clientWidth;
+        setIsOverflowing(isOverflow);
       }
     };
+    
+    // Check initially and on name change
+    checkOverflow();
 
-    clearCurrentAnimationTimeout();
-    setCurrentScrollX(0); 
+    // Also check on window resize
+    window.addEventListener('resize', checkOverflow);
+    return () => window.removeEventListener('resize', checkOverflow);
 
-    if (isLongName) {
-      const performAnimationCycle = () => {
-        if (!containerRef.current || !textRef.current) {
-          animationTimeoutRef.current = setTimeout(performAnimationCycle, 100);
-          return;
-        }
-        
-        setCurrentScrollX(0);
+  }, [teamActualName]);
 
-        animationTimeoutRef.current = setTimeout(() => {
-          if (containerRef.current && textRef.current) {
-            const containerWidth = containerRef.current.offsetWidth;
-            const textWidth = textRef.current.scrollWidth;
-            const maxScroll = textWidth - containerWidth;
-
-            if (maxScroll > 0) {
-              setCurrentScrollX(-maxScroll);
-
-              animationTimeoutRef.current = setTimeout(() => {
-                setCurrentScrollX(0); 
-
-                animationTimeoutRef.current = setTimeout(() => {
-                  performAnimationCycle();
-                }, PAUSE_AT_START_DURATION_MS + SCROLL_ANIMATION_DURATION_MS);
-              }, PAUSE_AT_END_DURATION_MS + SCROLL_ANIMATION_DURATION_MS);
-            } else {
-              setCurrentScrollX(0);
-            }
-          }
-        }, PAUSE_AT_START_DURATION_MS);
-      };
-      
-      animationTimeoutRef.current = setTimeout(performAnimationCycle, 100); 
-
-    } else {
-      setCurrentScrollX(0);
+  useEffect(() => {
+    if (animationIntervalRef.current) {
+        clearInterval(animationIntervalRef.current);
+    }
+    
+    if (isOverflowing) {
+        setIsAtStart(true); // Reset to start
+        animationIntervalRef.current = setInterval(() => {
+            setIsAtStart(prev => !prev);
+        }, 4000); // Toggle every 4 seconds (2s scroll, 2s pause)
     }
 
-    return clearCurrentAnimationTimeout;
-  }, [teamActualName, isLongName]);
-
+    return () => {
+        if (animationIntervalRef.current) {
+            clearInterval(animationIntervalRef.current);
+        }
+    };
+  }, [isOverflowing]);
 
   if (!layout) {
-    return null; // Return nothing if layout is not ready
+    return null;
   }
+  
+  const getTransform = () => {
+    if (!isOverflowing || isAtStart || !containerRef.current || !textRef.current) {
+        return 'translateX(0px)';
+    }
+    const maxScroll = textRef.current.scrollWidth - containerRef.current.clientWidth;
+    return `translateX(-${maxScroll}px)`;
+  };
+
 
   return (
     <div className={cn(
         "relative flex flex-col items-center text-center p-4 rounded-lg",
         className
       )}
-      style={{ minWidth: `${layout.teamNameWidth}rem`}}
+      style={{ width: `${layout.teamNameWidth}rem`}}
       >
         {logoDataUrl && (
             <Image
@@ -150,31 +137,23 @@ export function TeamScoreDisplay({
 
           <div
             className={cn(
-              "font-bold text-foreground uppercase tracking-wide w-full h-[1.2em] relative",
-              isLongName ? "overflow-hidden" : "text-center"
+              "font-bold text-foreground uppercase tracking-wide w-full h-[1.2em] relative overflow-hidden",
+              !isOverflowing && "flex justify-center"
             )}
-            ref={isLongName ? containerRef : null} 
+            ref={containerRef} 
             title={teamActualName}
             style={{ fontSize: `${layout.teamNameSize}rem` }}
           >
-            {isLongName ? (
               <span
                 ref={textRef}
                 className="whitespace-nowrap absolute left-0 top-0"
                 style={{
-                  transform: `translateX(${currentScrollX}px)`,
-                  transitionProperty: 'transform',
-                  transitionDuration: `${SCROLL_ANIMATION_DURATION_MS}ms`,
-                  transitionTimingFunction: 'ease-in-out',
+                  transform: getTransform(),
+                  transition: 'transform 1.5s ease-in-out',
                 }}
               >
                 {teamActualName}
               </span>
-            ) : (
-              <span className="truncate">
-                {teamActualName}
-              </span>
-            )}
           </div>
 
           <p 
