@@ -34,7 +34,6 @@ export function ReplayOverlay({ url, onFinish }: ReplayOverlayProps) {
         onEnded={onFinish}
         className="w-full h-full object-contain"
         autoPlay
-        muted
         playsInline
       >
         <source src={url} type="video/mp4" />

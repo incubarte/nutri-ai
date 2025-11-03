@@ -305,7 +305,7 @@ export interface LiveState {
   score: ScoreState;
   penalties: PenaltiesState;
   goals: { home: GoalLog[], away: GoalLog[] };
-  penaltiesLog: { home: PenaltyLog[], away: PenaltyLog[] };
+  penaltiesLog: { home: PenaltyLog[], away: LogLog[] };
   shotsLog: { home: ShotLog[], away: ShotLog[] };
   attendance: { home: AttendedPlayerInfo[], away: AttendedPlayerInfo[] };
   shootout: ShootoutState;
@@ -326,7 +326,7 @@ export interface LiveState {
   } | null;
   replayLoadRequest: {
     id: string;
-    url: string;
+    url: string; // The original URL, not a blob
   } | null;
   replayOverlay: {
     id: string;
@@ -494,3 +494,5 @@ export interface SummaryPlayerStats {
   assists: number;
   shots: number;
 }
+
+    

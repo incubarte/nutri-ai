@@ -46,22 +46,37 @@ export function FullScoreboard({ className }: { className?: string }) {
   
   const { config, live } = state;
   const scoreboardLayout = config?.scoreboardLayout;
-
-  const videoPreloaderRef = useRef<HTMLVideoElement | null>(null);
+  
+  const videoPreloaderRef = useRef<HTMLVideoElement>(null);
+  const [preloadedVideoUrl, setPreloadedVideoUrl] = useState<string | null>(null);
   
   // Listen for remote commands specifically for this scoreboard component
   useEffect(() => {
     const eventSource = new EventSource('/api/remote-commands/events');
 
-    eventSource.onmessage = (event) => {
+    eventSource.onmessage = async (event) => {
       try {
         if (!event.data) return;
         const command: RemoteCommand = JSON.parse(event.data);
         
         if (command.type === 'START_LOADING_REPLAY') {
-            if (videoPreloaderRef.current) {
-                videoPreloaderRef.current.src = command.payload.url;
+            // New logic: Use the API route to fetch the video as a blob
+            try {
+              const response = await fetch('/api/download-video', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ url: command.payload.url })
+              });
+              if (!response.ok) throw new Error('Failed to download video via API');
+              const blob = await response.blob();
+              const blobUrl = URL.createObjectURL(blob);
+              
+              if (videoPreloaderRef.current) {
+                videoPreloaderRef.current.src = blobUrl;
                 videoPreloaderRef.current.load();
+              }
+            } catch (e) {
+                console.error("Error fetching video for replay:", e);
             }
         }
         else if (command.type === 'SHOW_OVERLAY_MESSAGE') {
@@ -89,7 +104,9 @@ export function FullScoreboard({ className }: { className?: string }) {
         const canPlayHandler = () => {
             // Video is ready, now dispatch action to show it
             if(videoElement.src) {
-                dispatch({ type: 'SHOW_REPLAY_OVERLAY', payload: { url: videoElement.src } });
+                const blobUrl = videoElement.src;
+                setPreloadedVideoUrl(blobUrl); // Store it for rendering
+                dispatch({ type: 'SHOW_REPLAY_OVERLAY', payload: { url: blobUrl } });
             }
         };
         
@@ -97,9 +114,13 @@ export function FullScoreboard({ className }: { className?: string }) {
         
         return () => {
             videoElement.removeEventListener('canplaythrough', canPlayHandler);
+            // Clean up the old blob URL when the component unmounts or the URL changes
+            if(preloadedVideoUrl) {
+                URL.revokeObjectURL(preloadedVideoUrl);
+            }
         }
     }
-  }, [dispatch]);
+  }, [dispatch, preloadedVideoUrl]);
 
   
   useEffect(() => {
@@ -264,3 +285,4 @@ export function FullScoreboard({ className }: { className?: string }) {
   );
 }
 
+    

@@ -109,96 +109,22 @@ function PerformanceSettingsCard() {
     )
 }
 
-type DownloadState = 'idle' | 'downloading' | 'downloaded' | 'error';
-
 function ScoreboardToolsCard() {
     const { toast } = useToast();
     const [videoUrl, setVideoUrl] = useState('');
-    const [downloadedBlobUrl, setDownloadedBlobUrl] = useState<string | null>(null);
-    const [downloadState, setDownloadState] = useState<DownloadState>('idle');
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-    useEffect(() => {
-        return () => {
-            if (downloadedBlobUrl) {
-                URL.revokeObjectURL(downloadedBlobUrl);
-            }
-        };
-    }, [downloadedBlobUrl]);
-
-    const handleDownloadVideo = async () => {
+    const handleShowReplay = async () => {
         if (!videoUrl) {
             toast({ title: "URL Requerida", description: "Por favor, ingresa la URL del video.", variant: "destructive" });
             return;
         }
-
-        setDownloadState('downloading');
-        setErrorMsg(null);
-        if (downloadedBlobUrl) {
-            URL.revokeObjectURL(downloadedBlobUrl);
-            setDownloadedBlobUrl(null);
-        }
-
-        try {
-            const response = await fetch('/api/download-video', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url: videoUrl })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `Error en el servidor: ${response.status}`);
-            }
-            const blob = await response.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            setDownloadedBlobUrl(blobUrl);
-            setDownloadState('downloaded');
-            toast({ title: "Video Descargado", description: "Listo para reproducir." });
-        } catch (err: any) {
-            console.error("Download error:", err);
-            setErrorMsg(err.message || "No se pudo descargar el video.");
-            setDownloadState('error');
-            toast({ title: "Error de Descarga", description: err.message || "No se pudo descargar el video.", variant: "destructive" });
-        }
-    };
-    
-    const handleShowReplay = async () => {
-        if (!downloadedBlobUrl) {
-            toast({ title: "Video no listo", description: "Descarga el video antes de intentar reproducirlo.", variant: "destructive" });
-            return;
-        }
-        await sendRemoteCommand({ type: 'START_LOADING_REPLAY', payload: { url: downloadedBlobUrl } });
-        toast({ title: "Repetición Enviada", description: "El video se está precargando en el scoreboard." });
+        await sendRemoteCommand({ type: 'START_LOADING_REPLAY', payload: { url: videoUrl } });
+        toast({ title: "Comando Enviado", description: "El scoreboard ha recibido la orden de precargar y mostrar la repetición." });
     };
 
     const handleTestOverlay = async () => {
         await sendRemoteCommand({ type: 'SHOW_OVERLAY_MESSAGE', payload: { text: "Valentino Caffe", duration: 5000 } });
         toast({ title: "Overlay de prueba enviado", description: "El mensaje 'Valentino Caffe' debería aparecer en el scoreboard." });
-    };
-
-    const getStatusIcon = () => {
-        switch (downloadState) {
-            case 'downloading':
-                return <Loader2 className="h-5 w-5 animate-spin text-blue-500" />;
-            case 'downloaded':
-                return <CheckCircle className="h-5 w-5 text-green-500" />;
-            case 'error':
-                 return (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                           <XCircle className="h-5 w-5 text-destructive" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{errorMsg}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                 );
-            default:
-                return null;
-        }
     };
 
     return (
@@ -214,24 +140,16 @@ function ScoreboardToolsCard() {
             <CardContent className="space-y-6">
                 <div className="space-y-2">
                     <Label htmlFor="replayUrl">URL del Video de Repetición</Label>
-                    <div className="flex items-center gap-2">
-                        <Input 
-                          id="replayUrl" 
-                          value={videoUrl} 
-                          onChange={(e) => setVideoUrl(e.target.value)} 
-                          placeholder="https://example.com/video.mp4" 
-                          className="flex-grow"
-                        />
-                        <div className="w-6 h-6 flex items-center justify-center">
-                          {getStatusIcon()}
-                        </div>
-                    </div>
+                    <Input 
+                      id="replayUrl" 
+                      value={videoUrl} 
+                      onChange={(e) => setVideoUrl(e.target.value)} 
+                      placeholder="https://example.com/video.mp4" 
+                      className="flex-grow"
+                    />
                 </div>
                  <div className="flex items-center gap-2">
-                    <Button onClick={handleDownloadVideo} disabled={downloadState === 'downloading'}>
-                        <Download className="mr-2 h-4 w-4" /> {downloadState === 'downloading' ? 'Descargando...' : 'Descargar Video'}
-                    </Button>
-                    <Button onClick={handleShowReplay} disabled={downloadState !== 'downloaded'}>
+                    <Button onClick={handleShowReplay}>
                         <Play className="mr-2 h-4 w-4" /> Mostrar Repetición
                     </Button>
                 </div>
