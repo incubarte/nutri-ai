@@ -1,6 +1,6 @@
 {
   "score": {
-    "home": 1,
+    "home": 2,
     "away": 0,
     "homeShots": 0,
     "awayShots": 0
@@ -20,6 +20,16 @@
           "playerNumber": "1"
         },
         "id": "909dc819-77c8-492e-a0a5-9150b7c333b1"
+      },
+      {
+        "team": "home",
+        "timestamp": 1762181658387,
+        "gameTime": 110948,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "4"
+        },
+        "id": "c40e627b-cff4-43ea-a6e5-b0cd78952573"
       }
     ],
     "away": []
@@ -184,15 +194,15 @@
     ]
   },
   "clock": {
-    "currentTime": 112856,
-    "currentPeriod": 2,
+    "currentTime": 120000,
+    "currentPeriod": 1,
     "isClockRunning": false,
     "periodDisplayOverride": null,
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 127144,
-    "_liveAbsoluteElapsedTimeCs": 127144,
+    "absoluteElapsedTimeCs": 0,
+    "_liveAbsoluteElapsedTimeCs": 0,
     "isFlashingZero": false
   },
   "shootout": {
@@ -204,7 +214,7 @@
   },
   "homeTeamName": "Ovejas Negras Carneros",
   "awayTeamName": "ACEMHH C1",
-  "playHornTrigger": 75,
+  "playHornTrigger": 76,
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,

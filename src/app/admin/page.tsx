@@ -14,7 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ShieldAlert, LogIn, SlidersHorizontal, Info, MessageSquare, CalendarCheck } from 'lucide-react';
+import { Trash2, ShieldAlert, LogIn, SlidersHorizontal, Info, MessageSquare, CalendarCheck, Clapperboard } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from "@/hooks/use-auth";
 import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
@@ -110,11 +110,26 @@ function PerformanceSettingsCard() {
 function ScoreboardToolsCard() {
     const { dispatch } = useGameState();
     const { toast } = useToast();
+    const [replayUrl, setReplayUrl] = useState('');
 
     const handleTestOverlay = () => {
         dispatch({ type: 'SHOW_OVERLAY_MESSAGE', payload: { text: "Valentino Caffe", duration: 5000 } });
         toast({ title: "Overlay de prueba enviado", description: "El mensaje 'Valentino Caffe' debería aparecer en el scoreboard." });
     };
+
+    const handleShowReplay = () => {
+        if (!replayUrl) {
+            toast({
+                title: "URL Requerida",
+                description: "Por favor, ingresa la URL del video de la repetición.",
+                variant: "destructive",
+            });
+            return;
+        }
+        dispatch({ type: 'SHOW_REPLAY_OVERLAY', payload: { url: replayUrl } });
+        toast({ title: "Repetición Enviada", description: "El video debería estar reproduciéndose en el scoreboard." });
+    };
+
 
     return (
         <Card>
@@ -126,7 +141,16 @@ function ScoreboardToolsCard() {
                     Acciones para probar funcionalidades del scoreboard.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
+                <div className="flex items-end gap-2">
+                    <div className="flex-grow">
+                         <Label htmlFor="replayUrl">URL del Video de Repetición</Label>
+                         <Input id="replayUrl" value={replayUrl} onChange={(e) => setReplayUrl(e.target.value)} placeholder="https://example.com/video.mp4" />
+                    </div>
+                    <Button onClick={handleShowReplay}>
+                        <Clapperboard className="mr-2 h-4 w-4" /> Mostrar Repetición
+                    </Button>
+                </div>
                 <Button variant="secondary" onClick={handleTestOverlay}>
                     <MessageSquare className="mr-2 h-4 w-4" /> Mostrar Overlay de Prueba
                 </Button>
@@ -314,5 +338,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    

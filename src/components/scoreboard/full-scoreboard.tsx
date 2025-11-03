@@ -9,6 +9,7 @@ import { PenaltiesDisplay } from './penalties-display';
 import { ShootoutDisplay, MAX_DISPLAY_SLOTS } from './shootout-display';
 import { StandingsDisplay } from './standings-display'; // Importar el nuevo componente
 import { GoalCelebrationOverlay } from './goal-celebration-overlay';
+import { ReplayOverlay } from './replay-overlay';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -76,7 +77,7 @@ export function FullScoreboard({ className }: { className?: string }) {
     return null;
   }
 
-  const { penalties, homeTeamName, awayTeamName, shootout, matchId, clock, goalCelebration } = live;
+  const { penalties, homeTeamName, awayTeamName, shootout, matchId, clock, goalCelebration, replayOverlay } = live;
 
   const homeAttempts = shootout?.homeAttempts || [];
   const awayAttempts = shootout?.awayAttempts || [];
@@ -119,7 +120,18 @@ export function FullScoreboard({ className }: { className?: string }) {
         }}
       >
         <AnimatePresence>
-          {showOverlay && (
+          {replayOverlay && (
+            <motion.div
+              key={replayOverlay.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-30"
+            >
+              <ReplayOverlay url={replayOverlay.url} onFinish={() => dispatch({ type: 'HIDE_REPLAY_OVERLAY' })} />
+            </motion.div>
+          )}
+          {showOverlay && !replayOverlay && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
