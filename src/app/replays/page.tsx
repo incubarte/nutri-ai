@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -112,13 +111,16 @@ export default function ReplaysPage() {
                         if (location && location.startsWith('gs://')) {
                             const filename = location.split('/').pop()?.replace(/%20/g, ' ') || `replay-${replayId}.mp4`;
                             const httpsUrl = convertGsToHttps(location);
+                            
+                            const expectedLocalPath = `${formattedDate}/${filename}`;
+
                             if (httpsUrl) {
                                 fetchedReplays.push({
                                     id: replayId,
                                     location,
                                     url: httpsUrl,
                                     filename,
-                                    isNew: !allReplayFiles.includes(filename) && !allReplayFiles.includes(decodeURIComponent(filename))
+                                    isNew: !allReplayFiles.includes(expectedLocalPath) && !allReplayFiles.includes(decodeURIComponent(expectedLocalPath))
                                 });
                             }
                         }
@@ -150,17 +152,22 @@ export default function ReplaysPage() {
         }
     }, [selectedReplay]);
 
-    const handleDownloadVideo = async (urlToDownload: string) => {
+    const handleDownloadVideo = async (urlToDownload: string, downloadDate?: Date) => {
         if (!urlToDownload) {
             toast({ title: "URL Requerida", description: "Por favor, ingresa la URL del video.", variant: "destructive" });
             return;
         }
         setDownloadStatus('downloading');
         try {
+            const body: { url: string, date?: string } = { url: urlToDownload };
+            if (downloadDate) {
+                body.date = format(downloadDate, 'yyyy-MM-dd');
+            }
+
             const response = await fetch('/api/download-replay', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: urlToDownload })
+                body: JSON.stringify(body)
             });
 
             const data = await response.json();
@@ -183,7 +190,7 @@ export default function ReplaysPage() {
         const downloadedFiles: string[] = [];
         
         for (const replay of newReplays) {
-            const result = await handleDownloadVideo(replay.url);
+            const result = await handleDownloadVideo(replay.url, syncDate);
             if (result.success && result.newFilePath) {
                 downloadedFiles.push(result.newFilePath.replace('/replays/', ''));
             }
@@ -310,7 +317,7 @@ export default function ReplaysPage() {
                                                 className="w-full justify-start text-left h-auto"
                                                 onClick={() => handleSelectReplay(file)}
                                             >
-                                                <span className="truncate py-1">{file}</span>
+                                                <span className="truncate py-1">{file.split('/').pop()}</span>
                                             </Button>
                                         ))}
                                     </div>

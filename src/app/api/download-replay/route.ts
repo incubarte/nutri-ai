@@ -4,7 +4,7 @@ import path from 'path';
 
 export async function POST(request: Request) {
     try {
-        const { url } = await request.json();
+        const { url, date } = await request.json();
 
         if (!url) {
             return NextResponse.json({ message: 'URL del video es requerida.' }, { status: 400 });
@@ -18,13 +18,19 @@ export async function POST(request: Request) {
 
         const videoBuffer = await videoResponse.arrayBuffer();
 
-        // Define el directorio y el nombre del archivo
-        const replaysDir = path.join(process.cwd(), 'public', 'replays');
-        await fs.mkdir(replaysDir, { recursive: true });
+        // Use the date to create a subfolder, or use the base replays folder if no date is provided
+        const baseDir = path.join(process.cwd(), 'public', 'replays');
+        const targetDir = date ? path.join(baseDir, date) : baseDir;
+        await fs.mkdir(targetDir, { recursive: true });
         
-        const filename = `replay-${Date.now()}.mp4`;
-        const filePath = path.join(replaysDir, filename);
-        const publicPath = `/replays/${filename}`;
+        // Use the original filename from the URL if possible, otherwise generate one
+        const urlPath = new URL(url).pathname;
+        let filename = decodeURIComponent(urlPath.split('/').pop() || `replay-${Date.now()}.mp4`);
+        // A further cleanup to handle potential query params in filename segment
+        filename = filename.split('?')[0];
+
+        const filePath = path.join(targetDir, filename);
+        const publicPath = date ? `/replays/${date}/${filename}` : `/replays/${filename}`;
 
         // Guarda el archivo
         await fs.writeFile(filePath, Buffer.from(videoBuffer));
