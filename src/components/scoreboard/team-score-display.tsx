@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
@@ -56,15 +57,10 @@ export function TeamScoreDisplay({
       }
     };
 
-    // Timeout to ensure rendering is complete, especially after props change
-    const timeoutId = setTimeout(checkOverflow, 50);
+    checkOverflow();
 
     window.addEventListener('resize', checkOverflow);
-    
-    return () => {
-        clearTimeout(timeoutId);
-        window.removeEventListener('resize', checkOverflow);
-    };
+    return () => window.removeEventListener('resize', checkOverflow);
   }, [teamActualName]);
 
   useEffect(() => {
@@ -72,7 +68,9 @@ export function TeamScoreDisplay({
     if (isOverflowing) {
         timeout = setTimeout(() => {
             setIsAtStart(prev => !prev);
-        }, isAtStart ? 2000 : 4000); // Pause at start, longer pause after scroll
+        }, isAtStart ? 2000 : 4000); // Pause at start for 2s, longer pause after scroll for 4s
+    } else {
+      setIsAtStart(true);
     }
     return () => {
         if (timeout) {
@@ -133,7 +131,7 @@ export function TeamScoreDisplay({
           <div
             ref={containerRef} 
             className={cn(
-              "w-full h-[1.2em] relative overflow-hidden font-bold text-foreground uppercase tracking-wide",
+              "w-full h-[1.2em] relative overflow-hidden",
               !isOverflowing && "flex justify-center"
             )}
             style={{ fontSize: `${layout.teamNameSize}rem` }}
@@ -142,11 +140,11 @@ export function TeamScoreDisplay({
               <span
                 ref={textRef}
                 className={cn(
-                  "whitespace-nowrap",
-                  isOverflowing && "absolute left-0 top-0 transition-transform duration-[1500ms] ease-in-out"
+                  "whitespace-nowrap font-bold",
+                  isOverflowing && "absolute left-0 top-0 transition-transform duration-[3000ms] ease-in-out"
                 )}
                 style={{
-                  transform: isOverflowing ? getTransform() : 'none',
+                  transform: getTransform(),
                 }}
               >
                 {teamActualName}
@@ -177,3 +175,4 @@ export function TeamScoreDisplay({
     </div>
   );
 }
+
