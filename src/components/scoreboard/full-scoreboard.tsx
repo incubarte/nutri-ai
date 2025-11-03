@@ -48,7 +48,6 @@ export function FullScoreboard({ className }: { className?: string }) {
   const scoreboardLayout = config?.scoreboardLayout;
   
   const videoPreloaderRef = useRef<HTMLVideoElement>(null);
-  const [preloadedVideoUrl, setPreloadedVideoUrl] = useState<string | null>(null);
   
   // Listen for remote commands specifically for this scoreboard component
   useEffect(() => {
@@ -62,7 +61,7 @@ export function FullScoreboard({ className }: { className?: string }) {
         if (command.type === 'START_LOADING_REPLAY') {
             const videoUrl = command.payload.url;
             if (videoPreloaderRef.current) {
-                videoPreloaderRef.current.src = videoUrl; // The URL is now a local path like /replays/video.mp4
+                videoPreloaderRef.current.src = videoUrl;
                 videoPreloaderRef.current.load();
             }
         }
@@ -89,11 +88,8 @@ export function FullScoreboard({ className }: { className?: string }) {
     const videoElement = videoPreloaderRef.current;
     if (videoElement) {
         const canPlayHandler = () => {
-            // Video is ready, now dispatch action to show it
             if(videoElement.src) {
-                const localUrl = videoElement.src;
-                setPreloadedVideoUrl(localUrl); // Store it for rendering
-                dispatch({ type: 'SHOW_REPLAY_OVERLAY', payload: { url: localUrl } });
+                dispatch({ type: 'SHOW_REPLAY_OVERLAY', payload: { url: videoElement.src } });
             }
         };
         
