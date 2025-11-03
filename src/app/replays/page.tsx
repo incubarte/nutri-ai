@@ -1,19 +1,31 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Video, ListVideo, Loader2, RefreshCw, Download, Play, CheckCircle, XCircle } from 'lucide-react';
+import { Video, ListVideo, Loader2, RefreshCw, Download, Play, CheckCircle, XCircle, Calendar as CalendarIcon, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { sendRemoteCommand } from '@/app/actions';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 type LoadingStatus = 'idle' | 'loading' | 'success' | 'error';
 type DownloadStatus = 'idle' | 'downloading' | 'success' | 'error';
+
+interface FirebaseReplay {
+    id: string;
+    location: string;
+    url: string;
+    filename: string;
+    isNew: boolean;
+}
 
 export default function ReplaysPage() {
     const [replayFiles, setReplayFiles] = useState<string[]>([]);
@@ -23,11 +35,18 @@ export default function ReplaysPage() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const { toast } = useToast();
 
-    // State for the new download functionality
     const [videoUrl, setVideoUrl] = useState('');
     const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle');
 
-    const fetchReplays = async () => {
+    const [syncDate, setSyncDate] = useState<Date>(new Date());
+    const [isSyncActive, setIsSyncActive] = useState(false);
+    const [newReplays, setNewReplays] = useState<FirebaseReplay[]>([]);
+    const [isMassDownloading, setIsMassDownloading] = useState(false);
+    const [firebaseError, setFirebaseError] = useState<string | null>(null);
+    
+    const firebaseReplayUrl = "https://hockeando-default-rtdb.firebaseio.com/Replays.json";
+
+    const fetchReplays = useCallback(async () => {
         setStatus('loading');
         setError(null);
         try {
@@ -43,11 +62,74 @@ export default function ReplaysPage() {
             setError(err.message || 'No se pudo conectar para obtener la lista de repeticiones.');
             setStatus('error');
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchReplays();
-    }, []);
+    }, [fetchReplays]);
+    
+    const convertGsToHttps = (gsPath: string): string => {
+        if (!gsPath.startsWith('gs://')) return '';
+        const pathWithoutPrefix = gsPath.substring(5);
+        const [bucket, ...filePathParts] = pathWithoutPrefix.split('/');
+        const filePath = filePathParts.join('/');
+        return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(filePath)}?alt=media`;
+    };
+    
+    useEffect(() => {
+        if (!isSyncActive) {
+            setNewReplays([]);
+            return;
+        }
+
+        const sync = async () => {
+            try {
+                const formattedDate = format(syncDate, 'yyyy-MM-dd');
+                const response = await fetch(firebaseReplayUrl);
+                if (!response.ok) throw new Error(`Firebase returned status ${response.status}`);
+                const data = await response.json();
+                
+                const dayData = data?.[formattedDate];
+                if (!dayData) {
+                    setNewReplays([]);
+                    setFirebaseError(null);
+                    return;
+                }
+
+                const fetchedReplays: FirebaseReplay[] = [];
+                for (const camId in dayData) {
+                    for (const replayId in dayData[camId]) {
+                        const location = dayData[camId][replayId].location;
+                        if (location && location.startsWith('gs://')) {
+                            const filename = location.split('/').pop() || `replay-${replayId}.mp4`;
+                            const httpsUrl = convertGsToHttps(location);
+                            if (httpsUrl) {
+                                fetchedReplays.push({
+                                    id: replayId,
+                                    location,
+                                    url: httpsUrl,
+                                    filename,
+                                    isNew: !replayFiles.includes(filename) && !replayFiles.includes(decodeURIComponent(filename))
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                setNewReplays(fetchedReplays.filter(r => r.isNew));
+                setFirebaseError(null);
+            } catch (err) {
+                setFirebaseError("No se pudo conectar a Firebase. Reintentando...");
+                console.error("Firebase sync error:", err);
+            }
+        };
+
+        sync(); // Initial sync
+        const interval = setInterval(sync, 10000); // Sync every 10 seconds
+
+        return () => clearInterval(interval);
+    }, [isSyncActive, syncDate, replayFiles, firebaseReplayUrl]);
+
 
     const handleSelectReplay = (replayFile: string) => {
         setSelectedReplay(`/replays/${replayFile}`);
@@ -59,8 +141,8 @@ export default function ReplaysPage() {
         }
     }, [selectedReplay]);
 
-    const handleDownloadVideo = async () => {
-        if (!videoUrl) {
+    const handleDownloadVideo = async (urlToDownload: string) => {
+        if (!urlToDownload) {
             toast({ title: "URL Requerida", description: "Por favor, ingresa la URL del video.", variant: "destructive" });
             return;
         }
@@ -69,7 +151,7 @@ export default function ReplaysPage() {
             const response = await fetch('/api/download-replay', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: videoUrl })
+                body: JSON.stringify({ url: urlToDownload })
             });
 
             const data = await response.json();
@@ -77,14 +159,35 @@ export default function ReplaysPage() {
 
             setDownloadStatus('success');
             toast({ title: "Video Descargado", description: "El video está disponible en la lista de repeticiones." });
-            fetchReplays(); // Refresh the list to show the new video
-            setVideoUrl(''); // Clear the input
+            await fetchReplays();
+            setVideoUrl(''); 
+            return true;
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "No se pudo conectar con el servidor.";
             setDownloadStatus('error');
             toast({ title: "Error de Descarga", description: errorMessage, variant: "destructive" });
+            return false;
         }
+    };
+    
+    const handleMassDownload = async () => {
+        setIsMassDownloading(true);
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const replay of newReplays) {
+            const success = await handleDownloadVideo(replay.url);
+            if (success) successCount++;
+            else errorCount++;
+        }
+
+        setIsMassDownloading(false);
+        toast({
+            title: "Descarga Masiva Completa",
+            description: `${successCount} videos descargados. ${errorCount > 0 ? `${errorCount} errores.` : ''}`,
+            variant: errorCount > 0 ? "destructive" : "default",
+        });
     };
     
     const handleShowOnScoreboard = async () => {
@@ -105,36 +208,79 @@ export default function ReplaysPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-lg">Descargar Nueva Repetición</CardTitle>
+                    <CardTitle className="text-lg">Herramientas de Video</CardTitle>
                 </CardHeader>
-                <CardContent className="flex flex-col sm:flex-row items-end gap-4">
+                <CardContent className="flex flex-col sm:flex-row items-start gap-4">
                     <div className="flex-grow space-y-1 w-full">
-                        <Label htmlFor="replayUrl">URL del Video de Repetición</Label>
-                        <Input 
-                          id="replayUrl" 
-                          value={videoUrl} 
-                          onChange={(e) => {
-                            setVideoUrl(e.target.value);
-                            setDownloadStatus('idle'); // Reset status on URL change
-                          }}
-                          placeholder="https://example.com/video.mp4" 
-                        />
+                        <Label htmlFor="replayUrl">Descargar desde URL Manualmente</Label>
+                        <div className="flex items-center gap-2">
+                            <Input 
+                              id="replayUrl" 
+                              value={videoUrl} 
+                              onChange={(e) => {
+                                setVideoUrl(e.target.value);
+                                setDownloadStatus('idle');
+                              }}
+                              placeholder="https://example.com/video.mp4" 
+                            />
+                             <Button onClick={() => handleDownloadVideo(videoUrl)} disabled={downloadStatus === 'downloading' || !videoUrl}>
+                                {downloadStatus === 'downloading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                                Descargar
+                            </Button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-4 w-full sm:w-auto">
-                        <Button onClick={handleDownloadVideo} disabled={downloadStatus === 'downloading' || !videoUrl} className="w-full sm:w-auto">
-                            {downloadStatus === 'downloading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                            Descargar Video
-                        </Button>
-                        {downloadStatus === 'success' && <CheckCircle className="h-6 w-6 text-green-500" />}
-                        {downloadStatus === 'error' && <XCircle className="h-6 w-6 text-destructive" />}
-                    </div>
+                     <div className="border-t sm:border-l sm:border-t-0 pt-4 sm:pt-0 sm:pl-4">
+                        <Label>Sincronización Automática</Label>
+                         <div className="flex items-center gap-2">
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className={cn("w-full sm:w-auto justify-start text-left font-normal", !syncDate && "text-muted-foreground")}>
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {syncDate ? format(syncDate, "PPP", { locale: es }) : <span>Seleccionar fecha</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                    <Calendar mode="single" selected={syncDate} onSelect={(date) => date && setSyncDate(date)} initialFocus locale={es} />
+                                </PopoverContent>
+                            </Popover>
+                            <Button onClick={() => setIsSyncActive(!isSyncActive)} variant={isSyncActive ? 'destructive' : 'default'}>
+                                {isSyncActive ? "Detener Sync" : "Iniciar Sync"}
+                            </Button>
+                        </div>
+                     </div>
                 </CardContent>
             </Card>
+            
+            {isSyncActive && (
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center justify-between">
+                            Nuevas Repeticiones Disponibles ({newReplays.length})
+                            {firebaseError && <span className="text-xs font-normal text-destructive flex items-center gap-1"><AlertTriangle className="h-4 w-4"/> {firebaseError}</span>}
+                        </CardTitle>
+                    </CardHeader>
+                    {newReplays.length > 0 && (
+                        <CardContent>
+                            <ScrollArea className="h-24 pr-3">
+                                <div className="space-y-1">
+                                    {newReplays.map(replay => (
+                                        <div key={replay.id} className="text-sm text-muted-foreground truncate">{decodeURIComponent(replay.filename)}</div>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                             <Button onClick={handleMassDownload} disabled={isMassDownloading} className="mt-4 w-full">
+                                {isMassDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                                Descargar {newReplays.length} Videos Nuevos
+                            </Button>
+                        </CardContent>
+                    )}
+                 </Card>
+            )}
 
             <div className="flex-grow grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 overflow-hidden">
                 <Card className="col-span-1 flex flex-col">
                     <CardHeader className="flex-row items-center justify-between">
-                        <CardTitle className="text-lg flex items-center gap-2"><ListVideo className="h-5 w-5"/> Lista de Videos</CardTitle>
+                        <CardTitle className="text-lg flex items-center gap-2"><ListVideo className="h-5 w-5"/> Videos Descargados</CardTitle>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchReplays} disabled={status === 'loading'}>
                             <RefreshCw className={cn("h-4 w-4", status === 'loading' && "animate-spin")} />
                         </Button>
@@ -195,3 +341,4 @@ export default function ReplaysPage() {
         </div>
     );
 }
+
