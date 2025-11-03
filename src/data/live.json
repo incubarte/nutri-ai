@@ -224,5 +224,8 @@
     "1ST"
   ],
   "homeTeamSubName": "Carneros",
-  "replayOverlay": null
+  "replayOverlay": {
+    "id": "8b0f50ae-8e65-4e54-bc3e-e26f3fe6e9fb",
+    "url": "Console Error   Error: play() failed because the user didn't interact with the document first. https://goo.gl/xX8pDD"
+  }
 }

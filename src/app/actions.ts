@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import type { GameState, ConfigState, LiveState, Tournament } from '@/types';
+import type { GameState, ConfigState, LiveState, Tournament, RemoteCommand } from '@/types';
 
 export async function updateConfigOnServer(config: ConfigState) {
   try {
@@ -76,7 +75,7 @@ export async function saveTournamentOnServer(tournament: Tournament) {
 }
 
 // Keep sendRemoteCommand as it's used by client components
-export async function sendRemoteCommand(command: any) {
+export async function sendRemoteCommand(command: RemoteCommand) {
   try {
     const response = await fetch('/api/remote-commands', {
       method: 'POST',
@@ -98,3 +97,5 @@ export async function sendRemoteCommand(command: any) {
     return { success: false, message: 'An unknown error occurred.' };
   }
 }
+
+    

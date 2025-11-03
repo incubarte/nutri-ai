@@ -19,11 +19,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from "@/hooks/use-auth";
 import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
 import { useRouter } from "next/navigation";
-import { useGameState } from "@/contexts/game-state-context";
+import { useGameState, type RemoteCommand } from "@/contexts/game-state-context";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { sendRemoteCommand } from '@/app/actions';
 
 
 function PerformanceSettingsCard() {
@@ -108,16 +109,15 @@ function PerformanceSettingsCard() {
 }
 
 function ScoreboardToolsCard() {
-    const { dispatch } = useGameState();
     const { toast } = useToast();
     const [replayUrl, setReplayUrl] = useState('');
 
-    const handleTestOverlay = () => {
-        dispatch({ type: 'SHOW_OVERLAY_MESSAGE', payload: { text: "Valentino Caffe", duration: 5000 } });
+    const handleTestOverlay = async () => {
+        await sendRemoteCommand({ type: 'SHOW_OVERLAY_MESSAGE', payload: { text: "Valentino Caffe", duration: 5000 } });
         toast({ title: "Overlay de prueba enviado", description: "El mensaje 'Valentino Caffe' debería aparecer en el scoreboard." });
     };
-
-    const handleShowReplay = () => {
+    
+    const handleShowReplay = async () => {
         if (!replayUrl) {
             toast({
                 title: "URL Requerida",
@@ -126,8 +126,8 @@ function ScoreboardToolsCard() {
             });
             return;
         }
-        dispatch({ type: 'SHOW_REPLAY_OVERLAY', payload: { url: replayUrl } });
-        toast({ title: "Repetición Enviada", description: "El video debería estar reproduciéndose en el scoreboard." });
+        await sendRemoteCommand({ type: 'START_LOADING_REPLAY', payload: { url: replayUrl } });
+        toast({ title: "Repetición Enviada", description: "El video se está precargando en el scoreboard." });
     };
 
 
@@ -225,10 +225,12 @@ export default function AdminPage() {
 
   const handleClearAllData = () => {
     dispatch({ type: 'RESET_CONFIG_TO_DEFAULTS' });
-    dispatch({ type: 'LOAD_TEAMS_FROM_FILE', payload: [] });
+    if (typeof localStorage !== 'undefined') {
+        localStorage.clear();
+    }
     toast({
       title: "Todos los Datos Eliminados",
-      description: "Se ha limpiado toda la configuración y los equipos. La página se recargará.",
+      description: "Se ha limpiado toda la configuración, equipos y caché. La página se recargará.",
       variant: 'destructive',
     });
     setTimeout(() => window.location.reload(), 1500);
@@ -262,7 +264,7 @@ export default function AdminPage() {
     <div className="w-full max-w-2xl mx-auto space-y-8 py-10">
         <div className="text-center">
             <ShieldAlert className="mx-auto h-12 w-12 text-primary" />
-            <h1 className="text-3xl font-bold mt-4">Panel de Administración</h1>
+            <h1 className="text-3xl font-bold">Panel de Administración</h1>
             <p className="text-muted-foreground mt-2">Herramientas para la gestión avanzada de la aplicación.</p>
         </div>
         
@@ -318,7 +320,7 @@ export default function AdminPage() {
                           <AlertDialogHeader>
                           <AlertDialogTitle>¡Confirmación Final!</AlertDialogTitle>
                           <AlertDialogDescription>
-                              Esta acción eliminará permanentemente TODA la configuración y TODOS los equipos y jugadores guardados. Esta acción es irreversible. ¿Estás seguro de que quieres borrar absolutamente todo?</AlertDialogDescription>
+                              Esta acción eliminará permanentemente TODA la configuración, TODOS los equipos y jugadores guardados y la caché del navegador. Esta acción es irreversible. ¿Estás seguro de que quieres borrar absolutamente todo?</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -338,3 +340,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    

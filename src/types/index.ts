@@ -1,5 +1,4 @@
 
-
 "use client";
 
 export interface PenaltyTypeDefinition {
@@ -325,6 +324,10 @@ export interface LiveState {
     text: string;
     duration: number; // in milliseconds
   } | null;
+  replayLoadRequest: {
+    id: string;
+    url: string;
+  } | null;
   replayOverlay: {
     id: string;
     url: string;
@@ -372,6 +375,8 @@ export interface AccessRequest {
 
 // --- Remote Commands ---
 export type RemoteCommand = 
+  | { type: 'SHOW_OVERLAY_MESSAGE'; payload: { text: string; duration: number } }
+  | { type: 'START_LOADING_REPLAY'; payload: { url: string } }
   | { type: 'ADD_GOAL'; payload: { team: Team; scorerNumber: string; assistNumber?: string } }
   | { type: 'ADD_SHOT'; payload: { team: Team; playerNumber: string } }
   | { type: 'ADD_PENALTY'; payload: { team: Team; playerNumber: string; penaltyTypeId: string; } }
@@ -381,6 +386,7 @@ export type RemoteCommand =
 export type GameAction =
   | { type: 'SHOW_OVERLAY_MESSAGE'; payload: { text: string, duration: number } }
   | { type: 'HIDE_OVERLAY_MESSAGE' }
+  | { type: 'START_LOADING_REPLAY'; payload: { url: string } }
   | { type: 'SHOW_REPLAY_OVERLAY'; payload: { url: string } }
   | { type: 'HIDE_REPLAY_OVERLAY' }
   | { type: 'SHOW_GOAL_CELEBRATION'; payload: { goal: GoalLog, teamData?: TeamData } }
@@ -488,3 +494,5 @@ export interface SummaryPlayerStats {
   assists: number;
   shots: number;
 }
+
+    

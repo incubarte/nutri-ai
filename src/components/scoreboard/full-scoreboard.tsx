@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
@@ -46,6 +45,26 @@ export function FullScoreboard({ className }: { className?: string }) {
   
   const { config, live } = state;
   const scoreboardLayout = config?.scoreboardLayout;
+
+  const videoPreloaderRef = useRef<HTMLVideoElement | null>(null);
+  
+  useEffect(() => {
+    if (live?.replayLoadRequest) {
+      if (videoPreloaderRef.current) {
+        videoPreloaderRef.current.src = live.replayLoadRequest.url;
+        videoPreloaderRef.current.load();
+        
+        const canPlayHandler = () => {
+          // Video is ready, now show it
+          dispatch({ type: 'SHOW_REPLAY_OVERLAY', payload: { url: live.replayLoadRequest.url } });
+          videoPreloaderRef.current?.removeEventListener('canplaythrough', canPlayHandler);
+        };
+        
+        videoPreloaderRef.current.addEventListener('canplaythrough', canPlayHandler);
+      }
+    }
+  }, [live?.replayLoadRequest, dispatch]);
+
   
   useEffect(() => {
     if (live?.overlayMessage && live.overlayMessage.id) {
@@ -103,6 +122,7 @@ export function FullScoreboard({ className }: { className?: string }) {
         transform: `translateX(${scoreboardLayout.scoreboardHorizontalPosition}rem)`
       }}
     >
+       <video ref={videoPreloaderRef} style={{ display: 'none' }} />
       <div 
         className="relative z-10" // Header container
         style={{
@@ -207,3 +227,5 @@ export function FullScoreboard({ className }: { className?: string }) {
     </div>
   );
 }
+
+    
