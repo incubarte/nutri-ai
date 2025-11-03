@@ -58,26 +58,29 @@ export function TeamScoreDisplay({
     };
 
     checkOverflow();
+    const resizeObserver = new ResizeObserver(checkOverflow);
+    if(containerRef.current) {
+        resizeObserver.observe(containerRef.current);
+    }
 
-    window.addEventListener('resize', checkOverflow);
-    return () => window.removeEventListener('resize', checkOverflow);
-  }, [teamActualName]);
+    return () => resizeObserver.disconnect();
+  }, [teamActualName, layout?.teamNameWidth]);
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout | null = null;
+    let interval: NodeJS.Timeout | null = null;
     if (isOverflowing) {
-        timeout = setTimeout(() => {
+        interval = setInterval(() => {
             setIsAtStart(prev => !prev);
-        }, isAtStart ? 2000 : 4000); // Pause at start for 2s, longer pause after scroll for 4s
+        }, 2500); // Pause for 2.5s at each end
     } else {
       setIsAtStart(true);
     }
     return () => {
-        if (timeout) {
-            clearTimeout(timeout);
+        if (interval) {
+            clearInterval(interval);
         }
     };
-  }, [isOverflowing, isAtStart]);
+  }, [isOverflowing]);
 
   if (!layout) {
     return null;
@@ -107,6 +110,7 @@ export function TeamScoreDisplay({
                 objectFit="contain"
                 className="absolute inset-0 z-0 pointer-events-none"
                 style={{ opacity: layout.teamLogoOpacity / 100 }}
+                data-ai-hint="team logo"
             />
         )}
         <div className="relative z-10 w-full flex flex-col items-center">
@@ -141,10 +145,12 @@ export function TeamScoreDisplay({
                 ref={textRef}
                 className={cn(
                   "whitespace-nowrap font-bold",
-                  isOverflowing && "absolute left-0 top-0 transition-transform duration-[3000ms] ease-in-out"
+                   isOverflowing
+                    ? "absolute left-0 top-0 transition-transform duration-[1500ms] ease-in-out"
+                    : "text-center w-full"
                 )}
                 style={{
-                  transform: getTransform(),
+                  transform: isOverflowing ? getTransform() : 'none',
                 }}
               >
                 {teamActualName}
@@ -175,4 +181,3 @@ export function TeamScoreDisplay({
     </div>
   );
 }
-
