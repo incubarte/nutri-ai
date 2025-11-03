@@ -11,6 +11,7 @@ import { GoalCelebrationOverlay } from './goal-celebration-overlay';
 import { ReplayOverlay } from './replay-overlay';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
+import type { RemoteCommand } from '@/types';
 
 const ValentinoCaffeAd = () => {
     return (
@@ -48,22 +49,57 @@ export function FullScoreboard({ className }: { className?: string }) {
 
   const videoPreloaderRef = useRef<HTMLVideoElement | null>(null);
   
+  // Listen for remote commands specifically for this scoreboard component
   useEffect(() => {
-    if (live?.replayLoadRequest) {
-      if (videoPreloaderRef.current) {
-        videoPreloaderRef.current.src = live.replayLoadRequest.url;
-        videoPreloaderRef.current.load();
+    const eventSource = new EventSource('/api/remote-commands/events');
+
+    eventSource.onmessage = (event) => {
+      try {
+        if (!event.data) return;
+        const command: RemoteCommand = JSON.parse(event.data);
         
+        if (command.type === 'START_LOADING_REPLAY') {
+            if (videoPreloaderRef.current) {
+                videoPreloaderRef.current.src = command.payload.url;
+                videoPreloaderRef.current.load();
+            }
+        }
+        else if (command.type === 'SHOW_OVERLAY_MESSAGE') {
+             dispatch({ type: 'SHOW_OVERLAY_MESSAGE', payload: command.payload });
+        }
+      } catch (e) {
+        console.error("Failed to parse remote command in scoreboard:", e);
+      }
+    };
+    
+    eventSource.onerror = (e) => {
+        console.warn("Scoreboard SSE connection error.", e);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [dispatch]);
+
+
+  // Effect to handle video preloading and showing the overlay
+  useEffect(() => {
+    const videoElement = videoPreloaderRef.current;
+    if (videoElement) {
         const canPlayHandler = () => {
-          // Video is ready, now show it
-          dispatch({ type: 'SHOW_REPLAY_OVERLAY', payload: { url: live.replayLoadRequest.url } });
-          videoPreloaderRef.current?.removeEventListener('canplaythrough', canPlayHandler);
+            // Video is ready, now dispatch action to show it
+            if(videoElement.src) {
+                dispatch({ type: 'SHOW_REPLAY_OVERLAY', payload: { url: videoElement.src } });
+            }
         };
         
-        videoPreloaderRef.current.addEventListener('canplaythrough', canPlayHandler);
-      }
+        videoElement.addEventListener('canplaythrough', canPlayHandler);
+        
+        return () => {
+            videoElement.removeEventListener('canplaythrough', canPlayHandler);
+        }
     }
-  }, [live?.replayLoadRequest, dispatch]);
+  }, [dispatch]);
 
   
   useEffect(() => {
@@ -122,7 +158,7 @@ export function FullScoreboard({ className }: { className?: string }) {
         transform: `translateX(${scoreboardLayout.scoreboardHorizontalPosition}rem)`
       }}
     >
-       <video ref={videoPreloaderRef} style={{ display: 'none' }} />
+       <video ref={videoPreloaderRef} style={{ display: 'none' }} muted playsInline />
       <div 
         className="relative z-10" // Header container
         style={{
@@ -228,4 +264,3 @@ export function FullScoreboard({ className }: { className?: string }) {
   );
 }
 
-    

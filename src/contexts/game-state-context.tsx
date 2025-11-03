@@ -132,6 +132,7 @@ const INITIAL_LIVE_DATA: LiveState = {
   pendingPowerPlayGoal: null,
   overlayMessage: null,
   goalCelebration: null,
+  replayLoadRequest: null,
   replayOverlay: null,
   matchId: null,
   playedPeriods: [],
@@ -472,8 +473,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'HIDE_OVERLAY_MESSAGE':
       newState = { ...state, live: { ...state.live, overlayMessage: null } };
       break;
+    case 'START_LOADING_REPLAY':
+      newState = { ...state, live: { ...state.live, replayLoadRequest: { id: safeUUID(), ...action.payload } } };
+      break;
     case 'SHOW_REPLAY_OVERLAY':
-      newState = { ...state, live: { ...state.live, replayOverlay: { id: safeUUID(), ...action.payload }}};
+      newState = { ...state, live: { ...state.live, replayLoadRequest: null, replayOverlay: { id: safeUUID(), ...action.payload }}};
       break;
     case 'HIDE_REPLAY_OVERLAY':
       newState = { ...state, live: { ...state.live, replayOverlay: null }};
@@ -879,11 +883,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'DELETE_PENALTY_LOG': {
       const { team, logId } = action.payload;
       
-      const newPenaltiesLog = { ...state.live.penaltiesLog };
-      newPenaltiesLog[team] = newPenaltiesLog[team].filter((p: PenaltyLog) => p.id !== logId);
+      const newLivePenaltiesLog = { ...state.live.penaltiesLog };
+      newLivePenaltiesLog[team] = newLivePenaltiesLog[team].filter((p: PenaltyLog) => p.id !== logId);
       
       newState = { ...state, live: { ...state.live, 
-        penaltiesLog: newPenaltiesLog
+        penaltiesLog: newLivePenaltiesLog
       }};
       toastMessage = { title: "Penalidad Eliminada del Registro", variant: "destructive" };
       break;
@@ -2009,4 +2013,5 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
