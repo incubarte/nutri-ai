@@ -60,7 +60,9 @@ export function TeamScoreDisplay({
       }
     };
     
+    // Check on mount and on name change
     checkOverflow();
+
     const resizeObserver = new ResizeObserver(checkOverflow);
     if(containerRef.current) {
         resizeObserver.observe(containerRef.current);
@@ -75,6 +77,15 @@ export function TeamScoreDisplay({
     return null;
   }
   
+  const calculatedOffset = isOverflowing && textRef.current && containerRef.current
+    ? textRef.current.scrollWidth - containerRef.current.clientWidth
+    : 0;
+
+  const animationDuration = 1.5; // seconds for one-way travel
+  const initialPause = 10; // seconds
+  const endPause = 5; // seconds
+  const totalCycleDuration = initialPause + animationDuration + endPause + animationDuration;
+
   return (
     <div className={cn(
         "relative flex flex-col items-center text-center p-4 rounded-lg",
@@ -116,7 +127,7 @@ export function TeamScoreDisplay({
             ref={containerRef} 
             className={cn(
               "w-full h-[1.2em] relative overflow-hidden",
-              !isOverflowing && "flex justify-center" 
+               !isOverflowing && "flex justify-center"
             )}
             style={{ fontSize: `${layout.teamNameSize}rem` }}
             title={teamActualName}
@@ -125,16 +136,23 @@ export function TeamScoreDisplay({
                 ref={textRef}
                 className={cn(
                   "font-bold uppercase whitespace-nowrap",
-                  isOverflowing ? "absolute left-0" : "text-center w-full"
+                   isOverflowing ? "absolute left-0" : "text-center w-full"
                 )}
                  animate={isOverflowing ? {
-                  x: [0, -(textRef.current!.scrollWidth - containerRef.current!.clientWidth), 0],
-                } : {}}
+                   x: [0, 0, -calculatedOffset, -calculatedOffset, 0],
+                } : { x: 0 }}
                 transition={isOverflowing ? {
-                  duration: 8,
-                  ease: "linear",
+                  duration: totalCycleDuration,
                   repeat: Infinity,
-                  repeatDelay: 2
+                  repeatType: "loop",
+                  ease: "linear",
+                  times: [
+                    0, // Start at x: 0
+                    initialPause / totalCycleDuration, // Hold at start until this point
+                    (initialPause + animationDuration) / totalCycleDuration, // Move to end
+                    (initialPause + animationDuration + endPause) / totalCycleDuration, // Hold at end
+                    1, // Move back to start
+                  ],
                 } : {}}
               >
                 {teamActualName}
