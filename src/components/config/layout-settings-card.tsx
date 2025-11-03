@@ -185,7 +185,7 @@ export const LayoutSettingsCard = forwardRef<LayoutSettingsCardRef, LayoutSettin
             <SliderControl label="Nombre Equipo" value={scoreboardLayout.teamNameSize} onValueChange={(v) => handleValueChange('teamNameSize', v)} min={1.5} max={6} step={0.1} />
             <SliderControl label="Ancho Nombre Equipo" value={scoreboardLayout.teamNameWidth} onValueChange={(v) => handleValueChange('teamNameWidth', v)} min={8} max={30} step={0.5} />
             <SliderControl label="Puntuación (Goles)" value={scoreboardLayout.scoreSize} onValueChange={(v) => handleValueChange('scoreSize', v)} min={4} max={12} step={0.25} />
-            <SliderControl label="Espacio Goles/Label" value={scoreboardLayout.scoreLabelGap} onValueChange={(v) => handleValueChange('scoreLabelGap', v)} min={-2} max={2} step={0.05} />
+            <SliderControl label="Espacio Goles/Label" value={scoreboardLayout.scoreLabelGap} onValueChange={(v) => handleValueChange('scoreLabelGap', v)} min={-2} max={8} step={0.05} />
             <SliderControl label="Período" value={scoreboardLayout.periodSize} onValueChange={(v) => handleValueChange('periodSize', v)} min={2} max={8} step={0.1} />
             <SliderControl label="Iconos Jugadores" value={scoreboardLayout.playersOnIceIconSize} onValueChange={(v) => handleValueChange('playersOnIceIconSize', v)} min={1} max={4} step={0.1} />
             <SliderControl label="Categoría Partido" value={scoreboardLayout.categorySize} onValueChange={(v) => handleValueChange('categorySize', v)} min={0.75} max={3} step={0.05} />
