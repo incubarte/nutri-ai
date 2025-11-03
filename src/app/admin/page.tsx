@@ -119,7 +119,6 @@ function ScoreboardToolsCard() {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     useEffect(() => {
-        // Revoke the object URL when the component unmounts or the URL changes
         return () => {
             if (downloadedBlobUrl) {
                 URL.revokeObjectURL(downloadedBlobUrl);
@@ -141,9 +140,15 @@ function ScoreboardToolsCard() {
         }
 
         try {
-            const response = await fetch(videoUrl);
+            const response = await fetch('/api/download-video', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: videoUrl })
+            });
+
             if (!response.ok) {
-                throw new Error(`Error al descargar: ${response.status} ${response.statusText}`);
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Error en el servidor: ${response.status}`);
             }
             const blob = await response.blob();
             const blobUrl = URL.createObjectURL(blob);
@@ -419,3 +424,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
