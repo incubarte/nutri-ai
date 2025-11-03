@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useRef, useEffect } from 'react';
@@ -34,8 +33,9 @@ export function ReplayOverlay({ url, onFinish }: ReplayOverlayProps) {
         key={url} // Important to re-mount the video element on URL change
         onEnded={onFinish}
         className="max-w-full max-h-full"
-        controls={false} // Hide default controls
+        controls // Add browser controls for play/pause/volume
         autoPlay
+        muted // Mute by default to allow autoplay
         playsInline
       >
         <source src={url} type="video/mp4" />
