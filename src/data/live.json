@@ -198,10 +198,7 @@
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
   "goalCelebration": null,
-  "replayOverlay": {
-    "id": "54388163-a2e8-471d-91d1-60db11b13452",
-    "url": "https://6000-firebase-studio-1749651127044.cluster-ve345ymguzcd6qqzuko2qbxtfe.cloudworkstations.dev/replays/replay-1762186881356.mp4"
-  },
+  "replayOverlay": null,
   "matchId": "8230d768-7d4b-4572-ad25-3c259e0f512d",
   "playedPeriods": [
     "1ST"

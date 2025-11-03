@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Home, Settings, Wrench, MonitorPlay, Loader2, Trophy, ChevronsUpDown } from 'lucide-react';
+import { Home, Settings, Wrench, MonitorPlay, Loader2, Trophy, ChevronsUpDown, Video } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { FullscreenToggle } from './fullscreen-toggle';
@@ -141,6 +141,7 @@ export function Header() {
     router.prefetch('/controls');
     router.prefetch('/config');
     router.prefetch('/tournaments');
+    router.prefetch('/replays');
   }, [router]);
 
   useEffect(() => {
@@ -244,6 +245,16 @@ export function Header() {
           >
             Controles
           </Link>
+          <Link
+            href="/replays"
+            onClick={(e) => handleNav(e, '/replays')}
+            className={cn(
+              "transition-colors hover:text-foreground/80",
+              pathname === "/replays" ? "text-foreground" : "text-foreground/60"
+            )}
+          >
+            Replays (VAR)
+          </Link>
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-2">
             <DropdownMenu>
@@ -298,6 +309,11 @@ export function Header() {
             <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/controls" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
               <Link href="/controls" aria-label="Controls" onClick={(e) => handleNav(e, '/controls')}>
                 <Settings className="h-5 w-5" />
+              </Link>
+            </Button>
+            <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/replays" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
+              <Link href="/replays" aria-label="Replays (VAR)" onClick={(e) => handleNav(e, '/replays')}>
+                <Video className="h-5 w-5" />
               </Link>
             </Button>
              <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/config" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
