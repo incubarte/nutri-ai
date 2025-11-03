@@ -78,8 +78,8 @@
     "scoreboardVerticalPosition": 0.5,
     "scoreboardHorizontalPosition": 0,
     "clockSize": 12,
-    "teamNameSize": 3.1,
-    "teamNameWidth": 30,
+    "teamNameSize": 3.3,
+    "teamNameWidth": 27.5,
     "scoreSize": 8,
     "periodSize": 4.5,
     "playersOnIceIconSize": 1.75,
@@ -105,7 +105,7 @@
       "scoreboardVerticalPosition": 0.5,
       "scoreboardHorizontalPosition": 0,
       "clockSize": 12,
-      "teamNameSize": 3,
+      "teamNameSize": 3.3,
       "scoreSize": 8,
       "periodSize": 4.5,
       "playersOnIceIconSize": 1.75,
@@ -122,7 +122,7 @@
       "scoreLabelGap": 2,
       "standingsTableFontSize": 1.8,
       "standingsTableRowHeight": 4.25,
-      "teamNameWidth": 23.5,
+      "teamNameWidth": 27.5,
       "teamLogoOpacity": 40
     }
   ],

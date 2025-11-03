@@ -56,11 +56,14 @@ export function TeamScoreDisplay({
       }
     };
 
-    // Run check immediately and on resize
-    checkOverflow();
+    // Timeout to ensure rendering is complete, especially after props change
+    const timeoutId = setTimeout(checkOverflow, 50);
+
     window.addEventListener('resize', checkOverflow);
+    
     return () => {
-      window.removeEventListener('resize', checkOverflow);
+        clearTimeout(timeoutId);
+        window.removeEventListener('resize', checkOverflow);
     };
   }, [teamActualName]);
 
@@ -130,8 +133,8 @@ export function TeamScoreDisplay({
           <div
             ref={containerRef} 
             className={cn(
-              "w-full h-[1.2em] relative overflow-hidden",
-              !isOverflowing && "flex justify-center" // Center the container's content if not overflowing
+              "w-full h-[1.2em] relative overflow-hidden font-bold text-foreground uppercase tracking-wide",
+              !isOverflowing && "flex justify-center"
             )}
             style={{ fontSize: `${layout.teamNameSize}rem` }}
             title={teamActualName}
@@ -139,8 +142,8 @@ export function TeamScoreDisplay({
               <span
                 ref={textRef}
                 className={cn(
-                  "whitespace-nowrap transition-transform duration-[1500ms] ease-in-out",
-                  isOverflowing && "absolute left-0 top-0" // Only position absolutely when animating
+                  "whitespace-nowrap",
+                  isOverflowing && "absolute left-0 top-0 transition-transform duration-[1500ms] ease-in-out"
                 )}
                 style={{
                   transform: isOverflowing ? getTransform() : 'none',
