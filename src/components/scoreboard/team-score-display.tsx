@@ -56,14 +56,10 @@ export function TeamScoreDisplay({
         setIsOverflowing(isOverflow);
       }
     };
+    // We need a timeout to ensure the browser has rendered and calculated the widths
+    const timer = setTimeout(checkOverflow, 50);
 
-    checkOverflow();
-    const resizeObserver = new ResizeObserver(checkOverflow);
-    if(containerRef.current) {
-        resizeObserver.observe(containerRef.current);
-    }
-
-    return () => resizeObserver.disconnect();
+    return () => clearTimeout(timer);
   }, [teamActualName, layout?.teamNameWidth]);
 
   useEffect(() => {
@@ -86,14 +82,16 @@ export function TeamScoreDisplay({
     return null;
   }
   
-  const getTransform = () => {
-    if (!isOverflowing || isAtStart || !containerRef.current || !textRef.current) {
-        return 'translateX(0px)';
+  const spanStyle: React.CSSProperties = {};
+  if (isOverflowing) {
+    let translateX = '0px';
+    if (!isAtStart && containerRef.current && textRef.current) {
+      const maxScroll = textRef.current.scrollWidth - containerRef.current.clientWidth;
+      translateX = `-${maxScroll}px`;
     }
-    const maxScroll = textRef.current.scrollWidth - containerRef.current.clientWidth;
-    return `translateX(-${maxScroll}px)`;
-  };
-
+    spanStyle.transform = `translateX(${translateX})`;
+    spanStyle.transition = 'transform 1500ms ease-in-out';
+  }
 
   return (
     <div className={cn(
@@ -136,7 +134,7 @@ export function TeamScoreDisplay({
             ref={containerRef} 
             className={cn(
               "w-full h-[1.2em] relative overflow-hidden",
-              !isOverflowing && "flex justify-center"
+              !isOverflowing && "flex justify-center" // Center only if not overflowing
             )}
             style={{ fontSize: `${layout.teamNameSize}rem` }}
             title={teamActualName}
@@ -145,13 +143,9 @@ export function TeamScoreDisplay({
                 ref={textRef}
                 className={cn(
                   "whitespace-nowrap font-bold",
-                   isOverflowing
-                    ? "absolute left-0 top-0 transition-transform duration-[1500ms] ease-in-out"
-                    : "text-center w-full"
+                   isOverflowing && "absolute left-0 top-0"
                 )}
-                style={{
-                  transform: isOverflowing ? getTransform() : 'none',
-                }}
+                style={spanStyle}
               >
                 {teamActualName}
               </span>
