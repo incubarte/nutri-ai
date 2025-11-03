@@ -219,7 +219,10 @@
       "categoryId": "953bcf73-ee22-4c87-baa7-43b9529420e0",
       "homeTeamId": "91a80c01-4276-48f2-8fd3-56580a42dce6",
       "awayTeamId": "c348664e-45b8-4ffd-9d92-29149eb26a81",
-      "playersPerTeam": 4
+      "playersPerTeam": 4,
+      "homeScore": 0,
+      "awayScore": 1,
+      "overTimeOrShootouts": false
     },
     {
       "id": "d64fb90e-a057-4d44-86bb-65958030b001",

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useRef, useEffect } from 'react';
@@ -14,11 +15,25 @@ export function ReplayOverlay({ url, onFinish }: ReplayOverlayProps) {
   useEffect(() => {
     const videoElement = videoRef.current;
     if (videoElement) {
-      videoElement.play().catch(error => {
-        // This error is expected if user hasn't interacted with the page.
-        // It will still play muted.
-        console.warn("Error attempting to play video automatically (this is often expected):", error);
-      });
+      const handleCanPlay = () => {
+        videoElement.currentTime = 4; // Start from the 4-second mark
+        videoElement.play().catch(error => {
+          console.warn("Error attempting to play video automatically:", error);
+        });
+      };
+      
+      videoElement.addEventListener('canplaythrough', handleCanPlay);
+
+      // In case canplaythrough doesn't fire, loadedmetadata is a good fallback.
+      const handleMetadata = () => {
+        videoElement.currentTime = 4;
+      };
+      videoElement.addEventListener('loadedmetadata', handleMetadata);
+
+      return () => {
+        videoElement.removeEventListener('canplaythrough', handleCanPlay);
+        videoElement.removeEventListener('loadedmetadata', handleMetadata);
+      }
     }
   }, [url]);
 
@@ -37,6 +52,7 @@ export function ReplayOverlay({ url, onFinish }: ReplayOverlayProps) {
         autoPlay
         playsInline
         muted // Muted to allow autoplay in most browsers
+        controls // Add controls so user can unmute
       >
         <source src={url} type="video/mp4" />
         Tu navegador no soporta el tag de video.
