@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -131,6 +132,7 @@ const INITIAL_LIVE_DATA: LiveState = {
   pendingPowerPlayGoal: null,
   overlayMessage: null,
   goalCelebration: null,
+  replayOverlay: null,
   matchId: null,
   playedPeriods: [],
 };
@@ -469,6 +471,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     case 'HIDE_OVERLAY_MESSAGE':
       newState = { ...state, live: { ...state.live, overlayMessage: null } };
+      break;
+    case 'SHOW_REPLAY_OVERLAY':
+      newState = { ...state, live: { ...state.live, replayOverlay: { id: safeUUID(), ...action.payload }}};
+      break;
+    case 'HIDE_REPLAY_OVERLAY':
+      newState = { ...state, live: { ...state.live, replayOverlay: null }};
       break;
     case 'SHOW_GOAL_CELEBRATION':
       newState = { ...state, live: { ...state.live, goalCelebration: { id: safeUUID(), ...action.payload } } };

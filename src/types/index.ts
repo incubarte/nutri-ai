@@ -1,4 +1,5 @@
 
+
 "use client";
 
 export interface PenaltyTypeDefinition {
@@ -324,6 +325,10 @@ export interface LiveState {
     text: string;
     duration: number; // in milliseconds
   } | null;
+  replayOverlay: {
+    id: string;
+    url: string;
+  } | null;
   goalCelebration: {
     id: string;
     goal: GoalLog;
@@ -376,6 +381,8 @@ export type RemoteCommand =
 export type GameAction =
   | { type: 'SHOW_OVERLAY_MESSAGE'; payload: { text: string, duration: number } }
   | { type: 'HIDE_OVERLAY_MESSAGE' }
+  | { type: 'SHOW_REPLAY_OVERLAY'; payload: { url: string } }
+  | { type: 'HIDE_REPLAY_OVERLAY' }
   | { type: 'SHOW_GOAL_CELEBRATION'; payload: { goal: GoalLog, teamData?: TeamData } }
   | { type: 'HIDE_GOAL_CELEBRATION' }
   | { type: 'TOGGLE_CLOCK' }

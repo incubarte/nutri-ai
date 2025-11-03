@@ -91,7 +91,7 @@
     "penaltyPlayerIconSize": 2.5,
     "standingsTableFontSize": 1.8,
     "standingsTableRowHeight": 4.25,
-    "teamLogoOpacity": 60,
+    "teamLogoOpacity": 40,
     "primaryColor": "223 65% 33%",
     "accentColor": "40 100% 67%",
     "backgroundColor": "223 70% 11%",

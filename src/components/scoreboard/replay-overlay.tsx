@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useRef, useEffect } from 'react';
@@ -36,7 +37,6 @@ export function ReplayOverlay({ url, onFinish }: ReplayOverlayProps) {
         controls={false} // Hide default controls
         autoPlay
         playsInline
-        muted // Muted is often required for autoplay to work
       >
         <source src={url} type="video/mp4" />
         Tu navegador no soporta el tag de video.
