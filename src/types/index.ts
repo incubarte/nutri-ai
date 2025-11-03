@@ -451,7 +451,7 @@ export type GameAction =
   | { type: 'UPDATE_TOURNAMENT'; payload: { id: string; name: string; status: Tournament['status'] } }
   | { type: 'DELETE_TOURNAMENT'; payload: { id: string } }
   | { type: 'SET_ACTIVE_TOURNAMENT'; payload: { tournamentId: string | null } }
-  | { type: 'ADD_MATCH_TO_TOURNAMENT'; payload: { tournamentId: string; match: MatchData } }
+  | { type: 'ADD_MATCH_TO_TOURNAMENT'; payload: { tournamentId: string; match: Omit<MatchData, 'id'> & {id: string} } }
   | { type: 'UPDATE_MATCH_IN_TOURNAMENT'; payload: { tournamentId: string; match: MatchData } }
   | { type: 'DELETE_MATCH_FROM_TOURNAMENT'; payload: { tournamentId: string; matchId: string } }
   | { type: 'SAVE_MATCH_SUMMARY'; payload: { matchId: string; summary: GameSummary; } }
@@ -494,5 +494,3 @@ export interface SummaryPlayerStats {
   assists: number;
   shots: number;
 }
-
-    

@@ -1,6 +1,6 @@
 {
   "score": {
-    "home": 2,
+    "home": 0,
     "away": 0,
     "homeShots": 0,
     "awayShots": 0
@@ -10,28 +10,7 @@
     "away": []
   },
   "goals": {
-    "home": [
-      {
-        "team": "home",
-        "timestamp": 1762181408952,
-        "gameTime": 115619,
-        "periodText": "2ND",
-        "scorer": {
-          "playerNumber": "1"
-        },
-        "id": "909dc819-77c8-492e-a0a5-9150b7c333b1"
-      },
-      {
-        "team": "home",
-        "timestamp": 1762181658387,
-        "gameTime": 110948,
-        "periodText": "2ND",
-        "scorer": {
-          "playerNumber": "4"
-        },
-        "id": "c40e627b-cff4-43ea-a6e5-b0cd78952573"
-      }
-    ],
+    "home": [],
     "away": []
   },
   "penaltiesLog": {
@@ -196,11 +175,11 @@
   "clock": {
     "currentTime": 120000,
     "currentPeriod": 1,
-    "isClockRunning": false,
+    "isClockRunning": true,
     "periodDisplayOverride": null,
     "preTimeoutState": null,
-    "clockStartTimeMs": null,
-    "remainingTimeAtStartCs": null,
+    "clockStartTimeMs": 1762184556843,
+    "remainingTimeAtStartCs": 120000,
     "absoluteElapsedTimeCs": 0,
     "_liveAbsoluteElapsedTimeCs": 0,
     "isFlashingZero": false
@@ -219,13 +198,8 @@
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
   "goalCelebration": null,
+  "replayOverlay": null,
   "matchId": "8230d768-7d4b-4572-ad25-3c259e0f512d",
-  "playedPeriods": [
-    "1ST"
-  ],
-  "homeTeamSubName": "Carneros",
-  "replayOverlay": {
-    "id": "8b0f50ae-8e65-4e54-bc3e-e26f3fe6e9fb",
-    "url": "Console Error   Error: play() failed because the user didn't interact with the document first. https://goo.gl/xX8pDD"
-  }
+  "playedPeriods": [],
+  "homeTeamSubName": "Carneros"
 }

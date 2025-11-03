@@ -14,17 +14,18 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ShieldAlert, LogIn, SlidersHorizontal, Info, MessageSquare, CalendarCheck, Clapperboard } from 'lucide-react';
+import { Trash2, ShieldAlert, LogIn, SlidersHorizontal, Info, MessageSquare, CalendarCheck, Clapperboard, Download, Play, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from "@/hooks/use-auth";
 import { HockeyPuckSpinner } from "@/components/ui/hockey-puck-spinner";
 import { useRouter } from "next/navigation";
-import { useGameState, type RemoteCommand } from "@/contexts/game-state-context";
+import { useGameState } from "@/contexts/game-state-context";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { sendRemoteCommand } from '@/app/actions';
+import { cn } from "@/lib/utils";
 
 
 function PerformanceSettingsCard() {
@@ -108,28 +109,92 @@ function PerformanceSettingsCard() {
     )
 }
 
+type DownloadState = 'idle' | 'downloading' | 'downloaded' | 'error';
+
 function ScoreboardToolsCard() {
     const { toast } = useToast();
-    const [replayUrl, setReplayUrl] = useState('');
+    const [videoUrl, setVideoUrl] = useState('');
+    const [downloadedBlobUrl, setDownloadedBlobUrl] = useState<string | null>(null);
+    const [downloadState, setDownloadState] = useState<DownloadState>('idle');
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+    useEffect(() => {
+        // Revoke the object URL when the component unmounts or the URL changes
+        return () => {
+            if (downloadedBlobUrl) {
+                URL.revokeObjectURL(downloadedBlobUrl);
+            }
+        };
+    }, [downloadedBlobUrl]);
+
+    const handleDownloadVideo = async () => {
+        if (!videoUrl) {
+            toast({ title: "URL Requerida", description: "Por favor, ingresa la URL del video.", variant: "destructive" });
+            return;
+        }
+
+        setDownloadState('downloading');
+        setErrorMsg(null);
+        if (downloadedBlobUrl) {
+            URL.revokeObjectURL(downloadedBlobUrl);
+            setDownloadedBlobUrl(null);
+        }
+
+        try {
+            const response = await fetch(videoUrl);
+            if (!response.ok) {
+                throw new Error(`Error al descargar: ${response.status} ${response.statusText}`);
+            }
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            setDownloadedBlobUrl(blobUrl);
+            setDownloadState('downloaded');
+            toast({ title: "Video Descargado", description: "Listo para reproducir." });
+        } catch (err: any) {
+            console.error("Download error:", err);
+            setErrorMsg(err.message || "No se pudo descargar el video.");
+            setDownloadState('error');
+            toast({ title: "Error de Descarga", description: err.message || "No se pudo descargar el video.", variant: "destructive" });
+        }
+    };
+    
+    const handleShowReplay = async () => {
+        if (!downloadedBlobUrl) {
+            toast({ title: "Video no listo", description: "Descarga el video antes de intentar reproducirlo.", variant: "destructive" });
+            return;
+        }
+        await sendRemoteCommand({ type: 'START_LOADING_REPLAY', payload: { url: downloadedBlobUrl } });
+        toast({ title: "Repetición Enviada", description: "El video se está precargando en el scoreboard." });
+    };
 
     const handleTestOverlay = async () => {
         await sendRemoteCommand({ type: 'SHOW_OVERLAY_MESSAGE', payload: { text: "Valentino Caffe", duration: 5000 } });
         toast({ title: "Overlay de prueba enviado", description: "El mensaje 'Valentino Caffe' debería aparecer en el scoreboard." });
     };
-    
-    const handleShowReplay = async () => {
-        if (!replayUrl) {
-            toast({
-                title: "URL Requerida",
-                description: "Por favor, ingresa la URL del video de la repetición.",
-                variant: "destructive",
-            });
-            return;
-        }
-        await sendRemoteCommand({ type: 'START_LOADING_REPLAY', payload: { url: replayUrl } });
-        toast({ title: "Repetición Enviada", description: "El video se está precargando en el scoreboard." });
-    };
 
+    const getStatusIcon = () => {
+        switch (downloadState) {
+            case 'downloading':
+                return <Loader2 className="h-5 w-5 animate-spin text-blue-500" />;
+            case 'downloaded':
+                return <CheckCircle className="h-5 w-5 text-green-500" />;
+            case 'error':
+                 return (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                           <XCircle className="h-5 w-5 text-destructive" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{errorMsg}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                 );
+            default:
+                return null;
+        }
+    };
 
     return (
         <Card>
@@ -142,13 +207,27 @@ function ScoreboardToolsCard() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="flex items-end gap-2">
-                    <div className="flex-grow">
-                         <Label htmlFor="replayUrl">URL del Video de Repetición</Label>
-                         <Input id="replayUrl" value={replayUrl} onChange={(e) => setReplayUrl(e.target.value)} placeholder="https://example.com/video.mp4" />
+                <div className="space-y-2">
+                    <Label htmlFor="replayUrl">URL del Video de Repetición</Label>
+                    <div className="flex items-center gap-2">
+                        <Input 
+                          id="replayUrl" 
+                          value={videoUrl} 
+                          onChange={(e) => setVideoUrl(e.target.value)} 
+                          placeholder="https://example.com/video.mp4" 
+                          className="flex-grow"
+                        />
+                        <div className="w-6 h-6 flex items-center justify-center">
+                          {getStatusIcon()}
+                        </div>
                     </div>
-                    <Button onClick={handleShowReplay}>
-                        <Clapperboard className="mr-2 h-4 w-4" /> Mostrar Repetición
+                </div>
+                 <div className="flex items-center gap-2">
+                    <Button onClick={handleDownloadVideo} disabled={downloadState === 'downloading'}>
+                        <Download className="mr-2 h-4 w-4" /> {downloadState === 'downloading' ? 'Descargando...' : 'Descargar Video'}
+                    </Button>
+                    <Button onClick={handleShowReplay} disabled={downloadState !== 'downloaded'}>
+                        <Play className="mr-2 h-4 w-4" /> Mostrar Repetición
                     </Button>
                 </div>
                 <Button variant="secondary" onClick={handleTestOverlay}>
@@ -340,5 +419,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    
