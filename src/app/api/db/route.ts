@@ -3,6 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { NextResponse } from 'next/server';
 import type { GameState, ConfigState, Tournament, TeamData, CategoryData, MatchData, LiveState, PeriodSummary } from '@/types';
+import { setGameState, setConfig } from '@/lib/server-side-store';
 
 const DATA_DIR = path.join(process.cwd(), 'src/data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
@@ -41,10 +42,12 @@ export async function GET(request: Request) {
         readData(LIVE_STATE_PATH)
     ]);
     
-    const fullConfig = config || {};
-    
+    // Store in-memory for other API routes to access
+    if (config) setConfig(config);
+    if (liveState) setGameState(liveState);
+
     const initialState: Partial<GameState> = {
-      config: fullConfig,
+      config: config || {},
       live: liveState || {}, 
       _initialConfigLoadComplete: false,
     }
@@ -63,16 +66,17 @@ export async function POST(request: Request) {
     const { config, live } = await request.json() as { config?: ConfigState; live?: LiveState };
 
     if (config) {
-        // Save only config metadata, not the full tournament objects
         const { tournaments, ...baseConfig } = config;
         const tournamentMetas = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
         const configToSave = { ...baseConfig, tournaments: tournamentMetas };
         
         await writeData(CONFIG_PATH, configToSave);
+        setConfig(config); // Update in-memory store
     }
     
     if (live) {
         await writeData(LIVE_STATE_PATH, live);
+        setGameState(live); // Update in-memory store and emit event
     }
 
     return NextResponse.json({ success: true, message: 'Data saved successfully.' });

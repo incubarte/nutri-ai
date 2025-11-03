@@ -96,7 +96,7 @@
     "accentColor": "40 100% 67%",
     "backgroundColor": "223 70% 11%",
     "mainContentGap": 1.5,
-    "scoreLabelGap": 2
+    "scoreLabelGap": 2.95
   },
   "scoreboardLayoutProfiles": [
     {
