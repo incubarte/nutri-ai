@@ -1,6 +1,6 @@
 {
   "score": {
-    "home": 0,
+    "home": 1,
     "away": 0,
     "homeShots": 0,
     "awayShots": 0
@@ -10,7 +10,18 @@
     "away": []
   },
   "goals": {
-    "home": [],
+    "home": [
+      {
+        "team": "home",
+        "timestamp": 1762181408952,
+        "gameTime": 115619,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "1"
+        },
+        "id": "909dc819-77c8-492e-a0a5-9150b7c333b1"
+      }
+    ],
     "away": []
   },
   "penaltiesLog": {
@@ -173,15 +184,15 @@
     ]
   },
   "clock": {
-    "currentTime": 117960,
+    "currentTime": 112856,
     "currentPeriod": 2,
     "isClockRunning": false,
     "periodDisplayOverride": null,
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 122040,
-    "_liveAbsoluteElapsedTimeCs": 122040,
+    "absoluteElapsedTimeCs": 127144,
+    "_liveAbsoluteElapsedTimeCs": 127144,
     "isFlashingZero": false
   },
   "shootout": {
