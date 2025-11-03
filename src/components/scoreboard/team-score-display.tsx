@@ -81,7 +81,7 @@ export function TeamScoreDisplay({
     ? textRef.current.scrollWidth - containerRef.current.clientWidth
     : 0;
 
-  const animationDuration = 1.5; // seconds for one-way travel
+  const animationDuration = 3; // seconds for one-way travel
   const initialPause = 10; // seconds
   const endPause = 5; // seconds
   const totalCycleDuration = initialPause + animationDuration + endPause + animationDuration;
@@ -145,7 +145,7 @@ export function TeamScoreDisplay({
                   duration: totalCycleDuration,
                   repeat: Infinity,
                   repeatType: "loop",
-                  ease: "linear",
+                  ease: "easeInOut",
                   times: [
                     0, // Start at x: 0
                     initialPause / totalCycleDuration, // Hold at start until this point
