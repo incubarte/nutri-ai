@@ -25,7 +25,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
 type LoadingStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -104,9 +104,12 @@ export default function ReplaysPage() {
         const firstSlashIndex = pathWithoutPrefix.indexOf('/');
         if (firstSlashIndex === -1) return ''; 
 
+        const bucketName = pathWithoutPrefix.substring(0, firstSlashIndex);
         const filePath = pathWithoutPrefix.substring(firstSlashIndex + 1);
+
         const encodedFilePath = encodeURIComponent(filePath);
         
+        // This is a common pattern for public files, but might need adjustment based on bucket settings
         return `${replaySettings.downloadUrlBase}${encodedFilePath}?alt=media`;
     }, [replaySettings]);
     
@@ -205,7 +208,7 @@ export default function ReplaysPage() {
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "No se pudo conectar con el servidor.";
             setDownloadStatus('error');
-            toast({ title: "Error de Descarga", description: `${errorMessage} URL: ${urlToDownload}`, variant: "destructive" });
+            toast({ title: "Error de Descarga", description: `${errorMessage} URL: ${urlToDownload}`, variant: "destructive", duration: 5000 });
             return { success: false };
         }
     };
@@ -265,8 +268,13 @@ export default function ReplaysPage() {
     const handleCopyToClipboard = (text: string, label: string) => {
         navigator.clipboard.writeText(text).then(() => {
             toast({ title: "Copiado", description: `${label} copiado al portapapeles.` });
-        }, () => {
-            toast({ title: "Error al Copiar", description: `No se pudo copiar: ${label}`, variant: "destructive" });
+        }).catch(err => {
+            console.error("Clipboard write failed: ", err);
+            toast({ 
+              title: "URL para Copiar",
+              description: text,
+              duration: 10000 
+            });
         });
     };
 
@@ -496,3 +504,5 @@ export default function ReplaysPage() {
         </div>
     );
 }
+
+    
