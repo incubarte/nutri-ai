@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
@@ -20,12 +21,17 @@ interface ReplaySettingsCardProps {
   onDirtyChange: (isDirty: boolean) => void;
 }
 
+const DEFAULT_REPLAY_SETTINGS: ReplaySettings = {
+  syncUrl: '',
+  downloadUrlBase: '',
+};
+
 export const ReplaySettingsCard = forwardRef<ReplaySettingsCardRef, ReplaySettingsCardProps>((props, ref) => {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
   const { onDirtyChange } = props;
 
-  const [localSettings, setLocalSettings] = useState<ReplaySettings>(state.config.replays || { syncUrl: '', downloadUrlBase: '' });
+  const [localSettings, setLocalSettings] = useState<ReplaySettings>(state.config.replays || DEFAULT_REPLAY_SETTINGS);
   const [isDirtyLocal, setIsDirtyLocal] = useState(false);
 
   useEffect(() => {
@@ -34,14 +40,14 @@ export const ReplaySettingsCard = forwardRef<ReplaySettingsCardRef, ReplaySettin
 
   useEffect(() => {
     if (!isDirtyLocal) {
-      setLocalSettings(state.config.replays);
+      setLocalSettings(state.config.replays || DEFAULT_REPLAY_SETTINGS);
     }
   }, [state.config.replays, isDirtyLocal]);
 
   const markDirty = () => setIsDirtyLocal(true);
 
   const handleInputChange = (field: keyof ReplaySettings, value: string) => {
-    setLocalSettings(prev => ({ ...prev, [field]: value }));
+    setLocalSettings(prev => ({ ...(prev || DEFAULT_REPLAY_SETTINGS), [field]: value }));
     markDirty();
   };
 
@@ -53,7 +59,7 @@ export const ReplaySettingsCard = forwardRef<ReplaySettingsCardRef, ReplaySettin
       toast({ title: "Configuración de Replays Guardada", description: "Las URLs para la sincronización de videos han sido actualizadas." });
     },
     handleDiscard: () => {
-      setLocalSettings(state.config.replays);
+      setLocalSettings(state.config.replays || DEFAULT_REPLAY_SETTINGS);
       setIsDirtyLocal(false);
     },
     getIsDirty: () => isDirtyLocal,
@@ -67,7 +73,7 @@ export const ReplaySettingsCard = forwardRef<ReplaySettingsCardRef, ReplaySettin
             <p className="text-xs text-muted-foreground">La URL completa al archivo `.json` en tu Realtime Database que contiene el índice de repeticiones.</p>
             <Input
                 id="syncUrl"
-                value={localSettings.syncUrl}
+                value={localSettings?.syncUrl || ''}
                 onChange={(e) => handleInputChange('syncUrl', e.target.value)}
                 placeholder="https://<project-id>.firebaseio.com/Replays.json"
             />
@@ -87,7 +93,7 @@ export const ReplaySettingsCard = forwardRef<ReplaySettingsCardRef, ReplaySettin
             <p className="text-xs text-muted-foreground">La URL base a tu bucket de Firebase Storage para construir los enlaces de descarga.</p>
             <Input
                 id="downloadUrlBase"
-                value={localSettings.downloadUrlBase}
+                value={localSettings?.downloadUrlBase || ''}
                 onChange={(e) => handleInputChange('downloadUrlBase', e.target.value)}
                 placeholder="https://firebasestorage.googleapis.com/v0/b/..."
             />

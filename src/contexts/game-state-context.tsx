@@ -4,7 +4,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData, PeriodSummary } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, PlayerStats, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData, PeriodSummary, ReplaySettings } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer, saveTournamentOnServer } from '@/app/actions';
@@ -86,6 +86,11 @@ export const INITIAL_LAYOUT_SETTINGS: ScoreboardLayoutSettings = {
   backgroundColor: '223 70% 11%',
   mainContentGap: 3,
   scoreLabelGap: -2,
+};
+
+const IN_CODE_INITIAL_REPLAYS_SETTINGS: ReplaySettings = {
+    syncUrl: "https://hockeando-default-rtdb.firebaseio.com/Replays.json",
+    downloadUrlBase: "https://firebasestorage.googleapis.com/v0/b/hockeando.appspot.com/o/"
 };
 
 const IN_CODE_INITIAL_TOURNAMENT_NAME = "torneito";
@@ -197,6 +202,7 @@ const getInitialState = (): GameState => {
       tournaments: [],
       selectedTournamentId: null,
       tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
+      replays: IN_CODE_INITIAL_REPLAYS_SETTINGS,
     },
     live: {
       ...INITIAL_LIVE_DATA,
@@ -1700,6 +1706,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
           selectedMatchCategory: '', // Resets match category
           tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
+          replays: IN_CODE_INITIAL_REPLAYS_SETTINGS,
         }
       };
       toastMessage = { title: "Configuración Restablecida", description: "Todas las configuraciones han vuelto a sus valores predeterminados." };
@@ -2013,5 +2020,4 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
-
 
