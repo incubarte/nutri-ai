@@ -22,10 +22,10 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
   const scoringTeamName = goal.team === 'home' ? state.live.homeTeamName : state.live.awayTeamName;
 
   const opposingTeamType = goal.team === 'home' ? 'away' : 'home';
-  const opposingTeamName = live.awayTeamName;
+  const opposingTeamName = state.live[`${opposingTeamType}TeamName`];
   const opposingTeamData = state.config.tournaments
     .find(t => t.id === state.config.selectedTournamentId)?.teams
-    .find(t => t.name === state.live[`${opposingTeamType}TeamName`] && (t.subName || undefined) === (state.live[`${opposingTeamType}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
+    .find(t => t.name === opposingTeamName && (t.subName || undefined) === (state.live[`${opposingTeamType}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
 
 
   return (
