@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Video, ListVideo, Loader2, RefreshCw, Download, Play, CheckCircle, XCircle, Calendar as CalendarIcon, AlertTriangle, Copy } from 'lucide-react';
+import { Video, ListVideo, Loader2, RefreshCw, Download, Play, CheckCircle, XCircle, Calendar as CalendarIcon, AlertTriangle, Copy, Folder } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
 
 type LoadingStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -36,6 +37,7 @@ interface FirebaseReplay {
     url: string;
     filename: string;
     isNew: boolean;
+    matchName: string;
 }
 
 export default function ReplaysPage() {
@@ -50,6 +52,7 @@ export default function ReplaysPage() {
 
     const [isManualDownloadOpen, setIsManualDownloadOpen] = useState(false);
     const [videoUrl, setVideoUrl] = useState('');
+    const [manualMatchName, setManualMatchName] = useState('Manual');
     const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle');
 
     const [syncDate, setSyncDate] = useState<Date>();
@@ -61,7 +64,6 @@ export default function ReplaysPage() {
     const replaySettings = state.config.replays;
 
     useEffect(() => {
-        // Set the initial date only on the client to prevent hydration errors
         setSyncDate(new Date());
     }, []);
 
@@ -91,7 +93,7 @@ export default function ReplaysPage() {
         if (!syncDate) return;
         const dateString = format(syncDate, 'yyyy-MM-dd');
         setFilteredReplayFiles(
-            allReplayFiles.filter(file => file.includes(dateString))
+            allReplayFiles.filter(file => file.startsWith(dateString))
         );
         setSelectedReplay(null); // Deselect video when date changes
     }, [syncDate, allReplayFiles]);
@@ -100,7 +102,7 @@ export default function ReplaysPage() {
         if (!gsPath.startsWith('gs://') || !replaySettings?.downloadUrlBase) return '';
         const pathWithoutPrefix = gsPath.substring(5);
         const firstSlashIndex = pathWithoutPrefix.indexOf('/');
-        if (firstSlashIndex === -1) return ''; // Invalid gs path format
+        if (firstSlashIndex === -1) return ''; 
 
         const filePath = pathWithoutPrefix.substring(firstSlashIndex + 1);
         const encodedFilePath = encodeURIComponent(filePath);
@@ -130,14 +132,16 @@ export default function ReplaysPage() {
                 }
 
                 const fetchedReplays: FirebaseReplay[] = [];
-                for (const camId in dayData) {
-                    for (const replayId in dayData[camId]) {
-                        const location = dayData[camId][replayId].location;
+                for (const matchName in dayData) {
+                    const matchReplays = dayData[matchName];
+                    for (const replayId in matchReplays) {
+                        const location = matchReplays[replayId].location;
                         if (location && location.startsWith('gs://')) {
                             const filename = location.split('/').pop()?.split('?')[0] || `replay-${replayId}.mp4`;
                             const httpsUrl = convertGsToHttps(location);
                             
-                            const expectedLocalPath = `${formattedDate}/${filename}`;
+                            const sanitizedMatchName = matchName.replace(/[/\\?%*:|"<>]/g, '-');
+                            const expectedLocalPath = `${formattedDate}/${sanitizedMatchName}/${filename}`;
 
                             if (httpsUrl) {
                                 fetchedReplays.push({
@@ -145,6 +149,7 @@ export default function ReplaysPage() {
                                     location,
                                     url: httpsUrl,
                                     filename,
+                                    matchName,
                                     isNew: !allReplayFiles.includes(expectedLocalPath)
                                 });
                             }
@@ -177,10 +182,10 @@ export default function ReplaysPage() {
         }
     }, [selectedReplay]);
 
-    const handleDownloadVideo = async (urlToDownload: string, filename: string, downloadDate?: Date) => {
+    const handleDownloadVideo = async (urlToDownload: string, filename: string, matchName: string, downloadDate?: Date) => {
         setDownloadStatus('downloading');
         try {
-            const body: { url: string, date?: string, filename: string } = { url: urlToDownload, filename };
+            const body: { url: string, date?: string, matchName?: string, filename: string } = { url: urlToDownload, filename, matchName };
             if (downloadDate) {
                 body.date = format(downloadDate, 'yyyy-MM-dd');
             }
@@ -214,12 +219,13 @@ export default function ReplaysPage() {
         const decodedPath = decodeURIComponent(urlPath);
         const filename = decodedPath.split('/').pop() || `manual-${Date.now()}.mp4`;
 
-        const result = await handleDownloadVideo(videoUrl, filename, syncDate);
+        const result = await handleDownloadVideo(videoUrl, filename, manualMatchName, syncDate);
         if (result.success) {
             toast({ title: "Descarga Manual Exitosa", description: "El video ha sido descargado." });
             setVideoUrl('');
+            setManualMatchName('Manual');
             setIsManualDownloadOpen(false);
-            fetchReplays(); // Refresh local files list
+            fetchReplays();
         }
     };
 
@@ -229,7 +235,7 @@ export default function ReplaysPage() {
         const downloadedFiles: string[] = [];
         
         for (const replay of newReplays) {
-            const result = await handleDownloadVideo(replay.url, replay.filename, syncDate);
+            const result = await handleDownloadVideo(replay.url, replay.filename, replay.matchName, syncDate);
             if (result.success && result.newFilePath) {
                 downloadedFiles.push(result.newFilePath.replace('/replays/', ''));
             }
@@ -263,6 +269,22 @@ export default function ReplaysPage() {
             toast({ title: "Error al Copiar", description: `No se pudo copiar: ${label}`, variant: "destructive" });
         });
     };
+
+    const newReplaysGroupedByMatch = useMemo(() => {
+        return newReplays.reduce((acc, replay) => {
+            (acc[replay.matchName] = acc[replay.matchName] || []).push(replay);
+            return acc;
+        }, {} as Record<string, FirebaseReplay[]>);
+    }, [newReplays]);
+    
+    const localFilesGroupedByMatch = useMemo(() => {
+        return filteredReplayFiles.reduce((acc, file) => {
+            const parts = file.split('/');
+            const matchName = parts.length > 2 ? parts[1] : 'General';
+            (acc[matchName] = acc[matchName] || []).push(file);
+            return acc;
+        }, {} as Record<string, string[]>);
+    }, [filteredReplayFiles]);
 
     return (
         <div className="w-full max-w-7xl mx-auto py-8 space-y-6">
@@ -316,19 +338,33 @@ export default function ReplaysPage() {
                     </CardHeader>
                     {newReplays.length > 0 && (
                         <CardContent>
-                            <ScrollArea className="h-24 pr-3">
-                                <div className="space-y-1">
-                                    {newReplays.map(replay => (
-                                        <button 
-                                            key={replay.id} 
-                                            className="text-sm text-left text-muted-foreground truncate hover:text-foreground w-full flex items-center gap-2"
-                                            onClick={() => handleCopyToClipboard(replay.url, 'URL de descarga')}
-                                        >
-                                            <Copy className="h-3 w-3 shrink-0" />
-                                            <span>{decodeURIComponent(replay.filename)}</span>
-                                        </button>
+                            <ScrollArea className="h-40 pr-3">
+                                <Accordion type="multiple" className="w-full">
+                                    {Object.entries(newReplaysGroupedByMatch).map(([matchName, replays]) => (
+                                        <AccordionItem value={matchName} key={matchName}>
+                                            <AccordionTrigger className="text-sm font-semibold">
+                                                <div className="flex items-center gap-2">
+                                                    <Folder className="h-4 w-4" />
+                                                    <span>{matchName} ({replays.length})</span>
+                                                </div>
+                                            </AccordionTrigger>
+                                            <AccordionContent>
+                                                <div className="space-y-1 pl-4">
+                                                    {replays.map(replay => (
+                                                        <button 
+                                                            key={replay.id} 
+                                                            className="text-sm text-left text-muted-foreground truncate hover:text-foreground w-full flex items-center gap-2"
+                                                            onClick={() => handleCopyToClipboard(replay.url, 'URL de descarga')}
+                                                        >
+                                                            <Copy className="h-3 w-3 shrink-0" />
+                                                            <span>{decodeURIComponent(replay.filename)}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionItem>
                                     ))}
-                                </div>
+                                </Accordion>
                             </ScrollArea>
                              <Button onClick={handleMassDownload} disabled={isMassDownloading} className="mt-4 w-full">
                                 {isMassDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
@@ -352,19 +388,33 @@ export default function ReplaysPage() {
                             {status === 'loading' && <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/></div>}
                             {status === 'error' && <div className="text-destructive text-center p-4">{error}</div>}
                             {status === 'success' && (
-                                filteredReplayFiles.length > 0 ? (
-                                    <div className="space-y-2">
-                                        {filteredReplayFiles.map(file => (
-                                            <Button
-                                                key={file}
-                                                variant={selectedReplay === `/replays/${file}` ? 'secondary' : 'ghost'}
-                                                className="w-full justify-start text-left h-auto"
-                                                onClick={() => handleSelectReplay(file)}
-                                            >
-                                                <span className="truncate py-1">{file.split('/').pop()}</span>
-                                            </Button>
+                                Object.keys(localFilesGroupedByMatch).length > 0 ? (
+                                     <Accordion type="multiple" className="w-full">
+                                        {Object.entries(localFilesGroupedByMatch).map(([matchName, files]) => (
+                                            <AccordionItem value={matchName} key={matchName}>
+                                                <AccordionTrigger className="text-sm font-semibold">
+                                                    <div className="flex items-center gap-2">
+                                                        <Folder className="h-4 w-4" />
+                                                        <span>{matchName} ({files.length})</span>
+                                                    </div>
+                                                </AccordionTrigger>
+                                                <AccordionContent>
+                                                    <div className="space-y-1 pl-4">
+                                                        {files.map(file => (
+                                                            <Button
+                                                                key={file}
+                                                                variant={selectedReplay === `/replays/${file}` ? 'secondary' : 'ghost'}
+                                                                className="w-full justify-start text-left h-auto py-1"
+                                                                onClick={() => handleSelectReplay(file)}
+                                                            >
+                                                                <span className="truncate text-xs">{file.split('/').pop()}</span>
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                </AccordionContent>
+                                            </AccordionItem>
                                         ))}
-                                    </div>
+                                    </Accordion>
                                 ) : (
                                     <div className="text-center text-muted-foreground py-10">No hay repeticiones descargadas para la fecha seleccionada.</div>
                                 )
@@ -406,26 +456,37 @@ export default function ReplaysPage() {
                     <DialogHeader>
                         <DialogTitle>Descarga Manual de Video</DialogTitle>
                         <DialogDescription>
-                            Pega la URL completa del video que deseas descargar al servidor. Se guardará con la fecha seleccionada en el calendario.
+                            Pega la URL del video que deseas descargar. Se guardará en una carpeta con la fecha y nombre de partido que indiques.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4 space-y-2">
-                        <Label htmlFor="manualUrl">URL del Video</Label>
-                        <Input 
-                            id="manualUrl"
-                            value={videoUrl}
-                            onChange={(e) => {
-                                setVideoUrl(e.target.value);
-                                setDownloadStatus('idle');
-                            }}
-                            placeholder="https://example.com/video.mp4"
-                        />
+                    <div className="py-4 space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="manualUrl">URL del Video</Label>
+                          <Input 
+                              id="manualUrl"
+                              value={videoUrl}
+                              onChange={(e) => {
+                                  setVideoUrl(e.target.value);
+                                  setDownloadStatus('idle');
+                              }}
+                              placeholder="https://example.com/video.mp4"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                           <Label htmlFor="manualMatchName">Nombre del Partido</Label>
+                           <Input 
+                                id="manualMatchName"
+                                value={manualMatchName}
+                                onChange={(e) => setManualMatchName(e.target.value)}
+                                placeholder="Ej: Equipo A vs Equipo B"
+                            />
+                        </div>
                     </div>
                     <DialogFooter>
                         <DialogClose asChild>
                             <Button variant="outline">Cancelar</Button>
                         </DialogClose>
-                        <Button onClick={handleManualDownload} disabled={downloadStatus === 'downloading' || !videoUrl}>
+                        <Button onClick={handleManualDownload} disabled={downloadStatus === 'downloading' || !videoUrl || !manualMatchName}>
                             {downloadStatus === 'downloading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                             Descargar
                         </Button>

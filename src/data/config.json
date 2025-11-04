@@ -100,7 +100,7 @@
   },
   "replays": {
     "syncUrl": "https://hockeando-default-rtdb.firebaseio.com/Replays.json",
-    "downloadUrlBase": "https://firebasestorage.googleapis.com/v0/b/hockeando.appspot.com/o/"
+    "downloadUrlBase": "https://firebasestorage.googleapis.com/v0/b/hockeando.firebasestorage.app/o/"
   },
   "scoreboardLayoutProfiles": [
     {

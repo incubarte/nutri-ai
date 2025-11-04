@@ -22,7 +22,6 @@ async function getVideoFiles(dir: string, baseDir: string = dir): Promise<string
          if (error.code !== 'ENOENT') {
             throw error;
          }
-         // If directory doesn't exist, it's fine, return empty array.
     }
     return files;
 }
@@ -32,13 +31,11 @@ export async function GET(request: Request) {
 
     try {
         const videoFiles = await getVideoFiles(replaysDir);
-        // Sort by name descending (newest first assuming date-based names)
         videoFiles.sort((a, b) => b.localeCompare(a)); 
 
         return NextResponse.json({ success: true, files: videoFiles });
     } catch (error: any) {
         if (error.code === 'ENOENT') {
-            // Directory doesn't exist, which is a valid state (no replays saved yet)
             return NextResponse.json({ success: true, files: [] });
         }
         console.error("[API/REPLAYS] Error reading replays directory:", error);

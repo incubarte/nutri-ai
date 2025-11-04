@@ -4,7 +4,7 @@ import path from 'path';
 
 export async function POST(request: Request) {
     try {
-        const { url, date, filename: providedFilename } = await request.json();
+        const { url, date, matchName, filename: providedFilename } = await request.json();
 
         if (!url) {
             return NextResponse.json({ message: 'URL del video es requerida.' }, { status: 400 });
@@ -20,15 +20,22 @@ export async function POST(request: Request) {
         
         const baseDir = path.join(process.cwd(), 'public', 'replays');
         
-        const targetDir = date ? path.join(baseDir, date) : baseDir;
+        // Create nested directory: /replays/<date>/<matchName>
+        let targetDir = baseDir;
+        if (date) {
+            targetDir = path.join(targetDir, date);
+        }
+        if (matchName) {
+            // Sanitize match name to be a valid folder name
+            const sanitizedMatchName = matchName.replace(/[/\\?%*:|"<>]/g, '-');
+            targetDir = path.join(targetDir, sanitizedMatchName);
+        }
         await fs.mkdir(targetDir, { recursive: true });
         
-        // Use the provided filename, or fallback to extracting it from the URL
         const filename = providedFilename || decodeURIComponent(new URL(url).pathname.split('/').pop()?.split('?')[0] || `replay-${Date.now()}.mp4`);
-
         const filePath = path.join(targetDir, filename);
         
-        const publicPath = date ? `/replays/${date}/${filename}` : `/replays/${filename}`;
+        const publicPath = path.relative(baseDir, filePath).replace(/\\/g, '/');
 
         await fs.writeFile(filePath, Buffer.from(videoBuffer));
 
