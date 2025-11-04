@@ -1,7 +1,7 @@
 {
   "score": {
     "home": 1,
-    "away": 9,
+    "away": 16,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -143,6 +143,111 @@
           "playerName": "SANZ BENICIO"
         },
         "id": "97e4a4fe-d6ad-4c46-9dd2-6226af9aefc9"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762280384031,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51",
+          "playerName": "KITAURA ANDRES"
+        },
+        "assist": {
+          "playerNumber": "21",
+          "playerName": "SANZ BENICIO"
+        },
+        "id": "a337f52e-dff8-436d-a802-c4e77d332b7d"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762280395473,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51",
+          "playerName": "KITAURA ANDRES"
+        },
+        "assist": {
+          "playerNumber": "21",
+          "playerName": "SANZ BENICIO"
+        },
+        "id": "8247508a-7192-451d-be18-49ef1a38179c"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762280415529,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51",
+          "playerName": "KITAURA ANDRES"
+        },
+        "assist": {
+          "playerNumber": "21",
+          "playerName": "SANZ BENICIO"
+        },
+        "id": "608e96d3-8018-4e79-9e77-ab95bf03c7b8"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762280568732,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51",
+          "playerName": "KITAURA ANDRES"
+        },
+        "assist": {
+          "playerNumber": "21",
+          "playerName": "SANZ BENICIO"
+        },
+        "id": "15c77e60-bb00-4776-89e3-cae719d4fa36"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762280580648,
+        "gameTime": 119909,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51",
+          "playerName": "KITAURA ANDRES"
+        },
+        "assist": {
+          "playerNumber": "21",
+          "playerName": "SANZ BENICIO"
+        },
+        "id": "fb404b8d-9704-41be-963b-819bc0c74f09"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762280602028,
+        "gameTime": 119909,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51",
+          "playerName": "KITAURA ANDRES"
+        },
+        "assist": {
+          "playerNumber": "21",
+          "playerName": "SANZ BENICIO"
+        },
+        "id": "53e604b2-9e17-43da-b1ad-2e2bfb181bb4"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762280624798,
+        "gameTime": 119909,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51",
+          "playerName": "KITAURA ANDRES"
+        },
+        "assist": {
+          "playerNumber": "21",
+          "playerName": "SANZ BENICIO"
+        },
+        "id": "61b9712b-fb19-45e3-81f4-9da526cc8c45"
       }
     ]
   },
@@ -306,15 +411,15 @@
     ]
   },
   "clock": {
-    "currentTime": 120000,
+    "currentTime": 119909,
     "currentPeriod": 2,
     "isClockRunning": false,
     "periodDisplayOverride": null,
     "preTimeoutState": null,
     "clockStartTimeMs": null,
     "remainingTimeAtStartCs": null,
-    "absoluteElapsedTimeCs": 120000,
-    "_liveAbsoluteElapsedTimeCs": 120000,
+    "absoluteElapsedTimeCs": 120091,
+    "_liveAbsoluteElapsedTimeCs": 120091,
     "isFlashingZero": false
   },
   "shootout": {

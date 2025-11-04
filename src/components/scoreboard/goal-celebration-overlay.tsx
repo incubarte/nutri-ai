@@ -19,7 +19,14 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
   
   if (!goal) return null;
 
-  const teamName = goal.team === 'home' ? state.live.homeTeamName : state.live.awayTeamName;
+  const scoringTeamName = goal.team === 'home' ? state.live.homeTeamName : state.live.awayTeamName;
+
+  const opposingTeamType = goal.team === 'home' ? 'away' : 'home';
+  const opposingTeamName = live.awayTeamName;
+  const opposingTeamData = state.config.tournaments
+    .find(t => t.id === state.config.selectedTournamentId)?.teams
+    .find(t => t.name === state.live[`${opposingTeamType}TeamName`] && (t.subName || undefined) === (state.live[`${opposingTeamType}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
+
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/50 backdrop-blur-sm overflow-hidden">
@@ -39,8 +46,9 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
                     data-ai-hint="team logo"
                 />
             ) : (
-                <DefaultTeamLogo teamName={teamName} size="lg" className="w-24 h-24 md:w-32 md:h-32 text-5xl" />
+                <DefaultTeamLogo teamName={scoringTeamName} size="lg" className="w-24 h-24 md:w-32 md:h-32 text-5xl" />
             )}
+
             <motion.h1
                 className="font-headline font-bold text-accent uppercase"
                 style={{ fontSize: `${scoreboardLayout.clockSize * 0.8}rem` }}
@@ -57,6 +65,19 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
             >
                 GOL!
             </motion.h1>
+
+            {opposingTeamData?.logoDataUrl ? (
+                <Image
+                    src={opposingTeamData.logoDataUrl}
+                    alt={`${opposingTeamData.name} logo`}
+                    width={128}
+                    height={128}
+                    className="w-24 h-24 md:w-32 md:h-32 object-contain"
+                    data-ai-hint="team logo"
+                />
+            ) : (
+                <DefaultTeamLogo teamName={opposingTeamName} size="lg" className="w-24 h-24 md:w-32 md:h-32 text-5xl" />
+            )}
         </motion.div>
 
         <motion.div 
@@ -66,7 +87,7 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
             transition={{ type: 'spring', stiffness: 100, damping: 15, delay: 0.4 }}
         >
             <h2 className="text-foreground font-semibold uppercase tracking-wider" style={{ fontSize: `${scoreboardLayout.teamNameSize * 1.2}rem` }}>
-                {teamName}
+                {scoringTeamName}
             </h2>
              <div className="text-primary-foreground mt-2" style={{ fontSize: `${scoreboardLayout.periodSize * 1.1}rem` }}>
                 <p>
