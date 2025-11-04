@@ -41,13 +41,18 @@ export default function ReplaysPage() {
     const [videoUrl, setVideoUrl] = useState('');
     const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle');
 
-    const [syncDate, setSyncDate] = useState<Date>(new Date());
+    const [syncDate, setSyncDate] = useState<Date>();
     const [isSyncActive, setIsSyncActive] = useState(false);
     const [newReplays, setNewReplays] = useState<FirebaseReplay[]>([]);
     const [isMassDownloading, setIsMassDownloading] = useState(false);
     const [firebaseError, setFirebaseError] = useState<string | null>(null);
     
     const replaySettings = state.config.replays;
+
+    useEffect(() => {
+        // Set the initial date only on the client to prevent hydration errors
+        setSyncDate(new Date());
+    }, []);
 
     const fetchReplays = useCallback(async () => {
         setStatus('loading');
@@ -72,6 +77,7 @@ export default function ReplaysPage() {
     }, [fetchReplays]);
     
      useEffect(() => {
+        if (!syncDate) return;
         const dateString = format(syncDate, 'yyyy-MM-dd');
         setFilteredReplayFiles(
             allReplayFiles.filter(file => file.includes(dateString))
@@ -88,9 +94,9 @@ export default function ReplaysPage() {
     }, [replaySettings]);
     
     useEffect(() => {
-        if (!isSyncActive || !replaySettings?.syncUrl) {
+        if (!isSyncActive || !replaySettings?.syncUrl || !syncDate) {
             setNewReplays([]);
-            if(isSyncActive) setFirebaseError("URL de sincronización no configurada.");
+            if(isSyncActive && !replaySettings?.syncUrl) setFirebaseError("URL de sincronización no configurada.");
             return;
         }
 
@@ -113,7 +119,8 @@ export default function ReplaysPage() {
                     for (const replayId in dayData[camId]) {
                         const location = dayData[camId][replayId].location;
                         if (location && location.startsWith('gs://')) {
-                            const filename = location.split('/').pop()?.replace(/%20/g, ' ') || `replay-${replayId}.mp4`;
+                            const urlPath = new URL(location).pathname;
+                            const filename = decodeURIComponent(urlPath.split('/').pop() || `replay-${replayId}.mp4`);
                             const httpsUrl = convertGsToHttps(location);
                             
                             const expectedLocalPath = `${formattedDate}/${filename}`;
@@ -192,6 +199,7 @@ export default function ReplaysPage() {
     };
     
     const handleMassDownload = async () => {
+        if (!syncDate) return;
         setIsMassDownloading(true);
         const downloadedFiles: string[] = [];
         
@@ -367,3 +375,4 @@ export default function ReplaysPage() {
     );
 
     
+}
