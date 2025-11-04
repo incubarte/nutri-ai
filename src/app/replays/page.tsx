@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -14,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useGameState } from '@/contexts/game-state-context';
 
 type LoadingStatus = 'idle' | 'loading' | 'success' | 'error';
 type DownloadStatus = 'idle' | 'downloading' | 'success' | 'error';
@@ -27,6 +29,7 @@ interface FirebaseReplay {
 }
 
 export default function ReplaysPage() {
+    const { state } = useGameState();
     const [allReplayFiles, setAllReplayFiles] = useState<string[]>([]);
     const [filteredReplayFiles, setFilteredReplayFiles] = useState<string[]>([]);
     const [selectedReplay, setSelectedReplay] = useState<string | null>(null);
@@ -44,7 +47,7 @@ export default function ReplaysPage() {
     const [isMassDownloading, setIsMassDownloading] = useState(false);
     const [firebaseError, setFirebaseError] = useState<string | null>(null);
     
-    const firebaseReplayUrl = "https://hockeando-default-rtdb.firebaseio.com/Replays.json";
+    const replaySettings = state.config.replays;
 
     const fetchReplays = useCallback(async () => {
         setStatus('loading');
@@ -76,24 +79,25 @@ export default function ReplaysPage() {
         setSelectedReplay(null); // Deselect video when date changes
     }, [syncDate, allReplayFiles]);
 
-    const convertGsToHttps = (gsPath: string): string => {
-        if (!gsPath.startsWith('gs://')) return '';
+    const convertGsToHttps = useCallback((gsPath: string): string => {
+        if (!gsPath.startsWith('gs://') || !replaySettings?.downloadUrlBase) return '';
         const pathWithoutPrefix = gsPath.substring(5);
-        const [bucket, ...filePathParts] = pathWithoutPrefix.split('/');
-        const filePath = filePathParts.join('/');
-        return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(filePath)}?alt=media`;
-    };
+        const filePath = pathWithoutPrefix.split('/').slice(1).join('/'); // remove bucket name
+        const encodedFilePath = encodeURIComponent(filePath);
+        return `${replaySettings.downloadUrlBase}${encodedFilePath}?alt=media`;
+    }, [replaySettings]);
     
     useEffect(() => {
-        if (!isSyncActive) {
+        if (!isSyncActive || !replaySettings?.syncUrl) {
             setNewReplays([]);
+            if(isSyncActive) setFirebaseError("URL de sincronización no configurada.");
             return;
         }
 
         const sync = async () => {
             try {
                 const formattedDate = format(syncDate, 'yyyy-MM-dd');
-                const response = await fetch(firebaseReplayUrl);
+                const response = await fetch(replaySettings.syncUrl);
                 if (!response.ok) throw new Error(`Firebase returned status ${response.status}`);
                 const data = await response.json();
                 
@@ -139,7 +143,7 @@ export default function ReplaysPage() {
         const interval = setInterval(sync, 10000);
 
         return () => clearInterval(interval);
-    }, [isSyncActive, syncDate, allReplayFiles, firebaseReplayUrl]);
+    }, [isSyncActive, syncDate, allReplayFiles, replaySettings, convertGsToHttps]);
 
 
     const handleSelectReplay = (replayFile: string) => {
@@ -263,7 +267,7 @@ export default function ReplaysPage() {
                                     <Calendar mode="single" selected={syncDate} onSelect={(date) => date && setSyncDate(date)} initialFocus locale={es} />
                                 </PopoverContent>
                             </Popover>
-                            <Button onClick={() => setIsSyncActive(!isSyncActive)} variant={isSyncActive ? 'destructive' : 'default'}>
+                            <Button onClick={() => setIsSyncActive(!isSyncActive)} variant={isSyncActive ? 'destructive' : 'default'} disabled={!replaySettings?.syncUrl}>
                                 {isSyncActive ? "Detener Sync" : "Iniciar Sync"}
                             </Button>
                         </div>
@@ -361,4 +365,5 @@ export default function ReplaysPage() {
             </div>
         </div>
     );
-}
+
+    
