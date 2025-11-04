@@ -46,14 +46,15 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
                 className="font-headline font-bold text-accent uppercase"
                 style={{ fontSize: `${scoreboardLayout.clockSize * 0.8}rem` }}
                 initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: [1, 1.15, 1, 1.1, 1], opacity: 1 }}
+                animate={{ 
+                    scale: [1, 1.15, 1, 1.1, 1, 1],
+                    opacity: [1, 1, 1, 1, 1, 0] 
+                }}
                 transition={{ 
                     delay: 0.5,
-                    duration: 1.5,
+                    duration: 3,
                     ease: "easeInOut",
-                    times: [0, 0.25, 0.5, 0.75, 1],
-                    repeat: 1,
-                    repeatType: "mirror"
+                    times: [0, 0.15, 0.3, 0.45, 0.6, 1]
                 }}
             >
                 GOL!
@@ -83,17 +84,17 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
                 {scoringTeamName}
             </h2>
              <div className="text-primary-foreground mt-2" style={{ fontSize: `${scoreboardLayout.periodSize * 1.1}rem` }}>
-                <p>
+                <p className="font-semibold">
                     <span className="font-bold">#{goal.scorer?.playerNumber || 'S/N'}</span>
-                    <span className="ml-2 font-light">{goal.scorer?.playerName}</span>
+                    <span className="ml-2 font-normal">{goal.scorer?.playerName}</span>
                 </p>
                 {goal.assist?.playerNumber && (
                     <p 
-                      className="text-foreground/80 block"
-                      style={{ fontSize: '1em' }}
+                      className="text-foreground/80 block font-semibold"
+                      style={{ fontSize: '0.8em' }}
                     >
                         <span className="font-bold">#{goal.assist.playerNumber}</span>
-                        <span className="ml-2 font-light">{goal.assist.playerName}</span>
+                        <span className="ml-2 font-normal">{goal.assist.playerName}</span>
                     </p>
                 )}
             </div>
