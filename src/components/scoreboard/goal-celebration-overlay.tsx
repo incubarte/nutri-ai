@@ -21,13 +21,6 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
 
   const scoringTeamName = goal.team === 'home' ? state.live.homeTeamName : state.live.awayTeamName;
 
-  const opposingTeamType = goal.team === 'home' ? 'away' : 'home';
-  const opposingTeamName = state.live[`${opposingTeamType}TeamName`];
-  
-  const selectedTournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
-  const opposingTeamData = selectedTournament?.teams.find(t => t.name === opposingTeamName && (t.subName || undefined) === (state.live[`${opposingTeamType}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
-
-
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/50 backdrop-blur-sm overflow-hidden">
         <motion.div
@@ -54,21 +47,19 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
                 style={{ fontSize: `${scoreboardLayout.clockSize * 0.8}rem` }}
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ 
-                    scale: [1, 1.15, 1],
+                    scale: [1, 1.1, 1],
                     opacity: 1 
                 }}
                 transition={{ 
-                    delay: 0.5,
                     duration: 1.5,
                     ease: "easeInOut",
                     repeat: Infinity,
-                    repeatType: "loop"
                 }}
             >
                 GOL!
             </motion.h1>
 
-            {teamData?.logoDataUrl ? (
+             {teamData?.logoDataUrl ? (
                 <Image
                     src={teamData.logoDataUrl}
                     alt={`${scoringTeamName} logo`}
@@ -92,13 +83,13 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
                 {scoringTeamName}
             </h2>
              <div className="text-primary-foreground mt-2" style={{ fontSize: `${scoreboardLayout.periodSize * 1.1}rem` }}>
-                <p className="font-semibold">
+                <p className="font-bold">
                     <span className="font-bold">#{goal.scorer?.playerNumber || 'S/N'}</span>
                     <span className="ml-2 font-normal">{goal.scorer?.playerName}</span>
                 </p>
                 {goal.assist?.playerNumber && (
                     <p 
-                      className="text-foreground/80 block font-semibold"
+                      className="text-foreground/80 block font-bold"
                       style={{ fontSize: '0.8em' }}
                     >
                         <span className="font-bold">#{goal.assist.playerNumber}</span>

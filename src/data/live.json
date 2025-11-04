@@ -1,7 +1,7 @@
 {
   "score": {
     "home": 1,
-    "away": 28,
+    "away": 31,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -428,6 +428,45 @@
           "playerName": "SANZ BENICIO"
         },
         "id": "eab63bbf-9ae1-42d6-b884-e1f3707e7419"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762292798054,
+        "gameTime": 119909,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51"
+        },
+        "assist": {
+          "playerNumber": "21"
+        },
+        "id": "4ec31ad4-a47c-4353-a542-e9355ccd6e0f"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762292814788,
+        "gameTime": 119909,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51"
+        },
+        "assist": {
+          "playerNumber": "21"
+        },
+        "id": "d52565dd-acff-42d9-acb0-d2e346dd2332"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762292831288,
+        "gameTime": 119909,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51"
+        },
+        "assist": {
+          "playerNumber": "21"
+        },
+        "id": "1339beeb-221e-4791-8eac-94ae8c395176"
       }
     ]
   },
