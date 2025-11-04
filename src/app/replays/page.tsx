@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -98,8 +99,8 @@ export default function ReplaysPage() {
     const convertGsToHttps = useCallback((gsPath: string): string => {
         if (!gsPath.startsWith('gs://') || !replaySettings?.downloadUrlBase) return '';
         const pathWithoutPrefix = gsPath.substring(5);
-        const filePath = pathWithoutPrefix.split('/').slice(1).join('/'); // remove bucket name
-        const encodedFilePath = encodeURIComponent(filePath);
+        const pathSegments = pathWithoutPrefix.split('/').slice(1); // remove bucket name
+        const encodedFilePath = pathSegments.map(segment => encodeURIComponent(segment)).join('/');
         return `${replaySettings.downloadUrlBase}${encodedFilePath}?alt=media`;
     }, [replaySettings]);
     
@@ -129,8 +130,7 @@ export default function ReplaysPage() {
                     for (const replayId in dayData[camId]) {
                         const location = dayData[camId][replayId].location;
                         if (location && location.startsWith('gs://')) {
-                            const urlPath = location.split('/').pop()?.split('?')[0] || `replay-${replayId}.mp4`;
-                            const filename = decodeURIComponent(urlPath);
+                            const filename = location.split('/').pop()?.split('?')[0] || `replay-${replayId}.mp4`;
                             const httpsUrl = convertGsToHttps(location);
                             
                             const expectedLocalPath = `${formattedDate}/${filename}`;
@@ -206,7 +206,8 @@ export default function ReplaysPage() {
             toast({ title: "URL Requerida", description: "Por favor, ingresa la URL del video.", variant: "destructive" });
             return;
         }
-        const result = await handleDownloadVideo(videoUrl, `manual-${Date.now()}.mp4`, syncDate);
+        const filename = videoUrl.split('/').pop()?.split('?')[0] || `manual-${Date.now()}.mp4`;
+        const result = await handleDownloadVideo(videoUrl, filename, syncDate);
         if (result.success) {
             toast({ title: "Descarga Manual Exitosa", description: "El video ha sido descargado." });
             setVideoUrl('');
