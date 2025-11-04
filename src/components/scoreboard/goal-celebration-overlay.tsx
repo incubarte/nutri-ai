@@ -45,8 +45,15 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
                 className="font-headline font-bold text-accent uppercase"
                 style={{ fontSize: `${scoreboardLayout.clockSize * 0.8}rem` }}
                 initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 120, damping: 10, delay: 0.5 }}
+                animate={{ scale: [1, 1.15, 1, 1.1, 1], opacity: 1 }}
+                transition={{ 
+                    delay: 0.5,
+                    duration: 1.5,
+                    ease: "easeInOut",
+                    times: [0, 0.25, 0.5, 0.75, 1],
+                    repeat: 1,
+                    repeatType: "mirror"
+                }}
             >
                 GOL!
             </motion.h1>
@@ -61,19 +68,18 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
             <h2 className="text-foreground font-semibold uppercase tracking-wider" style={{ fontSize: `${scoreboardLayout.teamNameSize * 1.2}rem` }}>
                 {teamName}
             </h2>
-            <div className="text-primary-foreground mt-2" style={{ fontSize: `${scoreboardLayout.periodSize * 1.1}rem` }}>
+             <div className="text-primary-foreground mt-2" style={{ fontSize: `${scoreboardLayout.periodSize * 1.1}rem` }}>
                 <p>
                     <span className="font-bold">#{goal.scorer?.playerNumber || 'S/N'}</span>
-                    {goal.scorer?.playerName && <span className="ml-2 font-light">{goal.scorer.playerName}</span>}
+                    <span className="ml-2 font-light">{goal.scorer?.playerName}</span>
                 </p>
                 {goal.assist?.playerNumber && (
                     <p 
-                      className="text-foreground/70 block mt-1"
-                      style={{ fontSize: `${scoreboardLayout.periodSize * 0.8}rem` }}
+                      className="text-foreground/80 block"
+                      style={{ fontSize: '1em' }}
                     >
-                        Asistencia: 
-                        <span className="font-bold ml-2">#{goal.assist.playerNumber}</span>
-                        {goal.assist.playerName && <span className="ml-2 font-light">{goal.assist.playerName}</span>}
+                        <span className="font-bold">#{goal.assist.playerNumber}</span>
+                        <span className="ml-2 font-light">{goal.assist.playerName}</span>
                     </p>
                 )}
             </div>
