@@ -102,9 +102,7 @@ export default function ReplaysPage() {
         const firstSlashIndex = pathWithoutPrefix.indexOf('/');
         if (firstSlashIndex === -1) return ''; // Invalid gs path format
 
-        const bucketName = pathWithoutPrefix.substring(0, firstSlashIndex);
         const filePath = pathWithoutPrefix.substring(firstSlashIndex + 1);
-
         const encodedFilePath = encodeURIComponent(filePath);
         
         return `${replaySettings.downloadUrlBase}${encodedFilePath}?alt=media`;
@@ -202,7 +200,7 @@ export default function ReplaysPage() {
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "No se pudo conectar con el servidor.";
             setDownloadStatus('error');
-            toast({ title: "Error de Descarga", description: errorMessage, variant: "destructive" });
+            toast({ title: "Error de Descarga", description: `${errorMessage} URL: ${urlToDownload}`, variant: "destructive" });
             return { success: false };
         }
     };
@@ -422,3 +420,5 @@ export default function ReplaysPage() {
         </div>
     );
 }
+
+    
