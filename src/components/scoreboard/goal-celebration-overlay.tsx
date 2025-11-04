@@ -15,29 +15,11 @@ interface GoalCelebrationOverlayProps {
 export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayProps) {
   const { goal, teamData } = celebration;
   const { state } = useGameState();
-  const { scoreboardLayout, tournaments, selectedTournamentId, selectedMatchCategory } = state.config;
+  const { scoreboardLayout } = state.config;
   
   if (!goal) return null;
 
   const scoringTeamName = goal.team === 'home' ? state.live.homeTeamName : state.live.awayTeamName;
-
-  const opposingTeamData = useMemo(() => {
-    const opposingTeamType = goal.team === 'home' ? 'away' : 'home';
-    const opposingTeamName = state.live[`${opposingTeamType}TeamName`];
-    const opposingTeamSubName = state.live[`${opposingTeamType}TeamSubName`];
-
-    const tournament = (tournaments || []).find(t => t.id === selectedTournamentId);
-    if (!tournament || !tournament.teams) return null;
-
-    return tournament.teams.find(t => 
-      t.name === opposingTeamName &&
-      (t.subName || undefined) === (opposingTeamSubName || undefined) &&
-      t.category === selectedMatchCategory
-    );
-  }, [goal.team, state.live, tournaments, selectedTournamentId, selectedMatchCategory]);
-  
-  const opposingTeamName = state.live[goal.team === 'home' ? 'awayTeamName' : 'homeTeamName'];
-
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/50 backdrop-blur-sm overflow-hidden">
@@ -50,7 +32,7 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
             {teamData?.logoDataUrl ? (
                 <Image
                     src={teamData.logoDataUrl}
-                    alt={`${teamData.name} logo`}
+                    alt={`${scoringTeamName} logo`}
                     width={128}
                     height={128}
                     className="w-24 h-24 md:w-32 md:h-32 object-contain"
@@ -77,17 +59,17 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
                 GOL!
             </motion.h1>
 
-            {opposingTeamData?.logoDataUrl ? (
+             {teamData?.logoDataUrl ? (
                 <Image
-                    src={opposingTeamData.logoDataUrl}
-                    alt={`${opposingTeamName} logo`}
+                    src={teamData.logoDataUrl}
+                    alt={`${scoringTeamName} logo`}
                     width={128}
                     height={128}
                     className="w-24 h-24 md:w-32 md:h-32 object-contain"
                     data-ai-hint="team logo"
                 />
             ) : (
-                <DefaultTeamLogo teamName={opposingTeamName} size="lg" className="w-24 h-24 md:w-32 md:h-32 text-5xl" />
+                <DefaultTeamLogo teamName={scoringTeamName} size="lg" className="w-24 h-24 md:w-32 md:h-32 text-5xl" />
             )}
         </motion.div>
 

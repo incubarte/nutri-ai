@@ -1,7 +1,7 @@
 {
   "score": {
     "home": 1,
-    "away": 18,
+    "away": 19,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -278,6 +278,21 @@
           "playerName": "SANZ BENICIO"
         },
         "id": "94fac672-8c01-49b2-99b5-de472cae603c"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762281612922,
+        "gameTime": 119909,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51",
+          "playerName": "KITAURA ANDRES"
+        },
+        "assist": {
+          "playerNumber": "21",
+          "playerName": "SANZ BENICIO"
+        },
+        "id": "a6a93b9e-9560-4ba3-bfb0-d39e5234c278"
       }
     ]
   },
