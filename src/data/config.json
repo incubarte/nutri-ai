@@ -98,6 +98,10 @@
     "mainContentGap": 1.5,
     "scoreLabelGap": 2
   },
+  "replays": {
+    "syncUrl": "https://hockeando-default-rtdb.firebaseio.com/Replays.json",
+    "downloadUrlBase": "https://firebasestorage.googleapis.com/v0/b/hockeando.appspot.com/o/"
+  },
   "scoreboardLayoutProfiles": [
     {
       "id": "default-layout-profile",
