@@ -65,7 +65,10 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
                 <span className="font-bold">#{goal.scorer?.playerNumber || 'S/N'}</span>
                 {goal.scorer?.playerName && <span className="ml-2 font-light">{goal.scorer.playerName}</span>}
                 {goal.assist?.playerNumber && (
-                    <span className="text-foreground/70 text-sm block mt-1">
+                    <span 
+                      className="text-foreground/70 block mt-1"
+                      style={{ fontSize: `${scoreboardLayout.periodSize * 0.6}rem` }}
+                    >
                         Asistencia: #{goal.assist.playerNumber} {goal.assist.playerName && `- ${goal.assist.playerName}`}
                     </span>
                 )}

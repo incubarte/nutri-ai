@@ -1,7 +1,7 @@
 {
   "score": {
-    "home": 0,
-    "away": 0,
+    "home": 1,
+    "away": 5,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -10,8 +10,81 @@
     "away": []
   },
   "goals": {
-    "home": [],
-    "away": []
+    "home": [
+      {
+        "team": "home",
+        "timestamp": 1762278787085,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "4"
+        },
+        "id": "be635945-4121-4cf4-b84e-0d3ca4d1d350"
+      }
+    ],
+    "away": [
+      {
+        "team": "away",
+        "timestamp": 1762278798272,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "5"
+        },
+        "assist": {
+          "playerNumber": "3",
+          "playerName": "ROMERO ANTÓN"
+        },
+        "id": "72241309-5b9f-4c9c-9200-36515e8bba66"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762278816358,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51",
+          "playerName": "KITAURA ANDRES"
+        },
+        "assist": {
+          "playerNumber": "21",
+          "playerName": "SANZ BENICIO"
+        },
+        "id": "f273717b-3212-4017-9556-d5222d61361b"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762278836180,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "5"
+        },
+        "id": "878bc518-76c4-4409-ab1a-9e429db34700"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762278842454,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51",
+          "playerName": "KITAURA ANDRES"
+        },
+        "id": "1c597243-ea63-4864-a259-f281d80fc5f9"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762278851352,
+        "gameTime": 120000,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51",
+          "playerName": "KITAURA ANDRES"
+        },
+        "id": "94ed4008-a83b-48cb-bfc8-78e2b7b300c5"
+      }
+    ]
   },
   "penaltiesLog": {
     "home": [],
