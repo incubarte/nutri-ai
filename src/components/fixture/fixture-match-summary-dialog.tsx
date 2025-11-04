@@ -293,6 +293,9 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   if (!match || !tournament || !localSummary) return null;
 
   const { statsByPeriod, playedPeriods } = localSummary;
+  const finalHomeScore = (match.homeScore === undefined) ? aggregatedGoals.home.length : match.homeScore;
+  const finalAwayScore = (match.awayScore === undefined) ? aggregatedGoals.away.length : match.awayScore;
+
 
   return (
     <>
@@ -305,6 +308,11 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
           </DialogDescription>
         </DialogHeader>
         
+        <div className="grid grid-cols-2 text-center my-2">
+            <h3 className="text-2xl font-bold text-primary">{homeTeam?.name} - <span className="text-accent">{finalHomeScore}</span></h3>
+            <h3 className="text-2xl font-bold text-primary">{awayTeam?.name} - <span className="text-accent">{finalAwayScore}</span></h3>
+        </div>
+
         <Tabs defaultValue="general" className="w-full flex-grow flex flex-col overflow-hidden">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">Resumen General</TabsTrigger>
@@ -315,7 +323,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
           
           <TabsContent value="general" className="flex-grow overflow-hidden mt-4">
              <ScrollArea className="h-full pr-6 -mr-6">
-                 <div className="space-y-6">
+                <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <GoalsSection teamName={homeTeam?.name || ''} goals={aggregatedGoals.home} editable={false} />
                       <GoalsSection teamName={awayTeam?.name || ''} goals={aggregatedGoals.away} editable={false} />

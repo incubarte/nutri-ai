@@ -122,7 +122,6 @@ export const PlayerStatsSection = ({
                 )}
             </CardHeader>
             <CardContent>
-                 <h4 className="font-bold text-lg text-primary-foreground mb-4">{teamName}</h4>
                 {sortedPlayersWithStats.length > 0 ? (
                     <Table>
                         <TableHeader>
