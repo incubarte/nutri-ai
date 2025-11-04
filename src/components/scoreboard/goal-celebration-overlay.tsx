@@ -80,7 +80,7 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
             {opposingTeamData?.logoDataUrl ? (
                 <Image
                     src={opposingTeamData.logoDataUrl}
-                    alt={`${opposingTeamData.name} logo`}
+                    alt={`${opposingTeamName} logo`}
                     width={128}
                     height={128}
                     className="w-24 h-24 md:w-32 md:h-32 object-contain"

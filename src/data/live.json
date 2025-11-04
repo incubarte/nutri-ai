@@ -1,7 +1,7 @@
 {
   "score": {
     "home": 1,
-    "away": 17,
+    "away": 18,
     "homeShots": 0,
     "awayShots": 0
   },
@@ -263,6 +263,21 @@
           "playerName": "SANZ BENICIO"
         },
         "id": "4fd47b6b-a631-4b39-8dd8-d9e0c2a0c748"
+      },
+      {
+        "team": "away",
+        "timestamp": 1762281512718,
+        "gameTime": 119909,
+        "periodText": "2ND",
+        "scorer": {
+          "playerNumber": "51",
+          "playerName": "KITAURA ANDRES"
+        },
+        "assist": {
+          "playerNumber": "21",
+          "playerName": "SANZ BENICIO"
+        },
+        "id": "94fac672-8c01-49b2-99b5-de472cae603c"
       }
     ]
   },
@@ -450,104 +465,7 @@
   "playPenaltyBeepTrigger": 0,
   "pendingPowerPlayGoal": null,
   "overlayMessage": null,
-  "goalCelebration": {
-    "id": "176132fc-d20b-4372-902a-13ff8338c8d7",
-    "goal": {
-      "team": "away",
-      "timestamp": 1762281083732,
-      "gameTime": 119909,
-      "periodText": "2ND",
-      "scorer": {
-        "playerNumber": "51",
-        "playerName": "KITAURA ANDRES"
-      },
-      "assist": {
-        "playerNumber": "21",
-        "playerName": "SANZ BENICIO"
-      },
-      "id": "4fd47b6b-a631-4b39-8dd8-d9e0c2a0c748"
-    },
-    "teamData": {
-      "id": "c348664e-45b8-4ffd-9d92-29149eb26a81",
-      "name": "ACEMHH C1",
-      "logoDataUrl": "/logos/Logo-ACEMHH.png",
-      "category": "953bcf73-ee22-4c87-baa7-43b9529420e0",
-      "players": [
-        {
-          "number": "51",
-          "name": "KITAURA ANDRES",
-          "type": "player",
-          "id": "e7f3aa3f-40a2-4a90-8a5d-90051d45b555"
-        },
-        {
-          "number": "91",
-          "name": "MAZZALUPO ADRIAN",
-          "type": "player",
-          "id": "3b86a9f3-ae7e-4f11-a406-398f640ee6fe"
-        },
-        {
-          "number": "",
-          "name": "DRESCO JAVIER",
-          "type": "player",
-          "id": "ef9927aa-db93-4408-a4e8-cfc38863a2dd"
-        },
-        {
-          "number": "94",
-          "name": "DI LEONE DANIEL",
-          "type": "player",
-          "id": "95a807e7-0b78-449b-9618-f546b2e23307"
-        },
-        {
-          "number": "11",
-          "name": "SANCHEZ HÉCTOR",
-          "type": "player",
-          "id": "03e0a5d5-f864-4129-810b-5a75b96f8bd7"
-        },
-        {
-          "number": "58",
-          "name": "DIGANGI DANIEL",
-          "type": "player",
-          "id": "0444c677-915f-4f95-8beb-befd52e1cfc0"
-        },
-        {
-          "number": "3",
-          "name": "ROMERO ANTÓN",
-          "type": "player",
-          "id": "54e20849-b2b6-4215-afbe-10ab2f811ff5"
-        },
-        {
-          "number": "21",
-          "name": "SANZ BENICIO",
-          "type": "player",
-          "id": "dfc70fdc-cfe9-49c6-b8c2-6cb2ffea2c11"
-        },
-        {
-          "number": "81",
-          "name": "PIAGGIO SANTIAGO",
-          "type": "player",
-          "id": "ff663f4b-db21-4bb4-a855-d5a2a35e89da"
-        },
-        {
-          "number": "",
-          "name": "MAMANI NAZARENO",
-          "type": "player",
-          "id": "b55105c9-d97d-4623-b658-ae49360da56b"
-        },
-        {
-          "number": "",
-          "name": "ESPOSITO FACUNDO",
-          "type": "player",
-          "id": "06795990-7200-4687-912d-e474fd818dc5"
-        },
-        {
-          "number": "",
-          "name": "ZAMBRANO HUMBERTO",
-          "type": "goalkeeper",
-          "id": "f3e1863f-8d7c-4af4-9591-b9d74cc8f209"
-        }
-      ]
-    }
-  },
+  "goalCelebration": null,
   "replayOverlay": null,
   "matchId": "8230d768-7d4b-4572-ad25-3c259e0f512d",
   "playedPeriods": [
