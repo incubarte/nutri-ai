@@ -21,6 +21,13 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
 
   const scoringTeamName = goal.team === 'home' ? state.live.homeTeamName : state.live.awayTeamName;
 
+  const opposingTeamType = goal.team === 'home' ? 'away' : 'home';
+  const opposingTeamName = state.live[`${opposingTeamType}TeamName`];
+  
+  const selectedTournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
+  const opposingTeamData = selectedTournament?.teams.find(t => t.name === opposingTeamName && (t.subName || undefined) === (state.live[`${opposingTeamType}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
+
+
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/50 backdrop-blur-sm overflow-hidden">
         <motion.div
@@ -47,20 +54,21 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
                 style={{ fontSize: `${scoreboardLayout.clockSize * 0.8}rem` }}
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ 
-                    scale: [1, 1.15, 1, 1.1, 1, 1.05, 1, 1.02, 1],
+                    scale: [1, 1.15, 1],
                     opacity: 1 
                 }}
                 transition={{ 
                     delay: 0.5,
-                    duration: 4,
+                    duration: 1.5,
                     ease: "easeInOut",
-                    times: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1]
+                    repeat: Infinity,
+                    repeatType: "loop"
                 }}
             >
                 GOL!
             </motion.h1>
 
-             {teamData?.logoDataUrl ? (
+            {teamData?.logoDataUrl ? (
                 <Image
                     src={teamData.logoDataUrl}
                     alt={`${scoringTeamName} logo`}
