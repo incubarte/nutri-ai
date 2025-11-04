@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Image from "next/image";
 import { motion } from 'framer-motion';
 import type { LiveState } from '@/types';
@@ -15,17 +15,28 @@ interface GoalCelebrationOverlayProps {
 export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayProps) {
   const { goal, teamData } = celebration;
   const { state } = useGameState();
-  const { scoreboardLayout } = state.config;
+  const { scoreboardLayout, tournaments, selectedTournamentId, selectedMatchCategory } = state.config;
   
   if (!goal) return null;
 
   const scoringTeamName = goal.team === 'home' ? state.live.homeTeamName : state.live.awayTeamName;
 
-  const opposingTeamType = goal.team === 'home' ? 'away' : 'home';
-  const opposingTeamName = state.live[`${opposingTeamType}TeamName`];
-  const opposingTeamData = state.config.tournaments
-    .find(t => t.id === state.config.selectedTournamentId)?.teams
-    .find(t => t.name === opposingTeamName && (t.subName || undefined) === (state.live[`${opposingTeamType}TeamSubName`] || undefined) && t.category === state.config.selectedMatchCategory);
+  const opposingTeamData = useMemo(() => {
+    const opposingTeamType = goal.team === 'home' ? 'away' : 'home';
+    const opposingTeamName = state.live[`${opposingTeamType}TeamName`];
+    const opposingTeamSubName = state.live[`${opposingTeamType}TeamSubName`];
+
+    const tournament = (tournaments || []).find(t => t.id === selectedTournamentId);
+    if (!tournament || !tournament.teams) return null;
+
+    return tournament.teams.find(t => 
+      t.name === opposingTeamName &&
+      (t.subName || undefined) === (opposingTeamSubName || undefined) &&
+      t.category === selectedMatchCategory
+    );
+  }, [goal.team, state.live, tournaments, selectedTournamentId, selectedMatchCategory]);
+  
+  const opposingTeamName = state.live[goal.team === 'home' ? 'awayTeamName' : 'homeTeamName'];
 
 
   return (
