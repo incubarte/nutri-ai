@@ -99,8 +99,14 @@ export default function ReplaysPage() {
     const convertGsToHttps = useCallback((gsPath: string): string => {
         if (!gsPath.startsWith('gs://') || !replaySettings?.downloadUrlBase) return '';
         const pathWithoutPrefix = gsPath.substring(5);
-        const pathSegments = pathWithoutPrefix.split('/').slice(1); // remove bucket name
-        const encodedFilePath = pathSegments.map(segment => encodeURIComponent(segment)).join('/');
+        const firstSlashIndex = pathWithoutPrefix.indexOf('/');
+        if (firstSlashIndex === -1) return ''; // Invalid gs path format
+
+        const bucketName = pathWithoutPrefix.substring(0, firstSlashIndex);
+        const filePath = pathWithoutPrefix.substring(firstSlashIndex + 1);
+
+        const encodedFilePath = encodeURIComponent(filePath);
+        
         return `${replaySettings.downloadUrlBase}${encodedFilePath}?alt=media`;
     }, [replaySettings]);
     
@@ -206,7 +212,10 @@ export default function ReplaysPage() {
             toast({ title: "URL Requerida", description: "Por favor, ingresa la URL del video.", variant: "destructive" });
             return;
         }
-        const filename = videoUrl.split('/').pop()?.split('?')[0] || `manual-${Date.now()}.mp4`;
+        const urlPath = new URL(videoUrl).pathname;
+        const decodedPath = decodeURIComponent(urlPath);
+        const filename = decodedPath.split('/').pop() || `manual-${Date.now()}.mp4`;
+
         const result = await handleDownloadVideo(videoUrl, filename, syncDate);
         if (result.success) {
             toast({ title: "Descarga Manual Exitosa", description: "El video ha sido descargado." });
