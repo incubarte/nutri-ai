@@ -130,10 +130,7 @@
   "selectedMatchCategory": "953bcf73-ee22-4c87-baa7-43b9529420e0",
   "selectedTournamentId": "8a422a4c-1953-4abd-acae-bf5cd358ef9c",
   "tunnel": {
-    "subdomain": "icevision-fs",
     "port": 9002,
-    "status": "disconnected",
-    "url": null,
     "lastMessage": null
   },
   "id": "default-profile",

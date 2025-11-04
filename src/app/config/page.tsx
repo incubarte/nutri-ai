@@ -55,6 +55,7 @@ import type { DebugSettingsCardRef } from "@/components/config/debug-settings-ca
 import { RemoteControlsSettingsCard } from '@/components/config/remote-controls-settings-card';
 import { ExternalWindowSettingsCard } from '@/components/config/external-window-settings-card';
 import { useAuth } from '@/hooks/use-auth';
+import type { ReplaySettingsCardRef } from '@/components/config/replay-settings-card';
 
 
 // Lazy load heavy components
@@ -69,9 +70,10 @@ const PenaltyCountdownSoundCard = dynamic(() => import('@/components/config/pena
 const TeamSettingsCard = dynamic(() => import('@/components/config/team-settings-card').then(mod => mod.TeamSettingsCard), { loading: loadingComponent });
 const LayoutSettingsCard = dynamic(() => import('@/components/config/layout-settings-card').then(mod => mod.LayoutSettingsCard), { loading: loadingComponent });
 const DebugSettingsCard = dynamic(() => import('@/components/config/debug-settings-card').then(mod => mod.DebugSettingsCard), { loading: loadingComponent });
+const ReplaySettingsCard = dynamic(() => import('@/components/config/replay-settings-card').then(mod => mod.ReplaySettingsCard), { loading: loadingComponent });
 
 
-const VALID_TAB_VALUES = ["formatAndTimings", "soundAndDisplay", "remoteControls"];
+const VALID_TAB_VALUES = ["formatAndTimings", "soundAndDisplay", "remoteControls", "replays"];
 
 type ExportableSoundAndDisplayConfig = Pick<ConfigFields,
   | 'playSoundAtPeriodEnd' | 'customHornSoundDataUrl'
@@ -98,6 +100,7 @@ export default function ConfigPage() {
   const teamSettingsRef = useRef<TeamSettingsCardRef>(null);
   const layoutSettingsRef = useRef<LayoutSettingsCardRef>(null);
   const debugSettingsRef = useRef<DebugSettingsCardRef>(null);
+  const replaySettingsRef = useRef<ReplaySettingsCardRef>(null);
   
   const fileInputFormatAndTimingsRef = useRef<HTMLInputElement>(null);
   const fileInputSoundAndDisplayRef = useRef<HTMLInputElement>(null);
@@ -110,6 +113,7 @@ export default function ConfigPage() {
   const [isPenaltyCountdownSoundDirty, setIsPenaltyCountdownSoundDirty] = useState(false);
   const [isTeamSettingsDirty, setIsTeamSettingsDirty] = useState(false);
   const [isDebugDirty, setIsDebugDirty] = useState(false);
+  const [isReplayDirty, setIsReplayDirty] = useState(false);
   
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [currentExportFilename, setCurrentExportFilename] = useState('');
@@ -180,6 +184,7 @@ export default function ConfigPage() {
 
   const isFormatAndTimingsSectionDirty = isDurationDirty || isPenaltyDirty || isStoppedTimeAlertDirty || isPenaltyTypesDirty;
   const isSoundAndDisplaySectionDirty = isSoundDirty || isPenaltyCountdownSoundDirty || isTeamSettingsDirty || isLayoutDirty || isDebugDirty;
+  const isReplaysSectionDirty = isReplayDirty;
 
   const handleSaveChanges_FormatAndTimings = () => {
     let allSavesSuccessful = true;
@@ -248,16 +253,19 @@ export default function ConfigPage() {
     toast({ title: "Cambios Descartados", description: "Los cambios no guardados en Sonido y Display han sido revertidos." });
   };
   
-  const handleSaveChanges_RemoteControls = () => {
-    // This is now handled within the RemoteControlsSettingsCard component directly.
-    // This function can be kept for consistency or removed.
-    // Let's assume the button is now inside the card.
-  };
-  
-  const handleDiscardChanges_RemoteControls = () => {
-    // This is also handled within the component.
+  const handleSaveChanges_Replays = () => {
+    if (replaySettingsRef.current && isReplayDirty) {
+      replaySettingsRef.current.handleSave();
+      setIsReplayDirty(false);
+    }
   };
 
+  const handleDiscardChanges_Replays = () => {
+    if (replaySettingsRef.current && isReplayDirty) {
+      replaySettingsRef.current.handleDiscard();
+      setIsReplayDirty(false);
+    }
+  };
 
   const performExportActionWithDialog = (filename: string) => {
     if (!currentExportAction) return;
@@ -450,7 +458,6 @@ export default function ConfigPage() {
       return;
     }
     dispatch({ type: 'ADD_FORMAT_AND_TIMINGS_PROFILE', payload: { name: newFTProfileName.trim() } });
-    toast({ title: "Perfil Creado", description: `Perfil "${newFTProfileName.trim()}" añadido.` });
     setNewFTProfileName("");
     setIsNewFTProfileDialogOpen(false);
   };
@@ -517,7 +524,6 @@ export default function ConfigPage() {
         return;
     }
     dispatch({ type: 'ADD_SCOREBOARD_LAYOUT_PROFILE', payload: { name: newLayoutProfileName.trim() } });
-    toast({ title: "Perfil de Diseño Creado", description: `Perfil "${newLayoutProfileName.trim()}" añadido.` });
     setNewLayoutProfileName("");
     setIsNewLayoutProfileDialogOpen(false);
   };
@@ -590,6 +596,10 @@ export default function ConfigPage() {
       sectionName = "Sonido y Display";
       isDirty = true;
       discardAction = handleDiscardChanges_SoundAndDisplay;
+    } else if (activeTab === "replays" && isReplaysSectionDirty) {
+      sectionName = "Replays/VAR";
+      isDirty = true;
+      discardAction = handleDiscardChanges_Replays;
     }
 
     if (isDirty) {
@@ -646,10 +656,11 @@ export default function ConfigPage() {
       </div>
       
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 h-auto sm:h-10">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto sm:h-10">
           <TabsTrigger value="formatAndTimings" className="py-2 sm:py-1.5">Formato y Tiempos</TabsTrigger>
           <TabsTrigger value="soundAndDisplay" className="py-2 sm:py-1.5">Sonido y Display</TabsTrigger>
           <TabsTrigger value="remoteControls" className="py-2 sm:py-1.5">Controles Remotos</TabsTrigger>
+          <TabsTrigger value="replays" className="py-2 sm:py-1.5">Replays/VAR</TabsTrigger>
         </TabsList>
 
         <TabsContent value="formatAndTimings" className={tabContentClassName}>
@@ -807,6 +818,22 @@ export default function ConfigPage() {
 
         <TabsContent value="remoteControls" className={tabContentClassName}>
           <RemoteControlsSettingsCard />
+        </TabsContent>
+
+        <TabsContent value="replays" className={tabContentClassName}>
+            <div className="space-y-6">
+                <ReplaySettingsCard ref={replaySettingsRef} onDirtyChange={setIsReplayDirty} />
+                {isReplaysSectionDirty && (
+                <div className={sectionActionsContainerClass}>
+                    <Button onClick={handleSaveChanges_Replays} size="sm">
+                    <Save className="mr-2 h-4 w-4" /> Guardar Cambios Replays
+                    </Button>
+                    <Button onClick={handleDiscardChanges_Replays} variant="outline" size="sm">
+                    <Undo2 className="mr-2 h-4 w-4" /> Descartar Cambios Replays
+                    </Button>
+                </div>
+                )}
+            </div>
         </TabsContent>
       </Tabs>
 
