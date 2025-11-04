@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -13,9 +12,19 @@ import { Label } from '@/components/ui/label';
 import { sendRemoteCommand } from '@/app/actions';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useGameState } from '@/contexts/game-state-context';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+
 
 type LoadingStatus = 'idle' | 'loading' | 'success' | 'error';
 type DownloadStatus = 'idle' | 'downloading' | 'success' | 'error';
@@ -38,6 +47,7 @@ export default function ReplaysPage() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const { toast } = useToast();
 
+    const [isManualDownloadOpen, setIsManualDownloadOpen] = useState(false);
     const [videoUrl, setVideoUrl] = useState('');
     const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle');
 
@@ -119,8 +129,8 @@ export default function ReplaysPage() {
                     for (const replayId in dayData[camId]) {
                         const location = dayData[camId][replayId].location;
                         if (location && location.startsWith('gs://')) {
-                            const urlPath = new URL(location).pathname;
-                            const filename = decodeURIComponent(urlPath.split('/').pop() || `replay-${replayId}.mp4`);
+                            const urlPath = location.split('/').pop()?.split('?')[0] || `replay-${replayId}.mp4`;
+                            const filename = decodeURIComponent(urlPath);
                             const httpsUrl = convertGsToHttps(location);
                             
                             const expectedLocalPath = `${formattedDate}/${filename}`;
@@ -131,7 +141,7 @@ export default function ReplaysPage() {
                                     location,
                                     url: httpsUrl,
                                     filename,
-                                    isNew: !allReplayFiles.includes(expectedLocalPath) && !allReplayFiles.includes(decodeURIComponent(expectedLocalPath))
+                                    isNew: !allReplayFiles.includes(expectedLocalPath)
                                 });
                             }
                         }
@@ -164,10 +174,6 @@ export default function ReplaysPage() {
     }, [selectedReplay]);
 
     const handleDownloadVideo = async (urlToDownload: string, filename: string, downloadDate?: Date) => {
-        if (!urlToDownload) {
-            toast({ title: "URL Requerida", description: "Por favor, ingresa la URL del video.", variant: "destructive" });
-            return { success: false };
-        }
         setDownloadStatus('downloading');
         try {
             const body: { url: string, date?: string, filename: string } = { url: urlToDownload, filename };
@@ -185,9 +191,6 @@ export default function ReplaysPage() {
             if (!response.ok) throw new Error(data.message || 'Error en el servidor');
 
             setDownloadStatus('success');
-            if (urlToDownload === videoUrl) { // Clear input only if it was a manual download
-              setVideoUrl(''); 
-            }
             return { success: true, newFilePath: data.path };
 
         } catch (error) {
@@ -198,6 +201,20 @@ export default function ReplaysPage() {
         }
     };
     
+    const handleManualDownload = async () => {
+        if (!videoUrl) {
+            toast({ title: "URL Requerida", description: "Por favor, ingresa la URL del video.", variant: "destructive" });
+            return;
+        }
+        const result = await handleDownloadVideo(videoUrl, `manual-${Date.now()}.mp4`, syncDate);
+        if (result.success) {
+            toast({ title: "Descarga Manual Exitosa", description: "El video ha sido descargado." });
+            setVideoUrl('');
+            setIsManualDownloadOpen(false);
+            fetchReplays(); // Refresh local files list
+        }
+    };
+
     const handleMassDownload = async () => {
         if (!syncDate) return;
         setIsMassDownloading(true);
@@ -242,26 +259,8 @@ export default function ReplaysPage() {
                 <CardHeader>
                     <CardTitle className="text-lg">Herramientas de Video</CardTitle>
                 </CardHeader>
-                <CardContent className="flex flex-col sm:flex-row items-start gap-4">
-                    <div className="flex-grow space-y-1 w-full">
-                        <Label htmlFor="replayUrl">Descargar desde URL Manualmente</Label>
-                        <div className="flex items-center gap-2">
-                            <Input 
-                              id="replayUrl" 
-                              value={videoUrl} 
-                              onChange={(e) => {
-                                setVideoUrl(e.target.value);
-                                setDownloadStatus('idle');
-                              }}
-                              placeholder="https://example.com/video.mp4" 
-                            />
-                             <Button onClick={() => handleDownloadVideo(videoUrl, `manual-${Date.now()}.mp4`)} disabled={downloadStatus === 'downloading' || !videoUrl}>
-                                {downloadStatus === 'downloading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                                Descargar
-                            </Button>
-                        </div>
-                    </div>
-                     <div className="border-t sm:border-l sm:border-t-0 pt-4 sm:pt-0 sm:pl-4">
+                 <CardContent className="flex flex-col sm:flex-row items-start gap-4">
+                     <div>
                         <Label>Sincronización Automática</Label>
                          <div className="flex items-center gap-2">
                              <Popover>
@@ -277,6 +276,14 @@ export default function ReplaysPage() {
                             </Popover>
                             <Button onClick={() => setIsSyncActive(!isSyncActive)} variant={isSyncActive ? 'destructive' : 'default'} disabled={!replaySettings?.syncUrl}>
                                 {isSyncActive ? "Detener Sync" : "Iniciar Sync"}
+                            </Button>
+                        </div>
+                     </div>
+                      <div className="sm:border-l sm:pl-4">
+                        <Label>Descarga Manual</Label>
+                        <div className="flex items-center gap-2">
+                            <Button onClick={() => setIsManualDownloadOpen(true)}>
+                                <Download className="mr-2 h-4 w-4" /> Descarga Manual
                             </Button>
                         </div>
                      </div>
@@ -371,8 +378,37 @@ export default function ReplaysPage() {
                     </div>
                 </Card>
             </div>
+             <Dialog open={isManualDownloadOpen} onOpenChange={setIsManualDownloadOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Descarga Manual de Video</DialogTitle>
+                        <DialogDescription>
+                            Pega la URL completa del video que deseas descargar al servidor. Se guardará con la fecha seleccionada en el calendario.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-2">
+                        <Label htmlFor="manualUrl">URL del Video</Label>
+                        <Input 
+                            id="manualUrl"
+                            value={videoUrl}
+                            onChange={(e) => {
+                                setVideoUrl(e.target.value);
+                                setDownloadStatus('idle');
+                            }}
+                            placeholder="https://example.com/video.mp4"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancelar</Button>
+                        </DialogClose>
+                        <Button onClick={handleManualDownload} disabled={downloadStatus === 'downloading' || !videoUrl}>
+                            {downloadStatus === 'downloading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                            Descargar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
-
-    
 }
