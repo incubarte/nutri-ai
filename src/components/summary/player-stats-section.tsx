@@ -107,7 +107,7 @@ export const PlayerStatsSection = ({
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Estadísticas - {teamName}</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5" />Tiros</CardTitle>
                 {showAttendanceControls && (
                     isAttendanceEditing ? (
                         <div className="flex gap-2">
@@ -122,6 +122,7 @@ export const PlayerStatsSection = ({
                 )}
             </CardHeader>
             <CardContent>
+                 <h4 className="font-bold text-lg text-primary-foreground mb-4">{teamName}</h4>
                 {sortedPlayersWithStats.length > 0 ? (
                     <Table>
                         <TableHeader>
