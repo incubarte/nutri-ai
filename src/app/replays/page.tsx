@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Video, ListVideo, Loader2, RefreshCw, Download, Play, CheckCircle, XCircle, Calendar as CalendarIcon, AlertTriangle } from 'lucide-react';
+import { Video, ListVideo, Loader2, RefreshCw, Download, Play, CheckCircle, XCircle, Calendar as CalendarIcon, AlertTriangle, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -256,6 +256,14 @@ export default function ReplaysPage() {
         toast({ title: "Comando Enviado", description: "El scoreboard ha recibido la orden de mostrar la repetición." });
     };
 
+    const handleCopyToClipboard = (text: string, label: string) => {
+        navigator.clipboard.writeText(text).then(() => {
+            toast({ title: "Copiado", description: `${label} copiado al portapapeles.` });
+        }, () => {
+            toast({ title: "Error al Copiar", description: `No se pudo copiar: ${label}`, variant: "destructive" });
+        });
+    };
+
     return (
         <div className="w-full max-w-7xl mx-auto py-8 space-y-6">
             <div className="flex items-center gap-4">
@@ -311,7 +319,14 @@ export default function ReplaysPage() {
                             <ScrollArea className="h-24 pr-3">
                                 <div className="space-y-1">
                                     {newReplays.map(replay => (
-                                        <div key={replay.id} className="text-sm text-muted-foreground truncate">{decodeURIComponent(replay.filename)}</div>
+                                        <button 
+                                            key={replay.id} 
+                                            className="text-sm text-left text-muted-foreground truncate hover:text-foreground w-full flex items-center gap-2"
+                                            onClick={() => handleCopyToClipboard(replay.url, 'URL de descarga')}
+                                        >
+                                            <Copy className="h-3 w-3 shrink-0" />
+                                            <span>{decodeURIComponent(replay.filename)}</span>
+                                        </button>
                                     ))}
                                 </div>
                             </ScrollArea>
@@ -420,5 +435,3 @@ export default function ReplaysPage() {
         </div>
     );
 }
-
-    
