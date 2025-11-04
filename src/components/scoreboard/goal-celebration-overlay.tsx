@@ -47,14 +47,14 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
                 style={{ fontSize: `${scoreboardLayout.clockSize * 0.8}rem` }}
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ 
-                    scale: [1, 1.15, 1, 1.1, 1, 1],
-                    opacity: [1, 1, 1, 1, 1, 0] 
+                    scale: [1, 1.15, 1, 1.1, 1, 1.05, 1],
+                    opacity: 1 
                 }}
                 transition={{ 
                     delay: 0.5,
                     duration: 3,
                     ease: "easeInOut",
-                    times: [0, 0.15, 0.3, 0.45, 0.6, 1]
+                    times: [0, 0.15, 0.3, 0.45, 0.6, 0.75, 1]
                 }}
             >
                 GOL!
