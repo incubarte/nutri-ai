@@ -274,13 +274,6 @@
       "homeScore": 0,
       "awayScore": 1,
       "overTimeOrShootouts": true
-    },
-    {
-      "date": "2025-11-04T03:00:00.000Z",
-      "categoryId": "89e25708-38d4-446f-bb29-c4d2c923e48d",
-      "homeTeamId": "f761b189-b669-4b4d-bb85-0bc92ddd6310",
-      "awayTeamId": "215ab8d6-c94f-4649-9a38-dae011bba6a8",
-      "playersPerTeam": 5
     }
   ]
 }
