@@ -195,7 +195,7 @@ export function FixtureCalendarView() {
                     const isHighlighted = filteredMatchIds ? filteredMatchIds.has(match.id) : true;
 
                     return (
-                      <div 
+                      <div
                         key={match.id}
                         className={cn(
                           "text-xs p-1 rounded-md bg-background/50 border border-border/50 transition-all duration-300",
