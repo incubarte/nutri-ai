@@ -29,8 +29,8 @@
       "awayTeamId": "01c108c7-6733-4db5-83f4-0fb3d8b258cf",
       "playersPerTeam": 5,
       "id": "784d97b8-5d35-4184-8e75-15c4534891e6",
-      "homeScore": 1,
-      "awayScore": 1,
+      "homeScore": 4,
+      "awayScore": 3,
       "overTimeOrShootouts": true
     },
     {
@@ -62,7 +62,7 @@
       "awayTeamId": "bcae9647-593b-4f67-b70b-671e9b4a26a4",
       "playersPerTeam": 5,
       "id": "5c9b1095-7c1b-4628-bf68-209468bad5b8",
-      "homeScore": 0,
+      "homeScore": 1,
       "awayScore": 0,
       "overTimeOrShootouts": true
     },
@@ -93,7 +93,7 @@
       "playersPerTeam": 5,
       "id": "893f51ac-3714-4862-b726-d45e372f4607",
       "homeScore": 0,
-      "awayScore": 0,
+      "awayScore": 1,
       "overTimeOrShootouts": true
     },
     {
@@ -145,7 +145,7 @@
       "awayTeamId": "bcae9647-593b-4f67-b70b-671e9b4a26a4",
       "playersPerTeam": 5,
       "homeScore": 1,
-      "awayScore": 1,
+      "awayScore": 2,
       "overTimeOrShootouts": true
     },
     {

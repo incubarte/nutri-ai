@@ -910,7 +910,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newPenaltiesLog[team] = newPenaltiesLog[team].map(p =>
         p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'goal_on_pp', timeServed } : p
       );
-      
+
       newState = { ...state, live: { ...state.live,
         penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId))},
         penaltiesLog: newPenaltiesLog,
@@ -1630,12 +1630,21 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'UPDATE_TEAM_DETAILS': {
       const { teamId, ...updates } = action.payload;
-      const newTournaments = state.config.tournaments.map(t => {
-          if (!t.teams) return t; // If a tournament doesn't have a teams array, skip it.
-          const newTeams = t.teams.map(team => team.id === teamId ? { ...team, ...updates } : team);
-          return { ...t, teams: newTeams };
-      });
-      newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
+      newState = {
+        ...state,
+        config: {
+          ...state.config,
+          tournaments: state.config.tournaments.map(t => {
+            if (!t.teams) return t; // Safety check
+            return {
+              ...t,
+              teams: t.teams.map(team =>
+                team.id === teamId ? { ...team, ...updates } : team
+              ),
+            };
+          }),
+        },
+      };
       toastMessage = { title: "Equipo Actualizado", description: `El equipo "${updates.name}" ha sido actualizado.` };
       break;
     }
@@ -1647,12 +1656,52 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'UPDATE_PLAYER_IN_TEAM': {
       const { teamId, playerId, updates } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.map(p => p.id === playerId ? { ...p, ...updates } : p) } : team) })) } };
+      newState = {
+        ...state,
+        config: {
+          ...state.config,
+          tournaments: state.config.tournaments.map(t => {
+            if (!t.teams) return t; // Safety check
+            return {
+              ...t,
+              teams: t.teams.map(team =>
+                team.id === teamId
+                  ? {
+                      ...team,
+                      players: team.players.map(p =>
+                        p.id === playerId ? { ...p, ...updates } : p
+                      ),
+                    }
+                  : team
+              ),
+            };
+          }),
+        },
+      };
       break;
     }
     case 'REMOVE_PLAYER_FROM_TEAM': {
       const { teamId, playerId } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: team.players.filter(p => p.id !== playerId) } : team) })) }};
+      newState = {
+        ...state,
+        config: {
+          ...state.config,
+          tournaments: state.config.tournaments.map(t => {
+            if (!t.teams) return t; // Safety check
+            return {
+              ...t,
+              teams: t.teams.map(team =>
+                team.id === teamId
+                  ? {
+                      ...team,
+                      players: team.players.filter(p => p.id !== playerId),
+                    }
+                  : team
+              ),
+            };
+          }),
+        },
+      };
       break;
     }
     case 'SET_TEAM_ATTENDANCE': {
@@ -2025,6 +2074,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 
