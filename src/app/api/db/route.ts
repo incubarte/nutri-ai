@@ -1,50 +1,19 @@
 
-import { promises as fs } from 'fs';
-import path from 'path';
 import { NextResponse } from 'next/server';
-import type { GameState, ConfigState, Tournament, TeamData, CategoryData, MatchData, LiveState, PeriodSummary } from '@/types';
+import type { GameState, ConfigState, LiveState } from '@/types';
 import { setGameState, setConfig } from '@/lib/server-side-store';
-
-const DATA_DIR = path.join(process.cwd(), 'src/data');
-const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
-const LIVE_STATE_PATH = path.join(DATA_DIR, 'live.json');
-const TOURNAMENTS_DIR = path.join(DATA_DIR, 'tournaments');
-
-async function readData(filePath: string): Promise<any> {
-    try {
-        await fs.mkdir(path.dirname(filePath), { recursive: true });
-        const data = await fs.readFile(filePath, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return null; // File doesn't exist, which is fine
-        }
-        console.error(`Could not read ${filePath}:`, error);
-        throw new Error(`Failed to read database file: ${path.basename(filePath)}`);
-    }
-}
-
-async function writeData(filePath: string, data: any): Promise<void> {
-    try {
-        await fs.mkdir(path.dirname(filePath), { recursive: true });
-        await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
-    } catch (error) {
-        console.error(`Could not write to ${filePath}:`, error);
-        throw new Error(`Failed to write to database file: ${path.basename(filePath)}`);
-    }
-}
-
+import { readConfig, writeConfig, readLiveState, writeLiveState } from '@/lib/storage';
 
 export async function GET(request: Request) {
   try {
     const [config, liveState] = await Promise.all([
-        readData(CONFIG_PATH),
-        readData(LIVE_STATE_PATH)
+        readConfig(),
+        readLiveState()
     ]);
     
     // Store in-memory for other API routes to access
-    if (config) setConfig(config);
-    if (liveState) setGameState(liveState);
+    if (config) setConfig(config as ConfigState);
+    if (liveState) setGameState(liveState as LiveState);
 
     const initialState: Partial<GameState> = {
       config: config || {},
@@ -74,12 +43,12 @@ export async function POST(request: Request) {
         const tournamentMetas = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
         const configToSave = { ...baseConfig, tournaments: tournamentMetas };
         
-        await writeData(CONFIG_PATH, configToSave);
+        await writeConfig(configToSave as ConfigState);
         setConfig(config); // Update in-memory store
     }
     
     if (live) {
-        await writeData(LIVE_STATE_PATH, live);
+        await writeLiveState(live);
         setGameState(live); // Update in-memory store and emit event
     }
 
