@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Link from 'next/link';
@@ -29,6 +28,8 @@ export function Header() {
   const { toast } = useToast();
   const { state, dispatch } = useGameState();
   const { tournaments, selectedTournamentId } = state.config;
+
+  const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
 
   const isScoreboardPage = pathname === '/';
   const isControlsPage = pathname === '/controls';
@@ -235,26 +236,30 @@ export function Header() {
           >
             Scoreboard
           </Link>
-          <Link
-            href="/controls"
-            onClick={(e) => handleNav(e, '/controls')}
-            className={cn(
-              "transition-colors hover:text-foreground/80",
-              pathname === "/controls" ? "text-foreground" : "text-foreground/60"
-            )}
-          >
-            Controles
-          </Link>
-          <Link
-            href="/replays"
-            onClick={(e) => handleNav(e, '/replays')}
-            className={cn(
-              "transition-colors hover:text-foreground/80",
-              pathname === "/replays" ? "text-foreground" : "text-foreground/60"
-            )}
-          >
-            Replays (VAR)
-          </Link>
+          {!isReadOnly && (
+            <>
+              <Link
+                href="/controls"
+                onClick={(e) => handleNav(e, '/controls')}
+                className={cn(
+                  "transition-colors hover:text-foreground/80",
+                  pathname === "/controls" ? "text-foreground" : "text-foreground/60"
+                )}
+              >
+                Controles
+              </Link>
+              <Link
+                href="/replays"
+                onClick={(e) => handleNav(e, '/replays')}
+                className={cn(
+                  "transition-colors hover:text-foreground/80",
+                  pathname === "/replays" ? "text-foreground" : "text-foreground/60"
+                )}
+              >
+                Replays (VAR)
+              </Link>
+            </>
+          )}
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-2">
             <DropdownMenu>
@@ -278,7 +283,7 @@ export function Header() {
                 {selectedTournament && (
                   <>
                   <DropdownMenuItem onClick={() => router.push(`/tournaments/${selectedTournament.id}`)}>
-                    Configurar Torneo Actual
+                    Ver Torneo Actual
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   </>
@@ -294,9 +299,11 @@ export function Header() {
                   <DropdownMenuItem disabled>No hay otros torneos activos</DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push('/tournaments')}>
-                  Administrar Torneos
-                </DropdownMenuItem>
+                {!isReadOnly && (
+                  <DropdownMenuItem onClick={() => router.push('/tournaments')}>
+                    Administrar Torneos
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -306,24 +313,28 @@ export function Header() {
                 <Home className="h-5 w-5" />
               </Link>
             </Button>
-            <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/controls" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
-              <Link href="/controls" aria-label="Controls" onClick={(e) => handleNav(e, '/controls')}>
-                <Settings className="h-5 w-5" />
-              </Link>
-            </Button>
-            <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/replays" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
-              <Link href="/replays" aria-label="Replays (VAR)" onClick={(e) => handleNav(e, '/replays')}>
-                <Video className="h-5 w-5" />
-              </Link>
-            </Button>
-             <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/config" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
-              <Link href="/config" aria-label="Configuración General" onClick={(e) => handleNav(e, '/config')}>
-                <Wrench className="h-5 w-5" />
-              </Link>
-            </Button>
+            {!isReadOnly && (
+              <>
+                <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/controls" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
+                  <Link href="/controls" aria-label="Controls" onClick={(e) => handleNav(e, '/controls')}>
+                    <Settings className="h-5 w-5" />
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/replays" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
+                  <Link href="/replays" aria-label="Replays (VAR)" onClick={(e) => handleNav(e, '/replays')}>
+                    <Video className="h-5 w-5" />
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="icon" asChild className={cn("hidden sm:inline-flex", pathname === "/config" ? "text-primary-foreground bg-primary/80" : "text-foreground/60")}>
+                  <Link href="/config" aria-label="Configuración General" onClick={(e) => handleNav(e, '/config')}>
+                    <Wrench className="h-5 w-5" />
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
 
-          {isControlsPage && (
+          {isControlsPage && !isReadOnly && (
             <Button variant="ghost" size="icon" onClick={handleOpenExternalWindow} aria-label="Abrir ventana de scoreboard externa">
                 <MonitorPlay className="h-5 w-5" />
             </Button>

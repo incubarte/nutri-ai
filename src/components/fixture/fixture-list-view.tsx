@@ -26,6 +26,8 @@ export function FixtureListView() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const { selectedTournamentId, tournaments } = state.config;
+
+  const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
   
   const [isAddEditDialogOpen, setIsAddEditDialogOpen] = useState(false);
   const [matchToEdit, setMatchToEdit] = useState<MatchData | null>(null);
@@ -79,12 +81,13 @@ export function FixtureListView() {
   }, [selectedTournament, categoryFilter, teamSearch, dateFilter]);
 
   const handleEditMatch = (match: MatchData) => {
+    if (isReadOnly) return;
     setMatchToEdit(match);
     setIsAddEditDialogOpen(true);
   };
   
   const handleDeleteMatch = () => {
-    if (!matchToDelete || !selectedTournamentId) return;
+    if (isReadOnly || !matchToDelete || !selectedTournamentId) return;
     dispatch({ type: 'DELETE_MATCH_FROM_TOURNAMENT', payload: { tournamentId: selectedTournamentId, matchId: matchToDelete.id }});
     toast({ title: 'Partido Eliminado', description: 'El partido ha sido eliminado del fixture.' });
     setMatchToDelete(null);
@@ -196,12 +199,16 @@ export function FixtureListView() {
                                 <FileText className="h-4 w-4 text-blue-400" />
                             </Button>
                         )}
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditMatch(match)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setMatchToDelete(match)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {!isReadOnly && (
+                          <>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditMatch(match)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setMatchToDelete(match)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -218,12 +225,14 @@ export function FixtureListView() {
         </Table>
       </div>
 
-      <AddEditMatchDialog
-        isOpen={isAddEditDialogOpen}
-        onOpenChange={setIsAddEditDialogOpen}
-        tournament={selectedTournament}
-        matchToEdit={matchToEdit}
-      />
+      {!isReadOnly && (
+        <AddEditMatchDialog
+          isOpen={isAddEditDialogOpen}
+          onOpenChange={setIsAddEditDialogOpen}
+          tournament={selectedTournament}
+          matchToEdit={matchToEdit}
+        />
+      )}
       
       {matchToShowSummary && (
         <FixtureMatchSummaryDialog
@@ -234,7 +243,7 @@ export function FixtureListView() {
         />
       )}
 
-       {matchToDelete && (
+       {!isReadOnly && matchToDelete && (
         <AlertDialog open={!!matchToDelete} onOpenChange={() => setMatchToDelete(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>

@@ -162,6 +162,8 @@ export default function TournamentsPage() {
   const [tournamentToEdit, setTournamentToEdit] = useState<Tournament | null>(null);
   const [tournamentToDelete, setTournamentToDelete] = useState<Tournament | null>(null);
 
+  const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
+
   const handleEdit = (tournament: Tournament) => {
     setTournamentToEdit(tournament);
     setIsCreateEditDialogOpen(true);
@@ -192,9 +194,11 @@ export default function TournamentsPage() {
           <Trophy className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold text-primary-foreground">Gestión de Torneos</h1>
         </div>
-        <Button onClick={() => { setTournamentToEdit(null); setIsCreateEditDialogOpen(true); }}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Crear Nuevo Torneo
-        </Button>
+        {!isReadOnly && (
+          <Button onClick={() => { setTournamentToEdit(null); setIsCreateEditDialogOpen(true); }}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Crear Nuevo Torneo
+          </Button>
+        )}
       </div>
 
       <div className="space-y-4">
@@ -202,7 +206,7 @@ export default function TournamentsPage() {
           <div className="text-center py-12 border-2 border-dashed rounded-lg">
             <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No has creado ningún torneo todavía.</p>
-            <p className="text-sm text-muted-foreground">¡Usa el botón de arriba para crear el primero!</p>
+            {!isReadOnly && <p className="text-sm text-muted-foreground">¡Usa el botón de arriba para crear el primero!</p>}
           </div>
         ) : (
           tournaments.map((tournament) => (
@@ -214,43 +218,49 @@ export default function TournamentsPage() {
                     {statusMap[tournament.status]?.text || tournament.status}
                   </Badge>
                 </Link>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="icon" onClick={() => handleEdit(tournament)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="destructive" size="icon" onClick={() => handleDelete(tournament)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                {!isReadOnly && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="icon" onClick={() => handleEdit(tournament)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="destructive" size="icon" onClick={() => handleDelete(tournament)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))
         )}
       </div>
 
-      <CreateEditTournamentDialog
-        isOpen={isCreateEditDialogOpen}
-        onOpenChange={setIsCreateEditDialogOpen}
-        tournamentToEdit={tournamentToEdit}
-      />
+      {!isReadOnly && (
+        <>
+          <CreateEditTournamentDialog
+            isOpen={isCreateEditDialogOpen}
+            onOpenChange={setIsCreateEditDialogOpen}
+            tournamentToEdit={tournamentToEdit}
+          />
 
-      {tournamentToDelete && (
-        <AlertDialog open={!!tournamentToDelete} onOpenChange={() => setTournamentToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar Eliminación</AlertDialogTitle>
-              <AlertDialogDescription>
-                ¿Estás seguro de que quieres eliminar el torneo "{tournamentToDelete.name}"? Esta acción no se puede deshacer.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
-                Eliminar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          {tournamentToDelete && (
+            <AlertDialog open={!!tournamentToDelete} onOpenChange={() => setTournamentToDelete(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar Eliminación</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    ¿Estás seguro de que quieres eliminar el torneo "{tournamentToDelete.name}"? Esta acción no se puede deshacer.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+                    Eliminar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </>
       )}
     </div>
   );

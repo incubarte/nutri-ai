@@ -35,6 +35,8 @@ export function FixtureCalendarView() {
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [teamSearch, setTeamSearch] = useState('');
 
+  const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
+
   const selectedTournament = useMemo(() => {
     return tournaments.find(t => t.id === selectedTournamentId);
   }, [tournaments, selectedTournamentId]);
@@ -67,19 +69,21 @@ export function FixtureCalendarView() {
   }, [matches, categoryFilter, teamSearch, selectedTournament?.teams]);
 
   const handleDayClick = (day: Date) => {
+    if (isReadOnly) return;
     setDialogSelectedDate(day);
     setMatchToEdit(null);
     setIsAddEditDialogOpen(true);
   };
 
   const handleEditMatch = (match: MatchData) => {
+    if (isReadOnly) return;
     setMatchToEdit(match);
     setDialogSelectedDate(new Date(match.date));
     setIsAddEditDialogOpen(true);
   };
   
   const handleDeleteMatch = () => {
-    if (!matchToDelete || !selectedTournamentId) return;
+    if (isReadOnly || !matchToDelete || !selectedTournamentId) return;
     dispatch({ type: 'DELETE_MATCH_FROM_TOURNAMENT', payload: { tournamentId: selectedTournamentId, matchId: matchToDelete.id }});
     toast({ title: 'Partido Eliminado', description: 'El partido ha sido eliminado del fixture.' });
     setMatchToDelete(null);
@@ -176,7 +180,7 @@ export function FixtureCalendarView() {
               )}
             >
               <div 
-                className={cn("font-medium cursor-pointer hover:text-blue-500", isSameDay(day, new Date()) && "text-blue-500 font-bold")}
+                className={cn("font-medium", !isReadOnly && "cursor-pointer hover:text-blue-500", isSameDay(day, new Date()) && "text-blue-500 font-bold")}
                 onClick={() => handleDayClick(day)}
               >
                 {format(day, "d")}
@@ -207,8 +211,12 @@ export function FixtureCalendarView() {
                                         <FileText className="h-3 w-3 text-blue-400" />
                                     </Button>
                                 )}
-                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleEditMatch(match)}><Edit className="h-3 w-3"/></Button>
-                                <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => setMatchToDelete(match)}><Trash2 className="h-3 w-3"/></Button>
+                                {!isReadOnly && (
+                                  <>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleEditMatch(match)}><Edit className="h-3 w-3"/></Button>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => setMatchToDelete(match)}><Trash2 className="h-3 w-3"/></Button>
+                                  </>
+                                )}
                            </div>
                         </div>
                       </div>
@@ -221,13 +229,15 @@ export function FixtureCalendarView() {
         })}
       </div>
 
-      <AddEditMatchDialog
-        isOpen={isAddEditDialogOpen}
-        onOpenChange={setIsAddEditDialogOpen}
-        tournament={selectedTournament}
-        matchToEdit={matchToEdit}
-        selectedDate={dialogSelectedDate}
-      />
+      {!isReadOnly && (
+        <AddEditMatchDialog
+          isOpen={isAddEditDialogOpen}
+          onOpenChange={setIsAddEditDialogOpen}
+          tournament={selectedTournament}
+          matchToEdit={matchToEdit}
+          selectedDate={dialogSelectedDate}
+        />
+      )}
       
       {matchToShowSummary && (
         <FixtureMatchSummaryDialog
@@ -238,7 +248,7 @@ export function FixtureCalendarView() {
         />
       )}
 
-       {matchToDelete && (
+      {!isReadOnly && matchToDelete && (
         <AlertDialog open={!!matchToDelete} onOpenChange={() => setMatchToDelete(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>

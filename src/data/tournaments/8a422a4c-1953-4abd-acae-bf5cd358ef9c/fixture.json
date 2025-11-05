@@ -231,6 +231,48 @@
       "homeTeamId": "b84c3c2b-72fe-4ad9-83a3-ae268907a697",
       "awayTeamId": "a3a33ad9-1227-4336-8d16-2a565095597c",
       "playersPerTeam": 4
+    },
+    {
+      "id": "d294778c-88a8-4944-8b04-ae8ef22dd192",
+      "date": "2025-11-04T21:50:38.189Z",
+      "categoryId": "89e25708-38d4-446f-bb29-c4d2c923e48d",
+      "homeTeamId": "f761b189-b669-4b4d-bb85-0bc92ddd6310",
+      "awayTeamId": "215ab8d6-c94f-4649-9a38-dae011bba6a8",
+      "playersPerTeam": 4
+    },
+    {
+      "id": "8013d051-0f51-4c9e-805b-f44159e5ffc6",
+      "date": "2025-11-04T21:51:08.076Z",
+      "categoryId": "6fd778ac-7682-4740-99af-131551aff7a2",
+      "homeTeamId": "8a6b5d71-d0fe-40a2-b5a2-995b07bb40e3",
+      "awayTeamId": "01c108c7-6733-4db5-83f4-0fb3d8b258cf",
+      "playersPerTeam": 4
+    },
+    {
+      "date": "2025-11-04T03:00:00.000Z",
+      "categoryId": "953bcf73-ee22-4c87-baa7-43b9529420e0",
+      "homeTeamId": "c348664e-45b8-4ffd-9d92-29149eb26a81",
+      "awayTeamId": "91a80c01-4276-48f2-8fd3-56580a42dce6",
+      "playersPerTeam": 5
+    },
+    {
+      "id": "falopa",
+      "date": "2025-11-04T03:00:00.000Z",
+      "categoryId": "953bcf73-ee22-4c87-baa7-43b9529420e0",
+      "homeTeamId": "a4fceb93-951b-49ad-b23c-dbf4168e5908",
+      "awayTeamId": "9935eae8-7e9b-4e11-b483-a368ac743287",
+      "playersPerTeam": 5,
+      "homeScore": 0,
+      "awayScore": 0,
+      "overTimeOrShootouts": true
+    },
+    {
+      "id": "99b16246-cf79-4be0-9c58-eee22b7cb104",
+      "date": "2025-11-05T00:43:48.948Z",
+      "categoryId": "953bcf73-ee22-4c87-baa7-43b9529420e0",
+      "homeTeamId": "bcae9647-593b-4f67-b70b-671e9b4a26a4",
+      "awayTeamId": "9935eae8-7e9b-4e11-b483-a368ac743287",
+      "playersPerTeam": 4
     }
   ]
 }

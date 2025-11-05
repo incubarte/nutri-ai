@@ -22,8 +22,10 @@ export default function TournamentDetailPage() {
   const searchParams = useSearchParams();
   const { state, isLoading: isGameStateLoading } = useGameState();
 
+  const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
+
   const tournamentId = typeof params.tournamentId === 'string' ? params.tournamentId : undefined;
-  const initialTab = searchParams.get('tab') || 'teamsAndCategories';
+  const initialTab = searchParams.get('tab') || (isReadOnly ? 'fixture' : 'teamsAndCategories');
   const initialFixtureView = searchParams.get('view') === 'list' ? 'list' : 'calendar';
   
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -38,9 +40,13 @@ export default function TournamentDetailPage() {
     const newTab = searchParams.get('tab');
     const validTabs = ['teamsAndCategories', 'fixture', 'standings', 'playerStats'];
     if (newTab && validTabs.includes(newTab)) {
-      setActiveTab(newTab);
+      if (isReadOnly && newTab === 'teamsAndCategories') {
+        setActiveTab('fixture');
+      } else {
+        setActiveTab(newTab);
+      }
     }
-  }, [searchParams]);
+  }, [searchParams, isReadOnly]);
 
   if (isGameStateLoading) {
     return (
@@ -80,24 +86,28 @@ export default function TournamentDetailPage() {
       <Separator />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="teamsAndCategories">Equipos y Categorías</TabsTrigger>
+        <TabsList className={`grid w-full ${isReadOnly ? 'grid-cols-3' : 'grid-cols-4'}`}>
+          {!isReadOnly && <TabsTrigger value="teamsAndCategories">Equipos y Categorías</TabsTrigger>}
           <TabsTrigger value="fixture">Fixture</TabsTrigger>
           <TabsTrigger value="standings">Tabla de Posiciones</TabsTrigger>
           <TabsTrigger value="playerStats">Estadísticas Jugadores</TabsTrigger>
         </TabsList>
-        <TabsContent value="teamsAndCategories" className="mt-6">
-          <div className="space-y-8">
-            <CategorySettingsCard onDirtyChange={setIsCategoryDirty} />
-            {isCategoryDirty && (
-              <div className="flex justify-end gap-2">
-                <p className="text-sm text-muted-foreground self-center">Hay cambios sin guardar en las categorías.</p>
-              </div>
-            )}
-            <Separator />
-            <TeamsManagementTab />
-          </div>
-        </TabsContent>
+
+        {!isReadOnly && (
+          <TabsContent value="teamsAndCategories" className="mt-6">
+            <div className="space-y-8">
+              <CategorySettingsCard onDirtyChange={setIsCategoryDirty} />
+              {isCategoryDirty && (
+                <div className="flex justify-end gap-2">
+                  <p className="text-sm text-muted-foreground self-center">Hay cambios sin guardar en las categorías.</p>
+                </div>
+              )}
+              <Separator />
+              <TeamsManagementTab />
+            </div>
+          </TabsContent>
+        )}
+
         <TabsContent value="fixture" className="mt-6">
             <Tabs defaultValue={initialFixtureView} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
