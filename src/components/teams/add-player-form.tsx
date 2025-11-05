@@ -55,7 +55,9 @@ export function AddPlayerForm({ teamId }: AddPlayerFormProps) {
             return;
         }
 
-        const currentTeam = state.config.teams.find(t => t.id === teamId);
+        const tournamentWithTeam = (state.config.tournaments || []).find(t => t.teams?.some(tm => tm.id === teamId));
+        const currentTeam = tournamentWithTeam?.teams.find(t => t.id === teamId);
+
         if (currentTeam && currentTeam.players.some(p => p.number === trimmedPlayerNumber)) {
           toast({
             title: "Número de Jugador Duplicado",
