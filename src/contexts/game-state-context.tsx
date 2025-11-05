@@ -1563,8 +1563,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         // Correct way: create a new tournaments array, then map over it.
         const newTournaments = state.config.tournaments.map(t => {
             if (t.id === tournamentId) {
-                // Create a new tournament object with a new matches array
-                return { ...t, matches: [...(t.matches || []), match] };
+                // Create a new tournament object with a new matches array, ensuring the new match has an ID.
+                return { ...t, matches: [...(t.matches || []), { ...match, id: match.id || safeUUID() }] };
             }
             return t;
         });
@@ -2020,6 +2020,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 

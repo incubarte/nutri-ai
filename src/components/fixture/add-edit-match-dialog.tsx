@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -16,6 +17,7 @@ import { format, setHours, setMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { safeUUID } from '@/lib/utils';
 
 interface AddEditMatchDialogProps {
     isOpen: boolean;
@@ -88,7 +90,7 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
             dispatch({ type: 'UPDATE_MATCH_IN_TOURNAMENT', payload: { tournamentId: tournament.id, match: { ...matchToEdit, ...matchData } } });
             toast({ title: 'Partido Actualizado', description: 'El partido ha sido actualizado correctamente.' });
         } else {
-            dispatch({ type: 'ADD_MATCH_TO_TOURNAMENT', payload: { tournamentId: tournament.id, match: matchData } });
+            dispatch({ type: 'ADD_MATCH_TO_TOURNAMENT', payload: { tournamentId: tournament.id, match: { ...matchData, id: safeUUID() } } });
             toast({ title: 'Partido Añadido', description: 'El nuevo partido ha sido añadido al fixture.' });
         }
         onOpenChange(false);
