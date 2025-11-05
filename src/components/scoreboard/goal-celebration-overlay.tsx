@@ -37,6 +37,7 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
                     height={128}
                     className="w-24 h-24 md:w-32 md:h-32 object-contain"
                     data-ai-hint="team logo"
+                    priority
                 />
             ) : (
                 <DefaultTeamLogo teamName={scoringTeamName} size="lg" className="w-24 h-24 md:w-32 md:h-32 text-5xl" />
@@ -45,15 +46,14 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
             <motion.h1
                 className="font-headline font-bold text-accent uppercase"
                 style={{ fontSize: `${scoreboardLayout.clockSize * 0.8}rem` }}
-                initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ 
-                    scale: [1, 1.1, 1],
-                    opacity: 1 
+                    scale: [1, 1.1, 1, 1.1, 1],
                 }}
                 transition={{ 
-                    duration: 1.5,
+                    duration: 2,
                     ease: "easeInOut",
                     repeat: Infinity,
+                    repeatType: "loop",
                 }}
             >
                 GOL!
@@ -67,6 +67,7 @@ export function GoalCelebrationOverlay({ celebration }: GoalCelebrationOverlayPr
                     height={128}
                     className="w-24 h-24 md:w-32 md:h-32 object-contain"
                     data-ai-hint="team logo"
+                    priority
                 />
             ) : (
                 <DefaultTeamLogo teamName={scoringTeamName} size="lg" className="w-24 h-24 md:w-32 md:h-32 text-5xl" />

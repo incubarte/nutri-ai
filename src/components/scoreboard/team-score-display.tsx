@@ -102,6 +102,7 @@ export function TeamScoreDisplay({
                 className="absolute inset-0 z-0 pointer-events-none"
                 sizes="20vw"
                 data-ai-hint="team logo"
+                priority
             />
         )}
         <div className="relative z-10 w-full flex flex-col items-center">
