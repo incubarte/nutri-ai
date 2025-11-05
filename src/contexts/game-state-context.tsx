@@ -889,11 +889,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'DELETE_PENALTY_LOG': {
       const { team, logId } = action.payload;
       
-      const newLivePenaltiesLog = { ...state.live.penaltiesLog };
-      newLivePenaltiesLog[team] = newLivePenaltiesLog[team].filter((p: PenaltyLog) => p.id !== logId);
+      const newPenaltiesLog = { ...state.live.penaltiesLog };
+      newPenaltiesLog[team] = newPenaltiesLog[team].filter((p: PenaltyLog) => p.id !== logId);
       
       newState = { ...state, live: { ...state.live, 
-        penaltiesLog: newLivePenaltiesLog
+        penaltiesLog: newPenaltiesLog
       }};
       toastMessage = { title: "Penalidad Eliminada del Registro", variant: "destructive" };
       break;
@@ -1630,7 +1630,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'UPDATE_TEAM_DETAILS': {
       const { teamId, ...updates } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, ...updates } : team) })) } };
+      const newTournaments = state.config.tournaments.map(t => {
+          if (!t.teams) return t; // If a tournament doesn't have a teams array, skip it.
+          const newTeams = t.teams.map(team => team.id === teamId ? { ...team, ...updates } : team);
+          return { ...t, teams: newTeams };
+      });
+      newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
       toastMessage = { title: "Equipo Actualizado", description: `El equipo "${updates.name}" ha sido actualizado.` };
       break;
     }
@@ -2020,6 +2025,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 
