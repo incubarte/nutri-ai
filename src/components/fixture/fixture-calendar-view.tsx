@@ -173,7 +173,7 @@ export function FixtureCalendarView() {
 
           return (
             <div 
-              key={day.toString()} 
+              key={day.toString()}
               className={cn(
                 "relative p-2 border-b border-r min-h-[120px] flex flex-col", 
                 !isSameMonth(day, currentMonth) && "bg-muted/20 text-muted-foreground"
@@ -271,3 +271,4 @@ export function FixtureCalendarView() {
   );
 
     
+}
