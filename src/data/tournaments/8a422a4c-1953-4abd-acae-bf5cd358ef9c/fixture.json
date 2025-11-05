@@ -249,22 +249,12 @@
       "playersPerTeam": 4
     },
     {
+      "id": "7662c161-0d3a-4a6c-8515-e0186b514b8a",
       "date": "2025-11-04T03:00:00.000Z",
       "categoryId": "953bcf73-ee22-4c87-baa7-43b9529420e0",
       "homeTeamId": "c348664e-45b8-4ffd-9d92-29149eb26a81",
       "awayTeamId": "91a80c01-4276-48f2-8fd3-56580a42dce6",
       "playersPerTeam": 5
-    },
-    {
-      "id": "falopa",
-      "date": "2025-11-04T03:00:00.000Z",
-      "categoryId": "953bcf73-ee22-4c87-baa7-43b9529420e0",
-      "homeTeamId": "a4fceb93-951b-49ad-b23c-dbf4168e5908",
-      "awayTeamId": "9935eae8-7e9b-4e11-b483-a368ac743287",
-      "playersPerTeam": 5,
-      "homeScore": 0,
-      "awayScore": 0,
-      "overTimeOrShootouts": true
     },
     {
       "id": "99b16246-cf79-4be0-9c58-eee22b7cb104",
