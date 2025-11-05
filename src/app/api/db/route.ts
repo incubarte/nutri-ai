@@ -62,6 +62,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (process.env.NEXT_PUBLIC_READ_ONLY === 'true') {
+    return NextResponse.json({ success: false, message: 'La aplicación está en modo de solo lectura. No se permiten escrituras.' }, { status: 403 });
+  }
+
   try {
     const { config, live } = await request.json() as { config?: ConfigState; live?: LiveState };
 

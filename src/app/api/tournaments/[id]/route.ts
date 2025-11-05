@@ -158,6 +158,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
+    if (process.env.NEXT_PUBLIC_READ_ONLY === 'true') {
+        return NextResponse.json({ success: false, message: 'La aplicación está en modo de solo lectura. No se permiten escrituras.' }, { status: 403 });
+    }
+
     const tournamentId = params.id;
     try {
         const { tournament } = await request.json() as { tournament: Tournament };
@@ -176,4 +180,3 @@ export async function POST(request: Request, { params }: { params: { id: string 
         return NextResponse.json({ message: 'An unknown server error occurred.' }, { status: 500 });
     }
 }
-

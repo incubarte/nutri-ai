@@ -41,6 +41,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   const [isAttendanceEditing, setIsAttendanceEditing] = useState(false);
   const [localAttendance, setLocalAttendance] = useState<{ home: Set<string>, away: Set<string> }>({ home: new Set(), away: new Set() });
 
+  const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
 
   useEffect(() => {
     if (isOpen && match?.summary) {
@@ -189,13 +190,14 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   };
   
   const handleSaveAllChanges = () => {
-    if (!localSummary || !match || !tournament) return;
+    if (isReadOnly || !localSummary || !match || !tournament) return;
     dispatch({ type: 'SAVE_MATCH_SUMMARY', payload: { matchId: match.id, summary: localSummary } });
     toast({ title: "Resumen Guardado", description: "Todos los cambios en el resumen del partido han sido guardados."});
     onOpenChange(false);
   };
 
   const handleEditClick = () => {
+    if (isReadOnly) return;
     const initialShots: EditableStats = {};
     if (localSummary?.statsByPeriod) {
         localSummary.statsByPeriod.forEach(periodSummary => {
@@ -252,7 +254,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   };
 
   const handleToggleAttendance = (team: 'home' | 'away', playerId: string) => {
-    if (!isAttendanceEditing) return;
+    if (!isAttendanceEditing || isReadOnly) return;
     setLocalAttendance(prev => {
       const newSet = new Set(prev[team]);
       if (newSet.has(playerId)) {
@@ -265,7 +267,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
   };
 
   const handleSaveAttendance = () => {
-    if (!localSummary) return;
+    if (isReadOnly || !localSummary) return;
 
     setLocalSummary(prevSummary => {
         if (!prevSummary) return undefined;
@@ -343,7 +345,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                           attendance={localSummary.attendance.home}
                           editingAttendanceSet={localAttendance.home} 
                           editable={false} 
-                          showAttendanceControls={true} 
+                          showAttendanceControls={!isReadOnly} 
                           isAttendanceEditing={isAttendanceEditing}
                           onToggleAttendance={handleToggleAttendance}
                           onEditToggle={setIsAttendanceEditing} 
@@ -357,7 +359,7 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                           attendance={localSummary.attendance.away}
                           editingAttendanceSet={localAttendance.away}
                           editable={false}
-                          showAttendanceControls={true}
+                          showAttendanceControls={!isReadOnly}
                           isAttendanceEditing={isAttendanceEditing}
                           onToggleAttendance={handleToggleAttendance}
                           onEditToggle={setIsAttendanceEditing}
@@ -386,8 +388,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                       <div key={`goals-${periodText}`} className="space-y-4">
                         <h3 className="text-xl font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <GoalsSection teamName={homeTeam?.name || ''} goals={periodData?.stats.goals.home} onGoalChange={(action, goal, id) => handleGoalChange(action, 'home', periodText, goal, id)} editable={true} players={homeTeam?.players} />
-                          <GoalsSection teamName={awayTeam?.name || ''} goals={periodData?.stats.goals.away} onGoalChange={(action, goal, id) => handleGoalChange(action, 'away', periodText, goal, id)} editable={true} players={awayTeam?.players} />
+                          <GoalsSection teamName={homeTeam?.name || ''} goals={periodData?.stats.goals.home} onGoalChange={(action, goal, id) => handleGoalChange(action, 'home', periodText, goal, id)} editable={!isReadOnly} players={homeTeam?.players} />
+                          <GoalsSection teamName={awayTeam?.name || ''} goals={periodData?.stats.goals.away} onGoalChange={(action, goal, id) => handleGoalChange(action, 'away', periodText, goal, id)} editable={!isReadOnly} players={awayTeam?.players} />
                         </div>
                       </div>
                     );
@@ -405,8 +407,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                       <div key={`penalties-${periodText}`} className="space-y-4">
                         <h3 className="text-xl font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                           <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={periodData?.stats.penalties.home} onDelete={(id) => handleDeletePenalty('home', {id} as PenaltyLog, periodText)} onAdd={() => handleAddPenaltyClick('home', periodText)} />
-                           <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={periodData?.stats.penalties.away} onDelete={(id) => handleDeletePenalty('away', {id} as PenaltyLog, periodText)} onAdd={() => handleAddPenaltyClick('away', periodText)} />
+                           <PenaltiesSection team="home" teamName={homeTeam?.name || ''} penalties={periodData?.stats.penalties.home} onDelete={(id) => handleDeletePenalty('home', {id} as PenaltyLog, periodText)} onAdd={isReadOnly ? undefined : () => handleAddPenaltyClick('home', periodText)} />
+                           <PenaltiesSection team="away" teamName={awayTeam?.name || ''} penalties={periodData?.stats.penalties.away} onDelete={(id) => handleDeletePenalty('away', {id} as PenaltyLog, periodText)} onAdd={isReadOnly ? undefined : () => handleAddPenaltyClick('away', periodText)} />
                         </div>
                       </div>
                     );
@@ -417,18 +419,20 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
           
           <TabsContent value="statsByPeriod" className="flex-grow overflow-hidden mt-4">
              <ScrollArea className="h-full pr-6 -mr-6">
-                <div className="flex justify-end pr-2 mb-4">
-                    {isEditing ? (
-                        <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveShotsClick}><Check className="h-5 w-5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><XCircle className="h-5 w-5" /></Button>
-                        </div>
-                    ) : (
-                        <Button variant="outline" size="sm" onClick={e => {e.stopPropagation(); handleEditClick();}}>
-                            <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
-                        </Button>
-                    )}
-                </div>
+                {!isReadOnly && (
+                    <div className="flex justify-end pr-2 mb-4">
+                        {isEditing ? (
+                            <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveShotsClick}><Check className="h-5 w-5" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><XCircle className="h-5 w-5" /></Button>
+                            </div>
+                        ) : (
+                            <Button variant="outline" size="sm" onClick={e => {e.stopPropagation(); handleEditClick();}}>
+                                <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
+                            </Button>
+                        )}
+                    </div>
+                )}
                  <div className="space-y-8">
                   {(playedPeriods || []).map(periodText => {
                     const periodData = statsByPeriod?.find(p => p.period === periodText);
@@ -436,8 +440,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                       <div key={`stats-${periodText}`} className="space-y-4">
                         <h3 className="text-xl font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <PlayerStatsSection team="home" teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={periodData?.stats.playerStats.home} attendance={localSummary.attendance.home} editable={isEditing} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
-                            <PlayerStatsSection team="away" teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={periodData?.stats.playerStats.away} attendance={localSummary.attendance.away} editable={isEditing} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
+                            <PlayerStatsSection team="home" teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={periodData?.stats.playerStats.home} attendance={localSummary.attendance.home} editable={isEditing && !isReadOnly} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
+                            <PlayerStatsSection team="away" teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={periodData?.stats.playerStats.away} attendance={localSummary.attendance.away} editable={isEditing && !isReadOnly} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
                         </div>
                       </div>
                     );
@@ -449,9 +453,9 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
 
         <DialogFooter className="border-t pt-4 mt-auto">
           <DialogClose asChild>
-            <Button type="button" variant="outline"><X className="mr-2 h-4 w-4" />Cancelar</Button>
+            <Button type="button" variant="outline"><X className="mr-2 h-4 w-4" />Cerrar</Button>
           </DialogClose>
-          <Button type="button" onClick={handleSaveAllChanges}><Check className="mr-2 h-4 w-4" />Guardar Cambios</Button>
+          {!isReadOnly && <Button type="button" onClick={handleSaveAllChanges}><Check className="mr-2 h-4 w-4" />Guardar Cambios</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>
