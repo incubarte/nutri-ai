@@ -67,11 +67,6 @@
         "name": "BAZZI LUCIANO"
       },
       {
-        "id": "7d6faaec-a2af-46d1-9b9e-ce57c936d659",
-        "number": "7",
-        "name": "MORAN FERNANDO"
-      },
-      {
         "id": "530da999-562f-4550-a027-c706f50e0905",
         "number": "35",
         "name": "WINSNES FEDERICO"
@@ -206,11 +201,43 @@
       "stats": {
         "goals": {
           "home": [],
-          "away": []
+          "away": [
+            {
+              "id": "new-b184f621-4027-4887-b0f3-d99cbddfb341",
+              "team": "home",
+              "timestamp": 0,
+              "gameTime": 0,
+              "periodText": "",
+              "scorer": {
+                "playerNumber": "50",
+                "playerName": "PINELA FACUNDO JOAQUIN"
+              },
+              "assist": {
+                "playerNumber": "",
+                "playerName": "RUBEN JUNIOR ESPOSITO VIGO"
+              }
+            }
+          ]
         },
         "penalties": {
           "home": [],
-          "away": []
+          "away": [
+            {
+              "id": "manual-131e358e-7878-48df-9074-82ec8a3dd861",
+              "team": "away",
+              "playerNumber": "55",
+              "penaltyName": "Menor",
+              "initialDuration": 120,
+              "reducesPlayerCount": true,
+              "clearsOnGoal": true,
+              "isBenchPenalty": false,
+              "addTimestamp": 1762304767589,
+              "addGameTime": 0,
+              "addPeriodText": "1ST",
+              "endReason": "completed",
+              "timeServed": 120
+            }
+          ]
         },
         "playerStats": {
           "home": [
@@ -380,7 +407,7 @@
               "id": "60eb5889-97f8-4c97-83db-9aa95e27aa71",
               "name": "LUDOVICO AGUSTIN JOSE",
               "number": "10",
-              "shots": 0,
+              "shots": 2,
               "goals": 0,
               "assists": 0
             },
@@ -420,7 +447,7 @@
               "id": "12f0ed70-d52e-4169-8889-3eeb42a5670f",
               "name": "SOLIMANO BRIAN",
               "number": "6",
-              "shots": 0,
+              "shots": 4,
               "goals": 0,
               "assists": 0
             },
@@ -751,7 +778,7 @@
               "id": "12f0ed70-d52e-4169-8889-3eeb42a5670f",
               "name": "SOLIMANO BRIAN",
               "number": "6",
-              "shots": 0,
+              "shots": 2,
               "goals": 0,
               "assists": 0
             },
