@@ -43,11 +43,13 @@ export default function ManageTeamPage() {
   useEffect(() => {
     if (teamId) {
       for (const t of (state.config.tournaments || [])) {
-        const foundTeam = t.teams.find(tm => tm.id === teamId);
-        if (foundTeam) {
-          setTeam(foundTeam);
-          setTournament(t);
-          break;
+        if (t.teams) { // Check if the teams array exists
+          const foundTeam = t.teams.find(tm => tm.id === teamId);
+          if (foundTeam) {
+            setTeam(foundTeam);
+            setTournament(t);
+            break;
+          }
         }
       }
     }
