@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useGameState } from "@/contexts/game-state-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,12 +33,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Trophy, PlusCircle, Edit, Trash2, Info } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Trophy, PlusCircle, Edit, Trash2, Info, Loader2 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Tournament } from "@/types";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
+import { useRouter } from 'next/navigation';
+
 
 const statusMap: Record<Tournament['status'], { text: string; className: string }> = {
   active: { text: "Activo", className: "bg-green-600 hover:bg-green-700" },
@@ -158,11 +159,22 @@ function CreateEditTournamentDialog({
 export default function TournamentsPage() {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
+  const router = useRouter();
   const [isCreateEditDialogOpen, setIsCreateEditDialogOpen] = useState(false);
   const [tournamentToEdit, setTournamentToEdit] = useState<Tournament | null>(null);
   const [tournamentToDelete, setTournamentToDelete] = useState<Tournament | null>(null);
+  const [isLoadingTournament, setIsLoadingTournament] = useState<string | null>(null);
 
   const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
+
+  const tournaments = useMemo(() => {
+    const allTournaments = state.config.tournaments || [];
+    if (isReadOnly) {
+      return allTournaments.filter(t => t.status === 'active' || t.status === 'finished');
+    }
+    return allTournaments;
+  }, [state.config.tournaments, isReadOnly]);
+
 
   const handleEdit = (tournament: Tournament) => {
     setTournamentToEdit(tournament);
@@ -171,6 +183,11 @@ export default function TournamentsPage() {
 
   const handleDelete = (tournament: Tournament) => {
     setTournamentToDelete(tournament);
+  };
+  
+  const handleTournamentClick = (tournamentId: string) => {
+    setIsLoadingTournament(tournamentId);
+    router.push(`/tournaments/${tournamentId}`);
   };
 
   const confirmDelete = () => {
@@ -185,7 +202,6 @@ export default function TournamentsPage() {
     }
   };
 
-  const tournaments = state.config.tournaments || [];
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8 py-10">
@@ -210,24 +226,33 @@ export default function TournamentsPage() {
           </div>
         ) : (
           tournaments.map((tournament) => (
-            <Card key={tournament.id}>
+            <Card 
+              key={tournament.id}
+              className={cn("hover:shadow-lg transition-shadow cursor-pointer", isLoadingTournament === tournament.id && "animate-pulse")}
+              onClick={() => handleTournamentClick(tournament.id)}
+            >
               <CardContent className="p-4 flex justify-between items-center">
-                <Link href={`/tournaments/${tournament.id}`} className="flex flex-col hover:text-accent-foreground transition-colors">
+                <div className="flex flex-col">
                   <span className="font-semibold text-lg text-card-foreground">{tournament.name}</span>
                    <Badge className={cn("w-fit", statusMap[tournament.status]?.className)}>
                     {statusMap[tournament.status]?.text || tournament.status}
                   </Badge>
-                </Link>
-                {!isReadOnly && (
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="icon" onClick={() => handleEdit(tournament)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="destructive" size="icon" onClick={() => handleDelete(tournament)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                </div>
+                <div className="flex items-center gap-2">
+                    {isLoadingTournament === tournament.id && (
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    )}
+                    {!isReadOnly && (
+                        <>
+                            <Button variant="outline" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(tournament); }}>
+                            <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="destructive" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(tournament); }}>
+                            <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </>
+                    )}
+                </div>
               </CardContent>
             </Card>
           ))
