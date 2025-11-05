@@ -196,7 +196,7 @@ export function FixtureCalendarView() {
 
                     return (
                       <div 
-                        key={match.id} 
+                        key={match.id}
                         className={cn(
                           "text-xs p-1 rounded-md bg-background/50 border border-border/50 transition-all duration-300",
                           !isHighlighted && "opacity-30"
