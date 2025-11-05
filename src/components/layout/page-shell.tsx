@@ -11,6 +11,7 @@ export function PageShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   // Check if the current page is one of the isolated mobile views
   const isIsolatedMobilePage = pathname === '/mobile' || pathname.startsWith('/mobile-controls');
+  const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
 
   if (isIsolatedMobilePage) {
     // For mobile pages, provide a simple main wrapper without the header and sound
@@ -25,7 +26,7 @@ export function PageShell({ children }: { children: ReactNode }) {
   return (
     <>
       <SoundPlayer />
-      <Header />
+      {!isReadOnly && <Header />}
       <MainWrapper>
         {children}
       </MainWrapper>
