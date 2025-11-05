@@ -1620,12 +1620,24 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_TEAM_TO_TOURNAMENT': {
         const { tournamentId, team } = action.payload;
-        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === tournamentId ? { ...t, teams: [...t.teams, { ...team, id: team.id || safeUUID() }] } : t) } };
+        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => {
+            if (t.id === tournamentId) {
+                const newTeams = [...(t.teams || []), { ...team, id: team.id || safeUUID() }];
+                return { ...t, teams: newTeams };
+            }
+            return t;
+        }) } };
         break;
     }
     case 'DELETE_TEAMS_FROM_TOURNAMENT': {
         const { tournamentId, teamIds } = action.payload;
-         newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => t.id === tournamentId ? { ...t, teams: t.teams.filter(team => !teamIds.includes(team.id)) } : t) } };
+         newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => {
+            if (t.id === tournamentId) {
+                if (!t.teams) return t;
+                return { ...t, teams: t.teams.filter(team => !teamIds.includes(team.id)) };
+            }
+            return t;
+         })}};
         break;
     }
     case 'UPDATE_TEAM_DETAILS': {
@@ -1650,7 +1662,17 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PLAYER_TO_TEAM': {
       const { teamId, player } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => ({ ...t, teams: t.teams.map(team => team.id === teamId ? { ...team, players: [...team.players, { ...player, id: safeUUID() }] } : team) })) } };
+      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => {
+        if (!t.teams) return t;
+        return {
+          ...t,
+          teams: t.teams.map(team =>
+            team.id === teamId
+              ? { ...team, players: [...(team.players || []), { ...player, id: safeUUID() }] }
+              : team
+          )
+        };
+      })}};
       toastMessage = { title: "Jugador Añadido", description: `Jugador ${player.number ? `#${player.number} ` : ''}${player.name} añadido.` };
       break;
     }
@@ -2074,6 +2096,7 @@ export { createDefaultFormatAndTimingsProfile, createDefaultScoreboardLayoutProf
     
 
     
+
 
 
 
