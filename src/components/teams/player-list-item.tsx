@@ -66,9 +66,17 @@ export function PlayerListItem({ player, teamId, onRemovePlayer }: PlayerListIte
           toast({ title: "Número Inválido", description: "El número solo debe contener dígitos si se proporciona.", variant: "destructive" });
           return;
         }
-        const currentTeam = state.config.teams.find(t => t.id === teamId);
+        
+        // Correctly find the tournament and then the team
+        const tournamentWithTeam = (state.config.tournaments || []).find(t => t.teams.some(tm => tm.id === teamId));
+        const currentTeam = tournamentWithTeam?.teams.find(t => t.id === teamId);
+
         if (currentTeam && currentTeam.players.some(p => p.id !== player.id && p.number === trimmedNumber)) {
-          toast({ title: "Número Duplicado", description: `El número #${trimmedNumber} ya existe en este equipo.`, variant: "destructive" });
+          toast({
+            title: "Número de Jugador Duplicado",
+            description: `El número #${trimmedNumber} ya existe en este equipo.`,
+            variant: "destructive",
+          });
           return;
         }
     }
