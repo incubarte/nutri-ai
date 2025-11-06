@@ -1,0 +1,14 @@
+# Opciones válidas:
+#   - local: Lee y escribe archivos directamente en la carpeta /src/data del proyecto.
+#   - googledrive: (No implementado) Usaría Google Drive como base de datos principal.
+#   - googledrive_override: Lee desde los archivos locales para velocidad, pero sincroniza periódicamente desde Google Drive en segundo plano. Las escrituras están deshabilitadas.
+STORAGE_PROVIDER=googledrive_override
+
+# El ID de la carpeta raíz en Google Drive que contiene los datos de la aplicación (config.json, live.json, carpeta tournaments).
+GOOGLE_DRIVE_FOLDER_ID=1SKZbrlozaDNLgKx_yDTbFgDrp7_FHhR9
+
+# Define el intervalo en minutos para la sincronización en segundo plano cuando se usa el modo 'googledrive_override'.
+GOOGLE_DRIVE_SYNC_INTERVAL_MINUTES=20
+
+# Poner en 'true' para deshabilitar todas las páginas de edición y controles, útil para mostrar solo el scoreboard.
+NEXT_PUBLIC_READ_ONLY=true

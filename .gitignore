@@ -29,6 +29,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+/src/data/sync.log
 
 # vercel
 .vercel
@@ -43,3 +44,6 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.log
+
+env_drive_credentials.json
+src/data
