@@ -27,6 +27,7 @@ async function getDriveClient(): Promise<drive_v3.Drive> {
 // --- File System Operations ---
 async function writeSyncLog(message: string): Promise<void> {
     try {
+        await fs.mkdir(path.dirname(SYNC_LOG_PATH), { recursive: true });
         const timestamp = new Date().toISOString();
         await fs.appendFile(SYNC_LOG_PATH, `${timestamp} - ${message}\n`);
     } catch (error) {
@@ -38,10 +39,13 @@ async function writeSyncLog(message: string): Promise<void> {
 
 async function downloadAndSaveFile(drive: drive_v3.Drive, fileId: string, localPath: string): Promise<void> {
     await fs.mkdir(path.dirname(localPath), { recursive: true });
-    
     try {
-        const res = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'arraybuffer' });
-        // The type assertion is safe here because we requested arraybuffer
+        // Request the file content as an ArrayBuffer directly. NO STREAMS.
+        const res = await drive.files.get(
+            { fileId: fileId, alt: 'media' },
+            { responseType: 'arraybuffer' }
+        );
+        // The type assertion is safe here because we requested arraybuffer.
         const buffer = Buffer.from(res.data as ArrayBuffer);
         await fs.writeFile(localPath, buffer);
     } catch (err) {
@@ -101,11 +105,10 @@ async function runSync() {
         const versionFile = versionFileRes.data.files?.[0];
         if (versionFile?.id) {
             const res = await drive.files.get({ fileId: versionFile.id, alt: 'media' });
-            // The data is a string or buffer, no need for complex stream handling
             const versionContent = res.data.toString();
             remoteVersion = parseInt(versionContent.trim(), 10) || 0;
         } else {
-            await writeSyncLog("Remote version file not found, assuming remote is newer.");
+            await writeSyncLog("Remote version file not found, forcing sync.");
             console.log("[SyncProcess] Remote version file 'lastSyncVersion.log' not found in Drive. Forcing sync.");
             remoteVersion = Number.MAX_SAFE_INTEGER;
         }
