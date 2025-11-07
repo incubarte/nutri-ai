@@ -84,9 +84,10 @@ async function runSync() {
     console.log('[SyncProcess] Starting sync from Google Drive...');
     
     const tempsRoot = path.join(STORAGE_DIR, '_temps');
-    const tempDir = path.join(tempsRoot, `_temp_sync_${Date.now()}`);
+    let tempDir: string | null = null;
 
     try {
+        tempDir = path.join(tempsRoot, `_temp_sync_${Date.now()}`);
         await fs.mkdir(tempDir, { recursive: true });
 
         const drive = await getDriveClient();
@@ -120,6 +121,7 @@ async function runSync() {
             const message = `Sync skipped: Remote version (${remoteVersion}) is not newer than local version (${localVersion}).`;
             console.log(`[SyncProcess] ${message}`);
             await writeSyncLog(message);
+            // No return here, let it fall through to finally for cleanup.
         } else {
             console.log(`[SyncProcess] Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
             await writeSyncLog(`Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
@@ -180,7 +182,11 @@ async function runSync() {
         console.error('[SyncProcess] Sync process failed:', error);
     } finally {
         // Clean up the temporary directory regardless of success or failure
-        await fs.rm(tempDir, { recursive: true, force: true }).catch(err => console.error(`[SyncProcess] Failed to clean up temp directory: ${err}`));
+        if (tempDir) {
+            console.log(`[SyncProcess] Cleaning up temporary directory: ${tempDir}`);
+            await fs.rm(tempDir, { recursive: true, force: true }).catch(err => console.error(`[SyncProcess] Failed to clean up temp directory: ${err}`));
+            console.log(`[SyncProcess] Cleanup finished.`);
+        }
     }
 }
 
@@ -209,7 +215,10 @@ export function startBackgroundSync(): void {
     const intervalMs = intervalMinutes * 60 * 1000;
 
     const syncAndRelease = async () => {
-        if (isSyncing) return;
+        if (isSyncing) {
+            console.log("[SyncProcess] Sync cycle skipped: previous sync still in progress.");
+            return;
+        }
         isSyncing = true;
         try {
             await runSync();
@@ -234,15 +243,18 @@ export async function triggerManualSync(): Promise<{ message: string, status: 's
         return { message, status: 'busy' };
     }
 
-    // Run sync in the background, don't await it here
-    (async () => {
+    // Run sync in the background, don't await it here.
+    // The syncAndRelease wrapper prevents concurrent runs.
+    const syncAndRelease = async () => {
+        if (isSyncing) return;
         isSyncing = true;
         try {
             await runSync();
         } finally {
             isSyncing = false;
         }
-    })();
+    };
+    syncAndRelease();
     
     const message = "Manual sync process has been initiated.";
     console.log(`[SyncProcess] ${message}`);
