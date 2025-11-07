@@ -91,7 +91,7 @@ export async function readConfig(): Promise<Partial<ConfigState>> {
 
 export async function writeConfig(config: ConfigState): Promise<void> {
     await writeJsonFile(CONFIG_PATH, config);
-    await incrementVersion();
+    // No incrementar versión aquí para evitar inflación por cambios menores.
 }
 
 export async function readLiveState(): Promise<Partial<LiveState>> {
@@ -100,7 +100,7 @@ export async function readLiveState(): Promise<Partial<LiveState>> {
 
 export async function writeLiveState(liveState: LiveState): Promise<void> {
     await writeJsonFile(LIVE_STATE_PATH, liveState);
-    await incrementVersion();
+    // No incrementar versión aquí para evitar inflación durante un partido.
 }
 
 export async function readTournament(tournamentId: string): Promise<Partial<Tournament> | null> {
