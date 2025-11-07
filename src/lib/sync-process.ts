@@ -27,7 +27,6 @@ async function getDriveClient(): Promise<drive_v3.Drive> {
 // --- File System Operations ---
 async function writeSyncLog(message: string): Promise<void> {
     try {
-        await fs.mkdir(path.dirname(SYNC_LOG_PATH), { recursive: true });
         const timestamp = new Date().toISOString();
         await fs.appendFile(SYNC_LOG_PATH, `${timestamp} - ${message}\n`);
     } catch (error) {
@@ -39,19 +38,19 @@ async function writeSyncLog(message: string): Promise<void> {
 
 async function downloadAndSaveFile(drive: drive_v3.Drive, fileId: string, localPath: string): Promise<void> {
     await fs.mkdir(path.dirname(localPath), { recursive: true });
-    const dest = require('fs').createWriteStream(localPath);
-    const res = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' });
-    
-    return new Promise((resolve, reject) => {
-        res.data
-            .on('end', () => resolve())
-            .on('error', (err: any) => {
-                console.error(`[SyncProcess] Error downloading ${path.basename(localPath)}:`, err);
-                reject(err);
-            })
-            .pipe(dest);
-    });
+    try {
+        const res = await drive.files.get(
+            { fileId: fileId, alt: 'media' },
+            { responseType: 'arraybuffer' }
+        );
+        const buffer = Buffer.from(res.data as ArrayBuffer);
+        await fs.writeFile(localPath, buffer);
+    } catch (err) {
+        console.error(`[SyncProcess] Error downloading ${path.basename(localPath)}:`, err);
+        throw err;
+    }
 }
+
 
 async function syncFolder(drive: drive_v3.Drive, folderId: string, localFolderPath: string): Promise<void> {
     await fs.mkdir(localFolderPath, { recursive: true });
@@ -103,12 +102,13 @@ async function runSync() {
         const versionFile = versionFileRes.data.files?.[0];
         if (versionFile?.id) {
             const res = await drive.files.get({ fileId: versionFile.id, alt: 'media' });
-            const versionContent = await streamToString(res.data);
+            // Directly use res.data which should be a string or can be converted.
+            const versionContent = res.data.toString();
             remoteVersion = parseInt(versionContent.trim(), 10) || 0;
         } else {
             await writeSyncLog("Remote version file not found, forcing sync.");
             console.log("[SyncProcess] Remote version file 'lastSyncVersion.log' not found in Drive. Forcing sync.");
-            remoteVersion = Number.MAX_SAFE_INTEGER; // Force sync if remote version file doesn't exist
+            remoteVersion = Number.MAX_SAFE_INTEGER;
         }
 
         const localVersion = await localProvider.readVersion();
@@ -124,8 +124,8 @@ async function runSync() {
         console.log(`[SyncProcess] Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
         await writeSyncLog(`Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
 
-        // 2. Sync Files to Temporary Directory (in project root)
-        const TEMP_DATA_DIR = path.join(tempDir, 'src/data'); // Replicate the final structure
+        // 2. Sync Files to Temporary Directory
+        const TEMP_DATA_DIR = path.join(tempDir, 'src/data');
         await fs.mkdir(TEMP_DATA_DIR, { recursive: true });
         
         const rootFilesRes = await drive.files.list({
@@ -165,6 +165,9 @@ async function runSync() {
         if (versionFile?.id) {
              const finalVersionPath = path.join(process.cwd(), 'lastSyncVersion.log');
              await downloadAndSaveFile(drive, versionFile.id, finalVersionPath);
+        } else {
+             const finalVersionPath = path.join(process.cwd(), 'lastSyncVersion.log');
+             await fs.rm(finalVersionPath, {force: true}).catch(()=>{});
         }
 
         await writeSyncLog("Sync completed successfully.");
@@ -178,16 +181,6 @@ async function runSync() {
         // Clean up the temporary directory regardless of success or failure
         await fs.rm(tempDir, { recursive: true, force: true }).catch(err => console.error(`[SyncProcess] Failed to clean up temp directory: ${err}`));
     }
-}
-
-// Helper to read a stream to a string
-function streamToString(stream: any): Promise<string> {
-  const chunks: Buffer[] = [];
-  return new Promise((resolve, reject) => {
-    stream.on('data', (chunk: any) => chunks.push(Buffer.from(chunk)));
-    stream.on('error', (err: any) => reject(err));
-    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-  });
 }
 
 
