@@ -4,9 +4,19 @@ import path from 'path';
 import type { ConfigState, LiveState, MatchData, Tournament } from '@/types';
 
 // Use a function to resolve the path at runtime, ensuring process.env is loaded.
-const getStorageDir = () => process.env.STORAGE_PATH
-  ? path.resolve(process.env.STORAGE_PATH)
-  : path.join(process.cwd(), 'storage');
+const getStorageDir = (): string => {
+  const storagePath = process.env.STORAGE_PATH;
+  if (storagePath) {
+    // Check if the path is absolute. If so, use it directly. Otherwise, join it with the current working directory.
+    if (path.isAbsolute(storagePath)) {
+      return storagePath;
+    }
+    return path.join(process.cwd(), storagePath);
+  }
+  // Default to './storage' in the project root if the env var is not set.
+  return path.join(process.cwd(), 'storage');
+};
+
 
 // Functions to get paths dynamically
 const getDataDir = () => path.join(getStorageDir(), 'data');

@@ -12,11 +12,7 @@ import { z } from 'genkit';
 import fs from 'fs/promises';
 import path from 'path';
 import type { GameSummary } from '@/types';
-
-// Use a function to resolve the path at runtime, ensuring process.env is loaded.
-const getStorageDir = () => process.env.STORAGE_PATH
-  ? path.resolve(process.env.STORAGE_PATH)
-  : path.join(process.cwd(), 'storage');
+import { getStorageDir } from '@/lib/storage/local-provider';
 
 
 // --- Save Full Game Summary (JSON) ---
