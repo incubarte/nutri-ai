@@ -1,5 +1,10 @@
 
 import * as localProvider from './local-provider';
+import { startBackgroundSync } from '@/lib/sync-process';
+
+const globalForSync = globalThis as unknown as {
+  syncStarted: boolean | undefined;
+};
 
 // --- READ OPERATIONS ---
 // All read operations are delegated to the local provider for speed.
@@ -10,14 +15,20 @@ export const readTournament = localProvider.readTournament;
 
 // --- WRITE OPERATIONS ---
 // Write operations are disabled in this mode. They do nothing.
-
 const noOpWrite = async (entity?: any) => {
-    if (process.env.NODE_ENV === 'development') {
-        // console.log(`[GoogleDriveOverride] Write operation for ${entity ? entity.constructor.name : 'unknown entity'} was ignored.`);
-    }
+    // This function intentionally does nothing.
     return Promise.resolve();
 };
 
 export const writeConfig = async (config: any) => noOpWrite(config);
 export const writeLiveState = async (liveState: any) => noOpWrite(liveState);
 export const writeTournament = async (tournament: any) => noOpWrite(tournament);
+
+
+// --- BACKGROUND SYNC INITIALIZATION ---
+// This code runs once when the module is first imported by the server.
+if (!globalForSync.syncStarted) {
+    console.log("[GoogleDriveOverride] Initializing background sync process...");
+    startBackgroundSync();
+    globalForSync.syncStarted = true;
+}

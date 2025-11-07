@@ -15,9 +15,8 @@ switch (provider) {
             console.log("Using 'googledrive_override' storage provider.");
             console.log("-> Reads will be from local disk.");
             console.log("-> Writes are disabled.");
-            console.log("-> Background sync from Google Drive is active (managed by server-side-store).");
+            console.log("-> Background sync from Google Drive is active.");
             selectedProvider = gdriveOverrideProvider;
-            // La sincronización ahora es iniciada por server-side-store.ts
         } else {
              console.log("Using 'googledrive_override' but not in read-only mode. Falling back to local provider.");
              selectedProvider = localProvider;

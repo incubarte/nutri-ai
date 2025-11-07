@@ -5,7 +5,6 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import localtunnel, { type Tunnel } from 'localtunnel';
-import { startBackgroundSync } from '@/lib/sync-process';
 
 let storedConfig: ConfigState | null = null;
 let storedGameState: LiveGameState | null = null;
@@ -56,7 +55,6 @@ const globalForEmitters = globalThis as unknown as {
   gameStateEmitter: EventEmitter | undefined;
   commandEmitter: EventEmitter | undefined;
   tunnelInstance: Tunnel | undefined;
-  syncStarted: boolean | undefined;
 };
 
 export const gameStateEmitter =
@@ -69,17 +67,6 @@ if (process.env.NODE_ENV !== 'production') {
   globalForEmitters.gameStateEmitter = gameStateEmitter;
   globalForEmitters.commandEmitter = commandEmitter;
 }
-
-// --- Sync Process Initialization ---
-if (
-    process.env.STORAGE_PROVIDER === 'googledrive_override' &&
-    process.env.NEXT_PUBLIC_READ_ONLY === 'true' &&
-    !globalForEmitters.syncStarted
-) {
-    globalForEmitters.syncStarted = true;
-    startBackgroundSync();
-}
-// --- End Sync Process Initialization ---
 
 export function getConfig(): ConfigState | null {
   return storedConfig;
