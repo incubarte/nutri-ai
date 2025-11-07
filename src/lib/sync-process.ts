@@ -101,13 +101,13 @@ async function runSync() {
         
         let remoteVersion = 0;
         const versionFile = versionFileRes.data.files?.[0];
+
         if (versionFile?.id) {
             // Read version file content directly as text. NO STREAMS.
             const res = await drive.files.get({ fileId: versionFile.id, alt: 'media' });
             const versionContent = String(res.data);
             remoteVersion = parseInt(versionContent.trim(), 10) || 0;
         } else {
-            // If the file doesn't exist on Drive, we force a sync.
             await writeSyncLog("Remote version file not found, forcing sync.");
             console.log("[SyncProcess] Remote version file 'lastSyncVersion.log' not found in Drive. Forcing sync.");
             remoteVersion = Number.MAX_SAFE_INTEGER;
