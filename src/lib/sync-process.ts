@@ -27,6 +27,7 @@ async function getDriveClient(): Promise<drive_v3.Drive> {
 // --- File System Operations ---
 async function writeSyncLog(message: string): Promise<void> {
     try {
+        await fs.mkdir(path.dirname(SYNC_LOG_PATH), { recursive: true });
         const timestamp = new Date().toISOString();
         await fs.appendFile(SYNC_LOG_PATH, `${timestamp} - ${message}\n`);
     } catch (error) {
@@ -102,8 +103,8 @@ async function runSync() {
         const versionFile = versionFileRes.data.files?.[0];
         if (versionFile?.id) {
             const res = await drive.files.get({ fileId: versionFile.id, alt: 'media' });
-            // Directly use res.data which should be a string or can be converted.
-            const versionContent = res.data.toString();
+            // The response for a text file is directly the content string.
+            const versionContent = String(res.data);
             remoteVersion = parseInt(versionContent.trim(), 10) || 0;
         } else {
             await writeSyncLog("Remote version file not found, forcing sync.");
