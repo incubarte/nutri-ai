@@ -6,7 +6,6 @@ import type { drive_v3 } from 'googleapis';
 import { readVersion, getStorageDir } from './storage/local-provider';
 
 const KEYFILE_PATH = path.join(process.cwd(), 'env_drive_credentials.json');
-const SYNC_LOG_PATH = path.join(getStorageDir(), 'sync.log');
 const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 
 // --- Google Drive API Client Setup ---
@@ -26,10 +25,11 @@ async function getDriveClient(): Promise<drive_v3.Drive> {
 
 // --- File System Operations ---
 async function writeSyncLog(message: string): Promise<void> {
+    const syncLogPath = path.join(getStorageDir(), 'sync.log');
     try {
-        await fs.mkdir(path.dirname(SYNC_LOG_PATH), { recursive: true });
+        await fs.mkdir(path.dirname(syncLogPath), { recursive: true });
         const timestamp = new Date().toISOString();
-        await fs.appendFile(SYNC_LOG_PATH, `${timestamp} - ${message}\n`);
+        await fs.appendFile(syncLogPath, `${timestamp} - ${message}\n`);
     } catch (error) {
         console.error("[SyncProcess] Error writing to sync.log:", error);
     }
@@ -82,11 +82,11 @@ async function runSync() {
     await writeSyncLog("Sync initialized");
     console.log('[SyncProcess] Starting sync from Google Drive...');
     
-    const storageDir = getStorageDir();
-    const tempsRoot = path.join(storageDir, '_temps');
     let tempDir: string | null = null;
 
     try {
+        const storageDir = getStorageDir();
+        const tempsRoot = path.join(storageDir, '_temps');
         tempDir = path.join(tempsRoot, `_temp_sync_${Date.now()}`);
         await fs.mkdir(tempDir, { recursive: true });
         console.log(`[SyncProcess] Created temporary directory: ${tempDir}`);
