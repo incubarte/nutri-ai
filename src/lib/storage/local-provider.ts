@@ -8,6 +8,8 @@ const DATA_DIR = path.join(process.cwd(), 'src/data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 const LIVE_STATE_PATH = path.join(DATA_DIR, 'live.json');
 const TOURNAMENTS_DIR = path.join(DATA_DIR, 'tournaments');
+const VERSION_FILE_PATH = path.join(DATA_DIR, 'lastSyncVersion.log');
+
 
 /**
  * Lee y parsea un archivo JSON de una ruta dada.
@@ -43,6 +45,44 @@ async function writeJsonFile(filePath: string, data: any): Promise<void> {
     }
 }
 
+// --- Versioning Functions ---
+
+/**
+ * Reads the current data version from lastSyncVersion.log.
+ * @returns The current version number, or 0 if the file doesn't exist.
+ */
+export async function readVersion(): Promise<number> {
+    try {
+        const data = await fs.readFile(VERSION_FILE_PATH, 'utf-8');
+        const version = parseInt(data.trim(), 10);
+        return isNaN(version) ? 0 : version;
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            return 0; // File doesn't exist, so version is 0.
+        }
+        console.error(`Error reading version file:`, error);
+        return 0; // Return 0 on any other read error.
+    }
+}
+
+/**
+ * Increments the data version in lastSyncVersion.log.
+ */
+async function incrementVersion(): Promise<void> {
+    if (process.env.STORAGE_PROVIDER === 'googledrive_override') {
+        // In this mode, local changes should not increment the version,
+        // as local is a read-only mirror. The version is only updated by the sync process.
+        return;
+    }
+    try {
+        const currentVersion = await readVersion();
+        const newVersion = currentVersion + 1;
+        await fs.writeFile(VERSION_FILE_PATH, String(newVersion), 'utf-8');
+    } catch (error) {
+        console.error(`Error incrementing version file:`, error);
+    }
+}
+
 // --- Funciones exportadas del proveedor local ---
 
 export async function readConfig(): Promise<Partial<ConfigState>> {
@@ -51,6 +91,7 @@ export async function readConfig(): Promise<Partial<ConfigState>> {
 
 export async function writeConfig(config: ConfigState): Promise<void> {
     await writeJsonFile(CONFIG_PATH, config);
+    await incrementVersion();
 }
 
 export async function readLiveState(): Promise<Partial<LiveState>> {
@@ -59,6 +100,7 @@ export async function readLiveState(): Promise<Partial<LiveState>> {
 
 export async function writeLiveState(liveState: LiveState): Promise<void> {
     await writeJsonFile(LIVE_STATE_PATH, liveState);
+    await incrementVersion();
 }
 
 export async function readTournament(tournamentId: string): Promise<Partial<Tournament> | null> {
@@ -146,6 +188,8 @@ export async function writeTournament(tournament: Tournament): Promise<void> {
             writeJsonFile(fixtureFilePath, fixtureData),
             ...summaryWritePromises,
         ]);
+
+        await incrementVersion();
 
     } catch (error) {
          console.error(`Error al escribir los archivos del torneo ${tournament.id}:`, error);

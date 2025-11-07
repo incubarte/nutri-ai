@@ -3,6 +3,7 @@ import { google } from 'googleapis';
 import { promises as fs } from 'fs';
 import path from 'path';
 import type { drive_v3 } from 'googleapis';
+import * as localProvider from './storage/local-provider';
 
 const KEYFILE_PATH = path.join(process.cwd(), 'env_drive_credentials.json');
 const DATA_DIR = path.join(process.cwd(), 'src/data');
@@ -25,21 +26,9 @@ async function getDriveClient(): Promise<drive_v3.Drive> {
 }
 
 // --- File System Operations ---
-async function clearDirectory(directory: string): Promise<void> {
-    try {
-        const files = await fs.readdir(directory);
-        for (const file of files) {
-            await fs.unlink(path.join(directory, file));
-        }
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-            console.error(`[SyncProcess] Error clearing directory ${directory}:`, error);
-        }
-    }
-}
-
 async function writeSyncLog(message: string): Promise<void> {
     try {
+        await fs.mkdir(DATA_DIR, { recursive: true });
         const timestamp = new Date().toISOString();
         await fs.appendFile(SYNC_LOG_PATH, `${timestamp} - ${message}\n`);
     } catch (error) {
@@ -57,7 +46,6 @@ async function downloadAndSaveFile(drive: drive_v3.Drive, fileId: string, localP
         const fileStream = require('fs').createWriteStream(localPath);
         res.data
             .on('end', () => {
-                // console.log(`[SyncProcess] Downloaded ${path.basename(localPath)}`);
                 resolve();
             })
             .on('error', (err: any) => {
@@ -67,7 +55,6 @@ async function downloadAndSaveFile(drive: drive_v3.Drive, fileId: string, localP
             .pipe(fileStream);
     });
 }
-
 
 async function syncFolder(drive: drive_v3.Drive, folderId: string, localFolderPath: string): Promise<void> {
     await fs.mkdir(localFolderPath, { recursive: true });
@@ -94,8 +81,8 @@ async function syncFolder(drive: drive_v3.Drive, folderId: string, localFolderPa
 
 
 async function runSync() {
-    console.log('[SyncProcess] Starting sync from Google Drive...');
     await writeSyncLog("Sync initialized");
+    console.log('[SyncProcess] Starting sync from Google Drive...');
     try {
         const drive = await getDriveClient();
         const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
@@ -103,6 +90,33 @@ async function runSync() {
             throw new Error("GOOGLE_DRIVE_FOLDER_ID is not set in environment variables.");
         }
 
+        // 1. Version Check
+        const versionFileRes = await drive.files.list({
+            q: `'${rootFolderId}' in parents and name='lastSyncVersion.log' and trashed=false`,
+            fields: 'files(id, name)',
+        });
+        
+        let remoteVersion = 0;
+        const versionFile = versionFileRes.data.files?.[0];
+        if (versionFile?.id) {
+            const res = await drive.files.get({ fileId: versionFile.id, alt: 'media' });
+            const versionContent = await streamToString(res.data);
+            remoteVersion = parseInt(versionContent.trim(), 10) || 0;
+        }
+
+        const localVersion = await localProvider.readVersion();
+
+        if (remoteVersion <= localVersion) {
+            const message = `Sync skipped: Remote version (${remoteVersion}) is not newer than local version (${localVersion}).`;
+            console.log(`[SyncProcess] ${message}`);
+            await writeSyncLog(message);
+            return; // Abort sync
+        }
+
+        console.log(`[SyncProcess] Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
+        await writeSyncLog(`Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
+
+        // 2. Sync Files
         // Find root files
         const rootFilesRes = await drive.files.list({
             q: `'${rootFolderId}' in parents and (name='config.json' or name='live.json') and trashed=false`,
@@ -129,6 +143,11 @@ async function runSync() {
             await syncFolder(drive, tournamentsFolder.id, localTournamentsDir);
         }
 
+        // 3. Sync version file at the end
+        if (versionFile?.id) {
+            await downloadAndSaveFile(drive, versionFile.id, path.join(DATA_DIR, 'lastSyncVersion.log'));
+        }
+
         await writeSyncLog("Sync completed successfully.");
         console.log('[SyncProcess] Sync from Google Drive completed successfully.');
 
@@ -139,14 +158,30 @@ async function runSync() {
     }
 }
 
+// Helper to read a stream to a string
+function streamToString(stream: any): Promise<string> {
+  const chunks: Buffer[] = [];
+  return new Promise((resolve, reject) => {
+    stream.on('data', (chunk: any) => chunks.push(Buffer.from(chunk)));
+    stream.on('error', (err: any) => reject(err));
+    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+  });
+}
+
 
 // --- Exported Function to Start the Process ---
 
 let syncIntervalId: NodeJS.Timeout | null = null;
+let isSyncing = false; // Semaphore to prevent concurrent syncs
 
 export function startBackgroundSync(): void {
     if (syncIntervalId) {
         console.log("[SyncProcess] Background sync is already running.");
+        return;
+    }
+    
+    if (isSyncing) {
+        console.log("[SyncProcess] A sync process is already in progress. Skipping new start request.");
         return;
     }
     
@@ -158,11 +193,22 @@ export function startBackgroundSync(): void {
     
     const intervalMs = intervalMinutes * 60 * 1000;
 
+    const syncAndRelease = async () => {
+        if (isSyncing) return;
+        isSyncing = true;
+        try {
+            await runSync();
+        } finally {
+            isSyncing = false;
+        }
+    };
+
     // Run once immediately on startup
-    runSync();
+    syncAndRelease();
 
     // Then set the interval for subsequent runs
-    syncIntervalId = setInterval(runSync, intervalMs);
+    syncIntervalId = setInterval(syncAndRelease, intervalMs);
 
     console.log(`[SyncProcess] Background sync scheduled to run every ${intervalMinutes} minutes.`);
 }
+
