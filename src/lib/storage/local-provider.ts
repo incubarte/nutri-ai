@@ -6,15 +6,17 @@ import type { ConfigState, LiveState, MatchData, Tournament } from '@/types';
 // Use the STORAGE_PATH from environment variable, or default to './storage' in the project root.
 export function getStorageDir(): string {
     const storagePath = process.env.STORAGE_PATH;
-    if (!storagePath) {
-        return path.join(process.cwd(), 'storage');
+    if (storagePath) {
+        // Check if the path is absolute. If so, use it directly. Otherwise, join it with the current working directory.
+        if (path.isAbsolute(storagePath)) {
+            return storagePath;
+        }
+        return path.join(process.cwd(), storagePath);
     }
-    // Check if the path is absolute. If so, use it directly. Otherwise, join it with the current working directory.
-    if (path.isAbsolute(storagePath)) {
-        return storagePath;
-    }
-    return path.join(process.cwd(), storagePath);
+    // Default to './storage' in the project root if the environment variable is not set.
+    return path.join(process.cwd(), 'storage');
 }
+
 
 const getDataDir = () => path.join(getStorageDir(), 'data');
 const getConfigPath = () => path.join(getDataDir(), 'config.json');
