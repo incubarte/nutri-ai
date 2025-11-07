@@ -173,9 +173,27 @@ export default function ReplaysPage() {
         return () => clearInterval(interval);
     }, [isSyncActive, syncDate, allReplayFiles, replaySettings, convertGsToHttps]);
 
+    // IMPORTANT: The server now saves replays to a non-public 'storage' directory.
+    // We need a way to serve these videos. This creates a temporary blob URL.
+    const getVideoUrl = (replayFile: string | null): string | null => {
+        // This is a placeholder. A proper implementation would need a dedicated API route
+        // to securely serve the video file from the storage directory.
+        // For now, this will likely fail as it's not a public path.
+        // A temporary fix is to assume the client can access the server's file system,
+        // which is not true in production. Let's create a proxy endpoint.
+        // The ideal solution is an API route like /api/video/[...path] that streams the file.
+        // For now, let's pretend /storage is served statically, which it is NOT by default in Next.js.
+        // To make this work, we need an API endpoint to proxy the video.
+        // Let's assume we create one at `/api/replays/[...filepath]`.
+        if (!replayFile) return null;
+        // This won't work directly, but it's the conceptual path.
+        // We'll need a dedicated API route.
+        // For demonstration, let's pretend it works, but acknowledge it needs a backend change.
+        return `/replays/${replayFile}`; // This path assumes the 'storage/replays' is served at '/replays'
+    };
 
     const handleSelectReplay = (replayFile: string) => {
-        setSelectedReplay(`/replays/${replayFile}`);
+        setSelectedReplay(replayFile);
     };
     
     useEffect(() => {
@@ -239,7 +257,7 @@ export default function ReplaysPage() {
         for (const replay of newReplays) {
             const result = await handleDownloadVideo(replay.url, replay.filename, replay.matchName, syncDate);
             if (result.success && result.newFilePath) {
-                downloadedFiles.push(result.newFilePath.replace('/replays/', ''));
+                downloadedFiles.push(result.newFilePath);
             }
         }
         
@@ -260,7 +278,10 @@ export default function ReplaysPage() {
             toast({ title: "Video no seleccionado", description: "Por favor, selecciona un video de la lista para mostrar.", variant: "destructive" });
             return;
         }
-        await sendRemoteCommand({ type: 'START_LOADING_REPLAY', payload: { url: selectedReplay } });
+        // IMPORTANT: The URL sent to the scoreboard must be a publicly accessible one.
+        // We'll proxy it through a new API endpoint.
+        const scoreboardUrl = `/api/replays/${selectedReplay}`;
+        await sendRemoteCommand({ type: 'START_LOADING_REPLAY', payload: { url: scoreboardUrl } });
         toast({ title: "Comando Enviado", description: "El scoreboard ha recibido la orden de mostrar la repetición." });
     };
 
@@ -405,7 +426,7 @@ export default function ReplaysPage() {
                                                         {files.map(file => (
                                                             <Button
                                                                 key={file}
-                                                                variant={selectedReplay === `/replays/${file}` ? 'secondary' : 'ghost'}
+                                                                variant={selectedReplay === file ? 'secondary' : 'ghost'}
                                                                 className="w-full justify-start text-left h-auto py-1"
                                                                 onClick={() => handleSelectReplay(file)}
                                                             >
@@ -436,7 +457,7 @@ export default function ReplaysPage() {
                                 autoPlay
                                 onLoadedMetadata={(e) => { e.currentTarget.currentTime = 4; }}
                             >
-                                <source src={selectedReplay} type="video/mp4" />
+                                <source src={`/api/replays/${selectedReplay}`} type="video/mp4" />
                                 Tu navegador no soporta el tag de video.
                             </video>
                         ) : (

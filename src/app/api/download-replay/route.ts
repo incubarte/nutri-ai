@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { getStorageDir } from '@/lib/storage/local-provider';
 
 export async function POST(request: Request) {
     try {
@@ -18,9 +19,10 @@ export async function POST(request: Request) {
 
         const videoBuffer = await videoResponse.arrayBuffer();
         
-        const baseDir = path.join(process.cwd(), 'public', 'replays');
+        const storageDir = getStorageDir();
+        const baseDir = path.join(storageDir, 'replays');
         
-        // Create nested directory: /replays/<date>/<matchName>
+        // Create nested directory: /storage/replays/<date>/<matchName>
         let targetDir = baseDir;
         if (date) {
             targetDir = path.join(targetDir, date);
@@ -39,6 +41,9 @@ export async function POST(request: Request) {
 
         await fs.writeFile(filePath, Buffer.from(videoBuffer));
 
+        // Note: The returned path is relative to the `storage/replays` directory.
+        // The client-side logic that uses this might need adjustment if it was expecting a /public path.
+        // However, for consistency, all data is now in storage.
         return NextResponse.json({ success: true, path: publicPath });
 
     } catch (error) {

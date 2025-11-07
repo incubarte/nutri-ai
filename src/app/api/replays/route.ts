@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { getStorageDir } from '@/lib/storage/local-provider';
 
 export const dynamic = 'force-dynamic'; // Ensure it's not cached
 
@@ -27,7 +28,8 @@ async function getVideoFiles(dir: string, baseDir: string = dir): Promise<string
 }
 
 export async function GET(request: Request) {
-    const replaysDir = path.join(process.cwd(), 'public', 'replays');
+    const storageDir = getStorageDir();
+    const replaysDir = path.join(storageDir, 'replays');
 
     try {
         const videoFiles = await getVideoFiles(replaysDir);
@@ -36,6 +38,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ success: true, files: videoFiles });
     } catch (error: any) {
         if (error.code === 'ENOENT') {
+            // If the replays directory doesn't exist, it's not an error, just return an empty list.
             return NextResponse.json({ success: true, files: [] });
         }
         console.error("[API/REPLAYS] Error reading replays directory:", error);
