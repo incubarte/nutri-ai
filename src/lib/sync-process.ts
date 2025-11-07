@@ -14,12 +14,31 @@ const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 // --- Google Drive API Client Setup ---
 async function getDriveClient(): Promise<drive_v3.Drive> {
     try {
+        let credentials;
+        const base64Credentials = process.env.GOOGLE_CREDENTIALS_BASE64;
+
+        if (base64Credentials) {
+            try {
+                const decodedCredentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+                credentials = JSON.parse(decodedCredentials);
+            } catch (e) {
+                console.error("[SyncProcess] Failed to parse GOOGLE_CREDENTIALS_BASE64.", e);
+                throw new Error("Invalid Base64 encoded Google credentials.");
+            }
+        } else {
+            try {
+                const keyFileContent = await fs.readFile(KEYFILE_PATH, 'utf-8');
+                credentials = JSON.parse(keyFileContent);
+            } catch (fileError) {
+                throw new Error('Google Drive credentials must be provided via GOOGLE_CREDENTIALS_BASE64 or a local env_drive_credentials.json file.');
+            }
+        }
+
         const auth = new google.auth.GoogleAuth({
-            keyFile: KEYFILE_PATH,
+            credentials,
             scopes: SCOPES,
         });
-        const authClient = await auth.getClient();
-        return google.drive({ version: 'v3', auth: authClient });
+        return google.drive({ version: 'v3', auth });
     } catch (error) {
         console.error("[SyncProcess] Error authenticating with Google Drive:", error);
         throw new Error("Failed to authenticate with Google Drive.");
