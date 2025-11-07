@@ -38,22 +38,18 @@ async function writeSyncLog(message: string): Promise<void> {
 
 async function downloadAndSaveFile(drive: drive_v3.Drive, fileId: string, localPath: string): Promise<void> {
     await fs.mkdir(path.dirname(localPath), { recursive: true });
-    const dest = require('fs').createWriteStream(localPath);
-    const res = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' });
-
-    return new Promise(async (resolve, reject) => {
-        try {
-            for await (const chunk of (res.data as any)) {
-                dest.write(chunk);
-            }
-            dest.end();
-            resolve();
-        } catch (err) {
-            console.error(`[SyncProcess] Error during stream processing for ${path.basename(localPath)}:`, err);
-            reject(err);
-        }
-    });
+    
+    try {
+        const res = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'arraybuffer' });
+        // The type assertion is safe here because we requested arraybuffer
+        const buffer = Buffer.from(res.data as ArrayBuffer);
+        await fs.writeFile(localPath, buffer);
+    } catch (err) {
+        console.error(`[SyncProcess] Error downloading ${path.basename(localPath)}:`, err);
+        throw err;
+    }
 }
+
 
 async function syncFolder(drive: drive_v3.Drive, folderId: string, localFolderPath: string): Promise<void> {
     await fs.mkdir(localFolderPath, { recursive: true });
@@ -104,8 +100,9 @@ async function runSync() {
         let remoteVersion = 0;
         const versionFile = versionFileRes.data.files?.[0];
         if (versionFile?.id) {
-            const res = await drive.files.get({ fileId: versionFile.id, alt: 'media' }, { responseType: 'stream' });
-            const versionContent = await streamToString(res.data);
+            const res = await drive.files.get({ fileId: versionFile.id, alt: 'media' });
+            // The data is a string or buffer, no need for complex stream handling
+            const versionContent = res.data.toString();
             remoteVersion = parseInt(versionContent.trim(), 10) || 0;
         } else {
             await writeSyncLog("Remote version file not found, assuming remote is newer.");
@@ -126,7 +123,7 @@ async function runSync() {
         console.log(`[SyncProcess] Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
         await writeSyncLog(`Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
 
-        // 2. Sync Files to Temporary Directory (in project root)
+        // 2. Sync Files to Temporary Directory
         const TEMP_DATA_DIR = path.join(tempDir, 'src/data');
         await fs.mkdir(TEMP_DATA_DIR, { recursive: true });
         
@@ -168,9 +165,6 @@ async function runSync() {
              const finalVersionPath = path.join(process.cwd(), 'lastSyncVersion.log');
              await downloadAndSaveFile(drive, versionFile.id, finalVersionPath);
         } else {
-            // If remote version file didn't exist, we still need to update local version to match
-            // a non-existent remote one (which we treat as 0 for future comparisons)
-            // But since local version is now outdated, we can just remove it to force next sync
              const finalVersionPath = path.join(process.cwd(), 'lastSyncVersion.log');
              await fs.rm(finalVersionPath, {force: true}).catch(()=>{});
         }
@@ -186,15 +180,6 @@ async function runSync() {
         // Clean up the temporary directory regardless of success or failure
         await fs.rm(tempDir, { recursive: true, force: true }).catch(err => console.error(`[SyncProcess] Failed to clean up temp directory: ${err}`));
     }
-}
-
-// Helper to read a stream to a string
-async function streamToString(stream: any): Promise<string> {
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-        chunks.push(Buffer.from(chunk));
-    }
-    return Buffer.concat(chunks).toString('utf8');
 }
 
 
