@@ -28,6 +28,7 @@ async function getDriveClient(): Promise<drive_v3.Drive> {
 // --- File System Operations ---
 async function writeSyncLog(message: string): Promise<void> {
     try {
+        // Ensure the data directory exists before trying to write the log.
         await fs.mkdir(DATA_DIR, { recursive: true });
         const timestamp = new Date().toISOString();
         await fs.appendFile(SYNC_LOG_PATH, `${timestamp} - ${message}\n`);
@@ -39,20 +40,18 @@ async function writeSyncLog(message: string): Promise<void> {
 // --- Core Sync Logic ---
 
 async function downloadAndSaveFile(drive: drive_v3.Drive, fileId: string, localPath: string): Promise<void> {
-    const dest = fs.writeFile(localPath, ''); // Create empty file to write to
+    await fs.mkdir(path.dirname(localPath), { recursive: true });
+    const dest = require('fs').createWriteStream(localPath);
     const res = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' });
     
     return new Promise((resolve, reject) => {
-        const fileStream = require('fs').createWriteStream(localPath);
         res.data
-            .on('end', () => {
-                resolve();
-            })
+            .on('end', () => resolve())
             .on('error', (err: any) => {
                 console.error(`[SyncProcess] Error downloading ${path.basename(localPath)}:`, err);
                 reject(err);
             })
-            .pipe(fileStream);
+            .pipe(dest);
     });
 }
 
@@ -83,7 +82,12 @@ async function syncFolder(drive: drive_v3.Drive, folderId: string, localFolderPa
 async function runSync() {
     await writeSyncLog("Sync initialized");
     console.log('[SyncProcess] Starting sync from Google Drive...');
+    
+    const tempDir = path.join(DATA_DIR, `_temp_sync_${Date.now()}`);
+
     try {
+        await fs.mkdir(tempDir, { recursive: true });
+
         const drive = await getDriveClient();
         const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
         if (!rootFolderId) {
@@ -110,27 +114,25 @@ async function runSync() {
             const message = `Sync skipped: Remote version (${remoteVersion}) is not newer than local version (${localVersion}).`;
             console.log(`[SyncProcess] ${message}`);
             await writeSyncLog(message);
-            return; // Abort sync
+            await fs.rm(tempDir, { recursive: true, force: true }); // Clean up temp dir
+            return;
         }
 
         console.log(`[SyncProcess] Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
         await writeSyncLog(`Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
 
-        // 2. Sync Files
-        // Find root files
+        // 2. Sync Files to Temporary Directory
         const rootFilesRes = await drive.files.list({
             q: `'${rootFolderId}' in parents and (name='config.json' or name='live.json') and trashed=false`,
             fields: 'files(id, name)',
         });
 
-        const rootFiles = rootFilesRes.data.files || [];
-        for (const file of rootFiles) {
+        for (const file of (rootFilesRes.data.files || [])) {
             if (file.id && file.name) {
-                await downloadAndSaveFile(drive, file.id, path.join(DATA_DIR, file.name));
+                await downloadAndSaveFile(drive, file.id, path.join(tempDir, file.name));
             }
         }
         
-        // Find and sync 'tournaments' folder
         const tournamentsFolderRes = await drive.files.list({
             q: `'${rootFolderId}' in parents and name='tournaments' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
             fields: 'files(id)',
@@ -138,15 +140,17 @@ async function runSync() {
 
         const tournamentsFolder = tournamentsFolderRes.data.files?.[0];
         if (tournamentsFolder?.id) {
-            const localTournamentsDir = path.join(DATA_DIR, 'tournaments');
-            await fs.rm(localTournamentsDir, { recursive: true, force: true });
-            await syncFolder(drive, tournamentsFolder.id, localTournamentsDir);
+            await syncFolder(drive, tournamentsFolder.id, path.join(tempDir, 'tournaments'));
         }
 
-        // 3. Sync version file at the end
         if (versionFile?.id) {
-            await downloadAndSaveFile(drive, versionFile.id, path.join(DATA_DIR, 'lastSyncVersion.log'));
+            await downloadAndSaveFile(drive, versionFile.id, path.join(tempDir, 'lastSyncVersion.log'));
         }
+
+        // 3. Atomic Replace
+        console.log('[SyncProcess] Download complete. Replacing local data...');
+        await fs.rm(DATA_DIR, { recursive: true, force: true });
+        await fs.rename(tempDir, DATA_DIR);
 
         await writeSyncLog("Sync completed successfully.");
         console.log('[SyncProcess] Sync from Google Drive completed successfully.');
@@ -155,6 +159,8 @@ async function runSync() {
         const errorMessage = error instanceof Error ? error.message : String(error);
         await writeSyncLog(`Sync FAILED: ${errorMessage}`);
         console.error('[SyncProcess] Sync process failed:', error);
+        // Clean up temp directory on failure
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(err => console.error(`[SyncProcess] Failed to clean up temp directory: ${err}`));
     }
 }
 
@@ -211,4 +217,3 @@ export function startBackgroundSync(): void {
 
     console.log(`[SyncProcess] Background sync scheduled to run every ${intervalMinutes} minutes.`);
 }
-
