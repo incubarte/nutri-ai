@@ -49,7 +49,7 @@ async function writeJsonFile(filePath: string, data: any): Promise<void> {
 
 /**
  * Reads the current data version from lastSyncVersion.log in the project root.
- * If the file doesn't exist, it assumes version 0.
+ * If the file doesn't exist, it creates it with version 0.
  * @returns The current version number.
  */
 export async function readVersion(): Promise<number> {
@@ -60,9 +60,10 @@ export async function readVersion(): Promise<number> {
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
             // If file doesn't exist, local data is considered version 0.
+            await fs.writeFile(VERSION_FILE_PATH, '0', 'utf-8');
             return 0;
         }
-        console.error(`Error reading version file:`, error);
+        console.error(`[SyncProcess] Error reading version file:`, error);
         return 0; // Err on the side of caution.
     }
 }
