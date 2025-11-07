@@ -11,6 +11,8 @@ const globalForSync = globalThis as unknown as {
 export const readConfig = localProvider.readConfig;
 export const readLiveState = localProvider.readLiveState;
 export const readTournament = localProvider.readTournament;
+// Re-export getStorageDir so it's available when this provider is active
+export const getStorageDir = localProvider.getStorageDir;
 
 
 // --- WRITE OPERATIONS ---
