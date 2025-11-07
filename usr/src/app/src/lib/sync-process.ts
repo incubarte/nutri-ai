@@ -27,7 +27,6 @@ async function getDriveClient(): Promise<drive_v3.Drive> {
 // --- File System Operations ---
 async function writeSyncLog(message: string): Promise<void> {
     try {
-        await fs.mkdir(path.dirname(SYNC_LOG_PATH), { recursive: true });
         const timestamp = new Date().toISOString();
         await fs.appendFile(SYNC_LOG_PATH, `${timestamp} - ${message}\n`);
     } catch (error) {
@@ -41,15 +40,18 @@ async function downloadAndSaveFile(drive: drive_v3.Drive, fileId: string, localP
     await fs.mkdir(path.dirname(localPath), { recursive: true });
     const dest = require('fs').createWriteStream(localPath);
     const res = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' });
-    
-    return new Promise((resolve, reject) => {
-        (res.data as any)
-            .on('end', () => resolve())
-            .on('error', (err: any) => {
-                console.error(`[SyncProcess] Error downloading ${path.basename(localPath)}:`, err);
-                reject(err);
-            })
-            .pipe(dest);
+
+    return new Promise(async (resolve, reject) => {
+        try {
+            for await (const chunk of (res.data as any)) {
+                dest.write(chunk);
+            }
+            dest.end();
+            resolve();
+        } catch (err) {
+            console.error(`[SyncProcess] Error during stream processing for ${path.basename(localPath)}:`, err);
+            reject(err);
+        }
     });
 }
 
@@ -102,11 +104,11 @@ async function runSync() {
         let remoteVersion = 0;
         const versionFile = versionFileRes.data.files?.[0];
         if (versionFile?.id) {
-            const res = await drive.files.get({ fileId: versionFile.id, alt: 'media' });
+            const res = await drive.files.get({ fileId: versionFile.id, alt: 'media' }, { responseType: 'stream' });
             const versionContent = await streamToString(res.data);
             remoteVersion = parseInt(versionContent.trim(), 10) || 0;
         } else {
-            await writeSyncLog("Remote version file not found, forcing sync.");
+            await writeSyncLog("Remote version file not found, assuming remote is newer.");
             console.log("[SyncProcess] Remote version file 'lastSyncVersion.log' not found in Drive. Forcing sync.");
             remoteVersion = Number.MAX_SAFE_INTEGER;
         }
@@ -165,6 +167,12 @@ async function runSync() {
         if (versionFile?.id) {
              const finalVersionPath = path.join(process.cwd(), 'lastSyncVersion.log');
              await downloadAndSaveFile(drive, versionFile.id, finalVersionPath);
+        } else {
+            // If remote version file didn't exist, we still need to update local version to match
+            // a non-existent remote one (which we treat as 0 for future comparisons)
+            // But since local version is now outdated, we can just remove it to force next sync
+             const finalVersionPath = path.join(process.cwd(), 'lastSyncVersion.log');
+             await fs.rm(finalVersionPath, {force: true}).catch(()=>{});
         }
 
         await writeSyncLog("Sync completed successfully.");
