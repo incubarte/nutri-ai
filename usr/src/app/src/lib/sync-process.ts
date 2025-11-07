@@ -40,12 +40,10 @@ async function writeSyncLog(message: string): Promise<void> {
 async function downloadAndSaveFile(drive: drive_v3.Drive, fileId: string, localPath: string): Promise<void> {
     await fs.mkdir(path.dirname(localPath), { recursive: true });
     try {
-        // Request the file content as an ArrayBuffer directly. NO STREAMS.
         const res = await drive.files.get(
             { fileId: fileId, alt: 'media' },
             { responseType: 'arraybuffer' }
         );
-        // The type assertion is safe here because we requested arraybuffer.
         const buffer = Buffer.from(res.data as ArrayBuffer);
         await fs.writeFile(localPath, buffer);
     } catch (err) {
@@ -103,14 +101,16 @@ async function runSync() {
         
         let remoteVersion = 0;
         const versionFile = versionFileRes.data.files?.[0];
+        
         if (versionFile?.id) {
-            const res = await drive.files.get({ fileId: versionFile.id, alt: 'media' });
-            const versionContent = res.data.toString();
+            // Explicitly request response as 'text' to avoid streams.
+            const res = await drive.files.get({ fileId: versionFile.id, alt: 'media' }, { responseType: 'text' });
+            const versionContent = res.data as string;
             remoteVersion = parseInt(versionContent.trim(), 10) || 0;
         } else {
-            await writeSyncLog("Remote version file not found, forcing sync.");
-            console.log("[SyncProcess] Remote version file 'lastSyncVersion.log' not found in Drive. Forcing sync.");
-            remoteVersion = Number.MAX_SAFE_INTEGER;
+             await writeSyncLog("Remote version file not found, forcing sync.");
+             console.log("[SyncProcess] Remote version file 'lastSyncVersion.log' not found in Drive. Forcing sync.");
+             remoteVersion = Number.MAX_SAFE_INTEGER;
         }
 
         const localVersion = await localProvider.readVersion();
