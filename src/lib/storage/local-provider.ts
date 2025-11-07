@@ -4,17 +4,23 @@ import path from 'path';
 import type { ConfigState, LiveState, MatchData, Tournament } from '@/types';
 
 // Use the STORAGE_PATH from environment variable, or default to './storage' in the project root.
-const STORAGE_DIR = process.env.STORAGE_PATH
-  ? path.resolve(process.env.STORAGE_PATH)
-  : path.join(process.cwd(), 'storage');
+export function getStorageDir(): string {
+    const storagePath = process.env.STORAGE_PATH;
+    if (!storagePath) {
+        return path.join(process.cwd(), 'storage');
+    }
+    // Check if the path is absolute. If so, use it directly. Otherwise, join it with the current working directory.
+    if (path.isAbsolute(storagePath)) {
+        return storagePath;
+    }
+    return path.join(process.cwd(), storagePath);
+}
 
-// Definición de las rutas de los archivos de datos.
-const DATA_DIR = path.join(STORAGE_DIR, 'data');
-const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
-const LIVE_STATE_PATH = path.join(DATA_DIR, 'live.json');
-const TOURNAMENTS_DIR = path.join(DATA_DIR, 'tournaments');
-const VERSION_FILE_PATH = path.join(STORAGE_DIR, 'lastSyncVersion.log');
-
+const getDataDir = () => path.join(getStorageDir(), 'data');
+const getConfigPath = () => path.join(getDataDir(), 'config.json');
+const getLiveStatePath = () => path.join(getDataDir(), 'live.json');
+const getTournamentsDir = () => path.join(getDataDir(), 'tournaments');
+const getVersionFilePath = () => path.join(getStorageDir(), 'lastSyncVersion.log');
 
 /**
  * Lee y parsea un archivo JSON de una ruta dada.
@@ -58,15 +64,16 @@ async function writeJsonFile(filePath: string, data: any): Promise<void> {
  * @returns The current version number.
  */
 export async function readVersion(): Promise<number> {
+    const versionFilePath = getVersionFilePath();
     try {
-        await fs.mkdir(path.dirname(VERSION_FILE_PATH), { recursive: true });
-        const data = await fs.readFile(VERSION_FILE_PATH, 'utf-8');
+        await fs.mkdir(path.dirname(versionFilePath), { recursive: true });
+        const data = await fs.readFile(versionFilePath, 'utf-8');
         const version = parseInt(data.trim(), 10);
         return isNaN(version) ? 0 : version;
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
             try {
-                await fs.writeFile(VERSION_FILE_PATH, '0', 'utf-8');
+                await fs.writeFile(versionFilePath, '0', 'utf-8');
                 return 0;
             } catch (writeError) {
                 console.error(`Error creating version file:`, writeError);
@@ -85,10 +92,11 @@ async function incrementVersion(): Promise<void> {
     if (process.env.STORAGE_PROVIDER === 'googledrive_override') {
         return;
     }
+    const versionFilePath = getVersionFilePath();
     try {
         const currentVersion = await readVersion();
         const newVersion = currentVersion === Number.MAX_SAFE_INTEGER ? 1 : currentVersion + 1;
-        await fs.writeFile(VERSION_FILE_PATH, String(newVersion), 'utf-8');
+        await fs.writeFile(versionFilePath, String(newVersion), 'utf-8');
     } catch (error) {
         console.error(`Error incrementing version file:`, error);
     }
@@ -98,25 +106,26 @@ async function incrementVersion(): Promise<void> {
 // --- Funciones exportadas del proveedor local ---
 
 export async function readConfig(): Promise<Partial<ConfigState>> {
-    return (await readJsonFile<ConfigState>(CONFIG_PATH)) || {};
+    return (await readJsonFile<ConfigState>(getConfigPath())) || {};
 }
 
 export async function writeConfig(config: ConfigState): Promise<void> {
-    await writeJsonFile(CONFIG_PATH, config);
+    await writeJsonFile(getConfigPath(), config);
     // No incrementar versión aquí para evitar inflación por cambios menores.
 }
 
 export async function readLiveState(): Promise<Partial<LiveState>> {
-    return (await readJsonFile<LiveState>(LIVE_STATE_PATH)) || {};
+    return (await readJsonFile<LiveState>(getLiveStatePath())) || {};
 }
 
 export async function writeLiveState(liveState: LiveState): Promise<void> {
-    await writeJsonFile(LIVE_STATE_PATH, liveState);
+    await writeJsonFile(getLiveStatePath(), liveState);
     // No incrementar versión aquí para evitar inflación durante un partido.
 }
 
 export async function readTournament(tournamentId: string): Promise<Partial<Tournament> | null> {
-    const tournamentDir = path.join(TOURNAMENTS_DIR, tournamentId);
+    const tournamentsDir = getTournamentsDir();
+    const tournamentDir = path.join(tournamentsDir, tournamentId);
     const teamsFilePath = path.join(tournamentDir, 'teams.json');
     const fixtureFilePath = path.join(tournamentDir, 'fixture.json');
     const summariesDir = path.join(tournamentDir, 'summaries');
@@ -158,7 +167,8 @@ export async function readTournament(tournamentId: string): Promise<Partial<Tour
 }
 
 export async function writeTournament(tournament: Tournament): Promise<void> {
-    const tournamentDir = path.join(TOURNAMENTS_DIR, tournament.id);
+    const tournamentsDir = getTournamentsDir();
+    const tournamentDir = path.join(tournamentsDir, tournament.id);
     const teamsFilePath = path.join(tournamentDir, 'teams.json');
     const fixtureFilePath = path.join(tournamentDir, 'fixture.json');
     const summariesDir = path.join(tournamentDir, 'summaries');
