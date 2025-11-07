@@ -83,7 +83,7 @@ async function runSync() {
     await writeSyncLog("Sync initialized");
     console.log('[SyncProcess] Starting sync from Google Drive...');
     
-    const tempsRoot = path.join(process.cwd(), '_temps');
+    const tempsRoot = path.join(STORAGE_DIR, '_temps');
     const tempDir = path.join(tempsRoot, `_temp_sync_${Date.now()}`);
 
     try {
@@ -120,7 +120,6 @@ async function runSync() {
             const message = `Sync skipped: Remote version (${remoteVersion}) is not newer than local version (${localVersion}).`;
             console.log(`[SyncProcess] ${message}`);
             await writeSyncLog(message);
-            // No return here, proceed to finally to cleanup
         } else {
             console.log(`[SyncProcess] Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
             await writeSyncLog(`Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
