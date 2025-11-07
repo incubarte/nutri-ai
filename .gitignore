@@ -47,3 +47,4 @@ firestore-debug.log
 
 env_drive_credentials.json
 src/data
+sync.log

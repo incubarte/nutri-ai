@@ -49,7 +49,7 @@ async function writeJsonFile(filePath: string, data: any): Promise<void> {
 
 /**
  * Reads the current data version from lastSyncVersion.log in the project root.
- * If the file doesn't exist, it creates it with version 0.
+ * If the file doesn't exist or is invalid, it returns 0.
  * @returns The current version number.
  */
 export async function readVersion(): Promise<number> {
@@ -58,18 +58,14 @@ export async function readVersion(): Promise<number> {
         const version = parseInt(data.trim(), 10);
         return isNaN(version) ? 0 : version;
     } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            // If file doesn't exist, local data is considered version 0.
-            await fs.writeFile(VERSION_FILE_PATH, '0', 'utf-8');
-            return 0;
-        }
-        console.error(`[SyncProcess] Error reading version file:`, error);
-        return 0; // Err on the side of caution.
+        // If file doesn't exist or any other read error occurs, assume version 0.
+        return 0;
     }
 }
 
 /**
- * Increments the data version in lastSyncVersion.log.
+ * Reads the current version, increments it, and writes it back to the file.
+ * Creates the file with version 1 if it doesn't exist.
  */
 async function incrementVersion(): Promise<void> {
     if (process.env.STORAGE_PROVIDER === 'googledrive_override') {
@@ -83,6 +79,7 @@ async function incrementVersion(): Promise<void> {
         console.error(`Error incrementing version file:`, error);
     }
 }
+
 
 // --- Funciones exportadas del proveedor local ---
 
