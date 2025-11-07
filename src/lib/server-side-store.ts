@@ -54,6 +54,7 @@ export function getRemoteAccessPassword(): string {
 const globalForEmitters = globalThis as unknown as {
   gameStateEmitter: EventEmitter | undefined;
   commandEmitter: EventEmitter | undefined;
+  systemEmitter: EventEmitter | undefined; // Emitter for system-level events
   tunnelInstance: Tunnel | undefined;
 };
 
@@ -63,40 +64,69 @@ export const gameStateEmitter =
 export const commandEmitter =
   globalForEmitters.commandEmitter ?? new EventEmitter();
 
+export const systemEmitter = 
+  globalForEmitters.systemEmitter ?? new EventEmitter();
+
 if (process.env.NODE_ENV !== 'production') {
   globalForEmitters.gameStateEmitter = gameStateEmitter;
   globalForEmitters.commandEmitter = commandEmitter;
+  globalForEmitters.systemEmitter = systemEmitter;
 }
 
-// REMOVED IN-MEMORY CACHING. Functions will now read directly from disk.
+// --- In-memory Caching ---
+let storedConfig: ConfigState | null = null;
+let storedGameState: LiveGameState | null = null;
+
+// Function to load/reload all data from disk into the cache
+export async function reloadCacheFromDisk() {
+    console.log('[Cache] Reloading data from disk...');
+    try {
+        const [config, liveState] = await Promise.all([readConfig(), readLiveState()]);
+        storedConfig = config as ConfigState;
+        storedGameState = liveState as LiveGameState;
+        console.log('[Cache] Reload complete.');
+    } catch (error) {
+        console.error('[Cache] Failed to reload cache from disk:', error);
+    }
+}
+
+// Listen for sync completion to reload the cache
+systemEmitter.on('sync-complete', reloadCacheFromDisk);
+
+
 export async function getConfig(): Promise<ConfigState | null> {
-  const config = await readConfig();
-  return config as ConfigState | null;
+  if (!storedConfig) {
+    await reloadCacheFromDisk();
+  }
+  return storedConfig;
 }
 
 export function setConfig(newConfig: ConfigState): void {
-  // This function might be called by older parts of the code.
-  // It no longer caches in memory, but we keep it to avoid crashes.
-  // The state is persisted via file system writes in api/db.ts
+  storedConfig = newConfig;
 }
 
 export async function updateTunnelState(updates: Partial<TunnelState>) {
   const currentConfig = await getConfig();
   if (currentConfig) {
-    const newTunnelState = { ...currentConfig.tunnel, ...updates };
-    // This doesn't save to file, it's an in-flight update.
-    // The main context will handle persisting this.
+    storedConfig = {
+      ...currentConfig,
+      tunnel: {
+        ...currentConfig.tunnel,
+        ...updates
+      }
+    };
   }
 }
 
 export async function getGameState(): Promise<LiveGameState | null> {
-  const liveState = await readLiveState();
-  return liveState as LiveGameState | null;
+  if (!storedGameState) {
+    await reloadCacheFromDisk();
+  }
+  return storedGameState;
 }
 
 export function setGameState(newGameState: LiveGameState): void {
-  // The primary purpose of this function is now to emit events for real-time updates.
-  // It no longer holds the state in a global variable.
+  storedGameState = newGameState;
   gameStateEmitter.emit('update', newGameState);
 }
 

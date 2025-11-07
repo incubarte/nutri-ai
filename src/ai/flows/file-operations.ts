@@ -12,11 +12,7 @@ import { z } from 'genkit';
 import fs from 'fs/promises';
 import path from 'path';
 import type { GameSummary } from '@/types';
-
-// Use STORAGE_PATH from environment variable, or default to './storage'
-const STORAGE_DIR = process.env.STORAGE_PATH
-  ? path.resolve(process.env.STORAGE_PATH)
-  : path.join(process.cwd(), 'storage');
+import { getStorageDir } from '@/lib/storage/local-provider';
 
 // --- Save Full Game Summary (JSON) ---
 const GameSummaryInputSchema = z.object({
@@ -44,7 +40,8 @@ const saveGameSummaryFlow = ai.defineFlow(
       return { success: true, message: 'Guardado de resumen JSON deshabilitado en modo preview.' };
     }
     try {
-      const summariesDir = path.join(STORAGE_DIR, 'resumenes');
+      const storageDir = getStorageDir(); // Use the getter function
+      const summariesDir = path.join(storageDir, 'resumenes');
       await fs.mkdir(summariesDir, { recursive: true });
 
       const date = new Date();
@@ -100,7 +97,7 @@ const CsvSummaryInputSchema = z.object({
   goalsAgainst: z.number(),
   playerStats: z.array(PlayerStatsSchema),
 });
-export type CsvSummaryInput = z-infer<typeof CsvSummaryInputSchema>;
+export type CsvSummaryInput = z.infer<typeof CsvSummaryInputSchema>;
 
 export async function saveTeamCsvSummary(input: CsvSummaryInput): Promise<{ success: boolean; message: string; filePath?: string; }> {
   return saveTeamCsvSummaryFlow(input);
@@ -125,7 +122,8 @@ const saveTeamCsvSummaryFlow = ai.defineFlow(
       return { success: true, message: 'Guardado de CSV deshabilitado en modo preview.' };
     }
     try {
-      const summariesDir = path.join(STORAGE_DIR, 'summaries_csv');
+      const storageDir = getStorageDir(); // Use the getter function
+      const summariesDir = path.join(storageDir, 'summaries_csv');
       await fs.mkdir(summariesDir, { recursive: true });
 
       const date = new Date();

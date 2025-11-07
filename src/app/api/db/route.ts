@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import type { GameState, ConfigState, LiveState } from '@/types';
-import { setGameState } from '@/lib/server-side-store';
+import { setGameState, setConfig, getGameState, getConfig } from '@/lib/server-side-store';
 import { readConfig, writeConfig, readLiveState, writeLiveState } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
@@ -9,13 +9,10 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const [config, liveState] = await Promise.all([
-        readConfig(),
-        readLiveState()
+        getConfig(),
+        getGameState()
     ]);
     
-    // No longer caching in memory here.
-    // The data is read fresh on every request.
-
     const initialState: Partial<GameState> = {
       config: config || {},
       live: liveState || {}, 
@@ -45,11 +42,12 @@ export async function POST(request: Request) {
         const configToSave = { ...baseConfig, tournaments: tournamentMetas };
         
         await writeConfig(configToSave as ConfigState);
+        setConfig(config); // Update in-memory cache
     }
     
     if (live) {
         await writeLiveState(live);
-        setGameState(live); // Update in-memory store and emit event
+        setGameState(live); // Update in-memory cache and emit event
     }
 
     return NextResponse.json({ success: true, message: 'Data saved successfully.' });

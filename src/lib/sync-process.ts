@@ -4,6 +4,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import type { drive_v3 } from 'googleapis';
 import * as localProvider from './storage/local-provider';
+import { systemEmitter } from './server-side-store'; // Import the system emitter
 
 const KEYFILE_PATH = path.join(process.cwd(), 'env_drive_credentials.json');
 const STORAGE_DIR = process.env.STORAGE_PATH ? path.resolve(process.env.STORAGE_PATH) : path.join(process.cwd(), 'storage');
@@ -83,7 +84,8 @@ async function runSync() {
     await writeSyncLog("Sync initialized");
     console.log('[SyncProcess] Starting sync from Google Drive...');
     
-    const tempsRoot = path.join(STORAGE_DIR, '_temps');
+    const storageDir = localProvider.getStorageDir();
+    const tempsRoot = path.join(storageDir, '_temps');
     let tempDir: string | null = null;
 
     try {
@@ -153,7 +155,7 @@ async function runSync() {
 
             // 3. Atomic Replace
             console.log('[SyncProcess] Download complete. Replacing local data...');
-            const FINAL_DATA_DIR = path.join(STORAGE_DIR, 'data');
+            const FINAL_DATA_DIR = path.join(storageDir, 'data');
             
             try {
                 await fs.rm(FINAL_DATA_DIR, { recursive: true, force: true });
@@ -165,15 +167,18 @@ async function runSync() {
 
             // 4. Update local version file
             if (versionFile?.id) {
-                 const finalVersionPath = path.join(STORAGE_DIR, 'lastSyncVersion.log');
+                 const finalVersionPath = path.join(storageDir, 'lastSyncVersion.log');
                  await downloadAndSaveFile(drive, versionFile.id, finalVersionPath);
             } else {
-                 const finalVersionPath = path.join(STORAGE_DIR, 'lastSyncVersion.log');
+                 const finalVersionPath = path.join(storageDir, 'lastSyncVersion.log');
                  await fs.rm(finalVersionPath, {force: true}).catch(()=>{});
             }
 
             await writeSyncLog("Sync completed successfully.");
             console.log('[SyncProcess] Sync from Google Drive completed successfully.');
+            
+            // 5. Emit sync-complete event
+            systemEmitter.emit('sync-complete');
         }
 
     } catch (error) {
