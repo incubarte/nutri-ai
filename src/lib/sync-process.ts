@@ -6,7 +6,7 @@ import type { drive_v3 } from 'googleapis';
 import * as localProvider from './storage/local-provider';
 
 const KEYFILE_PATH = path.join(process.cwd(), 'env_drive_credentials.json');
-const STORAGE_DIR = path.join(process.cwd(), 'storage');
+const STORAGE_DIR = process.env.STORAGE_PATH ? path.resolve(process.env.STORAGE_PATH) : path.join(process.cwd(), 'storage');
 const SYNC_LOG_PATH = path.join(STORAGE_DIR, 'sync.log');
 const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 

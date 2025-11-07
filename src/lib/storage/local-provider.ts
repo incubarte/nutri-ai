@@ -3,8 +3,12 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import type { ConfigState, LiveState, MatchData, Tournament } from '@/types';
 
+// Use the STORAGE_PATH from environment variable, or default to './storage' in the project root.
+const STORAGE_DIR = process.env.STORAGE_PATH
+  ? path.resolve(process.env.STORAGE_PATH)
+  : path.join(process.cwd(), 'storage');
+
 // Definición de las rutas de los archivos de datos.
-const STORAGE_DIR = path.join(process.cwd(), 'storage');
 const DATA_DIR = path.join(STORAGE_DIR, 'data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 const LIVE_STATE_PATH = path.join(DATA_DIR, 'live.json');
@@ -49,7 +53,7 @@ async function writeJsonFile(filePath: string, data: any): Promise<void> {
 // --- Versioning Functions ---
 
 /**
- * Reads the current data version from lastSyncVersion.log in the project root.
+ * Reads the current data version from lastSyncVersion.log.
  * If the file doesn't exist, it creates it with version 0 and returns 0.
  * @returns The current version number.
  */
