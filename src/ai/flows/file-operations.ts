@@ -13,6 +13,11 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { GameSummary } from '@/types';
 
+// Use STORAGE_PATH from environment variable, or default to './storage'
+const STORAGE_DIR = process.env.STORAGE_PATH
+  ? path.resolve(process.env.STORAGE_PATH)
+  : path.join(process.cwd(), 'storage');
+
 // --- Save Full Game Summary (JSON) ---
 const GameSummaryInputSchema = z.object({
   homeTeamName: z.string(),
@@ -39,7 +44,7 @@ const saveGameSummaryFlow = ai.defineFlow(
       return { success: true, message: 'Guardado de resumen JSON deshabilitado en modo preview.' };
     }
     try {
-      const summariesDir = path.join(process.cwd(), 'resumenes');
+      const summariesDir = path.join(STORAGE_DIR, 'resumenes');
       await fs.mkdir(summariesDir, { recursive: true });
 
       const date = new Date();
@@ -120,7 +125,7 @@ const saveTeamCsvSummaryFlow = ai.defineFlow(
       return { success: true, message: 'Guardado de CSV deshabilitado en modo preview.' };
     }
     try {
-      const summariesDir = path.join(process.cwd(), 'summaries_csv');
+      const summariesDir = path.join(STORAGE_DIR, 'summaries_csv');
       await fs.mkdir(summariesDir, { recursive: true });
 
       const date = new Date();
