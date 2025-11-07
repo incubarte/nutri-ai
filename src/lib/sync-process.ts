@@ -28,7 +28,6 @@ async function getDriveClient(): Promise<drive_v3.Drive> {
 // --- File System Operations ---
 async function writeSyncLog(message: string): Promise<void> {
     try {
-        // Ensure the data directory exists before trying to write the log.
         await fs.mkdir(DATA_DIR, { recursive: true });
         const timestamp = new Date().toISOString();
         await fs.appendFile(SYNC_LOG_PATH, `${timestamp} - ${message}\n`);
@@ -78,6 +77,7 @@ async function syncFolder(drive: drive_v3.Drive, folderId: string, localFolderPa
     }
 }
 
+let isSyncing = false; // Semaphore to prevent concurrent syncs
 
 async function runSync() {
     await writeSyncLog("Sync initialized");
@@ -149,7 +149,12 @@ async function runSync() {
 
         // 3. Atomic Replace
         console.log('[SyncProcess] Download complete. Replacing local data...');
-        await fs.rm(DATA_DIR, { recursive: true, force: true });
+        // First delete existing content, then rename temp dir. This is safer than renaming over existing dir on some systems.
+        try {
+            await fs.rm(DATA_DIR, { recursive: true, force: true });
+        } catch(e) {
+            console.warn("[SyncProcess] Could not remove old data directory, it might not exist. Continuing...");
+        }
         await fs.rename(tempDir, DATA_DIR);
 
         await writeSyncLog("Sync completed successfully.");
@@ -175,10 +180,9 @@ function streamToString(stream: any): Promise<string> {
 }
 
 
-// --- Exported Function to Start the Process ---
+// --- Exported Functions ---
 
 let syncIntervalId: NodeJS.Timeout | null = null;
-let isSyncing = false; // Semaphore to prevent concurrent syncs
 
 export function startBackgroundSync(): void {
     if (syncIntervalId) {
@@ -216,4 +220,26 @@ export function startBackgroundSync(): void {
     syncIntervalId = setInterval(syncAndRelease, intervalMs);
 
     console.log(`[SyncProcess] Background sync scheduled to run every ${intervalMinutes} minutes.`);
+}
+
+export async function triggerManualSync(): Promise<{ message: string, status: 'started' | 'busy' }> {
+    if (isSyncing) {
+        const message = "Sync is already in progress.";
+        console.log(`[SyncProcess] Manual trigger failed: ${message}`);
+        return { message, status: 'busy' };
+    }
+
+    // Run sync in the background, don't await it here
+    (async () => {
+        isSyncing = true;
+        try {
+            await runSync();
+        } finally {
+            isSyncing = false;
+        }
+    })();
+    
+    const message = "Manual sync process has been initiated.";
+    console.log(`[SyncProcess] ${message}`);
+    return { message, status: 'started' };
 }
