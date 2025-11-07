@@ -19,13 +19,16 @@ async function getDriveClient(): Promise<drive_v3.Drive> {
 
         if (base64Credentials) {
             try {
-                const decodedCredentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
-                credentials = JSON.parse(decodedCredentials);
+                // Decode the base64 string to get the JSON content
+                const decodedJson = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+                // Parse the JSON string into a credentials object
+                credentials = JSON.parse(decodedJson);
             } catch (e) {
                 console.error("[SyncProcess] Failed to parse GOOGLE_CREDENTIALS_BASE64.", e);
                 throw new Error("Invalid Base64 encoded Google credentials.");
             }
         } else {
+            // Fallback to reading the local file if the environment variable is not present
             try {
                 const keyFileContent = await fs.readFile(KEYFILE_PATH, 'utf-8');
                 credentials = JSON.parse(keyFileContent);
