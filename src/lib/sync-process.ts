@@ -123,9 +123,9 @@ async function runSync() {
         console.log(`[SyncProcess] Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
         await writeSyncLog(`Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
 
-        // 2. Sync Files to Temporary Directory
-        const DATA_DIR_TEMP = path.join(tempDir, 'src/data');
-        await fs.mkdir(DATA_DIR_TEMP, { recursive: true });
+        // 2. Sync Files to Temporary Directory (in project root)
+        const TEMP_DATA_DIR = path.join(tempDir, 'data'); // A 'data' folder inside the temp dir
+        await fs.mkdir(TEMP_DATA_DIR, { recursive: true });
         
         const rootFilesRes = await drive.files.list({
             q: `'${rootFolderId}' in parents and (name='config.json' or name='live.json') and trashed=false`,
@@ -134,7 +134,7 @@ async function runSync() {
 
         for (const file of (rootFilesRes.data.files || [])) {
             if (file.id && file.name) {
-                await downloadAndSaveFile(drive, file.id, path.join(DATA_DIR_TEMP, file.name));
+                await downloadAndSaveFile(drive, file.id, path.join(TEMP_DATA_DIR, file.name));
             }
         }
         
@@ -145,11 +145,7 @@ async function runSync() {
 
         const tournamentsFolder = tournamentsFolderRes.data.files?.[0];
         if (tournamentsFolder?.id) {
-            await syncFolder(drive, tournamentsFolder.id, path.join(DATA_DIR_TEMP, 'tournaments'));
-        }
-
-        if (versionFile?.id) {
-            await downloadAndSaveFile(drive, versionFile.id, path.join(DATA_DIR_TEMP, 'lastSyncVersion.log'));
+            await syncFolder(drive, tournamentsFolder.id, path.join(TEMP_DATA_DIR, 'tournaments'));
         }
 
         // 3. Atomic Replace
@@ -161,7 +157,14 @@ async function runSync() {
         } catch(e) {
             console.warn("[SyncProcess] Could not remove old data directory, it might not exist. Continuing...");
         }
-        await fs.rename(DATA_DIR_TEMP, FINAL_DATA_DIR);
+        // Move the 'data' folder from temp to src
+        await fs.rename(TEMP_DATA_DIR, FINAL_DATA_DIR);
+
+        // 4. Update local version file
+        if (versionFile?.id) {
+             const finalVersionPath = path.join(process.cwd(), 'lastSyncVersion.log');
+             await downloadAndSaveFile(drive, versionFile.id, finalVersionPath);
+        }
 
         await writeSyncLog("Sync completed successfully.");
         console.log('[SyncProcess] Sync from Google Drive completed successfully.');
@@ -170,6 +173,8 @@ async function runSync() {
         const errorMessage = error instanceof Error ? error.message : String(error);
         await writeSyncLog(`Sync FAILED: ${errorMessage}`);
         console.error('[SyncProcess] Sync process failed:', error);
+    } finally {
+        // Clean up the temporary directory regardless of success or failure
         await fs.rm(tempDir, { recursive: true, force: true }).catch(err => console.error(`[SyncProcess] Failed to clean up temp directory: ${err}`));
     }
 }

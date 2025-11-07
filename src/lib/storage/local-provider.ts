@@ -8,7 +8,7 @@ const DATA_DIR = path.join(process.cwd(), 'src/data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 const LIVE_STATE_PATH = path.join(DATA_DIR, 'live.json');
 const TOURNAMENTS_DIR = path.join(DATA_DIR, 'tournaments');
-const VERSION_FILE_PATH = path.join(DATA_DIR, 'lastSyncVersion.log');
+const VERSION_FILE_PATH = path.join(process.cwd(), 'lastSyncVersion.log');
 
 
 /**
@@ -48,8 +48,9 @@ async function writeJsonFile(filePath: string, data: any): Promise<void> {
 // --- Versioning Functions ---
 
 /**
- * Reads the current data version from lastSyncVersion.log.
- * @returns The current version number, or 0 if the file doesn't exist.
+ * Reads the current data version from lastSyncVersion.log in the project root.
+ * If the file doesn't exist, it assumes the local data is the newest to prevent overwrites.
+ * @returns The current version number, or Number.MAX_SAFE_INTEGER if the file doesn't exist.
  */
 export async function readVersion(): Promise<number> {
     try {
@@ -58,10 +59,11 @@ export async function readVersion(): Promise<number> {
         return isNaN(version) ? 0 : version;
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return 0; // File doesn't exist, so version is 0.
+            // If file doesn't exist, assume local data is pristine and should not be overwritten.
+            return Number.MAX_SAFE_INTEGER;
         }
         console.error(`Error reading version file:`, error);
-        return 0; // Return 0 on any other read error.
+        return Number.MAX_SAFE_INTEGER; // Err on the side of caution.
     }
 }
 
@@ -70,12 +72,14 @@ export async function readVersion(): Promise<number> {
  */
 async function incrementVersion(): Promise<void> {
     if (process.env.STORAGE_PROVIDER === 'googledrive_override') {
-        // In this mode, local changes should not increment the version,
-        // as local is a read-only mirror. The version is only updated by the sync process.
         return;
     }
     try {
-        const currentVersion = await readVersion();
+        let currentVersion = await readVersion();
+        if (currentVersion === Number.MAX_SAFE_INTEGER) {
+            // This is the first time we're versioning, start at 1.
+            currentVersion = 0;
+        }
         const newVersion = currentVersion + 1;
         await fs.writeFile(VERSION_FILE_PATH, String(newVersion), 'utf-8');
     } catch (error) {
