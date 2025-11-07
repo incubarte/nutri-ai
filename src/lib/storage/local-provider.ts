@@ -49,8 +49,8 @@ async function writeJsonFile(filePath: string, data: any): Promise<void> {
 
 /**
  * Reads the current data version from lastSyncVersion.log in the project root.
- * If the file doesn't exist, it assumes the local data is the newest to prevent overwrites.
- * @returns The current version number, or Number.MAX_SAFE_INTEGER if the file doesn't exist.
+ * If the file doesn't exist, it assumes version 0.
+ * @returns The current version number.
  */
 export async function readVersion(): Promise<number> {
     try {
@@ -59,11 +59,11 @@ export async function readVersion(): Promise<number> {
         return isNaN(version) ? 0 : version;
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            // If file doesn't exist, assume local data is pristine and should not be overwritten.
-            return Number.MAX_SAFE_INTEGER;
+            // If file doesn't exist, local data is considered version 0.
+            return 0;
         }
         console.error(`Error reading version file:`, error);
-        return Number.MAX_SAFE_INTEGER; // Err on the side of caution.
+        return 0; // Err on the side of caution.
     }
 }
 
@@ -75,11 +75,7 @@ async function incrementVersion(): Promise<void> {
         return;
     }
     try {
-        let currentVersion = await readVersion();
-        if (currentVersion === Number.MAX_SAFE_INTEGER) {
-            // This is the first time we're versioning, start at 1.
-            currentVersion = 0;
-        }
+        const currentVersion = await readVersion();
         const newVersion = currentVersion + 1;
         await fs.writeFile(VERSION_FILE_PATH, String(newVersion), 'utf-8');
     } catch (error) {

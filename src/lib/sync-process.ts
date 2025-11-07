@@ -106,8 +106,9 @@ async function runSync() {
             const versionContent = await streamToString(res.data);
             remoteVersion = parseInt(versionContent.trim(), 10) || 0;
         } else {
-            await writeSyncLog("Remote version file not found, assuming version 0.");
-            console.log("[SyncProcess] Remote version file 'lastSyncVersion.log' not found in Drive. Assuming version 0.");
+            await writeSyncLog("Remote version file not found, forcing sync.");
+            console.log("[SyncProcess] Remote version file 'lastSyncVersion.log' not found in Drive. Forcing sync.");
+            remoteVersion = Number.MAX_SAFE_INTEGER; // Force sync if remote version file doesn't exist
         }
 
         const localVersion = await localProvider.readVersion();
@@ -124,7 +125,7 @@ async function runSync() {
         await writeSyncLog(`Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
 
         // 2. Sync Files to Temporary Directory (in project root)
-        const TEMP_DATA_DIR = path.join(tempDir, 'data'); // A 'data' folder inside the temp dir
+        const TEMP_DATA_DIR = path.join(tempDir, 'src/data'); // Replicate the final structure
         await fs.mkdir(TEMP_DATA_DIR, { recursive: true });
         
         const rootFilesRes = await drive.files.list({
@@ -157,7 +158,7 @@ async function runSync() {
         } catch(e) {
             console.warn("[SyncProcess] Could not remove old data directory, it might not exist. Continuing...");
         }
-        // Move the 'data' folder from temp to src
+        
         await fs.rename(TEMP_DATA_DIR, FINAL_DATA_DIR);
 
         // 4. Update local version file
