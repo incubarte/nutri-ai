@@ -6,7 +6,8 @@ import type { drive_v3 } from 'googleapis';
 import * as localProvider from './storage/local-provider';
 
 const KEYFILE_PATH = path.join(process.cwd(), 'env_drive_credentials.json');
-const SYNC_LOG_PATH = path.join(process.cwd(), 'sync.log');
+const STORAGE_DIR = path.join(process.cwd(), 'storage');
+const SYNC_LOG_PATH = path.join(STORAGE_DIR, 'sync.log');
 const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 
 // --- Google Drive API Client Setup ---
@@ -82,7 +83,6 @@ async function runSync() {
     await writeSyncLog("Sync initialized");
     console.log('[SyncProcess] Starting sync from Google Drive...');
     
-    // Create temp directory inside a dedicated `_temps` folder
     const tempsRoot = path.join(process.cwd(), '_temps');
     const tempDir = path.join(tempsRoot, `_temp_sync_${Date.now()}`);
 
@@ -125,7 +125,7 @@ async function runSync() {
             await writeSyncLog(`Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
 
             // 2. Sync Files to Temporary Directory
-            const TEMP_DATA_DIR = path.join(tempDir, 'src/data');
+            const TEMP_DATA_DIR = path.join(tempDir, 'data');
             await fs.mkdir(TEMP_DATA_DIR, { recursive: true });
             
             const rootFilesRes = await drive.files.list({
@@ -151,7 +151,7 @@ async function runSync() {
 
             // 3. Atomic Replace
             console.log('[SyncProcess] Download complete. Replacing local data...');
-            const FINAL_DATA_DIR = path.join(process.cwd(), 'src/data');
+            const FINAL_DATA_DIR = path.join(STORAGE_DIR, 'data');
             
             try {
                 await fs.rm(FINAL_DATA_DIR, { recursive: true, force: true });
@@ -163,11 +163,11 @@ async function runSync() {
 
             // 4. Update local version file
             if (versionFile?.id) {
-                const finalVersionPath = path.join(process.cwd(), 'lastSyncVersion.log');
-                await downloadAndSaveFile(drive, versionFile.id, finalVersionPath);
+                 const finalVersionPath = path.join(STORAGE_DIR, 'lastSyncVersion.log');
+                 await downloadAndSaveFile(drive, versionFile.id, finalVersionPath);
             } else {
-                const finalVersionPath = path.join(process.cwd(), 'lastSyncVersion.log');
-                await fs.rm(finalVersionPath, {force: true}).catch(()=>{});
+                 const finalVersionPath = path.join(STORAGE_DIR, 'lastSyncVersion.log');
+                 await fs.rm(finalVersionPath, {force: true}).catch(()=>{});
             }
 
             await writeSyncLog("Sync completed successfully.");

@@ -4,11 +4,12 @@ import path from 'path';
 import type { ConfigState, LiveState, MatchData, Tournament } from '@/types';
 
 // Definición de las rutas de los archivos de datos.
-const DATA_DIR = path.join(process.cwd(), 'src/data');
+const STORAGE_DIR = path.join(process.cwd(), 'storage');
+const DATA_DIR = path.join(STORAGE_DIR, 'data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 const LIVE_STATE_PATH = path.join(DATA_DIR, 'live.json');
 const TOURNAMENTS_DIR = path.join(DATA_DIR, 'tournaments');
-const VERSION_FILE_PATH = path.join(process.cwd(), 'lastSyncVersion.log');
+const VERSION_FILE_PATH = path.join(STORAGE_DIR, 'lastSyncVersion.log');
 
 
 /**
@@ -49,23 +50,32 @@ async function writeJsonFile(filePath: string, data: any): Promise<void> {
 
 /**
  * Reads the current data version from lastSyncVersion.log in the project root.
- * If the file doesn't exist or is invalid, it returns 0.
+ * If the file doesn't exist, it creates it with version 0 and returns 0.
  * @returns The current version number.
  */
 export async function readVersion(): Promise<number> {
     try {
+        await fs.mkdir(path.dirname(VERSION_FILE_PATH), { recursive: true });
         const data = await fs.readFile(VERSION_FILE_PATH, 'utf-8');
         const version = parseInt(data.trim(), 10);
         return isNaN(version) ? 0 : version;
     } catch (error) {
-        // If file doesn't exist or any other read error occurs, assume version 0.
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            try {
+                await fs.writeFile(VERSION_FILE_PATH, '0', 'utf-8');
+                return 0;
+            } catch (writeError) {
+                console.error(`Error creating version file:`, writeError);
+                return 0; // Return 0 if creation fails
+            }
+        }
         return 0;
     }
 }
 
 /**
  * Reads the current version, increments it, and writes it back to the file.
- * Creates the file with version 1 if it doesn't exist.
+ * This is now the single point of truth for modifying the version.
  */
 async function incrementVersion(): Promise<void> {
     if (process.env.STORAGE_PROVIDER === 'googledrive_override') {
@@ -73,7 +83,7 @@ async function incrementVersion(): Promise<void> {
     }
     try {
         const currentVersion = await readVersion();
-        const newVersion = currentVersion + 1;
+        const newVersion = currentVersion === Number.MAX_SAFE_INTEGER ? 1 : currentVersion + 1;
         await fs.writeFile(VERSION_FILE_PATH, String(newVersion), 'utf-8');
     } catch (error) {
         console.error(`Error incrementing version file:`, error);
