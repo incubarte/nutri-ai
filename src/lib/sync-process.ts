@@ -19,8 +19,11 @@ async function getDriveClient(): Promise<drive_v3.Drive> {
 
         if (base64Credentials) {
             try {
-                const decodedCredentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
-                credentials = JSON.parse(decodedCredentials);
+                const decodedString = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+                // IMPORTANT: The private key in the JSON string has escaped newlines (\\n).
+                // We must replace them with actual newlines (\n) for the Google Auth library to parse it correctly.
+                const correctedJsonString = decodedString.replace(/\\n/g, '\n');
+                credentials = JSON.parse(correctedJsonString);
             } catch (e) {
                 console.error("[SyncProcess] Failed to parse GOOGLE_CREDENTIALS_BASE64.", e);
                 throw new Error("Invalid Base64 encoded Google credentials.");
