@@ -120,6 +120,7 @@ async function runSync() {
             const message = `Sync skipped: Remote version (${remoteVersion}) is not newer than local version (${localVersion}).`;
             console.log(`[SyncProcess] ${message}`);
             await writeSyncLog(message);
+            // No return here, proceed to finally to cleanup
         } else {
             console.log(`[SyncProcess] Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
             await writeSyncLog(`Proceeding with sync: Remote version (${remoteVersion}) > Local version (${localVersion}).`);
