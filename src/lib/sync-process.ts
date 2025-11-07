@@ -7,7 +7,7 @@ import * as localProvider from './storage/local-provider';
 
 const KEYFILE_PATH = path.join(process.cwd(), 'env_drive_credentials.json');
 const DATA_DIR = path.join(process.cwd(), 'src/data');
-const SYNC_LOG_PATH = path.join(DATA_DIR, 'sync.log');
+const SYNC_LOG_PATH = path.join(process.cwd(), 'sync.log'); // Moved to project root
 const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 
 // --- Google Drive API Client Setup ---
@@ -28,7 +28,6 @@ async function getDriveClient(): Promise<drive_v3.Drive> {
 // --- File System Operations ---
 async function writeSyncLog(message: string): Promise<void> {
     try {
-        await fs.mkdir(DATA_DIR, { recursive: true });
         const timestamp = new Date().toISOString();
         await fs.appendFile(SYNC_LOG_PATH, `${timestamp} - ${message}\n`);
     } catch (error) {
@@ -83,7 +82,7 @@ async function runSync() {
     await writeSyncLog("Sync initialized");
     console.log('[SyncProcess] Starting sync from Google Drive...');
     
-    const tempDir = path.join(DATA_DIR, `_temp_sync_${Date.now()}`);
+    const tempDir = path.join(process.cwd(), `_temp_sync_${Date.now()}`);
 
     try {
         await fs.mkdir(tempDir, { recursive: true });
