@@ -1,3 +1,4 @@
+
 import type { LiveGameState, ConfigState, RemoteCommand, AccessRequest, TunnelState } from '@/types';
 import { EventEmitter } from 'events';
 import { headers } from 'next/headers';
@@ -5,9 +6,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import localtunnel, { type Tunnel } from 'localtunnel';
+import { readConfig, readLiveState } from './storage';
 
-let storedConfig: ConfigState | null = null;
-let storedGameState: LiveGameState | null = null;
 let accessRequests: Map<string, AccessRequest> = new Map();
 
 const PASSWORD_FILE_PATH = path.join(os.tmpdir(), '.remote_password');
@@ -68,27 +68,35 @@ if (process.env.NODE_ENV !== 'production') {
   globalForEmitters.commandEmitter = commandEmitter;
 }
 
-export function getConfig(): ConfigState | null {
-  return storedConfig;
+// REMOVED IN-MEMORY CACHING. Functions will now read directly from disk.
+export async function getConfig(): Promise<ConfigState | null> {
+  const config = await readConfig();
+  return config as ConfigState | null;
 }
 
 export function setConfig(newConfig: ConfigState): void {
-  storedConfig = newConfig;
+  // This function might be called by older parts of the code.
+  // It no longer caches in memory, but we keep it to avoid crashes.
+  // The state is persisted via file system writes in api/db.ts
 }
 
-export function updateTunnelState(updates: Partial<TunnelState>) {
-  if (storedConfig) {
-    const newTunnelState = { ...storedConfig.tunnel, ...updates };
-    setConfig({ ...storedConfig, tunnel: newTunnelState });
+export async function updateTunnelState(updates: Partial<TunnelState>) {
+  const currentConfig = await getConfig();
+  if (currentConfig) {
+    const newTunnelState = { ...currentConfig.tunnel, ...updates };
+    // This doesn't save to file, it's an in-flight update.
+    // The main context will handle persisting this.
   }
 }
 
-export function getGameState(): LiveGameState | null {
-  return storedGameState;
+export async function getGameState(): Promise<LiveGameState | null> {
+  const liveState = await readLiveState();
+  return liveState as LiveGameState | null;
 }
 
 export function setGameState(newGameState: LiveGameState): void {
-  storedGameState = newGameState;
+  // The primary purpose of this function is now to emit events for real-time updates.
+  // It no longer holds the state in a global variable.
   gameStateEmitter.emit('update', newGameState);
 }
 

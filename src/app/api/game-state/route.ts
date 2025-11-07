@@ -7,8 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const liveState = getGameState();
-    const config = getConfig();
+    const [liveState, config] = await Promise.all([getGameState(), getConfig()]);
 
     if (!liveState || !config) {
       // This can happen if the server just started and no state has been posted yet.

@@ -1,9 +1,10 @@
+
 import { NextResponse } from 'next/server';
 import { disconnectTunnel, connectTunnel, getConfig } from '@/lib/server-side-store';
 
 export async function POST(request: Request) {
   const { action, port } = await request.json();
-  const currentConfig = getConfig();
+  const currentConfig = await getConfig();
   let tunnelState = currentConfig?.tunnel;
 
   if (action === 'connect') {
@@ -28,11 +29,11 @@ export async function POST(request: Request) {
   
   } else if (action === 'status') {
     // Re-fetch config to get the most current state after potential updates.
-    tunnelState = getConfig()?.tunnel;
+    tunnelState = (await getConfig())?.tunnel;
     return NextResponse.json({ success: true, ...tunnelState });
 
   } else if (action === 'health-check') {
-    tunnelState = getConfig()?.tunnel;
+    tunnelState = (await getConfig())?.tunnel;
     if (!tunnelState || tunnelState.status !== 'connected' || !tunnelState.url) {
         return NextResponse.json({ success: true, status: 'disconnected' });
     }

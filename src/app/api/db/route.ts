@@ -1,8 +1,10 @@
 
 import { NextResponse } from 'next/server';
 import type { GameState, ConfigState, LiveState } from '@/types';
-import { setGameState, setConfig } from '@/lib/server-side-store';
+import { setGameState } from '@/lib/server-side-store';
 import { readConfig, writeConfig, readLiveState, writeLiveState } from '@/lib/storage';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
@@ -11,9 +13,8 @@ export async function GET(request: Request) {
         readLiveState()
     ]);
     
-    // Store in-memory for other API routes to access
-    if (config) setConfig(config as ConfigState);
-    if (liveState) setGameState(liveState as LiveState);
+    // No longer caching in memory here.
+    // The data is read fresh on every request.
 
     const initialState: Partial<GameState> = {
       config: config || {},
@@ -44,7 +45,6 @@ export async function POST(request: Request) {
         const configToSave = { ...baseConfig, tournaments: tournamentMetas };
         
         await writeConfig(configToSave as ConfigState);
-        setConfig(config); // Update in-memory store
     }
     
     if (live) {

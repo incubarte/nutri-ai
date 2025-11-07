@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const liveState = getGameState();
+    const liveState = await getGameState();
 
     if (!liveState) {
       return NextResponse.json({ message: 'Game state not initialized on the server yet.' }, { status: 404 });
