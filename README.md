@@ -56,3 +56,23 @@ Access voice control at `/voice` route. Requires:
 - Active game with teams loaded in `tmp/new-storage/data/live.json`
 - Microphone permissions in browser
 - Python venv activated (runs automatically via API)
+
+### Cloud Transcription (Optional - Faster)
+
+For faster transcription, you can use Groq's free cloud API:
+
+1. Get a free API key at https://console.groq.com/keys
+2. Add to your `.env` file:
+   ```
+   GROQ_API_KEY=your_key_here
+   VOICE_TRANSCRIPTION_MODE=auto
+   ```
+
+**Modes:**
+- `auto` (default): Try cloud first, fallback to local if unavailable
+- `cloud`: Only use cloud (requires internet + API key)
+- `local`: Only use local Whisper (offline, slower)
+
+**Speed comparison:**
+- Cloud (Groq): ~500-1000ms ⚡
+- Local (Whisper base): ~2000-4000ms 🐢

@@ -3,6 +3,8 @@
  * Fixes common misheard team names and numbers
  */
 
+import type { VoiceGameEvent, ShotEventData, GoalEventData, PenaltyEventData, TimeoutEventData } from '@/types';
+
 /**
  * Calculate similarity between two strings (0-1)
  */
@@ -79,6 +81,7 @@ function isSubsequence(word: string, target: string): boolean {
 function findTeamNameMatch(word: string, teamNames: string[]): string | null {
   const wordLower = word.toLowerCase();
 
+  // First pass: exact and high-confidence matches
   for (const teamName of teamNames) {
     const teamLower = teamName.toLowerCase();
 
@@ -87,28 +90,58 @@ function findTeamNameMatch(word: string, teamNames: string[]): string | null {
       return teamName;
     }
 
-    // Strategy 2: Subsequence match (e.g., "cal" in "cahhl")
-    if (isSubsequence(wordLower, teamLower)) {
-      return teamName;
-    }
-
-    // Strategy 3: Very permissive fuzzy match (threshold 0.3 for team names)
+    // Strategy 2: High similarity fuzzy match (threshold 0.6)
     const score = similarity(wordLower, teamLower);
-    if (score > 0.3) {
+    if (score > 0.6) {
       return teamName;
     }
 
-    // Strategy 4: Match against parts of the team name
+    // Strategy 3: Match against parts of the team name
     // e.g., "CAHHL AZUL" -> ["cahhl", "azul"]
     const teamParts = teamLower.split(/\s+/);
     for (const part of teamParts) {
       if (part.includes(wordLower) || wordLower.includes(part)) {
         return teamName;
       }
-      if (isSubsequence(wordLower, part)) {
+      if (similarity(wordLower, part) > 0.6) {
         return teamName;
       }
-      if (similarity(wordLower, part) > 0.3) {
+    }
+  }
+
+  // Second pass: more permissive for words >= 3 chars
+  if (wordLower.length >= 3) {
+    for (const teamName of teamNames) {
+      const teamLower = teamName.toLowerCase();
+
+      // Match against parts of the team name with lower threshold
+      const teamParts = teamLower.split(/\s+/);
+      for (const part of teamParts) {
+        // Subsequence match for 3+ char words
+        if (isSubsequence(wordLower, part)) {
+          // Require at least 50% of the letters to match for short words
+          if (wordLower.length / part.length >= 0.5) {
+            return teamName;
+          }
+        }
+
+        // Lower fuzzy threshold (0.4) for parts
+        if (similarity(wordLower, part) > 0.4) {
+          return teamName;
+        }
+      }
+
+      // Subsequence match on full team name
+      if (isSubsequence(wordLower, teamLower)) {
+        // But require at least 40% of the letters to match
+        if (wordLower.length / teamLower.length >= 0.3) {
+          return teamName;
+        }
+      }
+
+      // Lower fuzzy threshold (0.35) for 3+ char words
+      const score = similarity(wordLower, teamLower);
+      if (score > 0.35) {
         return teamName;
       }
     }
@@ -158,7 +191,7 @@ export interface ParsedVoiceCommand {
   corrected: string;
   teamName: string | null;
   playerNumbers: string[];
-  action: 'shot' | 'goal' | 'penalty' | 'unknown';
+  action: 'shot' | 'goal' | 'penalty' | 'timeout' | 'unknown';
 }
 
 export function parseVoiceCommand(
@@ -171,9 +204,10 @@ export function parseVoiceCommand(
 
   // Detect action
   let action: ParsedVoiceCommand['action'] = 'unknown';
-  if (/\b(tiro|shot)\b/i.test(corrected)) action = 'shot';
-  else if (/\b(gol|goal)\b/i.test(corrected)) action = 'goal';
+  if (/\b(gol|goal)\b/i.test(corrected)) action = 'goal';
   else if (/\b(penal|penalty|penalizaci[oó]n)\b/i.test(corrected)) action = 'penalty';
+  else if (/\b(tiempo|timeout|time\s*out)\b/i.test(corrected)) action = 'timeout';
+  else if (/\b(tiro|shot)\b/i.test(corrected)) action = 'shot';
 
   // Find team name - try exact match first, then smart team matching
   let teamName: string | null = null;
@@ -208,6 +242,12 @@ export function parseVoiceCommand(
     playerNumbers = allNumbers;
   }
 
+  // If we have team + player but no action, assume it's a shot
+  // Examples: "ACEMHH 20", "57 de ACEMHH", "CAHHL 8"
+  if (action === 'unknown' && teamName && playerNumbers.length > 0) {
+    action = 'shot';
+  }
+
   return {
     raw: text,
     corrected,
@@ -215,4 +255,78 @@ export function parseVoiceCommand(
     playerNumbers,
     action
   };
+}
+
+/**
+ * Convert parsed command to structured game event
+ */
+export function createGameEventFromCommand(
+  parsed: ParsedVoiceCommand,
+  homeTeamName: string,
+  awayTeamName: string,
+  gameTime?: { period: number; timeRemaining: number }
+): VoiceGameEvent | null {
+  if (parsed.action === 'unknown' || !parsed.teamName) {
+    return null;
+  }
+
+  const team: 'home' | 'away' = parsed.teamName === homeTeamName ? 'home' : 'away';
+
+  const baseEvent = {
+    action: parsed.action,
+    timestamp: new Date().toISOString(),
+    gameTime,
+  };
+
+  switch (parsed.action) {
+    case 'shot':
+      if (parsed.playerNumbers.length === 0) return null;
+      return {
+        ...baseEvent,
+        action: 'shot',
+        data: {
+          team,
+          teamName: parsed.teamName,
+          playerNumber: parsed.playerNumbers[0],
+        },
+      };
+
+    case 'goal':
+      if (parsed.playerNumbers.length === 0) return null;
+      return {
+        ...baseEvent,
+        action: 'goal',
+        data: {
+          team,
+          teamName: parsed.teamName,
+          scorer: parsed.playerNumbers[0],
+          assists: parsed.playerNumbers.slice(1), // Additional numbers are assists
+        },
+      };
+
+    case 'penalty':
+      if (parsed.playerNumbers.length === 0) return null;
+      return {
+        ...baseEvent,
+        action: 'penalty',
+        data: {
+          team,
+          teamName: parsed.teamName,
+          playerNumber: parsed.playerNumbers[0],
+        },
+      };
+
+    case 'timeout':
+      return {
+        ...baseEvent,
+        action: 'timeout',
+        data: {
+          team,
+          teamName: parsed.teamName,
+        },
+      };
+
+    default:
+      return null;
+  }
 }

@@ -82,6 +82,23 @@ export async function readTournament(tournamentId: string): Promise<Partial<Tour
     }
 }
 
+/**
+ * Write a single match summary file without touching other files
+ */
+export async function writeSingleMatchSummary(
+    tournamentId: string,
+    matchId: string,
+    summary: any
+): Promise<void> {
+    const summaryKey = `tournaments/${tournamentId}/summaries/${matchId}.json`;
+    const summaryContent = JSON.stringify(summary, null, 2);
+
+    await storageProvider.writeFile(summaryKey, summaryContent);
+    await updateManifestEntry(summaryKey, summaryContent);
+
+    console.log(`[Data Access] Saved summary for match ${matchId} (only this file was modified)`);
+}
+
 export async function writeTournament(tournament: Tournament): Promise<void> {
     const tournamentPrefix = `tournaments/${tournament.id}/`;
     const teamsKey = `${tournamentPrefix}teams.json`;
@@ -90,16 +107,12 @@ export async function writeTournament(tournament: Tournament): Promise<void> {
     try {
         const teamsData = { categories: tournament.categories || [], teams: tournament.teams || [] };
         const fixtureMatches: Omit<MatchData, 'summary'>[] = [];
-        const summaryWritePromises: Promise<void>[] = [];
 
+        // NOTE: We do NOT write summaries here anymore
+        // Summaries are saved individually via writeSingleMatchSummary() to avoid unnecessary file writes
         (tournament.matches || []).forEach(match => {
             const { summary, ...matchWithoutSummary } = match;
-            if (summary) {
-                const summaryKey = `${tournamentPrefix}summaries/${match.id}.json`;
-                const summaryContent = JSON.stringify(summary, null, 2);
-                summaryWritePromises.push(storageProvider.writeFile(summaryKey, summaryContent));
-                // Note: Score and overtime info are calculated from summary when needed
-            }
+            // Just add to fixture without the summary (summaries are in separate files)
             fixtureMatches.push(matchWithoutSummary);
         });
 
@@ -107,11 +120,10 @@ export async function writeTournament(tournament: Tournament): Promise<void> {
         const teamsContent = JSON.stringify(teamsData, null, 2);
         const fixtureContent = JSON.stringify(fixtureData, null, 2);
 
-        // Write all files in parallel (fast)
+        // Write teams and fixture files only (NOT summaries)
         await Promise.all([
             storageProvider.writeFile(teamsKey, teamsContent),
             storageProvider.writeFile(fixtureKey, fixtureContent),
-            ...summaryWritePromises,
         ]);
 
         // Update manifest SEQUENTIALLY to avoid race conditions
@@ -119,17 +131,8 @@ export async function writeTournament(tournament: Tournament): Promise<void> {
         await updateManifestEntry(teamsKey, teamsContent);
         await updateManifestEntry(fixtureKey, fixtureContent);
 
-        // Update summaries sequentially too
-        const summaries = (tournament.matches || [])
-            .map(match => match.summary ? {
-                key: `${tournamentPrefix}summaries/${match.id}.json`,
-                content: JSON.stringify(match.summary, null, 2)
-            } : null)
-            .filter(Boolean) as Array<{key: string, content: string}>;
-
-        for (const {key, content} of summaries) {
-            await updateManifestEntry(key, content);
-        }
+        // NOTE: Summaries are NOT updated here
+        // They are updated individually when saved via writeSingleMatchSummary()
     } catch (error) {
         console.error(`Error writing tournament ${tournament.id} to provider:`, error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';

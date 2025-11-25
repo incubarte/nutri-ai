@@ -73,6 +73,7 @@ const calculateAbsoluteTimeForPeriod = (
 
 /**
  * Finalizes the match when it ends
+ * NOTE: generateSummaryData will read voice events from file if needed
  */
 const finalizeMatch = (state: GameState): GameState => {
   const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
@@ -118,15 +119,13 @@ const finalizeMatch = (state: GameState): GameState => {
 
   let newState = gameReducerRef(state, { type: 'UPDATE_LIVE_STATE', payload: finalLiveState });
 
+  // Mark that the match ended and needs summary generation
+  // The context will handle calling the API to generate the summary on the server
   if (newState.live.matchId) {
-    const summary = generateSummaryData(newState);
-    if (summary) {
-      // Return a new state that includes the summary to be saved
-      return gameReducerRef(newState, {
-        type: 'SAVE_MATCH_SUMMARY',
-        payload: { matchId: newState.live.matchId, summary },
-      });
-    }
+    return gameReducerRef(newState, {
+      type: 'TRIGGER_SUMMARY_GENERATION',
+      payload: { matchId: newState.live.matchId },
+    });
   }
 
   return newState;

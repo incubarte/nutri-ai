@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, unlink, readFile } from 'fs/promises';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import path from 'path';
-import { parseVoiceCommand } from '@/lib/voice-correction';
-
-const execAsync = promisify(exec);
+import { parseVoiceCommand, createGameEventFromCommand } from '@/lib/voice-correction';
+import { transcribeAudio } from '@/lib/voice-transcription';
+import { logVoiceEvent } from '@/lib/voice-event-logger';
 
 interface GameContext {
   prompt: string;
@@ -107,32 +105,58 @@ export async function POST(req: NextRequest) {
         promptPreview: context.prompt.substring(0, 100)
       });
 
-      // Run Whisper transcription (using venv python)
-      const scriptPath = path.join(process.cwd(), 'scripts', 'whisper-transcribe.py');
-      const pythonPath = path.join(process.cwd(), 'venv', 'bin', 'python3');
-
-      // Escape quotes in context for shell
-      const escapedPrompt = context.prompt.replace(/"/g, '\\"');
-
+      // Transcribe audio (cloud or local)
       const whisperStart = Date.now();
-      const { stdout, stderr } = await execAsync(
-        `${pythonPath} ${scriptPath} ${tempPath} "${escapedPrompt}"`
-      );
+      const transcriptionResult = await transcribeAudio(tempPath, context.prompt);
       const whisperTime = Date.now();
-      console.log(`[Voice] Whisper transcribe: ${whisperTime - whisperStart}ms`);
+      console.log(`[Voice] Transcribe (${transcriptionResult.method}): ${whisperTime - whisperStart}ms`);
 
-      if (stderr && !stderr.includes('FP16')) {
-        // Ignore FP16 warnings, log other errors
-        console.error('Whisper stderr:', stderr);
-      }
-
-      const rawText = stdout.trim();
+      const rawText = transcriptionResult.text;
 
       // Parse and correct the transcription
       const parseStart = Date.now();
       const parsed = parseVoiceCommand(rawText, context.teamNames, context.validPlayers);
       const parseEnd = Date.now();
       console.log(`[Voice] Parse command: ${parseEnd - parseStart}ms`);
+
+      // Get game time from live state
+      let gameTime = undefined;
+      try {
+        const liveState = JSON.parse(await readFile(
+          path.join(process.cwd(), 'tmp', 'new-storage', 'data', 'live.json'),
+          'utf-8'
+        ));
+        if (liveState.clock) {
+          gameTime = {
+            period: liveState.clock.currentPeriod || 1,
+            timeRemaining: liveState.clock.currentTime || 0,
+          };
+        }
+      } catch (e) {
+        console.warn('[Voice] Could not read game time');
+      }
+
+      // Create structured event
+      const event = createGameEventFromCommand(
+        parsed,
+        context.teamNames[0] || '',
+        context.teamNames[1] || '',
+        gameTime
+      );
+
+      // Log event to match summary (async, don't wait)
+      if (event) {
+        console.log('[Voice] Logging event:', JSON.stringify(event, null, 2));
+        logVoiceEvent(event).catch(err => {
+          console.error('[Voice] Failed to log event:', err);
+        });
+      } else {
+        console.warn('[Voice] No event created - missing team or player?', {
+          action: parsed.action,
+          teamName: parsed.teamName,
+          playerNumbers: parsed.playerNumbers
+        });
+      }
 
       // Clean up temp file
       await unlink(tempPath).catch(() => {});
@@ -147,6 +171,7 @@ export async function POST(req: NextRequest) {
         teamName: parsed.teamName,
         playerNumbers: parsed.playerNumbers,
         action: parsed.action,
+        event: event, // Structured event data
         timestamp: new Date().toISOString()
       });
 

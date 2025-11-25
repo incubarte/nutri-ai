@@ -1,7 +1,4 @@
-
-"use client";
-
-import type { GameState, GameSummary, PeriodStats, SummaryPlayerStats, GoalLog, ShotLog, AttendedPlayerInfo, Team, PlayerData, PenaltyLog, PeriodSummary } from "@/types";
+import type { GameState, GameSummary, PeriodStats, SummaryPlayerStats, GoalLog, ShotLog, AttendedPlayerInfo, Team, PlayerData, PenaltyLog, PeriodSummary, VoiceGameEvent } from "@/types";
 
 export const recalculateAllStatsFromLogs = (partialSummary: Partial<{ goals: { home: GoalLog[], away: GoalLog[] }, home: { homeShotsLog?: ShotLog[] }, away: { awayShotsLog?: ShotLog[] } }>, homeTeamRoster: PlayerData[], awayTeamRoster: PlayerData[]): { home: SummaryPlayerStats[], away: SummaryPlayerStats[] } => {
     const homePlayerStatsMap = new Map<string, SummaryPlayerStats>();
@@ -37,16 +34,47 @@ export const recalculateAllStatsFromLogs = (partialSummary: Partial<{ goals: { h
 };
 
 
-export const generateSummaryData = (state: GameState): GameSummary | null => {
+export const generateSummaryData = (state: GameState, voiceEvents?: VoiceGameEvent[]): GameSummary | null => {
     const { live, config } = state;
     if (!live || !config) return null;
+
+    // If voice events not provided and we're on server, try to read them from file
+    if (!voiceEvents && live.matchId && config.selectedTournamentId && typeof window === 'undefined') {
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const voiceEventsPath = path.join(
+                process.cwd(),
+                'tmp', 'new-storage', 'data', 'tournaments',
+                config.selectedTournamentId,
+                'voice-events',
+                `${live.matchId}.json`
+            );
+            if (fs.existsSync(voiceEventsPath)) {
+                const voiceEventsData = fs.readFileSync(voiceEventsPath, 'utf-8');
+                voiceEvents = JSON.parse(voiceEventsData);
+                console.log(`[Summary Generator] Loaded ${voiceEvents?.length || 0} voice events from file for match ${live.matchId}`);
+            }
+        } catch (error) {
+            console.warn('[Summary Generator] Could not read voice events file:', error);
+        }
+    }
 
     const currentTournament = config.tournaments.find(t => t.id === config.selectedTournamentId);
     const homeTeamRoster = currentTournament?.teams.find(t => t.name === live.homeTeamName && (t.subName || undefined) === (live.homeTeamSubName || undefined) && t.category === config.selectedMatchCategory)?.players || [];
     const awayTeamRoster = currentTournament?.teams.find(t => t.name === live.awayTeamName && (t.subName || undefined) === (live.awayTeamSubName || undefined) && t.category === config.selectedMatchCategory)?.players || [];
-    
+
     const allPlayedPeriods = [...(live.playedPeriods || [])];
-    
+
+    // Helper to get period text from period number
+    const getPeriodText = (periodNum: number): string => {
+        if (periodNum === 1) return '1ST';
+        if (periodNum === 2) return '2ND';
+        if (periodNum === 3) return 'OT';
+        if (periodNum === 4) return 'OT2';
+        return `OT${periodNum - 2}`;
+    };
+
     const statsByPeriodArray: PeriodSummary[] = allPlayedPeriods.map(periodText => {
         const periodData: PeriodStats = {
             goals: { home: [], away: [] },
@@ -59,7 +87,14 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         periodData.goals.away = (live.goals.away || []).filter(g => g.periodText === periodText);
         periodData.penalties.home = (live.penaltiesLog.home || []).filter(p => p.addPeriodText === periodText);
         periodData.penalties.away = (live.penaltiesLog.away || []).filter(p => p.addPeriodText === periodText);
-        
+
+        // Filter voice events for this period (shots from voice commands)
+        const voiceEventsForPeriod = (voiceEvents || []).filter((event) => {
+            if (!event.gameTime) return false;
+            const eventPeriodText = getPeriodText(event.gameTime.period);
+            return eventPeriodText === periodText && event.action === 'shot';
+        });
+
         // Recalculate player stats specifically for this period.
         const periodSummaryForStats = {
           goals: periodData.goals,
@@ -69,7 +104,25 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
         const periodPlayerStats = recalculateAllStatsFromLogs(periodSummaryForStats, homeTeamRoster, awayTeamRoster);
         periodData.playerStats.home = periodPlayerStats.home;
         periodData.playerStats.away = periodPlayerStats.away;
-        
+
+        // Add shots from voice events
+        voiceEventsForPeriod.forEach((event) => {
+            const isHome = event.data.team === 'home';
+            const roster = isHome ? homeTeamRoster : awayTeamRoster;
+            const statsArray = isHome ? periodData.playerStats.home : periodData.playerStats.away;
+
+            // Find player by number (only for shot events with playerNumber)
+            if ('playerNumber' in event.data) {
+                const player = roster.find(p => p.number === event.data.playerNumber);
+                if (player) {
+                    const playerStats = statsArray.find(s => s.id === player.id);
+                    if (playerStats) {
+                        playerStats.shots++;
+                    }
+                }
+            }
+        });
+
         return { period: periodText, stats: periodData };
     });
 
@@ -86,6 +139,11 @@ export const generateSummaryData = (state: GameState): GameSummary | null => {
     if (live.shootout && (live.shootout.homeAttempts.length > 0 || live.shootout.awayAttempts.length > 0)) {
         const { isActive, ...shootoutSummary } = live.shootout;
         finalSummary.shootout = shootoutSummary;
+    }
+
+    // Include voice events in the summary for historical record
+    if (voiceEvents && voiceEvents.length > 0) {
+        (finalSummary as any).voiceEvents = voiceEvents;
     }
 
     return finalSummary;

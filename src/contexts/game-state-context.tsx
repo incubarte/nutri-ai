@@ -1400,10 +1400,64 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         toastMessage = { title: "Partido Limpiado", description: "El resumen del partido ha sido movido a la carpeta de eliminados." };
         break;
     }
+    case 'TRIGGER_SUMMARY_GENERATION': {
+      // Just mark that we need to generate a summary
+      // The actual API call will be handled in a useEffect in the provider
+      newState = {
+        ...state,
+        _pendingSummaryGeneration: {
+          matchId: action.payload.matchId,
+          tournamentId: state.config.selectedTournamentId
+        }
+      };
+      break;
+    }
+    case 'CLEAR_PENDING_SUMMARY_GENERATION': {
+      // Remove the pending summary generation flag
+      const { _pendingSummaryGeneration, ...restState } = state;
+      newState = restState as GameState;
+      break;
+    }
+    case 'UPDATE_MATCH_SUMMARY_IN_STATE': {
+      const { matchId, summary } = action.payload;
+      const tournamentId = state.config.selectedTournamentId;
+      if (!tournamentId) break;
+
+      const newTournaments = state.config.tournaments.map(t => {
+        if (t.id === tournamentId) {
+          const newMatches = (t.matches || []).map(m => {
+            if (m.id === matchId) {
+                return { ...m, summary };
+            }
+            return m;
+          });
+          return { ...t, matches: newMatches };
+        }
+        return t;
+      });
+      newState = { ...state, config: { ...state.config, tournaments: newTournaments }};
+      break;
+    }
     case 'SAVE_MATCH_SUMMARY': {
       const { matchId, summary } = action.payload;
       const tournamentId = state.config.selectedTournamentId;
       if (!tournamentId) break;
+
+      // Save summary file asynchronously (non-blocking)
+      fetch('/api/match-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournamentId, matchId, summary })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          console.log(`[GameState] Summary saved for match ${matchId} (only this file was modified)`);
+        } else {
+          console.error('[GameState] Failed to save summary:', data.error);
+        }
+      })
+      .catch(err => console.error('[GameState] Error saving summary:', err));
 
       const newTournaments = state.config.tournaments.map(t => {
         if (t.id === tournamentId) {
@@ -1775,13 +1829,22 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
                   updateConfigOnServer({ ...baseConfig, tournaments: tournamentsMeta });
               }
               // Logic to save individual tournament if it changes
-              const changedTournament = state.config.tournaments.find((newTournament, index) => {
-                const oldTournament = oldState.config.tournaments.find(t => t.id === newTournament.id);
-                return oldTournament && !isEqual(newTournament, oldTournament);
-              });
+              // BUT skip if the last action was SAVE_MATCH_SUMMARY or TRIGGER_SUMMARY_GENERATION
+              // (they handle saving themselves)
+              if (state._lastActionType !== 'SAVE_MATCH_SUMMARY' &&
+                  state._lastActionType !== 'TRIGGER_SUMMARY_GENERATION' &&
+                  state._lastActionType !== 'UPDATE_MATCH_SUMMARY_IN_STATE') {
+                const changedTournament = state.config.tournaments.find((newTournament, index) => {
+                  const oldTournament = oldState.config.tournaments.find(t => t.id === newTournament.id);
+                  return oldTournament && !isEqual(newTournament, oldTournament);
+                });
 
-              if(changedTournament) {
-                saveTournamentOnServer(changedTournament);
+                if(changedTournament) {
+                  console.log('[GameState] Tournament changed, saving entire tournament...', changedTournament.id);
+                  saveTournamentOnServer(changedTournament);
+                }
+              } else {
+                console.log(`[GameState] Skipping saveTournamentOnServer because last action was ${state._lastActionType}`);
               }
 
           } catch (error) {
@@ -1798,7 +1861,42 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
     }
     return () => clearInterval(timerId);
   }, [state.live?.clock, isPageVisible, isLoading, state.config.tickIntervalMs]);
-  
+
+  // Handle summary generation when triggered
+  useEffect(() => {
+    if (state._pendingSummaryGeneration) {
+      const { matchId, tournamentId } = state._pendingSummaryGeneration;
+
+      if (!matchId || !tournamentId) return;
+
+      console.log(`[GameState] Triggering summary generation on server for match ${matchId}`);
+
+      // Call server API to generate summary (it will read voice events and save the summary)
+      fetch('/api/generate-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          console.log(`[GameState] Summary generated on server for match ${matchId} with ${data.voiceEventsCount} voice events`);
+
+          // Update state with the generated summary
+          dispatch({
+            type: 'UPDATE_MATCH_SUMMARY_IN_STATE',
+            payload: { matchId, summary: data.summary }
+          });
+        } else {
+          console.error('[GameState] Failed to generate summary:', data.error);
+        }
+      })
+      .catch(err => console.error('[GameState] Error generating summary:', err));
+
+      // Clear the pending flag
+      dispatch({ type: 'CLEAR_PENDING_SUMMARY_GENERATION' });
+    }
+  }, [state._pendingSummaryGeneration]);
 
   return (
     <GameStateContext.Provider value={{ state, dispatch, isLoading }}>

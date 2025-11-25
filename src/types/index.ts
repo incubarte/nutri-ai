@@ -416,6 +416,42 @@ export interface ShootoutState {
   initiator: Team | null; // Track who started the shootout
 }
 
+// Voice event data structures for voice command logging
+export interface ShotEventData {
+  team: 'home' | 'away';
+  teamName: string;
+  playerNumber: string;
+}
+
+export interface GoalEventData {
+  team: 'home' | 'away';
+  teamName: string;
+  scorer: string;
+  assists?: string[];
+}
+
+export interface PenaltyEventData {
+  team: 'home' | 'away';
+  teamName: string;
+  playerNumber: string;
+  penaltyType?: string;
+}
+
+export interface TimeoutEventData {
+  team: 'home' | 'away';
+  teamName: string;
+}
+
+export interface VoiceGameEvent {
+  action: 'shot' | 'goal' | 'penalty' | 'timeout';
+  timestamp: string;
+  gameTime?: {
+    period: number;
+    timeRemaining: number; // in centiseconds
+  };
+  data: ShotEventData | GoalEventData | PenaltyEventData | TimeoutEventData;
+}
+
 // This is the model for live, in-game data
 export interface LiveState {
   clock: ClockState;

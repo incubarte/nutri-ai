@@ -179,18 +179,14 @@ export async function writeTournament(tournament: Tournament): Promise<void> {
             categories: tournament.categories || [],
             teams: tournament.teams || [],
         };
-        
-        const fixtureMatches: Omit<MatchData, 'summary'>[] = [];
-        const summaryWritePromises: Promise<void>[] = [];
 
+        const fixtureMatches: Omit<MatchData, 'summary'>[] = [];
+
+        // NOTE: We do NOT write summaries here anymore
+        // Summaries are saved individually via writeSingleMatchSummary() to avoid unnecessary file writes
         (tournament.matches || []).forEach(match => {
             const { summary, ...matchWithoutSummary } = match;
-
-            if (summary) {
-                const summaryPath = path.join(summariesDir, `${match.id}.json`);
-                summaryWritePromises.push(writeJsonFile(summaryPath, summary));
-                // Note: Score and overtime info are calculated from summary when needed
-            }
+            // Just add to fixture without the summary (summaries are in separate files)
             fixtureMatches.push(matchWithoutSummary);
         });
 
@@ -198,10 +194,10 @@ export async function writeTournament(tournament: Tournament): Promise<void> {
             matches: fixtureMatches,
         };
 
+        // Write teams and fixture files only (NOT summaries)
         await Promise.all([
             writeJsonFile(teamsFilePath, teamsData),
             writeJsonFile(fixtureFilePath, fixtureData),
-            ...summaryWritePromises,
         ]);
 
         await incrementVersion();
