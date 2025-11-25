@@ -2,17 +2,6 @@ import { NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
-async function getTournamentIdFromMatch(matchId: string): Promise<string | null> {
-  try {
-    const configPath = path.join(process.cwd(), 'tmp', 'new-storage', 'data', 'config.json');
-    const configData = await readFile(configPath, 'utf-8');
-    const config = JSON.parse(configData);
-    return config.selectedTournamentId || null;
-  } catch (error) {
-    return null;
-  }
-}
-
 export async function GET() {
   try {
     // Read live game state
@@ -22,26 +11,49 @@ export async function GET() {
 
     const homeTeamName = liveState.homeTeamName || 'Equipo Local';
     const awayTeamName = liveState.awayTeamName || 'Equipo Visitante';
+    const homeTeamSubName = liveState.homeTeamSubName || undefined;
+    const awayTeamSubName = liveState.awayTeamSubName || undefined;
 
     // Extract players from attendance (these are the ones present)
     const attendanceHomeIds = new Set((liveState.attendance?.home || []).map((p: any) => p.id));
     const attendanceAwayIds = new Set((liveState.attendance?.away || []).map((p: any) => p.id));
 
     // Get full team rosters from tournament
-    const tournamentId = liveState.matchId ? await getTournamentIdFromMatch(liveState.matchId) : null;
+    const configPath = path.join(process.cwd(), 'tmp', 'new-storage', 'data', 'config.json');
+    const configData = await readFile(configPath, 'utf-8');
+    const config = JSON.parse(configData);
+    const tournamentId = config.selectedTournamentId;
+
     let allHomePlayers: any[] = [];
     let allAwayPlayers: any[] = [];
 
     if (tournamentId) {
       try {
-        const configPath = path.join(process.cwd(), 'tmp', 'new-storage', 'data', 'config.json');
-        const configData = await readFile(configPath, 'utf-8');
-        const config = JSON.parse(configData);
+        // Read teams from the tournament's teams.json file
+        const teamsPath = path.join(
+          process.cwd(),
+          'tmp', 'new-storage', 'data', 'tournaments',
+          tournamentId,
+          'teams.json'
+        );
+        const teamsData = await readFile(teamsPath, 'utf-8');
+        const teamsFile = JSON.parse(teamsData);
 
-        const tournament = config.tournaments?.find((t: any) => t.id === tournamentId);
-        if (tournament?.teams) {
-          const homeTeamData = tournament.teams.find((t: any) => t.name === homeTeamName);
-          const awayTeamData = tournament.teams.find((t: any) => t.name === awayTeamName);
+        if (teamsFile.teams) {
+          // Match by name and subName
+          const homeTeamData = teamsFile.teams.find((t: any) =>
+            t.name === homeTeamName &&
+            (t.subName || undefined) === homeTeamSubName
+          );
+          const awayTeamData = teamsFile.teams.find((t: any) =>
+            t.name === awayTeamName &&
+            (t.subName || undefined) === awayTeamSubName
+          );
+
+          console.log('[Voice Teams] Home team search:', homeTeamName, homeTeamSubName ? `(${homeTeamSubName})` : '(no subName)');
+          console.log('[Voice Teams] Home team found:', homeTeamData ? 'YES' : 'NO');
+          console.log('[Voice Teams] Away team search:', awayTeamName, awayTeamSubName ? `(${awayTeamSubName})` : '(no subName)');
+          console.log('[Voice Teams] Away team found:', awayTeamData ? 'YES' : 'NO');
 
           if (homeTeamData?.players) {
             allHomePlayers = homeTeamData.players.map((p: any) => ({
@@ -50,6 +62,9 @@ export async function GET() {
               name: p.name || 'Sin nombre',
               isPresent: attendanceHomeIds.has(p.id)
             }));
+            console.log('[Voice Teams] Home players loaded:', allHomePlayers.length,
+                       'Present:', allHomePlayers.filter(p => p.isPresent).length,
+                       'Absent:', allHomePlayers.filter(p => !p.isPresent).length);
           }
 
           if (awayTeamData?.players) {
@@ -59,6 +74,9 @@ export async function GET() {
               name: p.name || 'Sin nombre',
               isPresent: attendanceAwayIds.has(p.id)
             }));
+            console.log('[Voice Teams] Away players loaded:', allAwayPlayers.length,
+                       'Present:', allAwayPlayers.filter(p => p.isPresent).length,
+                       'Absent:', allAwayPlayers.filter(p => !p.isPresent).length);
           }
         }
       } catch (error) {

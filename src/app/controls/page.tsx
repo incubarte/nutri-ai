@@ -28,6 +28,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { format as formatDate } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { VoiceControls, VoiceControlsHandle } from '@/components/controls/voice-controls';
 
 const CONTROLS_LOCK_KEY = 'icevision-controls-lock-id';
 const CONTROLS_CHANNEL_NAME = 'icevision-controls-channel';
@@ -744,7 +745,8 @@ export default function ControlsPage() {
   const [instanceId, setInstanceId] = useState<string | null>(null);
   
   const channelRef = useRef<BroadcastChannel | null>(null);
-  
+  const voiceControlsRef = useRef<VoiceControlsHandle>(null);
+
   const [isGoalManagementOpen, setIsGoalManagementOpen] = useState(false);
   const [editingTeamForGoals, setEditingTeamForGoals] = useState<Team | null>(null);
   const [isGoldenGoalDialogOpen, setIsGoldenGoalDialogOpen] = useState(false);
@@ -981,6 +983,25 @@ export default function ControlsPage() {
 
         event.preventDefault();
         dispatch({ type: 'TOGGLE_CLOCK' });
+      } else if (event.key === 'Control' || event.code === 'ControlLeft' || event.code === 'ControlRight') {
+        // Toggle voice recording with Ctrl key
+        const activeElement = document.activeElement as HTMLElement;
+
+        // Skip if focused on input fields
+        if (
+          activeElement &&
+          (activeElement.tagName === 'INPUT' ||
+            activeElement.tagName === 'TEXTAREA' ||
+            activeElement.tagName === 'SELECT' ||
+            activeElement.isContentEditable)
+        ) {
+          return;
+        }
+
+        event.preventDefault();
+        if (voiceControlsRef.current) {
+          voiceControlsRef.current.toggleRecording();
+        }
       }
     };
 
@@ -1333,9 +1354,10 @@ export default function ControlsPage() {
 
       {!isShootoutActive && (
         <Tabs defaultValue="penalties" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+          <TabsList className="grid w-full max-w-2xl grid-cols-3 mb-6">
             <TabsTrigger value="penalties">Penalidades</TabsTrigger>
             <TabsTrigger value="goals">Goles</TabsTrigger>
+            <TabsTrigger value="voice">Voz</TabsTrigger>
           </TabsList>
 
           <TabsContent value="penalties">
@@ -1361,6 +1383,10 @@ export default function ControlsPage() {
                 onAddGoal={() => handleScoreClick('away')}
               />
             </div>
+          </TabsContent>
+
+          <TabsContent value="voice">
+            <VoiceControls ref={voiceControlsRef} />
           </TabsContent>
         </Tabs>
       )}

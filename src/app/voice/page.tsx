@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mic, MicOff, Settings } from 'lucide-react';
+import { Mic, MicOff, Settings, Check, Trash2 } from 'lucide-react';
+import { useGoals } from '@/hooks/use-goals';
+import { useGameState } from '@/contexts/game-state-context';
+import { usePenalties } from '@/hooks/use-penalties';
 
 interface Message {
   id: string;
@@ -19,6 +22,8 @@ interface Message {
     corrected: string;
   };
   event?: any; // Structured game event
+  goalConfirmed?: boolean; // true if confirmed, false if deleted, undefined if pending
+  penaltyConfirmed?: boolean; // true if confirmed, false if deleted, undefined if pending
 }
 
 interface Player {
@@ -34,14 +39,36 @@ interface TeamData {
 }
 
 export default function VoiceControlPage() {
+  const { addGoal } = useGoals();
+  const { state, dispatch } = useGameState();
+  const { addPenalty } = usePenalties();
+
   const [isRecording, setIsRecording] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [homeTeam, setHomeTeam] = useState<TeamData | null>(null);
   const [awayTeam, setAwayTeam] = useState<TeamData | null>(null);
   const [isContinuousMode, setIsContinuousMode] = useState(true); // Toggle mode
-  const [silenceDuration, setSilenceDuration] = useState(1500); // Configurable silence duration in ms
-  const [volumeThreshold, setVolumeThreshold] = useState(25); // Volume threshold (0-100)
+
+  // Load config from localStorage on mount, with defaults
+  const getInitialSilenceDuration = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('voice-config-silence-duration');
+      if (saved) return parseInt(saved);
+    }
+    return 1500;
+  };
+
+  const getInitialVolumeThreshold = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('voice-config-volume-threshold');
+      if (saved) return parseInt(saved);
+    }
+    return 25;
+  };
+
+  const [silenceDuration, setSilenceDuration] = useState(getInitialSilenceDuration()); // Configurable silence duration in ms
+  const [volumeThreshold, setVolumeThreshold] = useState(getInitialVolumeThreshold()); // Volume threshold (0-100)
   const [currentVolume, setCurrentVolume] = useState(0); // Current audio level (0-100)
   const [isDetectingSpeech, setIsDetectingSpeech] = useState(false); // Visual indicator
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -53,12 +80,29 @@ export default function VoiceControlPage() {
   const silenceDetectionRef = useRef<number | null>(null);
   const silenceDurationRef = useRef(silenceDuration); // Keep ref in sync for callback
   const volumeThresholdRef = useRef(volumeThreshold); // Keep ref in sync for callback
+  const currentRecorderRef = useRef<MediaRecorder | null>(null);
+  const isCurrentlyRecordingRef = useRef(false);
+  const isShuttingDownRef = useRef(false);
 
   // Update refs when state changes
   useEffect(() => {
     silenceDurationRef.current = silenceDuration;
     volumeThresholdRef.current = volumeThreshold;
   }, [silenceDuration, volumeThreshold]);
+
+  // Persist silence duration to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('voice-config-silence-duration', silenceDuration.toString());
+    }
+  }, [silenceDuration]);
+
+  // Persist volume threshold to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('voice-config-volume-threshold', volumeThreshold.toString());
+    }
+  }, [volumeThreshold]);
 
   // Continuous mode: toggle on/off with chunks on silence
   const startContinuousRecording = async () => {
@@ -80,18 +124,19 @@ export default function VoiceControlPage() {
       });
 
       chunksRef.current = [];
-      let isCurrentlyRecording = false; // Track if actively recording a command
-      let currentRecorder: MediaRecorder | null = null;
+      isCurrentlyRecordingRef.current = false;
+      currentRecorderRef.current = null;
+      isShuttingDownRef.current = false;
 
       const startRecordingCommand = () => {
-        if (!streamRef.current || isCurrentlyRecording) {
+        if (!streamRef.current || isCurrentlyRecordingRef.current) {
           console.log('[Voice] ❌ Cannot start - no stream or already recording');
           return;
         }
 
         console.log('[Voice] 🎤 Starting to record command');
         chunksRef.current = [];
-        isCurrentlyRecording = true;
+        isCurrentlyRecordingRef.current = true;
 
         const recorder = new MediaRecorder(streamRef.current, { mimeType: 'audio/webm' });
 
@@ -124,24 +169,30 @@ export default function VoiceControlPage() {
           }
 
           chunksRef.current = [];
-          isCurrentlyRecording = false;
-          currentRecorder = null;
+          isCurrentlyRecordingRef.current = false;
+          currentRecorderRef.current = null;
 
-          console.log('[Voice] ⏸️ Back to WAITING state - discarding all audio until next speech');
+          // If we were shutting down, complete the cleanup now
+          if (isShuttingDownRef.current) {
+            console.log('[Voice] 🔄 Completing shutdown after processing final audio');
+            performCleanup();
+          } else {
+            console.log('[Voice] ⏸️ Back to WAITING state - discarding all audio until next speech');
+          }
         };
 
-        currentRecorder = recorder;
+        currentRecorderRef.current = recorder;
         recorder.start(100); // Capture every 100ms
       };
 
       const stopRecordingCommand = () => {
-        if (!isCurrentlyRecording || !currentRecorder) {
+        if (!isCurrentlyRecordingRef.current || !currentRecorderRef.current) {
           console.log('[Voice] ⚠️ Cannot stop - not recording');
           return;
         }
 
         console.log('[Voice] Silence detected - stopping recording');
-        currentRecorder.stop();
+        currentRecorderRef.current.stop();
       };
 
       mediaRecorderRef.current = mediaRecorder;
@@ -152,14 +203,14 @@ export default function VoiceControlPage() {
         analyser,
         () => {
           // On silence detected after speech
-          if (isCurrentlyRecording) {
+          if (isCurrentlyRecordingRef.current) {
             stopRecordingCommand();
             setIsDetectingSpeech(false);
           }
         },
         (isSpeaking) => {
           // Called when speech is detected
-          if (isSpeaking && !isCurrentlyRecording) {
+          if (isSpeaking && !isCurrentlyRecordingRef.current) {
             console.log('[Voice] 🎤 Speech detected - will start recording');
             setIsDetectingSpeech(true);
             addMessage('system', '🎤 Detectando habla...');
@@ -178,7 +229,9 @@ export default function VoiceControlPage() {
     }
   };
 
-  const stopContinuousRecording = () => {
+  const performCleanup = () => {
+    console.log('[Voice] 🧹 Performing cleanup');
+
     // Reset visual indicators
     setIsDetectingSpeech(false);
     setCurrentVolume(0);
@@ -207,8 +260,32 @@ export default function VoiceControlPage() {
       audioContextRef.current = null;
     }
 
+    isShuttingDownRef.current = false;
     setIsRecording(false);
     addMessage('system', '⏸️ Modo continuo desactivado');
+  };
+
+  const stopContinuousRecording = () => {
+    // If currently recording a command, stop it and send the audio
+    if (isCurrentlyRecordingRef.current && currentRecorderRef.current) {
+      console.log('[Voice] 📤 Mic turned off while recording - stopping and sending audio');
+      isShuttingDownRef.current = true;
+
+      // Stop silence detection immediately to prevent new recordings
+      if (silenceDetectionRef.current) {
+        cancelAnimationFrame(silenceDetectionRef.current);
+        silenceDetectionRef.current = null;
+      }
+
+      setIsDetectingSpeech(false);
+
+      // Stop the recorder - the onstop callback will handle cleanup
+      currentRecorderRef.current.stop();
+      return; // Don't cleanup yet, let onstop handle it
+    }
+
+    // No active recording, cleanup immediately
+    performCleanup();
   };
 
   // Detect silence and trigger callback
@@ -385,11 +462,155 @@ export default function VoiceControlPage() {
       event
     };
     setMessages(prev => [...prev, message]);
+
+    // Auto-register shots immediately
+    if (event && event.action === 'shot' && event.data?.team && event.data?.playerNumber) {
+      dispatch({
+        type: 'ADD_PLAYER_SHOT',
+        payload: {
+          team: event.data.team,
+          playerNumber: event.data.playerNumber
+        }
+      });
+      console.log('[Voice] ✅ Shot auto-registered:', { team: event.data.team, playerNumber: event.data.playerNumber });
+    }
   };
 
   const clearMessages = () => {
     setMessages([]);
+    // Clear from localStorage too
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('voice-page-messages');
+    }
   };
+
+  const confirmGoal = (messageId: string) => {
+    const message = messages.find(m => m.id === messageId);
+    if (!message || !message.event || message.event.action !== 'goal') return;
+
+    const event = message.event;
+    const team = event.data.team; // 'home' or 'away'
+    const playerNumber = event.data.scorer; // Goals use 'scorer' field
+    const playerName = event.data.playerName;
+    const assists = event.data.assists || []; // Array of assist player numbers
+
+    // Get current game time and period
+    const gameTime = state.live.clock.currentTime;
+    const currentPeriod = state.live.clock.currentPeriod;
+    const periodText = `P${currentPeriod}`;
+
+    // Build goal data
+    const goalData: any = {
+      team,
+      timestamp: Date.now(),
+      gameTime,
+      periodText,
+      scorer: {
+        playerNumber,
+        playerName
+      }
+    };
+
+    // Add assists if present
+    if (assists.length > 0) {
+      goalData.assist = {
+        playerNumber: assists[0]
+      };
+      if (assists.length > 1) {
+        goalData.assist2 = {
+          playerNumber: assists[1]
+        };
+      }
+    }
+
+    // Add goal using the hook
+    addGoal(goalData);
+
+    // Mark message as confirmed
+    setMessages(prev =>
+      prev.map(m =>
+        m.id === messageId ? { ...m, goalConfirmed: true } : m
+      )
+    );
+
+    console.log('[Voice] ✅ Goal confirmed and added:', { team, playerNumber, playerName });
+  };
+
+  const deleteGoalFromLog = (messageId: string) => {
+    // Mark message as deleted (removed from view)
+    setMessages(prev =>
+      prev.map(m =>
+        m.id === messageId ? { ...m, goalConfirmed: false } : m
+      )
+    );
+
+    console.log('[Voice] 🗑️ Goal removed from log');
+  };
+
+  const confirmPenalty = (messageId: string) => {
+    const message = messages.find(m => m.id === messageId);
+    if (!message || !message.event || message.event.action !== 'penalty') return;
+
+    const event = message.event;
+    const team = event.data.team; // 'home' or 'away'
+    const playerNumber = event.data.playerNumber;
+
+    // Add penalty as minor (2 minutes)
+    addPenalty({
+      team,
+      playerNumber,
+      initialDuration: 12000, // 2 minutes in centiseconds
+      reducesPlayerCount: true,
+      clearsOnGoal: true
+    });
+
+    // Mark message as confirmed
+    setMessages(prev =>
+      prev.map(m =>
+        m.id === messageId ? { ...m, penaltyConfirmed: true } : m
+      )
+    );
+
+    console.log('[Voice] ✅ Penalty confirmed and added:', { team, playerNumber });
+  };
+
+  const deletePenaltyFromLog = (messageId: string) => {
+    // Mark message as deleted (removed from view)
+    setMessages(prev =>
+      prev.map(m =>
+        m.id === messageId ? { ...m, penaltyConfirmed: false } : m
+      )
+    );
+
+    console.log('[Voice] 🗑️ Penalty removed from log');
+  };
+
+  // Load messages from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedMessages = localStorage.getItem('voice-page-messages');
+      if (savedMessages) {
+        try {
+          const parsed = JSON.parse(savedMessages);
+          // Convert timestamp strings back to Date objects
+          const messagesWithDates = parsed.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }));
+          setMessages(messagesWithDates);
+        } catch (error) {
+          console.error('[Voice] Error loading saved messages:', error);
+        }
+      }
+    }
+  }, []);
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== 'undefined' && messages.length > 0) {
+      localStorage.setItem('voice-page-messages', JSON.stringify(messages));
+    }
+  }, [messages]);
 
   // Load team data on mount
   useEffect(() => {
@@ -663,85 +884,278 @@ export default function VoiceControlPage() {
               )}
             </div>
 
-            {/* Messages Log (Stack - newest on top) */}
-            <Card className="p-4 flex-1 overflow-y-auto h-[calc(100vh-350px)] flex flex-col">
-              {messages.length === 0 ? (
-                <div className="text-center text-muted-foreground py-20">
-                  No hay mensajes aún
+            {/* Messages Log - Split into two columns */}
+            <div className="grid grid-cols-2 gap-3 h-[calc(100vh-350px)]">
+              {/* Left Column: All Events */}
+              <Card className="p-3 flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-sm">Log Completo</h3>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {[...messages].reverse().map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                          message.type === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        }`}
-                      >
-                        <p className="text-sm">{message.text}</p>
+                <div className="flex-1 overflow-y-auto space-y-2">
+                  {messages.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">
+                      No hay mensajes aún
+                    </p>
+                  ) : (
+                    [...messages].reverse().map((msg) => {
+                      // Filter out mic on/off and system status messages
+                      if (msg.text.includes('Modo continuo activado') ||
+                          msg.text.includes('Modo continuo desactivado') ||
+                          msg.text.includes('Detectando habla') ||
+                          msg.text.includes('Escuchando...') ||
+                          msg.text.includes('Enviando audio') ||
+                          msg.text.includes('acceder al micrófono')) {
+                        return null;
+                      }
 
-                        {/* Parsed info summary */}
-                        {message.parsed && (
-                          <div className="mt-2 pt-2 border-t border-border/50 space-y-1">
-                            {message.parsed.action && message.parsed.action !== 'unknown' && (
-                              <p className="text-xs font-semibold text-green-600">
-                                ✓ Acción: {message.parsed.action === 'shot' ? 'Tiro' : message.parsed.action === 'goal' ? 'Gol' : message.parsed.action === 'penalty' ? 'Penalización' : 'Timeout'}
-                              </p>
-                            )}
-                            {message.parsed.teamName && (
-                              <p className="text-xs">
-                                🏒 Equipo: <span className="font-medium">{message.parsed.teamName}</span>
-                              </p>
-                            )}
-                            {message.parsed.playerNumbers.length > 0 && (
-                              <p className="text-xs">
-                                👤 Jugador(es): <span className="font-medium">{message.parsed.playerNumbers.join(', ')}</span>
-                              </p>
-                            )}
-                            {(!message.parsed.teamName && message.parsed.action !== 'unknown') && (
-                              <p className="text-xs text-orange-600">
-                                ⚠️ Equipo no reconocido
-                              </p>
-                            )}
-                            {(message.parsed.playerNumbers.length === 0 && message.parsed.action !== 'unknown' && message.parsed.action !== 'timeout') && (
-                              <p className="text-xs text-orange-600">
-                                ⚠️ Jugador no reconocido
-                              </p>
-                            )}
+                      // Check if this is a goal event (goals use 'scorer' field)
+                      const isGoal = msg.event?.action === 'goal' && msg.event?.data?.team && msg.event?.data?.scorer;
+
+                      // Check if this is a penalty event
+                      const isPenalty = msg.event?.action === 'penalty' && msg.event?.data?.team && msg.event?.data?.playerNumber;
+
+                      // Don't render if goal was deleted
+                      if (isGoal && msg.goalConfirmed === false) {
+                        return null;
+                      }
+
+                      // Don't render if penalty was deleted
+                      if (isPenalty && msg.penaltyConfirmed === false) {
+                        return null;
+                      }
+
+                      // Check if this is a valid registrable event (shot, goal, or penalty with team and player)
+                      // Note: goals use 'scorer' field, shots and penalties use 'playerNumber' field
+                      const isValidEvent = msg.event && msg.event.data?.team && (
+                        (msg.event.action === 'shot' && msg.event.data?.playerNumber) ||
+                        (msg.event.action === 'goal' && msg.event.data?.scorer) ||
+                        (msg.event.action === 'penalty' && msg.event.data?.playerNumber)
+                      );
+
+                      // If it's NOT a valid event and it's a system message, add orange border
+                      const isInvalidAttempt = msg.type === 'system' && !isValidEvent && !isGoal;
+
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`text-xs p-2 rounded ${
+                            isInvalidAttempt
+                              ? 'bg-muted border-2 border-orange-500'
+                              : msg.type === 'system'
+                              ? 'bg-muted'
+                              : 'bg-primary/10'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="flex-1 break-words">
+                              {msg.text}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                              {msg.timestamp.toLocaleTimeString()}
+                            </span>
                           </div>
-                        )}
+                          {msg.parsed && (
+                            <div className="mt-1 text-[10px] text-muted-foreground">
+                              {msg.parsed.teamName && `Equipo: ${msg.parsed.teamName} | `}
+                              {msg.parsed.playerNumbers.length > 0 && `Jugadores: #${msg.parsed.playerNumbers.join(', #')} | `}
+                              {msg.parsed.action && `Acción: ${msg.parsed.action}`}
+                            </div>
+                          )}
 
-                        {/* Structured Event JSON - always show if available */}
-                        {message.event && (
-                          <div className="mt-2 pt-2 border-t border-border/50">
-                            <details className="text-xs">
-                              <summary className="cursor-pointer font-semibold text-muted-foreground hover:text-foreground">
-                                📋 Ver JSON
+                          {msg.event && (
+                            <details className="mt-1 text-[10px]">
+                              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                                Ver JSON
                               </summary>
-                              <pre className="text-[10px] bg-black/20 p-2 rounded overflow-x-auto mt-1">
-                                {JSON.stringify(message.event, null, 2)}
+                              <pre className="text-[9px] bg-black/20 p-1 rounded overflow-x-auto mt-1">
+                                {JSON.stringify(msg.event, null, 2)}
                               </pre>
                             </details>
-                          </div>
-                        )}
-
-                        <p className="text-xs opacity-70 mt-1">
-                          {message.timestamp.toLocaleTimeString('es-AR', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
-              )}
-            </Card>
+              </Card>
+
+              {/* Right Column: Valid Events Only */}
+              <Card className="p-3 flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-sm">Eventos Registrados</h3>
+                  <span className="text-[10px] text-muted-foreground">
+                    {messages.filter(msg => {
+                      if (!msg.event || !msg.event.data?.team) return false;
+                      const action = msg.event.action;
+                      // Goals use 'scorer', shots and penalties use 'playerNumber'
+                      const hasPlayer = (action === 'goal' && msg.event.data?.scorer) ||
+                                       (action === 'shot' && msg.event.data?.playerNumber) ||
+                                       (action === 'penalty' && msg.event.data?.playerNumber);
+                      return (action === 'shot' || action === 'goal' || action === 'penalty') && hasPlayer;
+                    }).length} válidos
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-2">
+                  {(() => {
+                    const validEvents = [...messages].reverse().filter(msg => {
+                      if (!msg.event || !msg.event.data?.team) return false;
+                      const action = msg.event.action;
+                      // Goals use 'scorer', shots and penalties use 'playerNumber'
+                      const hasPlayer = (action === 'goal' && msg.event.data?.scorer) ||
+                                       (action === 'shot' && msg.event.data?.playerNumber) ||
+                                       (action === 'penalty' && msg.event.data?.playerNumber);
+                      return (action === 'shot' || action === 'goal' || action === 'penalty') && hasPlayer;
+                    });
+
+                    if (validEvents.length === 0) {
+                      return (
+                        <p className="text-xs text-muted-foreground text-center py-4">
+                          Aún no hay eventos registrados
+                        </p>
+                      );
+                    }
+
+                    return validEvents.map((msg) => {
+                      const event = msg.event;
+                      const action = event.action;
+                      const team = event.data.team;
+                      const teamName = event.data.teamName || (team === 'home' ? 'Local' : 'Visitante');
+                      // Goals use 'scorer', shots and penalties use 'playerNumber'
+                      const playerNumber = action === 'goal' ? event.data.scorer : event.data.playerNumber;
+                      const isGoal = action === 'goal';
+                      const isPenalty = action === 'penalty';
+                      const isShot = action === 'shot';
+                      const assists = isGoal ? event.data.assists : [];
+
+                      // Don't show goals that were deleted
+                      if (isGoal && msg.goalConfirmed === false) {
+                        return null;
+                      }
+
+                      // Don't show penalties that were deleted
+                      if (isPenalty && msg.penaltyConfirmed === false) {
+                        return null;
+                      }
+
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`text-xs p-2 rounded bg-muted ${
+                            team === 'home' ? 'border-l-4' : 'border-r-4'
+                          } ${
+                            isGoal
+                              ? 'border-green-600 dark:border-green-500'
+                              : isPenalty
+                              ? 'border-red-600 dark:border-red-500'
+                              : 'border-blue-600 dark:border-blue-500'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <div className={`font-semibold ${
+                                isGoal ? 'text-green-600 dark:text-green-400' :
+                                isPenalty ? 'text-red-600 dark:text-red-400' :
+                                'text-blue-600 dark:text-blue-400'
+                              }`}>
+                                {isGoal ? '🥅 GOL' : isPenalty ? '⚠️ PENALIDAD' : '🎯 TIRO'}
+                              </div>
+                              <div className="mt-1 text-[11px]">
+                                <span className="font-medium">{teamName}</span>
+                                {' - Jugador '}
+                                <span className="font-bold">#{playerNumber}</span>
+                                {assists && assists.length > 0 && (
+                                  <>
+                                    {' - Asistencia'}
+                                    {assists.length > 1 && 's'}
+                                    {' '}
+                                    <span className="font-bold">#{assists.join(', #')}</span>
+                                  </>
+                                )}
+                                {isPenalty && (
+                                  <span className="text-muted-foreground"> (Menor - 2 min)</span>
+                                )}
+                              </div>
+
+                              {/* Show action buttons only for unconfirmed goals */}
+                              {isGoal && msg.goalConfirmed === undefined && (
+                                <div className="flex gap-2 mt-2">
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    className="h-6 px-2 text-xs bg-green-600 hover:bg-green-700"
+                                    onClick={() => confirmGoal(msg.id)}
+                                  >
+                                    <Check className="h-3 w-3 mr-1" />
+                                    OK
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => deleteGoalFromLog(msg.id)}
+                                  >
+                                    <Trash2 className="h-3 w-3 mr-1" />
+                                    Eliminar
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* Show confirmation message for confirmed goals */}
+                              {isGoal && msg.goalConfirmed === true && (
+                                <div className="mt-1 text-[10px] text-green-600 dark:text-green-400 font-medium">
+                                  ✅ Gol confirmado
+                                </div>
+                              )}
+
+                              {/* Show action buttons only for unconfirmed penalties */}
+                              {isPenalty && msg.penaltyConfirmed === undefined && (
+                                <div className="flex gap-2 mt-2">
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    className="h-6 px-2 text-xs bg-red-600 hover:bg-red-700"
+                                    onClick={() => confirmPenalty(msg.id)}
+                                  >
+                                    <Check className="h-3 w-3 mr-1" />
+                                    OK
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => deletePenaltyFromLog(msg.id)}
+                                  >
+                                    <Trash2 className="h-3 w-3 mr-1" />
+                                    Eliminar
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* Show confirmation message for confirmed penalties */}
+                              {isPenalty && msg.penaltyConfirmed === true && (
+                                <div className="mt-1 text-[10px] text-red-600 dark:text-red-400 font-medium">
+                                  ✅ Penalidad confirmada
+                                </div>
+                              )}
+
+                              {/* Shots are auto-registered, show confirmation message */}
+                              {isShot && (
+                                <div className="mt-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                                  ✅ Tiro registrado
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                              {msg.timestamp.toLocaleTimeString()}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </Card>
+            </div>
           </div>
 
           {/* Right: Away Team Players */}
