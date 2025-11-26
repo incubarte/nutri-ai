@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Mic, MicOff, Settings, Check, Trash2 } from 'lucide-react';
 import { useGoals } from '@/hooks/use-goals';
-import { useGameState } from '@/contexts/game-state-context';
+import { useGameState, getActualPeriodText } from '@/contexts/game-state-context';
 import { usePenalties } from '@/hooks/use-penalties';
 
 interface Message {
@@ -465,6 +465,7 @@ export default function VoiceControlPage() {
 
     // Auto-register shots immediately
     if (event && event.action === 'shot' && event.data?.team && event.data?.playerNumber) {
+      console.log('[DEBUG] 🎯 About to dispatch ADD_PLAYER_SHOT:', { team: event.data.team, playerNumber: event.data.playerNumber });
       dispatch({
         type: 'ADD_PLAYER_SHOT',
         payload: {
@@ -472,7 +473,15 @@ export default function VoiceControlPage() {
           playerNumber: event.data.playerNumber
         }
       });
-      console.log('[Voice] ✅ Shot auto-registered:', { team: event.data.team, playerNumber: event.data.playerNumber });
+      console.log('[DEBUG] 🎯 Dispatch completed');
+
+      // Verify state after dispatch (will show in next render)
+      setTimeout(() => {
+        console.log('[DEBUG] 🎯 Current shotsLog after dispatch:', {
+          home: state.live.shotsLog.home.length,
+          away: state.live.shotsLog.away.length
+        });
+      }, 100);
     }
   };
 
@@ -497,7 +506,12 @@ export default function VoiceControlPage() {
     // Get current game time and period
     const gameTime = state.live.clock.currentTime;
     const currentPeriod = state.live.clock.currentPeriod;
-    const periodText = `P${currentPeriod}`;
+    const periodText = getActualPeriodText(
+      currentPeriod,
+      state.live.clock.periodDisplayOverride,
+      state.config.numberOfRegularPeriods,
+      state.live.shootout
+    );
 
     // Build goal data
     const goalData: any = {

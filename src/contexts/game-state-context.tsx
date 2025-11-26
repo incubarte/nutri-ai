@@ -423,7 +423,35 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       const teamScored = action.payload.team;
       const teamConceded = teamScored === 'home' ? 'away' : 'home';
-      
+
+      // Add scorer and assist to attendance if they don't exist
+      const newAttendance = { ...live.attendance };
+      newAttendance[teamScored] = [...newAttendance[teamScored]];
+
+      if (newGoal.scorer?.playerNumber) {
+        const scorerExists = newAttendance[teamScored].some(p => p.number === newGoal.scorer?.playerNumber);
+        if (!scorerExists) {
+          newAttendance[teamScored].push({
+            id: safeUUID(),
+            number: newGoal.scorer.playerNumber,
+            name: `Player #${newGoal.scorer.playerNumber}` // Default name
+          });
+          console.log(`[ADD_GOAL] Added scorer #${newGoal.scorer.playerNumber} to ${teamScored} attendance`);
+        }
+      }
+
+      if (newGoal.assist?.playerNumber) {
+        const assistExists = newAttendance[teamScored].some(p => p.number === newGoal.assist?.playerNumber);
+        if (!assistExists) {
+          newAttendance[teamScored].push({
+            id: safeUUID(),
+            number: newGoal.assist.playerNumber,
+            name: `Player #${newGoal.assist.playerNumber}` // Default name
+          });
+          console.log(`[ADD_GOAL] Added assist #${newGoal.assist.playerNumber} to ${teamScored} attendance`);
+        }
+      }
+
       const newScore: ScoreState = {
         ...live.score,
         home: newLiveGoals.home.length,
@@ -454,9 +482,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           goalCelebration = { id: safeUUID(), goal: newGoal, teamData };
       }
       
-      newState = { ...state, live: { ...state.live, 
+      newState = { ...state, live: { ...state.live,
         score: newScore,
         goals: newLiveGoals,
+        attendance: newAttendance,
         pendingPowerPlayGoal: pendingPPGoal,
         goalCelebration: goalCelebration,
       }};
@@ -515,9 +544,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'ADD_PLAYER_SHOT': {
+      console.log('[DEBUG] 🎯 Reducer: ADD_PLAYER_SHOT received');
       const { team, playerNumber } = action.payload;
       const attendedPlayer = state.live.attendance[team].find(p => p.number === playerNumber);
-      
+
       const newShotLog: ShotLog = {
         id: safeUUID(),
         team,
@@ -531,8 +561,14 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       const newShotsLog = { ...state.live.shotsLog };
       newShotsLog[team] = [...newShotsLog[team], newShotLog];
-      
-      const newScore = { 
+
+      console.log('[DEBUG] 🎯 Reducer: New shotsLog counts:', {
+        home: newShotsLog.home.length,
+        away: newShotsLog.away.length,
+        addedShot: { team, playerNumber, period: newShotLog.periodText }
+      });
+
+      const newScore = {
         ...state.live.score,
         homeShots: newShotsLog.home.length,
         awayShots: newShotsLog.away.length,
@@ -586,6 +622,21 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         addPeriodText: addPeriodText ?? getActualPeriodText(live.clock.currentPeriod, live.clock.periodDisplayOverride, config.numberOfRegularPeriods || 2, live.shootout),
       };
 
+      // Add player to attendance if they don't exist (and it's not a bench penalty)
+      const newAttendance = { ...live.attendance };
+      if (!penaltyDef.isBenchPenalty) {
+        newAttendance[team] = [...newAttendance[team]];
+        const playerExists = newAttendance[team].some(p => p.number === playerNumber);
+        if (!playerExists) {
+          newAttendance[team].push({
+            id: safeUUID(),
+            number: playerNumber,
+            name: playerDetails?.name || `Player #${playerNumber}` // Default name if not in roster
+          });
+          console.log(`[ADD_PENALTY] Added player #${playerNumber} to ${team} attendance`);
+        }
+      }
+
       const newLivePenaltiesLog = { ...live.penaltiesLog };
       newLivePenaltiesLog[team] = [...newLivePenaltiesLog[team], newPenaltyLog];
 
@@ -623,7 +674,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       newState = { ...state, live: { ...live,
         penalties: { ...live.penalties, [team]: sortPenaltiesByStatus([...live.penalties[team], newPenalty]) },
-        penaltiesLog: newLivePenaltiesLog
+        penaltiesLog: newLivePenaltiesLog,
+        attendance: newAttendance
       }};
       const teamName = team === 'home' ? live.homeTeamName : live.awayTeamName;
       toastMessage = { title: "Penalidad Agregada", description: `Jugador ${playerNumber.toUpperCase()}${playerDetails ? ` (${playerDetails.name})` : ''} de ${teamName} recibió una penalidad de ${penaltyDef.name}.` };
@@ -1820,6 +1872,10 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
               
               const hasLiveChanged = !isEqual(state.live, oldState.live);
               if (hasLiveChanged) {
+                  console.log('[DEBUG] 🎯 Live state changed, persisting to server...', {
+                    homeShots: state.live.shotsLog.home.length,
+                    awayShots: state.live.shotsLog.away.length
+                  });
                   updateGameStateOnServer(state.live);
               }
               const hasConfigChanged = !isEqual(state.config, oldState.config);

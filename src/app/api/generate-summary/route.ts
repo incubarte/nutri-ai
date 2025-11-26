@@ -27,10 +27,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Tournament not found' }, { status: 404 });
     }
 
-    // Build full config with tournaments array
+    // Build full config with tournaments array (add id to tournament object)
     const fullConfig = {
       ...config,
-      tournaments: [tournament]
+      tournaments: [{
+        id: tournamentId,
+        ...tournament
+      }]
     };
 
     // Read current live state

@@ -1,25 +1,49 @@
 import type { GameState, GameSummary, PeriodStats, SummaryPlayerStats, GoalLog, ShotLog, AttendedPlayerInfo, Team, PlayerData, PenaltyLog, PeriodSummary, VoiceGameEvent } from "@/types";
 
-export const recalculateAllStatsFromLogs = (partialSummary: Partial<{ goals: { home: GoalLog[], away: GoalLog[] }, home: { homeShotsLog?: ShotLog[] }, away: { awayShotsLog?: ShotLog[] } }>, homeTeamRoster: PlayerData[], awayTeamRoster: PlayerData[]): { home: SummaryPlayerStats[], away: SummaryPlayerStats[] } => {
+export const recalculateAllStatsFromLogs = (partialSummary: Partial<{ goals: { home: GoalLog[], away: GoalLog[] }, home: { homeShotsLog?: ShotLog[] }, away: { awayShotsLog?: ShotLog[] }, attendance?: { home: AttendedPlayerInfo[], away: AttendedPlayerInfo[] } }>, homeTeamRoster: PlayerData[], awayTeamRoster: PlayerData[]): { home: SummaryPlayerStats[], away: SummaryPlayerStats[] } => {
     const homePlayerStatsMap = new Map<string, SummaryPlayerStats>();
     const awayPlayerStatsMap = new Map<string, SummaryPlayerStats>();
 
-    // Initialize with all players from roster to ensure everyone is listed
-    homeTeamRoster.forEach(p => homePlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
-    awayTeamRoster.forEach(p => awayPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
+    // Initialize with attendance (players who actually played) if available, otherwise use roster
+    const homePlayersToInit = partialSummary.attendance?.home || homeTeamRoster;
+    const awayPlayersToInit = partialSummary.attendance?.away || awayTeamRoster;
 
-    // Process goals and assists
+    homePlayersToInit.forEach(p => homePlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
+    awayPlayersToInit.forEach(p => awayPlayerStatsMap.set(p.id, { id: p.id, name: p.name, number: p.number, shots: 0, goals: 0, assists: 0 }));
+
+    // Process goals and assists (use attendance for lookups if available, otherwise roster)
     (partialSummary.goals?.home || []).forEach(goal => {
-        const scorerId = homeTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
-        if (scorerId && homePlayerStatsMap.has(scorerId)) homePlayerStatsMap.get(scorerId)!.goals++;
-        const assistId = homeTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
-        if (assistId && homePlayerStatsMap.has(assistId)) homePlayerStatsMap.get(assistId)!.assists++;
+        const player = homePlayersToInit.find(p => p.number === goal.scorer?.playerNumber);
+        if (player) {
+            if (!homePlayerStatsMap.has(player.id)) {
+                // Player not in map yet, create entry
+                homePlayerStatsMap.set(player.id, { id: player.id, name: player.name, number: player.number, shots: 0, goals: 0, assists: 0 });
+            }
+            homePlayerStatsMap.get(player.id)!.goals++;
+        }
+        const assist = homePlayersToInit.find(p => p.number === goal.assist?.playerNumber);
+        if (assist) {
+            if (!homePlayerStatsMap.has(assist.id)) {
+                homePlayerStatsMap.set(assist.id, { id: assist.id, name: assist.name, number: assist.number, shots: 0, goals: 0, assists: 0 });
+            }
+            homePlayerStatsMap.get(assist.id)!.assists++;
+        }
     });
     (partialSummary.goals?.away || []).forEach(goal => {
-        const scorerId = awayTeamRoster.find(p => p.number === goal.scorer?.playerNumber)?.id;
-        if (scorerId && awayPlayerStatsMap.has(scorerId)) awayPlayerStatsMap.get(scorerId)!.goals++;
-        const assistId = awayTeamRoster.find(p => p.number === goal.assist?.playerNumber)?.id;
-        if (assistId && awayPlayerStatsMap.has(assistId)) awayPlayerStatsMap.get(assistId)!.assists++;
+        const player = awayPlayersToInit.find(p => p.number === goal.scorer?.playerNumber);
+        if (player) {
+            if (!awayPlayerStatsMap.has(player.id)) {
+                awayPlayerStatsMap.set(player.id, { id: player.id, name: player.name, number: player.number, shots: 0, goals: 0, assists: 0 });
+            }
+            awayPlayerStatsMap.get(player.id)!.goals++;
+        }
+        const assist = awayPlayersToInit.find(p => p.number === goal.assist?.playerNumber);
+        if (assist) {
+            if (!awayPlayerStatsMap.has(assist.id)) {
+                awayPlayerStatsMap.set(assist.id, { id: assist.id, name: assist.name, number: assist.number, shots: 0, goals: 0, assists: 0 });
+            }
+            awayPlayerStatsMap.get(assist.id)!.assists++;
+        }
     });
 
     // Process shots
@@ -61,8 +85,26 @@ export const generateSummaryData = (state: GameState, voiceEvents?: VoiceGameEve
     }
 
     const currentTournament = config.tournaments.find(t => t.id === config.selectedTournamentId);
+
+    console.log('[DEBUG Summary] 🔍 Looking for rosters:', {
+        homeTeamName: live.homeTeamName,
+        awayTeamName: live.awayTeamName,
+        homeTeamSubName: live.homeTeamSubName,
+        awayTeamSubName: live.awayTeamSubName,
+        selectedMatchCategory: config.selectedMatchCategory,
+        tournamentTeamsCount: currentTournament?.teams?.length || 0,
+        availableTeamNames: currentTournament?.teams?.map(t => ({ name: t.name, subName: t.subName, category: t.category })).slice(0, 5) || []
+    });
+
     const homeTeamRoster = currentTournament?.teams.find(t => t.name === live.homeTeamName && (t.subName || undefined) === (live.homeTeamSubName || undefined) && t.category === config.selectedMatchCategory)?.players || [];
     const awayTeamRoster = currentTournament?.teams.find(t => t.name === live.awayTeamName && (t.subName || undefined) === (live.awayTeamSubName || undefined) && t.category === config.selectedMatchCategory)?.players || [];
+
+    console.log('[DEBUG Summary] 🔍 Roster search results:', {
+        homeRosterFound: homeTeamRoster.length > 0,
+        homeRosterSize: homeTeamRoster.length,
+        awayRosterFound: awayTeamRoster.length > 0,
+        awayRosterSize: awayTeamRoster.length
+    });
 
     const allPlayedPeriods = [...(live.playedPeriods || [])];
 
@@ -75,6 +117,17 @@ export const generateSummaryData = (state: GameState, voiceEvents?: VoiceGameEve
         return `OT${periodNum - 2}`;
     };
 
+    // Helper to normalize period text (convert P1 -> 1ST, P2 -> 2ND, etc.)
+    const normalizePeriodText = (periodText: string): string => {
+        if (periodText.startsWith('P')) {
+            const periodNum = parseInt(periodText.substring(1));
+            if (!isNaN(periodNum)) {
+                return getPeriodText(periodNum);
+            }
+        }
+        return periodText;
+    };
+
     const statsByPeriodArray: PeriodSummary[] = allPlayedPeriods.map(periodText => {
         const periodData: PeriodStats = {
             goals: { home: [], away: [] },
@@ -82,11 +135,11 @@ export const generateSummaryData = (state: GameState, voiceEvents?: VoiceGameEve
             playerStats: { home: [], away: [] }
         };
 
-        // Filter events for the current period.
-        periodData.goals.home = (live.goals.home || []).filter(g => g.periodText === periodText);
-        periodData.goals.away = (live.goals.away || []).filter(g => g.periodText === periodText);
-        periodData.penalties.home = (live.penaltiesLog.home || []).filter(p => p.addPeriodText === periodText);
-        periodData.penalties.away = (live.penaltiesLog.away || []).filter(p => p.addPeriodText === periodText);
+        // Filter events for the current period (normalize periodText for backwards compatibility).
+        periodData.goals.home = (live.goals.home || []).filter(g => normalizePeriodText(g.periodText || '') === periodText);
+        periodData.goals.away = (live.goals.away || []).filter(g => normalizePeriodText(g.periodText || '') === periodText);
+        periodData.penalties.home = (live.penaltiesLog.home || []).filter(p => normalizePeriodText(p.addPeriodText || '') === periodText);
+        periodData.penalties.away = (live.penaltiesLog.away || []).filter(p => normalizePeriodText(p.addPeriodText || '') === periodText);
 
         // Filter voice events for this period (shots from voice commands)
         const voiceEventsForPeriod = (voiceEvents || []).filter((event) => {
@@ -98,29 +151,77 @@ export const generateSummaryData = (state: GameState, voiceEvents?: VoiceGameEve
         // Recalculate player stats specifically for this period.
         const periodSummaryForStats = {
           goals: periodData.goals,
-          home: { homeShotsLog: (live.shotsLog.home || []).filter(s => s.periodText === periodText) },
-          away: { awayShotsLog: (live.shotsLog.away || []).filter(s => s.periodText === periodText) },
+          home: { homeShotsLog: (live.shotsLog.home || []).filter(s => normalizePeriodText(s.periodText || '') === periodText) },
+          away: { awayShotsLog: (live.shotsLog.away || []).filter(s => normalizePeriodText(s.periodText || '') === periodText) },
+          attendance: live.attendance
         };
         const periodPlayerStats = recalculateAllStatsFromLogs(periodSummaryForStats, homeTeamRoster, awayTeamRoster);
         periodData.playerStats.home = periodPlayerStats.home;
         periodData.playerStats.away = periodPlayerStats.away;
 
         // Add shots from voice events
-        voiceEventsForPeriod.forEach((event) => {
+        console.log(`[DEBUG Summary] 🎯 Processing voice events for period ${periodText}:`, {
+            totalVoiceEvents: voiceEventsForPeriod.length,
+            homeRosterCount: homeTeamRoster.length,
+            awayRosterCount: awayTeamRoster.length,
+            homeStatsCount: periodData.playerStats.home.length,
+            awayStatsCount: periodData.playerStats.away.length
+        });
+
+        voiceEventsForPeriod.forEach((event, index) => {
             const isHome = event.data.team === 'home';
             const roster = isHome ? homeTeamRoster : awayTeamRoster;
             const statsArray = isHome ? periodData.playerStats.home : periodData.playerStats.away;
 
+            console.log(`[DEBUG Summary] 🎯 Processing voice event ${index + 1}/${voiceEventsForPeriod.length}:`, {
+                team: event.data.team,
+                playerNumber: event.data.playerNumber,
+                hasPlayerNumber: 'playerNumber' in event.data,
+                rosterSize: roster.length
+            });
+
             // Find player by number (only for shot events with playerNumber)
             if ('playerNumber' in event.data) {
                 const player = roster.find(p => p.number === event.data.playerNumber);
+                console.log(`[DEBUG Summary] 🎯 Player search result:`, {
+                    searchingFor: event.data.playerNumber,
+                    playerFound: !!player,
+                    playerId: player?.id,
+                    playerName: player?.name,
+                    rosterNumbers: roster.map(p => p.number).slice(0, 10) // First 10 numbers for reference
+                });
+
                 if (player) {
                     const playerStats = statsArray.find(s => s.id === player.id);
+                    console.log(`[DEBUG Summary] 🎯 PlayerStats search result:`, {
+                        playerId: player.id,
+                        statsFound: !!playerStats,
+                        currentShots: playerStats?.shots,
+                        statsArraySize: statsArray.length
+                    });
+
                     if (playerStats) {
                         playerStats.shots++;
+                        console.log(`[DEBUG Summary] 🎯 ✅ Shot incremented! New count:`, playerStats.shots);
+                    } else {
+                        console.log(`[DEBUG Summary] 🎯 ❌ PlayerStats not found in statsArray`);
                     }
+                } else {
+                    console.log(`[DEBUG Summary] 🎯 ❌ Player not found in roster`);
                 }
+            } else {
+                console.log(`[DEBUG Summary] 🎯 ⚠️ Event missing playerNumber field`);
             }
+        });
+
+        // Log final shot counts after processing voice events
+        const homePlayersWithShots = periodData.playerStats.home.filter(p => p.shots > 0);
+        const awayPlayersWithShots = periodData.playerStats.away.filter(p => p.shots > 0);
+        console.log(`[DEBUG Summary] 🎯 Final shot counts for period ${periodText}:`, {
+            homePlayersWithShots: homePlayersWithShots.length,
+            awayPlayersWithShots: awayPlayersWithShots.length,
+            homePlayers: homePlayersWithShots.map(p => `#${p.number}:${p.shots}shots`),
+            awayPlayers: awayPlayersWithShots.map(p => `#${p.number}:${p.shots}shots`)
         });
 
         return { period: periodText, stats: periodData };
