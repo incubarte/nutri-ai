@@ -290,8 +290,49 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
     const performAction = () => {
         if (state.live.clock.currentPeriod === 0 && state.live.clock.periodDisplayOverride === "Warm-up") {
-            dispatch({ type: 'SET_PERIOD', payload: 1 });
-            toast({ title: "1er Período Iniciado", description: `Reloj de 1er Período (${centisecondsToDisplayMinutes(state.config.defaultPeriodDuration)} min) pausado.` });
+            // Check attendance before starting Period 1
+            const homeAttendance = state.live.attendance.home;
+            const awayAttendance = state.live.attendance.away;
+            const minPlayers = state.config.playersPerTeamOnIce;
+
+            const homeActiveGK = state.live.homeActiveGoalkeeperId;
+            const awayActiveGK = state.live.awayActiveGoalkeeperId;
+
+            const warnings: string[] = [];
+
+            if (!homeActiveGK || !awayActiveGK) {
+                const missingGKTeams: string[] = [];
+                if (!homeActiveGK) missingGKTeams.push(state.live.homeTeamName);
+                if (!awayActiveGK) missingGKTeams.push(state.live.awayTeamName);
+                warnings.push(`⚠️ Sin arquero activo seleccionado: ${missingGKTeams.join(', ')}`);
+            }
+
+            if (homeAttendance.length < minPlayers || awayAttendance.length < minPlayers) {
+                const insufficientTeams: string[] = [];
+                if (homeAttendance.length < minPlayers) {
+                    insufficientTeams.push(`${state.live.homeTeamName} (${homeAttendance.length}/${minPlayers})`);
+                }
+                if (awayAttendance.length < minPlayers) {
+                    insufficientTeams.push(`${state.live.awayTeamName} (${awayAttendance.length}/${minPlayers})`);
+                }
+                warnings.push(`⚠️ Jugadores insuficientes: ${insufficientTeams.join(', ')}`);
+            }
+
+            const startPeriod1 = () => {
+                dispatch({ type: 'SET_PERIOD', payload: 1 });
+                toast({ title: "1er Período Iniciado", description: `Reloj de 1er Período (${centisecondsToDisplayMinutes(state.config.defaultPeriodDuration)} min) pausado.` });
+            };
+
+            if (warnings.length > 0) {
+                checkAndConfirm(
+                    true,
+                    "Advertencia de Asistencia",
+                    `${warnings.join('\n\n')}\n\n¿Deseas iniciar el 1er Período de todas formas?`,
+                    startPeriod1
+                );
+            } else {
+                startPeriod1();
+            }
         } else if (state.live.clock.periodDisplayOverride === "Break" || state.live.clock.periodDisplayOverride === "Pre-OT Break") {
             const nextNumericPeriod = state.live.clock.currentPeriod + 1;
             if (nextNumericPeriod <= MAX_TOTAL_GAME_PERIODS) {

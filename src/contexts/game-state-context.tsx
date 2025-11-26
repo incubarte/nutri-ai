@@ -4,7 +4,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData, PeriodSummary, ReplaySettings, ShootoutAttempt } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData, PeriodSummary, ReplaySettings, ShootoutAttempt, GoalkeeperChangeLog } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer, saveTournamentOnServer } from '@/app/actions';
@@ -93,6 +93,9 @@ const INITIAL_LIVE_DATA: LiveState = {
   penaltiesLog: { home: [], away: [] },
   shotsLog: { home: [], away: [] },
   attendance: { home: [], away: [] },
+  goalkeeperChangesLog: { home: [], away: [] },
+  homeActiveGoalkeeperId: null,
+  awayActiveGoalkeeperId: null,
   clock: {
     currentTime: 30000, // Default warm-up duration
     currentPeriod: 0,
@@ -1648,7 +1651,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       if (teamData) {
         attendedPlayerInfo = teamData.players
           .filter(p => playerIds.includes(p.id))
-          .map(p => ({ id: p.id, number: p.number, name: p.name }));
+          .map(p => ({
+            id: p.id,
+            number: p.number,
+            name: p.name,
+            type: p.type
+          }));
       }
       
       newState = {
@@ -1660,6 +1668,61 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             [team]: attendedPlayerInfo,
           },
         },
+      };
+      break;
+    }
+    case 'SET_ACTIVE_GOALKEEPER': {
+      const { team, playerId } = action.payload;
+      const { live, config } = state;
+
+      // Find the player in attendance
+      const player = live.attendance[team].find(p => p.id === playerId);
+      if (!player || player.type !== 'goalkeeper') {
+        console.error(`Player ${playerId} is not a goalkeeper in ${team} attendance`);
+        break;
+      }
+
+      // Get current active goalkeeper for this team
+      const currentActiveGoalkeeperId = team === 'home' ? live.homeActiveGoalkeeperId : live.awayActiveGoalkeeperId;
+
+      // Only log the change if it's different from the current active goalkeeper
+      let newGoalkeeperChangesLog = live.goalkeeperChangesLog;
+      if (currentActiveGoalkeeperId !== playerId) {
+        const periodText = getActualPeriodText(
+          live.clock.currentPeriod,
+          live.clock.periodDisplayOverride,
+          config.numberOfRegularPeriods,
+          live.shootout
+        );
+
+        const newGoalkeeperChange: GoalkeeperChangeLog = {
+          timestamp: Date.now(),
+          gameTime: live.clock.currentTime,
+          periodText,
+          playerId: player.id,
+          playerNumber: player.number,
+          playerName: player.name,
+        };
+
+        newGoalkeeperChangesLog = {
+          ...live.goalkeeperChangesLog,
+          [team]: [...live.goalkeeperChangesLog[team], newGoalkeeperChange]
+        };
+      }
+
+      newState = {
+        ...state,
+        live: {
+          ...live,
+          homeActiveGoalkeeperId: team === 'home' ? playerId : live.homeActiveGoalkeeperId,
+          awayActiveGoalkeeperId: team === 'away' ? playerId : live.awayActiveGoalkeeperId,
+          goalkeeperChangesLog: newGoalkeeperChangesLog
+        }
+      };
+
+      toastMessage = {
+        title: "Arquero Activado",
+        description: `${player.name} (#${player.number}) es ahora el arquero activo.`
       };
       break;
     }

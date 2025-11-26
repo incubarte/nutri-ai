@@ -98,4 +98,27 @@ export async function sendRemoteCommand(command: RemoteCommand) {
   }
 }
 
+export async function clearVoiceEventsOnServer(matchId: string | null) {
+  if (!matchId) return { success: true }; // No matchId, nothing to clear
+
+  try {
+    const response = await fetch('/api/voice-events/clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matchId }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to clear voice events.');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to clear voice events on server:', error);
+    if (error instanceof Error) {
+      return { success: false, message: error.message };
+    }
+    return { success: false, message: 'An unknown error occurred while clearing voice events.' };
+  }
+}
+
     

@@ -18,8 +18,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useGameState, type Team } from "@/contexts/game-state-context";
 import type { PlayerData, AttendedPlayerInfo } from "@/types";
-import { User, Shield, Save, X } from "lucide-react";
+import { User, Shield, Save, X, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface EditTeamPlayersDialogProps {
   isOpen: boolean;
@@ -45,6 +46,13 @@ export function EditTeamPlayersDialog({
   const { toast } = useToast();
   const [editablePlayers, setEditablePlayers] = useState<EditablePlayer[]>([]);
   const [attendedPlayerIds, setAttendedPlayerIds] = useState<Set<string>>(new Set());
+  const [activeGoalkeeperId, setActiveGoalkeeperId] = useState<string | null>(null);
+
+  // New player creation state
+  const [showNewPlayerForm, setShowNewPlayerForm] = useState(false);
+  const [newPlayerName, setNewPlayerName] = useState('');
+  const [newPlayerNumber, setNewPlayerNumber] = useState('');
+  const [newPlayerType, setNewPlayerType] = useState<'player' | 'goalkeeper'>('player');
   
   const teamDetails = useMemo(() => {
     if (!state.config || !state.config.tournaments) return null;
@@ -67,12 +75,17 @@ export function EditTeamPlayersDialog({
       setEditablePlayers(
         sortedPlayers.map(p => ({ ...p, localNumber: p.number, isModified: false }))
       );
-      
+
       const attendedInfo = state.live?.attendance?.[teamType] || [];
       setAttendedPlayerIds(new Set(attendedInfo.map(p => p.id)));
 
+      // Load active goalkeeper from global state
+      const activeGoalkeeperId = teamType === 'home'
+        ? state.live.homeActiveGoalkeeperId
+        : state.live.awayActiveGoalkeeperId;
+      setActiveGoalkeeperId(activeGoalkeeperId);
     }
-  }, [isOpen, teamDetails, state.live.attendance, teamType]);
+  }, [isOpen, teamDetails, state.live.attendance, state.live.homeActiveGoalkeeperId, state.live.awayActiveGoalkeeperId, teamType]);
 
   const handlePlayerNumberChange = (playerId: string, newNumber: string) => {
     if (/^\d*$/.test(newNumber)) {
@@ -110,8 +123,121 @@ export function EditTeamPlayersDialog({
         newIds.add(playerId);
       } else {
         newIds.delete(playerId);
+        // If removing the active goalkeeper, clear the selection
+        if (playerId === activeGoalkeeperId) {
+          setActiveGoalkeeperId(null);
+        }
       }
       return newIds;
+    });
+  };
+
+  const handleGoalkeeperClick = (playerId: string, playerType: string) => {
+    if (playerType !== 'goalkeeper') return;
+    if (!attendedPlayerIds.has(playerId)) {
+      toast({
+        title: "No Disponible",
+        description: "Primero marca la asistencia del arquero antes de activarlo.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Toggle: if already active, deactivate; otherwise activate
+    if (activeGoalkeeperId === playerId) {
+      setActiveGoalkeeperId(null);
+    } else {
+      setActiveGoalkeeperId(playerId);
+    }
+  };
+
+  const handleAddNewPlayer = () => {
+    const trimmedName = newPlayerName.trim();
+    const trimmedNumber = newPlayerNumber.trim();
+
+    // Validations
+    if (!trimmedName) {
+      toast({
+        title: "Nombre Requerido",
+        description: "Por favor ingresa el nombre del jugador.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (trimmedNumber && !/^\d+$/.test(trimmedNumber)) {
+      toast({
+        title: "Número Inválido",
+        description: "El número debe ser numérico.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check for duplicate number
+    if (trimmedNumber && editablePlayers.some(p => p.localNumber === trimmedNumber)) {
+      toast({
+        title: "Número Duplicado",
+        description: `El número #${trimmedNumber} ya está asignado a otro jugador.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Generate new player ID
+    const newPlayerId = `player-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+    // Create new player
+    const newPlayer: EditablePlayer = {
+      id: newPlayerId,
+      name: trimmedName,
+      number: trimmedNumber,
+      localNumber: trimmedNumber,
+      type: newPlayerType,
+      isModified: true // Mark as modified so it gets saved
+    };
+
+    // Add to editable players (will be sorted on next render)
+    setEditablePlayers(prev => {
+      const updated = [...prev, newPlayer];
+      // Sort: goalkeepers first, then by name
+      return updated.sort((a, b) => {
+        if (a.type === 'goalkeeper' && b.type !== 'goalkeeper') return -1;
+        if (a.type !== 'goalkeeper' && b.type === 'goalkeeper') return 1;
+        return a.name.localeCompare(b.name);
+      });
+    });
+
+    // Automatically mark as attended
+    setAttendedPlayerIds(prev => {
+      const newIds = new Set(prev);
+      newIds.add(newPlayerId);
+      return newIds;
+    });
+
+    // Dispatch ADD_PLAYER_TO_TEAM action
+    dispatch({
+      type: 'ADD_PLAYER_TO_TEAM',
+      payload: {
+        teamId,
+        player: {
+          id: newPlayerId,
+          name: trimmedName,
+          number: trimmedNumber,
+          type: newPlayerType
+        }
+      }
+    });
+
+    // Reset form
+    setNewPlayerName('');
+    setNewPlayerNumber('');
+    setNewPlayerType('player');
+    setShowNewPlayerForm(false);
+
+    toast({
+      title: "Jugador Agregado",
+      description: `${trimmedName} ha sido agregado al equipo.`
     });
   };
 
@@ -192,6 +318,19 @@ export function EditTeamPlayersDialog({
           payload: { team: teamType, playerIds: Array.from(attendedPlayerIds) }
         });
     }
+
+    // Check if active goalkeeper changed
+    const originalActiveGoalkeeperId = teamType === 'home'
+      ? state.live.homeActiveGoalkeeperId
+      : state.live.awayActiveGoalkeeperId;
+    const activeGoalkeeperChanged = originalActiveGoalkeeperId !== activeGoalkeeperId;
+
+    if (activeGoalkeeperChanged && activeGoalkeeperId) {
+        dispatch({
+          type: 'SET_ACTIVE_GOALKEEPER',
+          payload: { team: teamType, playerId: activeGoalkeeperId }
+        });
+    }
     
     if (numberChangesCount > 0 && attendanceChanged) {
         toast({
@@ -229,7 +368,7 @@ export function EditTeamPlayersDialog({
         <DialogHeader>
           <DialogTitle>Editar Jugadores de {teamName}</DialogTitle>
           <DialogDescription>
-            Modifica los números de los jugadores y registra su asistencia al partido.
+            Modifica los números, registra asistencia al partido y agrega nuevos jugadores si es necesario.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] pr-3">
@@ -250,13 +389,37 @@ export function EditTeamPlayersDialog({
 
                 <div className="self-stretch border-l border-border/50"></div>
 
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div
+                  className={`flex items-center gap-3 flex-1 min-w-0 ${
+                    player.type === "goalkeeper" && attendedPlayerIds.has(player.id)
+                      ? 'cursor-pointer'
+                      : ''
+                  }`}
+                  onClick={() => player.type === "goalkeeper" && handleGoalkeeperClick(player.id, player.type)}
+                  title={
+                    player.type === "goalkeeper"
+                      ? activeGoalkeeperId === player.id
+                        ? 'Arquero activo (click para desactivar)'
+                        : attendedPlayerIds.has(player.id)
+                        ? 'Click para activar arquero'
+                        : 'Marca asistencia primero'
+                      : ''
+                  }
+                >
                     {player.type === "goalkeeper" ? (
-                      <Shield className="h-5 w-5 text-primary shrink-0" />
+                      <Shield
+                        className={`h-5 w-5 shrink-0 transition-colors ${
+                          activeGoalkeeperId === player.id
+                            ? 'text-green-600 fill-green-600'
+                            : attendedPlayerIds.has(player.id)
+                            ? 'text-muted-foreground hover:text-green-500'
+                            : 'text-muted-foreground/30'
+                        }`}
+                      />
                     ) : (
                       <User className="h-5 w-5 text-primary shrink-0" />
                     )}
-                    <Label htmlFor={`player-num-${player.id}`} className="flex-1 min-w-0">
+                    <Label htmlFor={`player-num-${player.id}`} className="flex-1 min-w-0 pointer-events-none">
                       <span className="font-medium truncate" title={player.name}>{player.name}</span>
                       <span className="text-xs text-muted-foreground ml-1">({player.type === "goalkeeper" ? "Arquero" : "Jugador"})</span>
                     </Label>
@@ -280,6 +443,94 @@ export function EditTeamPlayersDialog({
             {editablePlayers.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">Este equipo no tiene jugadores.</p>
             )}
+
+            {/* Add New Player Section */}
+            <div className="mt-4 border-t pt-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setShowNewPlayerForm(!showNewPlayerForm)}
+              >
+                {showNewPlayerForm ? (
+                  <><ChevronUp className="mr-2 h-4 w-4" /> Ocultar Formulario</>
+                ) : (
+                  <><Plus className="mr-2 h-4 w-4" /> Agregar Nuevo Jugador</>
+                )}
+              </Button>
+
+              {showNewPlayerForm && (
+                <div className="mt-3 p-3 border rounded-md bg-muted/20 space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-player-name">Nombre *</Label>
+                    <Input
+                      id="new-player-name"
+                      type="text"
+                      value={newPlayerName}
+                      onChange={(e) => setNewPlayerName(e.target.value)}
+                      placeholder="Nombre completo del jugador"
+                      className="h-9"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-player-number">Número</Label>
+                    <Input
+                      id="new-player-number"
+                      type="text"
+                      inputMode="numeric"
+                      value={newPlayerNumber}
+                      onChange={(e) => {
+                        if (/^\d*$/.test(e.target.value)) {
+                          setNewPlayerNumber(e.target.value);
+                        }
+                      }}
+                      placeholder="Ej: 10"
+                      className="h-9"
+                      maxLength={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-player-type">Tipo *</Label>
+                    <Select value={newPlayerType} onValueChange={(value: 'player' | 'goalkeeper') => setNewPlayerType(value)}>
+                      <SelectTrigger id="new-player-type" className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="player">Jugador</SelectItem>
+                        <SelectItem value="goalkeeper">Arquero</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleAddNewPlayer}
+                      className="flex-1"
+                    >
+                      <Plus className="mr-2 h-4 w-4" /> Agregar
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setNewPlayerName('');
+                        setNewPlayerNumber('');
+                        setNewPlayerType('player');
+                        setShowNewPlayerForm(false);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </ScrollArea>
         <DialogFooter>
@@ -288,7 +539,7 @@ export function EditTeamPlayersDialog({
               <X className="mr-2 h-4 w-4" /> Cancelar
             </Button>
           </DialogClose>
-          <Button type="button" onClick={handleSave} disabled={editablePlayers.length === 0}>
+          <Button type="button" onClick={handleSave}>
             <Save className="mr-2 h-4 w-4" /> Guardar Cambios
           </Button>
         </DialogFooter>

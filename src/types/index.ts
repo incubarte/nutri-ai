@@ -198,6 +198,16 @@ export interface AttendedPlayerInfo {
   id: string;
   number: string;
   name: string;
+  type?: 'player' | 'goalkeeper'; // Player type (optional for backwards compatibility)
+}
+
+export interface GoalkeeperChangeLog {
+  timestamp: number; // Wall clock timestamp
+  gameTime: number; // Game time in centiseconds
+  periodText: string; // Period when the change occurred
+  playerId: string; // ID of the goalkeeper who became active
+  playerNumber: string;
+  playerName?: string;
 }
 
 export interface PeriodStats {
@@ -461,6 +471,9 @@ export interface LiveState {
   penaltiesLog: { home: PenaltyLog[], away: PenaltyLog[] };
   shotsLog: { home: ShotLog[], away: ShotLog[] };
   attendance: { home: AttendedPlayerInfo[], away: AttendedPlayerInfo[] };
+  goalkeeperChangesLog: { home: GoalkeeperChangeLog[], away: GoalkeeperChangeLog[] }; // Log of goalkeeper changes during the match
+  homeActiveGoalkeeperId: string | null; // ID of the currently active home goalkeeper
+  awayActiveGoalkeeperId: string | null; // ID of the currently active away goalkeeper
   shootout: ShootoutState;
   homeTeamName: string;
   homeTeamSubName?: string;

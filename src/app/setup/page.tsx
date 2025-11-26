@@ -24,6 +24,7 @@ import { isToday, format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { generateMatchId } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
+import { clearVoiceEventsOnServer } from '@/app/actions';
 
 const TeamSelector = ({
     label,
@@ -214,9 +215,17 @@ function SetupPageContent() {
         setActiveTab(nextTab);
     };
   
-    const handleConfirmAndStart = () => {
+    const handleConfirmAndStart = async () => {
+        // Capture the current matchId BEFORE resetting
+        const previousMatchId = state.live.matchId;
+
         dispatch({ type: 'RESET_GAME_STATE' });
-        
+
+        // Clear voice events from the previous match
+        if (previousMatchId) {
+            await clearVoiceEventsOnServer(previousMatchId);
+        }
+
         let matchIdToSet: string | null = null;
         
         if (!isTournamentMatch) {
@@ -242,8 +251,9 @@ function SetupPageContent() {
             dispatch({ type: 'SET_HOME_TEAM_SUB_NAME', payload: homeTeam.subName });
             dispatch({ type: 'SET_AWAY_TEAM_NAME', payload: awayTeam.name });
             dispatch({ type: 'SET_AWAY_TEAM_SUB_NAME', payload: awayTeam.subName });
-            dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'home', playerIds: homeTeam.players.map(p => p.id) }});
-            dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'away', playerIds: awayTeam.players.map(p => p.id) }});
+            // Start with empty attendance - must be configured in controls before starting period 1
+            dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'home', playerIds: [] }});
+            dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'away', playerIds: [] }});
             
             if (pendingMatchConfig) {
               matchIdToSet = pendingMatchConfig.matchId;
