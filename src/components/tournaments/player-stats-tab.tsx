@@ -1,15 +1,17 @@
-
 "use client";
 
 import React, { useMemo, useState } from 'react';
 import { useGameState } from '@/contexts/game-state-context';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Info } from 'lucide-react';
+import { Trophy, Info, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePlayerStats } from '@/hooks/use-player-stats';
+import { useGoalkeeperStats } from '@/hooks/use-goalkeeper-stats';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 
 const ALL_CATEGORIES = "__ALL__";
 
@@ -22,78 +24,237 @@ export function PlayerStatsTab() {
   }, [tournaments, selectedTournamentId]);
 
   const [categoryFilter, setCategoryFilter] = useState<string>(ALL_CATEGORIES);
+  const [activeStatsTab, setActiveStatsTab] = useState('players');
+  const [expandedGoalkeepers, setExpandedGoalkeepers] = useState<Set<string>>(new Set());
+
   const playerStats = usePlayerStats(selectedTournament, categoryFilter === ALL_CATEGORIES ? null : categoryFilter);
+  const goalkeeperStats = useGoalkeeperStats(selectedTournament, categoryFilter === ALL_CATEGORIES ? null : categoryFilter);
+
+  const toggleGoalkeeperExpanded = (playerId: string) => {
+    setExpandedGoalkeepers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(playerId)) {
+        newSet.delete(playerId);
+      } else {
+        newSet.add(playerId);
+      }
+      return newSet;
+    });
+  };
 
   if (!selectedTournament) return null;
 
-  return (
-    <div className="space-y-8">
-        <div className="flex items-start gap-2 p-3 text-sm border rounded-lg bg-muted/50 text-muted-foreground">
-            <Info className="h-5 w-5 mt-0.5 shrink-0"/>
-            <p>El sistema de puntos es: 2 puntos por gol, 1 punto por asistencia. Las penalidades no afectan el puntaje.</p>
-        </div>
+  // Helper to format centiseconds to MM:SS
+  const formatTime = (centiseconds: number) => {
+    const totalSeconds = Math.floor(centiseconds / 100);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  };
 
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="flex items-center gap-3 text-2xl">
-                    <Trophy className="h-6 w-6 text-amber-400" />
-                    Estadísticas de Jugadores
-                </CardTitle>
-                <div className="w-56">
-                    <Label>Filtrar por Categoría</Label>
-                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={ALL_CATEGORIES}>Todas las Categorías</SelectItem>
-                            {(selectedTournament.categories || []).map(cat => (
-                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+  return (
+    <div className="space-y-6">
+      {/* Category Filter - shared across both tabs */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-start gap-2 p-3 text-sm border rounded-lg bg-muted/50 text-muted-foreground flex-1 mr-4">
+          <Info className="h-5 w-5 mt-0.5 shrink-0"/>
+          <p>Sistema de puntos (jugadores): 2 puntos por gol, 1 punto por asistencia.</p>
+        </div>
+        <div className="w-56">
+          <Label>Filtrar por Categoría</Label>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_CATEGORIES}>Todas las Categorías</SelectItem>
+              {(selectedTournament.categories || []).map(cat => (
+                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Tabs for Players and Goalkeepers */}
+      <Tabs value={activeStatsTab} onValueChange={setActiveStatsTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="players">Jugadores</TabsTrigger>
+          <TabsTrigger value="goalkeepers">Arqueros</TabsTrigger>
+        </TabsList>
+
+        {/* Players Tab */}
+        <TabsContent value="players" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3 text-2xl">
+                <Trophy className="h-6 w-6 text-amber-400" />
+                Estadísticas de Jugadores
+              </CardTitle>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="text-center w-16">Puesto</TableHead>
-                            <TableHead>Jugador</TableHead>
-                            <TableHead>Categoría</TableHead>
-                            <TableHead>Equipo</TableHead>
-                            <TableHead className="text-center">G</TableHead>
-                            <TableHead className="text-center">A</TableHead>
-                            <TableHead className="text-center">Tiros</TableHead>
-                            <TableHead className="text-center"># Pen.</TableHead>
-                            <TableHead className="text-center">T. Pen. (min)</TableHead>
-                            <TableHead className="text-center font-bold">Puntos</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {playerStats.map(stat => (
-                            <TableRow key={stat.playerId}>
-                                <TableCell className="text-center font-bold">{stat.rank}</TableCell>
-                                <TableCell className="font-medium">{stat.playerName}</TableCell>
-                                <TableCell className="text-xs text-muted-foreground">{stat.categoryName}</TableCell>
-                                <TableCell className="text-sm text-muted-foreground">{stat.teamName}</TableCell>
-                                <TableCell className="text-center font-mono">{stat.goals}</TableCell>
-                                <TableCell className="text-center font-mono">{stat.assists}</TableCell>
-                                <TableCell className="text-center font-mono">{stat.shots}</TableCell>
-                                <TableCell className="text-center font-mono">{stat.penaltyCount}</TableCell>
-                                <TableCell className="text-center font-mono">{stat.penaltyMinutes}</TableCell>
-                                <TableCell className="text-center font-bold text-lg">{stat.points}</TableCell>
-                            </TableRow>
-                        ))}
-                         {playerStats.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={10} className="h-24 text-center">No hay estadísticas para mostrar.</TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-center w-16">Puesto</TableHead>
+                    <TableHead>Jugador</TableHead>
+                    <TableHead>Categoría</TableHead>
+                    <TableHead>Equipo</TableHead>
+                    <TableHead className="text-center">G</TableHead>
+                    <TableHead className="text-center">A</TableHead>
+                    <TableHead className="text-center">Tiros</TableHead>
+                    <TableHead className="text-center"># Pen.</TableHead>
+                    <TableHead className="text-center">T. Pen. (min)</TableHead>
+                    <TableHead className="text-center font-bold">Puntos</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {playerStats.map(stat => (
+                    <TableRow key={stat.playerId}>
+                      <TableCell className="text-center font-bold">{stat.rank}</TableCell>
+                      <TableCell className="font-medium">{stat.playerName}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{stat.categoryName}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{stat.teamName}</TableCell>
+                      <TableCell className="text-center font-mono">{stat.goals}</TableCell>
+                      <TableCell className="text-center font-mono">{stat.assists}</TableCell>
+                      <TableCell className="text-center font-mono">{stat.shots}</TableCell>
+                      <TableCell className="text-center font-mono">{stat.penaltyCount}</TableCell>
+                      <TableCell className="text-center font-mono">{stat.penaltyMinutes}</TableCell>
+                      <TableCell className="text-center font-bold text-lg">{stat.points}</TableCell>
+                    </TableRow>
+                  ))}
+                  {playerStats.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={10} className="h-24 text-center">No hay estadísticas para mostrar.</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
-        </Card>
+          </Card>
+        </TabsContent>
+
+        {/* Goalkeepers Tab */}
+        <TabsContent value="goalkeepers" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3 text-2xl">
+                <Shield className="h-6 w-6 text-blue-400" />
+                Estadísticas de Arqueros
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-8">
+                {goalkeeperStats.map(gkStat => (
+                  <div key={gkStat.playerId} className="border rounded-lg p-4 space-y-4">
+                    {/* Goalkeeper Header */}
+                    <div className="flex items-start justify-between border-b pb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-5 w-5 text-blue-400" />
+                          <h3 className="text-xl font-bold">{gkStat.playerName}</h3>
+                          <span className="text-sm text-muted-foreground">#{gkStat.playerNumber}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {gkStat.teamName} • {gkStat.categoryName}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold">{formatTime(gkStat.totalTimeOnIce)}</div>
+                        <div className="text-xs text-muted-foreground">Tiempo Total</div>
+                      </div>
+                    </div>
+
+                    {/* Totals Summary */}
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                      <div className="text-center p-3 bg-muted/50 rounded-lg">
+                        <div className="text-2xl font-bold">{gkStat.matchesPlayed}</div>
+                        <div className="text-xs text-muted-foreground">Partidos</div>
+                      </div>
+                      <div className="text-center p-3 bg-muted/50 rounded-lg">
+                        <div className="text-2xl font-bold">{gkStat.totalShotsAgainst}</div>
+                        <div className="text-xs text-muted-foreground">Tiros Recibidos</div>
+                      </div>
+                      <div className="text-center p-3 bg-muted/50 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">
+                          {gkStat.totalShotsAgainst === 0 ? '-' : gkStat.totalSaves}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Atajados</div>
+                      </div>
+                      <div className="text-center p-3 bg-muted/50 rounded-lg">
+                        <div className="text-2xl font-bold text-destructive">{gkStat.totalGoalsAgainst}</div>
+                        <div className="text-xs text-muted-foreground">Goles en Contra</div>
+                      </div>
+                      <div className="text-center p-3 bg-muted/50 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {gkStat.totalShotsAgainst === 0 ? '-' : `${gkStat.savePercentage}%`}
+                        </div>
+                        <div className="text-xs text-muted-foreground">% Efectividad</div>
+                      </div>
+                    </div>
+
+                    {/* Period Breakdown - Collapsible */}
+                    {gkStat.periodStats.length > 0 && (
+                      <div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleGoalkeeperExpanded(gkStat.playerId)}
+                          className="w-full flex items-center justify-between text-sm font-semibold text-muted-foreground hover:text-foreground"
+                        >
+                          <span>Desglose por Período</span>
+                          {expandedGoalkeepers.has(gkStat.playerId) ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </Button>
+                        {expandedGoalkeepers.has(gkStat.playerId) && (
+                          <div className="mt-2">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Período</TableHead>
+                                  <TableHead className="text-center">Tiempo</TableHead>
+                                  <TableHead className="text-center">Tiros</TableHead>
+                                  <TableHead className="text-center">Atajados</TableHead>
+                                  <TableHead className="text-center">Goles</TableHead>
+                                  <TableHead className="text-center">% Efect.</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {gkStat.periodStats.map(periodStat => (
+                                  <TableRow key={periodStat.period}>
+                                    <TableCell className="font-medium">{periodStat.period}</TableCell>
+                                    <TableCell className="text-center font-mono">{formatTime(periodStat.timeOnIce)}</TableCell>
+                                    <TableCell className="text-center font-mono">{periodStat.shotsAgainst}</TableCell>
+                                    <TableCell className="text-center font-mono text-green-600">
+                                      {periodStat.shotsAgainst === 0 ? '-' : periodStat.saves}
+                                    </TableCell>
+                                    <TableCell className="text-center font-mono text-destructive">{periodStat.goalsAgainst}</TableCell>
+                                    <TableCell className="text-center font-mono text-blue-600">
+                                      {periodStat.shotsAgainst === 0 ? '-' : `${periodStat.savePercentage}%`}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {goalkeeperStats.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    No hay estadísticas de arqueros para mostrar.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

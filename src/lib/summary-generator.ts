@@ -48,10 +48,32 @@ export const recalculateAllStatsFromLogs = (partialSummary: Partial<{ goals: { h
 
     // Process shots
     (partialSummary.home?.homeShotsLog || []).forEach(shot => {
-        if (shot.playerId && homePlayerStatsMap.has(shot.playerId)) homePlayerStatsMap.get(shot.playerId)!.shots++;
+        if (shot.playerId) {
+            if (!homePlayerStatsMap.has(shot.playerId)) {
+                // Player not in map (not in attendance), try to find in roster
+                const rosterPlayer = homeTeamRoster.find(p => p.id === shot.playerId);
+                if (rosterPlayer) {
+                    homePlayerStatsMap.set(shot.playerId, { id: rosterPlayer.id, name: rosterPlayer.name, number: rosterPlayer.number, shots: 0, goals: 0, assists: 0 });
+                }
+            }
+            if (homePlayerStatsMap.has(shot.playerId)) {
+                homePlayerStatsMap.get(shot.playerId)!.shots++;
+            }
+        }
     });
     (partialSummary.away?.awayShotsLog || []).forEach(shot => {
-        if (shot.playerId && awayPlayerStatsMap.has(shot.playerId)) awayPlayerStatsMap.get(shot.playerId)!.shots++;
+        if (shot.playerId) {
+            if (!awayPlayerStatsMap.has(shot.playerId)) {
+                // Player not in map (not in attendance), try to find in roster
+                const rosterPlayer = awayTeamRoster.find(p => p.id === shot.playerId);
+                if (rosterPlayer) {
+                    awayPlayerStatsMap.set(shot.playerId, { id: rosterPlayer.id, name: rosterPlayer.name, number: rosterPlayer.number, shots: 0, goals: 0, assists: 0 });
+                }
+            }
+            if (awayPlayerStatsMap.has(shot.playerId)) {
+                awayPlayerStatsMap.get(shot.playerId)!.shots++;
+            }
+        }
     });
     
     return { home: Array.from(homePlayerStatsMap.values()), away: Array.from(awayPlayerStatsMap.values()) };
@@ -224,7 +246,16 @@ export const generateSummaryData = (state: GameState, voiceEvents?: VoiceGameEve
             awayPlayers: awayPlayersWithShots.map(p => `#${p.number}:${p.shots}shots`)
         });
 
-        return { period: periodText, stats: periodData };
+        // Add goalkeeper changes log for this period
+        const goalkeeperChangesLog = {
+            home: (live.goalkeeperChangesLog?.home || []).filter(gc => normalizePeriodText(gc.periodText || '') === periodText),
+            away: (live.goalkeeperChangesLog?.away || []).filter(gc => normalizePeriodText(gc.periodText || '') === periodText)
+        };
+
+        // Get period duration (from config, defaulting to standard period length)
+        const periodDuration = config.defaultPeriodDuration || 120000; // 20 minutes default
+
+        return { period: periodText, stats: periodData, goalkeeperChangesLog, periodDuration };
     });
 
     // Create the base summary object.

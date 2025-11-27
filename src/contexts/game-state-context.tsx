@@ -1641,7 +1641,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'SET_TEAM_ATTENDANCE': {
       const { team, playerIds } = action.payload;
       const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
-      const teamData = selectedTournament?.teams.find(t => 
+      const teamData = selectedTournament?.teams.find(t =>
         t.name === state.live[`${team}TeamName`] &&
         (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) &&
         t.category === state.config.selectedMatchCategory
@@ -1649,16 +1649,16 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
       let attendedPlayerInfo: AttendedPlayerInfo[] = [];
       if (teamData) {
-        attendedPlayerInfo = teamData.players
-          .filter(p => playerIds.includes(p.id))
-          .map(p => ({
-            id: p.id,
-            number: p.number,
-            name: p.name,
-            type: p.type
-          }));
+        // Include ALL players from roster, marking isPresent based on playerIds
+        attendedPlayerInfo = teamData.players.map(p => ({
+          id: p.id,
+          number: p.number,
+          name: p.name,
+          type: p.type,
+          isPresent: playerIds.includes(p.id)
+        }));
       }
-      
+
       newState = {
         ...state,
         live: {

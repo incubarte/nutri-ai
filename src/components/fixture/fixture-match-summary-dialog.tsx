@@ -12,6 +12,8 @@ import { GoalsSection } from "../summary/goals-section";
 import { PenaltiesSection } from "../summary/penalties-section";
 import { PlayerStatsSection } from "../summary/player-stats-section";
 import { ShootoutSection } from "../summary/shootout-section";
+import { GoalkeeperStatsSection } from "../summary/goalkeeper-stats-section";
+import { useMatchGoalkeeperStats } from "@/hooks/use-match-goalkeeper-stats";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "../ui/separator";
 import { AddPenaltyForm } from "../shared/add-penalty-form";
@@ -80,6 +82,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
         return acc;
     }, { home: [] as PenaltyLog[], away: [] as PenaltyLog[] });
   }, [localSummary]);
+
+  const goalkeeperStats = useMatchGoalkeeperStats(localSummary, homeTeam, awayTeam);
 
   const aggregatedStats = useMemo(() => {
     if (!localSummary || !homeTeam || !awayTeam) return { home: [], away: [] };
@@ -373,6 +377,11 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                               onSave={handleSaveAttendance}
                             />
                         </div>
+                        <Separator />
+                        <div className="grid grid-cols-2 gap-6">
+                          <GoalkeeperStatsSection teamName={homeTeam?.name || 'Local'} goalkeeperStats={goalkeeperStats.home} attendance={localSummary.attendance.home} />
+                          <GoalkeeperStatsSection teamName={awayTeam?.name || 'Visitante'} goalkeeperStats={goalkeeperStats.away} attendance={localSummary.attendance.away} />
+                        </div>
                       </>
                     )}
                     {localSummary.shootout && (localSummary.shootout.homeAttempts.length > 0 || localSummary.shootout.awayAttempts.length > 0) && (
@@ -414,6 +423,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                              onEditToggle={setIsAttendanceEditing}
                              onSave={handleSaveAttendance}
                            />
+                           <Separator />
+                           <GoalkeeperStatsSection teamName={homeTeam?.name || 'Local'} goalkeeperStats={goalkeeperStats.home} attendance={localSummary.attendance.home} />
                          </>
                        )}
                        {localSummary.shootout && localSummary.shootout.homeAttempts.length > 0 && (
@@ -444,6 +455,8 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
                              onEditToggle={setIsAttendanceEditing}
                              onSave={handleSaveAttendance}
                            />
+                           <Separator />
+                           <GoalkeeperStatsSection teamName={awayTeam?.name || 'Visitante'} goalkeeperStats={goalkeeperStats.away} attendance={localSummary.attendance.away} />
                          </>
                        )}
                        {localSummary.shootout && localSummary.shootout.awayAttempts.length > 0 && (
@@ -563,66 +576,116 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
           {state.config.showShotsData && (
             <TabsContent value="statsByPeriod" className="flex-grow overflow-hidden mt-4">
              <ScrollArea className="h-full pr-6 -mr-6">
-                {!isReadOnly && (
-                    <div className="flex justify-end pr-2 mb-4">
-                        {isEditing ? (
-                            <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveShotsClick}><Check className="h-5 w-5" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><XCircle className="h-5 w-5" /></Button>
-                            </div>
-                        ) : (
-                            <Button variant="outline" size="sm" onClick={e => {e.stopPropagation(); handleEditClick();}}>
-                                <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
-                            </Button>
-                        )}
-                    </div>
-                )}
-                 {/* Desktop */}
-                 <div className="hidden md:block space-y-8">
-                  {(playedPeriods || []).map(periodText => {
-                    const periodData = statsByPeriod?.find(p => p.period === periodText);
-                    return (
-                      <div key={`stats-${periodText}`} className="space-y-4">
-                        <h3 className="text-xl font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
-                        <div className="grid grid-cols-2 gap-6">
-                            <PlayerStatsSection team="home" teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={periodData?.stats.playerStats.home} attendance={localSummary.attendance.home} editable={isEditing && !isReadOnly} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
-                            <PlayerStatsSection team="away" teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={periodData?.stats.playerStats.away} attendance={localSummary.attendance.away} editable={isEditing && !isReadOnly} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
+                    {!isReadOnly && (
+                        <div className="flex justify-end pr-2 mb-4">
+                            {isEditing ? (
+                                <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500" onClick={handleSaveShotsClick}><Check className="h-5 w-5" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleCancelClick}><XCircle className="h-5 w-5" /></Button>
+                                </div>
+                            ) : (
+                                <Button variant="outline" size="sm" onClick={e => {e.stopPropagation(); handleEditClick();}}>
+                                    <Edit3 className="mr-2 h-4 w-4"/>Editar Tiros
+                                </Button>
+                            )}
                         </div>
-                      </div>
-                    );
-                  })}
-                 </div>
-                 {/* Mobile */}
-                 <div className="md:hidden">
-                   <Tabs defaultValue="home" className="w-full">
-                     <TabsList className="grid w-full grid-cols-2">
-                       <TabsTrigger value="home">{homeTeam?.name || 'Local'}</TabsTrigger>
-                       <TabsTrigger value="away">{awayTeam?.name || 'Visitante'}</TabsTrigger>
-                     </TabsList>
-                     <TabsContent value="home" className="space-y-8 mt-4">
-                       {(playedPeriods || []).map(periodText => {
-                         const periodData = statsByPeriod?.find(p => p.period === periodText);
-                         return (
-                           <div key={`stats-home-${periodText}`}>
-                             <h3 className="text-lg font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
-                             <PlayerStatsSection team="home" teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={periodData?.stats.playerStats.home} attendance={localSummary.attendance.home} editable={isEditing && !isReadOnly} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
-                           </div>
-                         );
-                       })}
-                     </TabsContent>
-                     <TabsContent value="away" className="space-y-8 mt-4">
-                       {(playedPeriods || []).map(periodText => {
-                         const periodData = statsByPeriod?.find(p => p.period === periodText);
-                         return (
-                           <div key={`stats-away-${periodText}`}>
-                             <h3 className="text-lg font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
-                             <PlayerStatsSection team="away" teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={periodData?.stats.playerStats.away} attendance={localSummary.attendance.away} editable={isEditing && !isReadOnly} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
-                           </div>
-                         );
-                       })}
-                     </TabsContent>
-                   </Tabs>
-                 </div>
+                    )}
+                    {/* Desktop */}
+                    <div className="hidden md:block space-y-8">
+                      {(playedPeriods || []).map(periodText => {
+                        const periodData = statsByPeriod?.find(p => p.period === periodText);
+                        // Get goalkeeper stats for this specific period
+                        const periodGKStats = {
+                          home: goalkeeperStats.home.map(gk => ({
+                            ...gk,
+                            totalShotsAgainst: gk.periodStats.find(p => p.period === periodText)?.shotsAgainst || 0,
+                            totalGoalsAgainst: gk.periodStats.find(p => p.period === periodText)?.goalsAgainst || 0,
+                            totalSaves: gk.periodStats.find(p => p.period === periodText)?.saves || 0,
+                            savePercentage: gk.periodStats.find(p => p.period === periodText)?.savePercentage || 0,
+                            totalTimeOnIce: gk.periodStats.find(p => p.period === periodText)?.timeOnIce || 0,
+                            periodStats: []
+                          })),
+                          away: goalkeeperStats.away.map(gk => ({
+                            ...gk,
+                            totalShotsAgainst: gk.periodStats.find(p => p.period === periodText)?.shotsAgainst || 0,
+                            totalGoalsAgainst: gk.periodStats.find(p => p.period === periodText)?.goalsAgainst || 0,
+                            totalSaves: gk.periodStats.find(p => p.period === periodText)?.saves || 0,
+                            savePercentage: gk.periodStats.find(p => p.period === periodText)?.savePercentage || 0,
+                            totalTimeOnIce: gk.periodStats.find(p => p.period === periodText)?.timeOnIce || 0,
+                            periodStats: []
+                          }))
+                        };
+                        return (
+                          <div key={`stats-${periodText}`} className="space-y-4">
+                            <h3 className="text-xl font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
+                            <div className="grid grid-cols-2 gap-6">
+                                <PlayerStatsSection team="home" teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={periodData?.stats.playerStats.home} attendance={localSummary.attendance.home} editable={isEditing && !isReadOnly} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
+                                <PlayerStatsSection team="away" teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={periodData?.stats.playerStats.away} attendance={localSummary.attendance.away} editable={isEditing && !isReadOnly} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
+                            </div>
+                            <Separator />
+                            <div className="grid grid-cols-2 gap-6">
+                              <GoalkeeperStatsSection goalkeeperStats={periodGKStats.home} attendance={localSummary.attendance.home} showOnlyPresent={true} />
+                              <GoalkeeperStatsSection goalkeeperStats={periodGKStats.away} attendance={localSummary.attendance.away} showOnlyPresent={true} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Mobile */}
+                    <div className="md:hidden">
+                      <Tabs defaultValue="home" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="home">{homeTeam?.name || 'Local'}</TabsTrigger>
+                          <TabsTrigger value="away">{awayTeam?.name || 'Visitante'}</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="home" className="space-y-8 mt-4">
+                          {(playedPeriods || []).map(periodText => {
+                            const periodData = statsByPeriod?.find(p => p.period === periodText);
+                            // Get goalkeeper stats for this specific period
+                            const periodGKStats = goalkeeperStats.home.map(gk => ({
+                              ...gk,
+                              totalShotsAgainst: gk.periodStats.find(p => p.period === periodText)?.shotsAgainst || 0,
+                              totalGoalsAgainst: gk.periodStats.find(p => p.period === periodText)?.goalsAgainst || 0,
+                              totalSaves: gk.periodStats.find(p => p.period === periodText)?.saves || 0,
+                              savePercentage: gk.periodStats.find(p => p.period === periodText)?.savePercentage || 0,
+                              totalTimeOnIce: gk.periodStats.find(p => p.period === periodText)?.timeOnIce || 0,
+                              periodStats: []
+                            }));
+                            return (
+                              <div key={`stats-home-${periodText}`} className="space-y-4">
+                                <h3 className="text-lg font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
+                                <PlayerStatsSection team="home" teamName={homeTeam?.name || ''} allPlayers={homeTeam?.players} playerStats={periodData?.stats.playerStats.home} attendance={localSummary.attendance.home} editable={isEditing && !isReadOnly} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
+                                <Separator />
+                                <GoalkeeperStatsSection goalkeeperStats={periodGKStats} attendance={localSummary.attendance.home} showOnlyPresent={true} />
+                              </div>
+                            );
+                          })}
+                        </TabsContent>
+                        <TabsContent value="away" className="space-y-8 mt-4">
+                          {(playedPeriods || []).map(periodText => {
+                            const periodData = statsByPeriod?.find(p => p.period === periodText);
+                            // Get goalkeeper stats for this specific period
+                            const periodGKStats = goalkeeperStats.away.map(gk => ({
+                              ...gk,
+                              totalShotsAgainst: gk.periodStats.find(p => p.period === periodText)?.shotsAgainst || 0,
+                              totalGoalsAgainst: gk.periodStats.find(p => p.period === periodText)?.goalsAgainst || 0,
+                              totalSaves: gk.periodStats.find(p => p.period === periodText)?.saves || 0,
+                              savePercentage: gk.periodStats.find(p => p.period === periodText)?.savePercentage || 0,
+                              totalTimeOnIce: gk.periodStats.find(p => p.period === periodText)?.timeOnIce || 0,
+                              periodStats: []
+                            }));
+                            return (
+                              <div key={`stats-away-${periodText}`} className="space-y-4">
+                                <h3 className="text-lg font-semibold text-center text-primary-foreground border-b pb-2 mb-4">{periodText}</h3>
+                                <PlayerStatsSection team="away" teamName={awayTeam?.name || ''} allPlayers={awayTeam?.players} playerStats={periodData?.stats.playerStats.away} attendance={localSummary.attendance.away} editable={isEditing && !isReadOnly} editedStats={editedShots[periodText]} onStatChange={(playerId, field, value) => handleShotInputChange(periodText, playerId, value)} />
+                                <Separator />
+                                <GoalkeeperStatsSection goalkeeperStats={periodGKStats} attendance={localSummary.attendance.away} showOnlyPresent={true} />
+                              </div>
+                            );
+                          })}
+                        </TabsContent>
+                      </Tabs>
+                    </div>
               </ScrollArea>
           </TabsContent>
           )}

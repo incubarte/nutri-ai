@@ -199,6 +199,7 @@ export interface AttendedPlayerInfo {
   number: string;
   name: string;
   type?: 'player' | 'goalkeeper'; // Player type (optional for backwards compatibility)
+  isPresent?: boolean; // Whether the player is actually present (optional for backwards compatibility, defaults to true if not set)
 }
 
 export interface GoalkeeperChangeLog {
@@ -219,6 +220,8 @@ export interface PeriodStats {
 export interface PeriodSummary {
     period: string;
     stats: PeriodStats;
+    goalkeeperChangesLog?: { home: GoalkeeperChangeLog[], away: GoalkeeperChangeLog[] };
+    periodDuration?: number; // Duration of the period in centiseconds
 }
 
 // This is the model for post-game summaries. It should be self-contained.

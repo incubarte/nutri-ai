@@ -251,9 +251,9 @@ function SetupPageContent() {
             dispatch({ type: 'SET_HOME_TEAM_SUB_NAME', payload: homeTeam.subName });
             dispatch({ type: 'SET_AWAY_TEAM_NAME', payload: awayTeam.name });
             dispatch({ type: 'SET_AWAY_TEAM_SUB_NAME', payload: awayTeam.subName });
-            // Start with empty attendance - must be configured in controls before starting period 1
-            dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'home', playerIds: [] }});
-            dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'away', playerIds: [] }});
+            // Initialize attendance with all roster players marked as not present
+            dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'home', playerIds: homeTeam.players.map(p => p.id) }});
+            dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'away', playerIds: awayTeam.players.map(p => p.id) }});
             
             if (pendingMatchConfig) {
               matchIdToSet = pendingMatchConfig.matchId;

@@ -44,7 +44,10 @@ export const PlayerStatsSection = ({
     
     const sortedPlayersWithStats = useMemo(() => {
         const fullRoster = allPlayers || [];
-        const attendanceSet = isAttendanceEditing ? editingAttendanceSet : new Set((attendance || []).map(p => p.id));
+        // Filter attendance to only include players where isPresent is true (or undefined for backwards compatibility)
+        const attendanceSet = isAttendanceEditing
+            ? editingAttendanceSet
+            : new Set((attendance || []).filter(p => p.isPresent !== false).map(p => p.id));
         const statsMap = new Map<string, SummaryPlayerStats>();
 
         // Pre-populate map with stats from playerStats prop
