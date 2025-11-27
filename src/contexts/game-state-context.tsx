@@ -437,9 +437,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           newAttendance[teamScored].push({
             id: safeUUID(),
             number: newGoal.scorer.playerNumber,
-            name: `Player #${newGoal.scorer.playerNumber}` // Default name
+            name: `Player #${newGoal.scorer.playerNumber}`, // Default name
+            type: 'player',
+            isPresent: true // Player is present if they scored
           });
-          console.log(`[ADD_GOAL] Added scorer #${newGoal.scorer.playerNumber} to ${teamScored} attendance`);
+          console.log(`[ADD_GOAL] Added scorer #${newGoal.scorer.playerNumber} to ${teamScored} attendance (isPresent=true)`);
         }
       }
 
@@ -449,9 +451,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           newAttendance[teamScored].push({
             id: safeUUID(),
             number: newGoal.assist.playerNumber,
-            name: `Player #${newGoal.assist.playerNumber}` // Default name
+            name: `Player #${newGoal.assist.playerNumber}`, // Default name
+            type: 'player',
+            isPresent: true // Player is present if they assisted
           });
-          console.log(`[ADD_GOAL] Added assist #${newGoal.assist.playerNumber} to ${teamScored} attendance`);
+          console.log(`[ADD_GOAL] Added assist #${newGoal.assist.playerNumber} to ${teamScored} attendance (isPresent=true)`);
         }
       }
 

@@ -77,7 +77,7 @@ export function EditTeamPlayersDialog({
       );
 
       const attendedInfo = state.live?.attendance?.[teamType] || [];
-      setAttendedPlayerIds(new Set(attendedInfo.map(p => p.id)));
+      setAttendedPlayerIds(new Set(attendedInfo.filter(p => p.isPresent !== false).map(p => p.id)));
 
       // Load active goalkeeper from global state
       const activeGoalkeeperId = teamType === 'home'
@@ -325,7 +325,7 @@ export function EditTeamPlayersDialog({
       : state.live.awayActiveGoalkeeperId;
     const activeGoalkeeperChanged = originalActiveGoalkeeperId !== activeGoalkeeperId;
 
-    if (activeGoalkeeperChanged && activeGoalkeeperId) {
+    if (activeGoalkeeperChanged) {
         dispatch({
           type: 'SET_ACTIVE_GOALKEEPER',
           payload: { team: teamType, playerId: activeGoalkeeperId }
@@ -533,6 +533,13 @@ export function EditTeamPlayersDialog({
             </div>
           </div>
         </ScrollArea>
+        {!activeGoalkeeperId && editablePlayers.some(p => p.type === 'goalkeeper' && attendedPlayerIds.has(p.id)) && (
+          <div className="px-6 py-3 bg-orange-50 border-t border-orange-200">
+            <p className="text-sm text-orange-700">
+              ⚠️ No hay arquero activo. Clickeá el escudo del arquero para marcarlo como Activo.
+            </p>
+          </div>
+        )}
         <DialogFooter>
           <DialogClose asChild>
             <Button type="button" variant="outline">

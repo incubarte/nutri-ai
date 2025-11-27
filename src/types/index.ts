@@ -465,6 +465,12 @@ export interface VoiceGameEvent {
   data: ShotEventData | GoalEventData | PenaltyEventData | TimeoutEventData;
 }
 
+// Shots and goalkeeper changes metrics - stored separately from live state for performance
+export interface ShotsMetrics {
+  shotsLog: { home: ShotLog[], away: ShotLog[] };
+  goalkeeperChangesLog: { home: GoalkeeperChangeLog[], away: GoalkeeperChangeLog[] };
+}
+
 // This is the model for live, in-game data
 export interface LiveState {
   clock: ClockState;

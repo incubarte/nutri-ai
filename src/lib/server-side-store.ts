@@ -1,12 +1,12 @@
 
-import type { LiveGameState, ConfigState, RemoteCommand, AccessRequest, TunnelState, TournamentsData } from '@/types';
+import type { LiveGameState, ConfigState, RemoteCommand, AccessRequest, TunnelState, TournamentsData, ShotsMetrics } from '@/types';
 import { EventEmitter } from 'events';
 import { headers } from 'next/headers';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import localtunnel, { type Tunnel } from 'localtunnel';
-import { readConfig, readLiveState, readTournaments } from './data-access';
+import { readConfig, readLiveState, readTournaments, readShotsMetrics } from './data-access';
 
 let accessRequests: Map<string, AccessRequest> = new Map();
 
@@ -77,19 +77,22 @@ if (process.env.NODE_ENV !== 'production') {
 let storedConfig: ConfigState | null = null;
 let storedGameState: LiveGameState | null = null;
 let storedTournaments: TournamentsData | null = null;
+let storedShotsMetrics: ShotsMetrics | null = null;
 
 // Function to load/reload all data from disk into the cache
 export async function reloadCacheFromDisk() {
     console.log('[Cache] Reloading data from disk...');
     try {
-        const [config, liveState, tournaments] = await Promise.all([
+        const [config, liveState, tournaments, shotsMetrics] = await Promise.all([
             readConfig(),
             readLiveState(),
-            readTournaments()
+            readTournaments(),
+            readShotsMetrics()
         ]);
         storedConfig = config as ConfigState;
         storedGameState = liveState as LiveGameState;
         storedTournaments = tournaments as TournamentsData;
+        storedShotsMetrics = shotsMetrics as ShotsMetrics;
         console.log('[Cache] Reload complete. Tournaments count:', storedTournaments?.tournaments?.length || 0);
     } catch (error) {
         console.error('[Cache] Failed to reload cache from disk:', error);
@@ -152,6 +155,18 @@ export async function getGameState(): Promise<LiveGameState | null> {
 export function setGameState(newGameState: LiveGameState): void {
   storedGameState = newGameState;
   gameStateEmitter.emit('update', newGameState);
+}
+
+export async function getShotsMetrics(): Promise<ShotsMetrics | null> {
+  if (!storedShotsMetrics) {
+    await reloadCacheFromDisk();
+  }
+  return storedShotsMetrics;
+}
+
+export function setShotsMetrics(newMetrics: ShotsMetrics): void {
+  storedShotsMetrics = newMetrics;
+  // Note: No event emitter for shots metrics as they're less frequently updated
 }
 
 export function sendCommand(command: RemoteCommand): void {

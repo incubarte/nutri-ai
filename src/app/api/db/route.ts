@@ -1,21 +1,29 @@
 
 import { NextResponse } from 'next/server';
-import type { GameState, ConfigState, LiveState, TournamentsData } from '@/types';
-import { setGameState, setConfig, getGameState, getConfig, setTournaments, getTournaments } from '@/lib/server-side-store';
-import { readConfig, writeConfig, readLiveState, writeLiveState, readTournaments, writeTournaments } from '@/lib/data-access';
+import type { GameState, ConfigState, LiveState, TournamentsData, ShotsMetrics } from '@/types';
+import { setGameState, setConfig, getGameState, getConfig, setTournaments, getTournaments, setShotsMetrics, getShotsMetrics } from '@/lib/server-side-store';
+import { readConfig, writeConfig, readLiveState, writeLiveState, readTournaments, writeTournaments, readShotsMetrics, writeShotsMetrics } from '@/lib/data-access';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const [config, liveState] = await Promise.all([
+    const [config, liveState, shotsMetrics] = await Promise.all([
         getConfig(),
-        getGameState()
+        getGameState(),
+        getShotsMetrics()
     ]);
-    
+
+    // Merge shotsMetrics into liveState for backward compatibility
+    const mergedLiveState = liveState ? {
+      ...liveState,
+      shotsLog: shotsMetrics?.shotsLog || liveState.shotsLog || { home: [], away: [] },
+      goalkeeperChangesLog: shotsMetrics?.goalkeeperChangesLog || liveState.goalkeeperChangesLog || { home: [], away: [] }
+    } : undefined;
+
     const initialState: Partial<GameState> = {
       config: config || undefined,
-      live: liveState || undefined,
+      live: mergedLiveState,
       _initialConfigLoadComplete: false,
     }
 
@@ -52,8 +60,23 @@ export async function POST(request: Request) {
     }
 
     if (live) {
-        await writeLiveState(live);
-        setGameState(live); // Update in-memory cache and emit event
+        // Separate shotsMetrics from live state for storage optimization
+        const { shotsLog, goalkeeperChangesLog, ...liveWithoutMetrics } = live;
+
+        const shotsMetrics: ShotsMetrics = {
+          shotsLog: shotsLog || { home: [], away: [] },
+          goalkeeperChangesLog: goalkeeperChangesLog || { home: [], away: [] }
+        };
+
+        // Write both files in parallel for performance
+        await Promise.all([
+          writeLiveState(liveWithoutMetrics as LiveState),
+          writeShotsMetrics(shotsMetrics)
+        ]);
+
+        // Update in-memory caches
+        setGameState(live); // Keep full state in memory with metrics
+        setShotsMetrics(shotsMetrics);
     }
 
     return NextResponse.json({ success: true, message: 'Data saved successfully.' });

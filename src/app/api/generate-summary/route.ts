@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readTournament, readConfig, writeSingleMatchSummary } from '@/lib/data-access';
+import { readTournament, readConfig, writeSingleMatchSummary, readLiveState, readShotsMetrics } from '@/lib/data-access';
 import { generateSummaryData } from '@/lib/summary-generator';
 import fs from 'fs';
 import path from 'path';
@@ -36,9 +36,18 @@ export async function POST(request: NextRequest) {
       }]
     };
 
-    // Read current live state
-    const livePath = path.join(process.cwd(), 'tmp', 'new-storage', 'data', 'live.json');
-    const liveState = JSON.parse(fs.readFileSync(livePath, 'utf-8'));
+    // Read current live state and shots metrics
+    const [liveState, shotsMetrics] = await Promise.all([
+      readLiveState(),
+      readShotsMetrics()
+    ]);
+
+    // Merge shots metrics into live state for summary generation
+    const mergedLiveState = {
+      ...liveState,
+      shotsLog: shotsMetrics.shotsLog || { home: [], away: [] },
+      goalkeeperChangesLog: shotsMetrics.goalkeeperChangesLog || { home: [], away: [] }
+    };
 
     // Read voice events for this match
     let voiceEvents: VoiceGameEvent[] = [];
@@ -60,17 +69,19 @@ export async function POST(request: NextRequest) {
 
     // Build state object for summary generation
     const state: GameState = {
-      live: liveState,
+      live: mergedLiveState,
       config: fullConfig
     };
 
     // Log debug info
     console.log('[Generate Summary API] Generating summary with:');
-    console.log('  - Home team:', liveState.homeTeamName, liveState.homeTeamSubName || '(no subname)');
-    console.log('  - Away team:', liveState.awayTeamName, liveState.awayTeamSubName || '(no subname)');
+    console.log('  - Home team:', mergedLiveState.homeTeamName, mergedLiveState.homeTeamSubName || '(no subname)');
+    console.log('  - Away team:', mergedLiveState.awayTeamName, mergedLiveState.awayTeamSubName || '(no subname)');
     console.log('  - Selected category:', fullConfig.selectedMatchCategory);
     console.log('  - Tournament teams count:', tournament.teams?.length || 0);
     console.log('  - Voice events count:', voiceEvents.length);
+    console.log('  - Shots log (home/away):', mergedLiveState.shotsLog?.home?.length || 0, '/', mergedLiveState.shotsLog?.away?.length || 0);
+    console.log('  - GK changes (home/away):', mergedLiveState.goalkeeperChangesLog?.home?.length || 0, '/', mergedLiveState.goalkeeperChangesLog?.away?.length || 0);
 
     // Generate summary with voice events
     const summary = generateSummaryData(state, voiceEvents);

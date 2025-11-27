@@ -1,4 +1,4 @@
-import type { ConfigState, LiveState, MatchData, Tournament, GameSummary, TournamentsData } from '@/types';
+import type { ConfigState, LiveState, MatchData, Tournament, GameSummary, TournamentsData, ShotsMetrics } from '@/types';
 import { storageProvider } from './storage';
 import { FileNotFoundError } from './storage/providers';
 import { updateManifestEntry } from './sync-manifest';
@@ -49,6 +49,26 @@ export async function readLiveState(): Promise<Partial<LiveState>> {
 
 export async function writeLiveState(liveState: LiveState): Promise<void> {
     await storageProvider.writeFile('live.json', JSON.stringify(liveState, null, 2));
+}
+
+export async function readShotsMetrics(): Promise<Partial<ShotsMetrics>> {
+    const metrics = await readJsonFile<ShotsMetrics>('live-shotsMetrics.json');
+    if (metrics) return metrics;
+
+    // Backward compatibility: try reading from live.json
+    const liveState = await readJsonFile<LiveState>('live.json');
+    if (liveState && (liveState.shotsLog || liveState.goalkeeperChangesLog)) {
+        return {
+            shotsLog: liveState.shotsLog || { home: [], away: [] },
+            goalkeeperChangesLog: liveState.goalkeeperChangesLog || { home: [], away: [] }
+        };
+    }
+
+    return { shotsLog: { home: [], away: [] }, goalkeeperChangesLog: { home: [], away: [] } };
+}
+
+export async function writeShotsMetrics(metrics: ShotsMetrics): Promise<void> {
+    await storageProvider.writeFile('live-shotsMetrics.json', JSON.stringify(metrics, null, 2));
 }
 
 export async function readTournament(tournamentId: string): Promise<Partial<Tournament> | null> {
