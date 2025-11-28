@@ -6,9 +6,14 @@ import { useGameState } from '@/contexts/game-state-context';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Trophy, Info, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import { useStandings } from '@/hooks/use-standings';
 import { cn } from '@/lib/utils';
+import type { Tournament, MatchData } from '@/types';
+import { calculateScoreFromSummary } from '@/lib/match-helpers';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName: string, categoryId: string, tournament: any }) => {
     const stats = useStandings(tournament, categoryId);
@@ -74,7 +79,7 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
                             {stats.map((team, index) => (
                                 <TableRow
                                     key={team.id}
-                                    className={cn(index === 3 ? "border-b border-blue-100 dark:border-blue-900" : "")}
+                                    className={cn(index === 3 ? "border-b border-blue-50 dark:border-blue-950" : "")}
                                 >
                                     <TableCell className="text-center font-bold">{team.rank}</TableCell>
                                     <TableCell className="font-medium">{team.name}</TableCell>
@@ -121,7 +126,7 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
                             {stats.map((team, index) => (
                                 <TableRow
                                     key={team.id}
-                                    className={cn(index === 3 ? "border-b border-blue-100 dark:border-blue-900" : "")}
+                                    className={cn(index === 3 ? "border-b border-blue-50 dark:border-blue-950" : "")}
                                 >
                                     <TableCell className="text-center font-bold text-sm">{team.rank}</TableCell>
                                     <TableCell className="font-medium text-sm truncate max-w-[120px]">{team.name}</TableCell>
@@ -149,6 +154,223 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
     );
 };
 
+// Helper para obtener el nombre del equipo basado en posición y tabla de standings
+function getTeamNameFromPosition(position: string, standings: any[]) {
+    const positionIndex = parseInt(position.replace('position-', '')) - 1;
+    return standings[positionIndex]?.name || position.replace('position-', '') + 'ero';
+}
+
+// Helper para obtener el nombre de un equipo (de ID real o posición)
+function getTeamName(teamId: string, tournament: Tournament, standings: any[]): string {
+    // Si es una posición, obtener el equipo desde la tabla de standings
+    if (teamId.startsWith('position-')) {
+        return getTeamNameFromPosition(teamId, standings);
+    }
+
+    // Si no, buscar el equipo por ID en el torneo
+    const team = tournament.teams?.find(t => t.id === teamId);
+    return team?.name || teamId;
+}
+
+// Helper para obtener ganador de un partido
+function getWinnerTeam(match: MatchData, tournament: Tournament, standings: any[]): string | null {
+    if (!match.summary) return null;
+
+    const { home, away } = calculateScoreFromSummary(match.summary);
+
+    if (home > away) {
+        return getTeamName(match.homeTeamId, tournament, standings);
+    } else if (away > home) {
+        return getTeamName(match.awayTeamId, tournament, standings);
+    }
+
+    return null;
+}
+
+const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName: string, categoryId: string, tournament: Tournament }) => {
+    const standings = useStandings(tournament, categoryId);
+
+    // Obtener partidos de playoffs para esta categoría
+    const playoffMatches = useMemo(() => {
+        return (tournament.matches || []).filter(m =>
+            m.categoryId === categoryId && m.phase === 'playoffs'
+        );
+    }, [tournament.matches, categoryId]);
+
+    const semi1 = playoffMatches.find(m => m.playoffType === 'semifinal' && m.homeTeamId === 'position-1');
+    const semi2 = playoffMatches.find(m => m.playoffType === 'semifinal' && m.homeTeamId === 'position-2');
+    const final = playoffMatches.find(m => m.playoffType === 'final');
+
+    const semi1Winner = semi1 ? getWinnerTeam(semi1, tournament, standings) : null;
+    const semi2Winner = semi2 ? getWinnerTeam(semi2, tournament, standings) : null;
+    const finalWinner = final ? getWinnerTeam(final, tournament, standings) : null;
+
+    // Obtener los nombres de los equipos para cada semifinal
+    const semi1Home = semi1 ? getTeamName(semi1.homeTeamId, tournament, standings) : (standings[0]?.name || '1ero');
+    const semi1Away = semi1 ? getTeamName(semi1.awayTeamId, tournament, standings) : (standings[3]?.name || '4to');
+    const semi2Home = semi2 ? getTeamName(semi2.homeTeamId, tournament, standings) : (standings[1]?.name || '2do');
+    const semi2Away = semi2 ? getTeamName(semi2.awayTeamId, tournament, standings) : (standings[2]?.name || '3ero');
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-3 text-2xl">
+                    <Trophy className="h-6 w-6 text-amber-400" />
+                    <span>{categoryName}</span>
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                    {/* Semifinales */}
+                    <div className="space-y-6">
+                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide text-center">
+                            Semifinales
+                        </h3>
+
+                        {/* Semi 1 */}
+                        <div className={cn(
+                            "border-2 rounded-lg p-4 space-y-2",
+                            semi1Winner ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-border"
+                        )}>
+                            <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">Semi 1</div>
+                            <div className="flex items-center justify-between">
+                                <span className="font-medium">
+                                    {semi1Home}
+                                </span>
+                                {semi1?.summary && (
+                                    <span className="font-bold">
+                                        {calculateScoreFromSummary(semi1.summary).home}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center justify-between border-t pt-2">
+                                <span className="font-medium">
+                                    {semi1Away}
+                                </span>
+                                {semi1?.summary && (
+                                    <span className="font-bold">
+                                        {calculateScoreFromSummary(semi1.summary).away}
+                                    </span>
+                                )}
+                            </div>
+                            {semi1 && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground pt-2 border-t">
+                                    <Calendar className="h-3 w-3" />
+                                    {format(new Date(semi1.date), "dd/MM/yy HH:mm", { locale: es })}
+                                </div>
+                            )}
+                            {!semi1 && (
+                                <div className="text-xs text-muted-foreground pt-2 border-t">
+                                    Partido no programado
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Semi 2 */}
+                        <div className={cn(
+                            "border-2 rounded-lg p-4 space-y-2",
+                            semi2Winner ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-border"
+                        )}>
+                            <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">Semi 2</div>
+                            <div className="flex items-center justify-between">
+                                <span className="font-medium">
+                                    {semi2Home}
+                                </span>
+                                {semi2?.summary && (
+                                    <span className="font-bold">
+                                        {calculateScoreFromSummary(semi2.summary).home}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center justify-between border-t pt-2">
+                                <span className="font-medium">
+                                    {semi2Away}
+                                </span>
+                                {semi2?.summary && (
+                                    <span className="font-bold">
+                                        {calculateScoreFromSummary(semi2.summary).away}
+                                    </span>
+                                )}
+                            </div>
+                            {semi2 && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground pt-2 border-t">
+                                    <Calendar className="h-3 w-3" />
+                                    {format(new Date(semi2.date), "dd/MM/yy HH:mm", { locale: es })}
+                                </div>
+                            )}
+                            {!semi2 && (
+                                <div className="text-xs text-muted-foreground pt-2 border-t">
+                                    Partido no programado
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Conectores visuales */}
+                    <div className="hidden md:flex flex-col items-center justify-center">
+                        <div className="h-20 w-px bg-border"></div>
+                        <div className="w-full h-px bg-border"></div>
+                        <div className="h-20 w-px bg-border"></div>
+                    </div>
+
+                    {/* Final */}
+                    <div className="space-y-6">
+                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide text-center">
+                            Final
+                        </h3>
+
+                        <div className={cn(
+                            "border-2 rounded-lg p-4 space-y-2",
+                            finalWinner ? "border-amber-500 bg-amber-50 dark:bg-amber-950/20" : "border-border"
+                        )}>
+                            <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">Final</div>
+                            <div className="flex items-center justify-between">
+                                <span className="font-medium">
+                                    {semi1Winner || 'Ganador Semi 1'}
+                                </span>
+                                {final?.summary && (
+                                    <span className="font-bold">
+                                        {calculateScoreFromSummary(final.summary).home}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center justify-between border-t pt-2">
+                                <span className="font-medium">
+                                    {semi2Winner || 'Ganador Semi 2'}
+                                </span>
+                                {final?.summary && (
+                                    <span className="font-bold">
+                                        {calculateScoreFromSummary(final.summary).away}
+                                    </span>
+                                )}
+                            </div>
+                            {final && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground pt-2 border-t">
+                                    <Calendar className="h-3 w-3" />
+                                    {format(new Date(final.date), "dd/MM/yy HH:mm", { locale: es })}
+                                </div>
+                            )}
+                            {!final && (
+                                <div className="text-xs text-muted-foreground pt-2 border-t">
+                                    Partido no programado
+                                </div>
+                            )}
+                            {finalWinner && (
+                                <div className="mt-4 pt-4 border-t">
+                                    <div className="flex items-center justify-center gap-2 text-amber-600 dark:text-amber-400 font-bold">
+                                        <Trophy className="h-5 w-5" />
+                                        <span>Campeón: {finalWinner}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
 export function StandingsTab() {
   const { state } = useGameState();
   const { tournaments, selectedTournamentId } = state.config;
@@ -159,26 +381,32 @@ export function StandingsTab() {
 
   const categoriesWithTeams = useMemo(() => {
     if (!selectedTournament) return [];
-    return selectedTournament.categories.filter(cat => 
+    return selectedTournament.categories.filter(cat =>
         (selectedTournament.teams || []).some(team => team.category === cat.id)
     );
   }, [selectedTournament]);
 
   if (!selectedTournament) return null;
-  
+
   return (
-    <div className="space-y-8">
+    <Tabs defaultValue="clasificacion" className="space-y-6">
+      <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsTrigger value="clasificacion">Clasificación</TabsTrigger>
+        <TabsTrigger value="playoffs">Playoffs</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="clasificacion" className="space-y-8">
         <div className="flex items-start gap-2 p-3 text-sm border rounded-lg bg-muted/50 text-muted-foreground">
             <Info className="h-5 w-5 mt-0.5 shrink-0"/>
             <p>El sistema de puntos es: 3 por victoria, 2 por victoria en OT/Penales, 1 por derrota en OT/Penales, y 1 por empate.</p>
         </div>
 
         {categoriesWithTeams.map(category => (
-            <StandingsTable 
-                key={category.id} 
-                categoryName={category.name} 
-                categoryId={category.id} 
-                tournament={selectedTournament} 
+            <StandingsTable
+                key={category.id}
+                categoryName={category.name}
+                categoryId={category.id}
+                tournament={selectedTournament}
             />
         ))}
 
@@ -187,6 +415,24 @@ export function StandingsTab() {
                 <p className="text-muted-foreground">No hay datos de posiciones para mostrar. Juega y finaliza partidos para empezar.</p>
             </div>
         )}
-    </div>
+      </TabsContent>
+
+      <TabsContent value="playoffs" className="space-y-8">
+        {categoriesWithTeams.map(category => (
+            <PlayoffBracket
+                key={category.id}
+                categoryName={category.name}
+                categoryId={category.id}
+                tournament={selectedTournament}
+            />
+        ))}
+
+        {categoriesWithTeams.length === 0 && (
+            <div className="text-center py-12">
+                <p className="text-muted-foreground">No hay categorías disponibles.</p>
+            </div>
+        )}
+      </TabsContent>
+    </Tabs>
   );
 }

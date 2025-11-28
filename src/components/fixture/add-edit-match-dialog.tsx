@@ -73,6 +73,21 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
             return;
         }
 
+        // Validación especial para partidos de playoffs: deben tener posiciones seleccionadas
+        if (phase === 'playoffs') {
+            const isHomePosition = homeTeamId.startsWith('position-');
+            const isAwayPosition = awayTeamId.startsWith('position-');
+
+            if (!isHomePosition || !isAwayPosition) {
+                toast({
+                    title: 'Error',
+                    description: 'Para partidos de playoffs debes seleccionar posiciones (1ero, 2do, 3ero, 4to) para ambos equipos.',
+                    variant: 'destructive'
+                });
+                return;
+            }
+        }
+
         if (homeTeamId === awayTeamId) {
             toast({ title: 'Error', description: 'El equipo local y visitante no pueden ser el mismo.', variant: 'destructive' });
             return;
@@ -159,20 +174,21 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
                         <Label htmlFor="homeTeam" className="text-right">Local</Label>
                         <Select value={homeTeamId} onValueChange={setHomeTeamId} disabled={!categoryId}>
                             <SelectTrigger id="homeTeam" className="col-span-3">
-                                <SelectValue placeholder={phase === 'playoffs' ? 'Seleccionar posición o equipo...' : 'Seleccionar equipo local...'} />
+                                <SelectValue placeholder={phase === 'playoffs' ? 'Seleccionar posición...' : 'Seleccionar equipo local...'} />
                             </SelectTrigger>
                             <SelectContent>
-                                {phase === 'playoffs' && (
+                                {phase === 'playoffs' ? (
                                     <>
                                         <SelectItem value="position-1" disabled={awayTeamId === 'position-1'}>1ero</SelectItem>
                                         <SelectItem value="position-2" disabled={awayTeamId === 'position-2'}>2do</SelectItem>
                                         <SelectItem value="position-3" disabled={awayTeamId === 'position-3'}>3ero</SelectItem>
                                         <SelectItem value="position-4" disabled={awayTeamId === 'position-4'}>4to</SelectItem>
                                     </>
+                                ) : (
+                                    teamsInCategory.map(team => (
+                                        <SelectItem key={team.id} value={team.id} disabled={team.id === awayTeamId}>{team.name}</SelectItem>
+                                    ))
                                 )}
-                                {teamsInCategory.map(team => (
-                                    <SelectItem key={team.id} value={team.id} disabled={team.id === awayTeamId}>{team.name}</SelectItem>
-                                ))}
                             </SelectContent>
                         </Select>
                     </div>
@@ -180,20 +196,21 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
                         <Label htmlFor="awayTeam" className="text-right">Visitante</Label>
                         <Select value={awayTeamId} onValueChange={setAwayTeamId} disabled={!categoryId}>
                             <SelectTrigger id="awayTeam" className="col-span-3">
-                                <SelectValue placeholder={phase === 'playoffs' ? 'Seleccionar posición o equipo...' : 'Seleccionar equipo visitante...'} />
+                                <SelectValue placeholder={phase === 'playoffs' ? 'Seleccionar posición...' : 'Seleccionar equipo visitante...'} />
                             </SelectTrigger>
                             <SelectContent>
-                                {phase === 'playoffs' && (
+                                {phase === 'playoffs' ? (
                                     <>
                                         <SelectItem value="position-1" disabled={homeTeamId === 'position-1'}>1ero</SelectItem>
                                         <SelectItem value="position-2" disabled={homeTeamId === 'position-2'}>2do</SelectItem>
                                         <SelectItem value="position-3" disabled={homeTeamId === 'position-3'}>3ero</SelectItem>
                                         <SelectItem value="position-4" disabled={homeTeamId === 'position-4'}>4to</SelectItem>
                                     </>
+                                ) : (
+                                    teamsInCategory.map(team => (
+                                        <SelectItem key={team.id} value={team.id} disabled={team.id === homeTeamId}>{team.name}</SelectItem>
+                                    ))
                                 )}
-                                {teamsInCategory.map(team => (
-                                    <SelectItem key={team.id} value={team.id} disabled={team.id === homeTeamId}>{team.name}</SelectItem>
-                                ))}
                             </SelectContent>
                         </Select>
                     </div>
