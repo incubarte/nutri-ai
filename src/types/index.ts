@@ -37,17 +37,19 @@ export interface PlayerData {
 
 export type MatchPhase = 'clasificacion' | 'playoffs';
 export type PlayoffMatchType = 'semifinal' | 'final';
+export type PlayoffMatchup = '1vs2' | '1vs3' | '1vs4' | '2vs3' | '2vs4' | '3vs4'; // Para semifinales
 
 export interface MatchData {
   id: string;
   date: string; // ISO string
   categoryId: string;
-  homeTeamId: string; // ID del equipo o posición ('position-1', 'position-2', 'position-3', 'position-4') para playoffs
-  awayTeamId: string; // ID del equipo o posición ('position-1', 'position-2', 'position-3', 'position-4') para playoffs
+  homeTeamId?: string; // Opcional para playoffs - ID del equipo real
+  awayTeamId?: string; // Opcional para playoffs - ID del equipo real
   playersPerTeam: number;
   summary?: GameSummary;
   phase: MatchPhase; // Clasificación o Playoffs
   playoffType?: PlayoffMatchType; // Solo para partidos de playoffs
+  playoffMatchup?: PlayoffMatchup; // Solo para semifinales - indica qué posiciones juegan (ej: '1vs4')
   // Note: Score and overtime info are calculated from summary using match-helpers
 }
 

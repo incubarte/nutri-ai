@@ -22,7 +22,9 @@ import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 
 // Helper para obtener el nombre del equipo o posición
-function getTeamOrPositionName(teamId: string, teams: TeamData[] | undefined): string {
+function getTeamOrPositionName(teamId: string | undefined, teams: TeamData[] | undefined): string {
+  if (!teamId) return '?';
+
   if (teamId.startsWith('position-')) {
     const positionMap: Record<string, string> = {
       'position-1': '1ero',
@@ -33,6 +35,41 @@ function getTeamOrPositionName(teamId: string, teams: TeamData[] | undefined): s
     return positionMap[teamId] || '?';
   }
   return teams?.find(t => t.id === teamId)?.name || '?';
+}
+
+// Helper para obtener el matchup readable
+function getMatchupDisplay(match: MatchData, teams: TeamData[] | undefined): { home: string, away: string } {
+  // Si ambos equipos están definidos, usarlos
+  if (match.homeTeamId && match.awayTeamId) {
+    return {
+      home: getTeamOrPositionName(match.homeTeamId, teams),
+      away: getTeamOrPositionName(match.awayTeamId, teams)
+    };
+  }
+
+  // Si es un partido de playoffs con matchup definido pero sin equipos
+  if (match.phase === 'playoffs' && match.playoffType === 'semifinal' && match.playoffMatchup) {
+    const matchupMap: Record<string, { home: string, away: string }> = {
+      '1vs4': { home: '1ero', away: '4to' },
+      '2vs3': { home: '2do', away: '3ero' },
+      '1vs2': { home: '1ero', away: '2do' },
+      '1vs3': { home: '1ero', away: '3ero' },
+      '2vs4': { home: '2do', away: '4to' },
+      '3vs4': { home: '3ero', away: '4to' }
+    };
+    return matchupMap[match.playoffMatchup] || { home: '?', away: '?' };
+  }
+
+  // Si es final sin equipos
+  if (match.phase === 'playoffs' && match.playoffType === 'final') {
+    return { home: 'Ganador Semi 1', away: 'Ganador Semi 2' };
+  }
+
+  // Fallback
+  return {
+    home: getTeamOrPositionName(match.homeTeamId, teams),
+    away: getTeamOrPositionName(match.awayTeamId, teams)
+  };
 }
 
 export function FixtureCalendarView() {
@@ -74,8 +111,7 @@ export function FixtureCalendarView() {
         .filter(match => {
           const categoryMatch = categoryFilter.length === 0 || categoryFilter.includes(match.categoryId);
 
-          const homeName = getTeamOrPositionName(match.homeTeamId, selectedTournament?.teams);
-          const awayName = getTeamOrPositionName(match.awayTeamId, selectedTournament?.teams);
+          const { home: homeName, away: awayName } = getMatchupDisplay(match, selectedTournament?.teams);
           const teamMatch = !lowerCaseSearch ||
             homeName.toLowerCase().includes(lowerCaseSearch) ||
             awayName.toLowerCase().includes(lowerCaseSearch);
@@ -213,8 +249,7 @@ export function FixtureCalendarView() {
               <ScrollArea className="flex-grow mt-1">
                 <div className="space-y-1 pr-1">
                   {matchesForDay.map(match => {
-                    const homeName = getTeamOrPositionName(match.homeTeamId, selectedTournament?.teams);
-                    const awayName = getTeamOrPositionName(match.awayTeamId, selectedTournament?.teams);
+                    const { home: homeName, away: awayName } = getMatchupDisplay(match, selectedTournament?.teams);
                     const hasSummary = !!match.summary;
                     const isPlayoff = match.phase === 'playoffs';
                     const isFinal = isPlayoff && match.playoffType === 'final';
@@ -227,10 +262,12 @@ export function FixtureCalendarView() {
                         key={match.id}
                         onClick={() => setSelectedMatch(match)}
                         className={cn(
-                          "text-xs p-1.5 rounded-md bg-background/50 border transition-all duration-300 cursor-pointer hover:bg-accent/50 hover:border-accent",
+                          "text-xs p-1.5 rounded-md bg-background/50 transition-all duration-300 cursor-pointer hover:bg-accent/50 hover:border-accent",
                           !isHighlighted && "opacity-30",
-                          hasSummary && "border-l-2 border-l-blue-400",
-                          isFinal ? "border-2 border-amber-400 dark:border-amber-500 shadow-sm" : "border-border/50"
+                          // Border base
+                          isFinal ? "border-2 border-amber-400 dark:border-amber-500 shadow-sm" : "border border-border/50",
+                          // Border izquierdo para partidos jugados (siempre se aplica al final)
+                          hasSummary && "!border-l-4 !border-l-green-500"
                         )}
                       >
                         {isSemifinal && (
@@ -291,11 +328,11 @@ export function FixtureCalendarView() {
               <div className="space-y-2">
                 <div className="text-sm text-muted-foreground">Equipos</div>
                 <div className="text-lg font-semibold">
-                  {getTeamOrPositionName(selectedMatch.homeTeamId, selectedTournament?.teams)}
+                  {getMatchupDisplay(selectedMatch, selectedTournament?.teams).home}
                 </div>
                 <div className="text-center text-muted-foreground">vs</div>
                 <div className="text-lg font-semibold">
-                  {getTeamOrPositionName(selectedMatch.awayTeamId, selectedTournament?.teams)}
+                  {getMatchupDisplay(selectedMatch, selectedTournament?.teams).away}
                 </div>
               </div>
 

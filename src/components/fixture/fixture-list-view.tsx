@@ -24,7 +24,9 @@ import { calculateScoreFromSummary, hasOvertimeOrShootout } from '@/lib/match-he
 import { deleteMatchWithSummary, cleanMatchSummary } from '@/lib/summary-management';
 
 // Helper para obtener el nombre del equipo o posición
-function getTeamOrPositionName(teamId: string, teams: TeamData[] | undefined): string {
+function getTeamOrPositionName(teamId: string | undefined, teams: TeamData[] | undefined): string {
+  if (!teamId) return '?';
+
   if (teamId.startsWith('position-')) {
     const positionMap: Record<string, string> = {
       'position-1': '1ero',
@@ -35,6 +37,41 @@ function getTeamOrPositionName(teamId: string, teams: TeamData[] | undefined): s
     return positionMap[teamId] || '?';
   }
   return teams?.find(t => t.id === teamId)?.name || '?';
+}
+
+// Helper para obtener el matchup readable
+function getMatchupDisplay(match: MatchData, teams: TeamData[] | undefined): { home: string, away: string } {
+  // Si ambos equipos están definidos, usarlos
+  if (match.homeTeamId && match.awayTeamId) {
+    return {
+      home: getTeamOrPositionName(match.homeTeamId, teams),
+      away: getTeamOrPositionName(match.awayTeamId, teams)
+    };
+  }
+
+  // Si es un partido de playoffs con matchup definido pero sin equipos
+  if (match.phase === 'playoffs' && match.playoffType === 'semifinal' && match.playoffMatchup) {
+    const matchupMap: Record<string, { home: string, away: string }> = {
+      '1vs4': { home: '1ero', away: '4to' },
+      '2vs3': { home: '2do', away: '3ero' },
+      '1vs2': { home: '1ero', away: '2do' },
+      '1vs3': { home: '1ero', away: '3ero' },
+      '2vs4': { home: '2do', away: '4to' },
+      '3vs4': { home: '3ero', away: '4to' }
+    };
+    return matchupMap[match.playoffMatchup] || { home: '?', away: '?' };
+  }
+
+  // Si es final sin equipos
+  if (match.phase === 'playoffs' && match.playoffType === 'final') {
+    return { home: 'Ganador Semi 1', away: 'Ganador Semi 2' };
+  }
+
+  // Fallback
+  return {
+    home: getTeamOrPositionName(match.homeTeamId, teams),
+    away: getTeamOrPositionName(match.awayTeamId, teams)
+  };
 }
 
 export function FixtureListView() {
@@ -85,8 +122,7 @@ export function FixtureListView() {
     if (teamSearch.trim()) {
         const lowerCaseSearch = teamSearch.toLowerCase();
         filtered = filtered.filter(match => {
-            const homeName = getTeamOrPositionName(match.homeTeamId, selectedTournament.teams);
-            const awayName = getTeamOrPositionName(match.awayTeamId, selectedTournament.teams);
+            const { home: homeName, away: awayName } = getMatchupDisplay(match, selectedTournament.teams);
             return homeName.toLowerCase().includes(lowerCaseSearch) || awayName.toLowerCase().includes(lowerCaseSearch);
         });
     }
@@ -231,8 +267,7 @@ export function FixtureListView() {
           <TableBody>
             {sortedMatches.length > 0 ? (
               sortedMatches.map(match => {
-                const homeName = getTeamOrPositionName(match.homeTeamId, selectedTournament?.teams);
-                const awayName = getTeamOrPositionName(match.awayTeamId, selectedTournament?.teams);
+                const { home: homeName, away: awayName } = getMatchupDisplay(match, selectedTournament?.teams);
 
                 // Calculate score from summary (single source of truth)
                 const score = match.summary

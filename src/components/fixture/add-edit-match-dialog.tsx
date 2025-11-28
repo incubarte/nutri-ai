@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGameState } from '@/contexts/game-state-context';
-import type { MatchData, Tournament, TeamData, CategoryData, MatchPhase, PlayoffMatchType } from '@/types';
+import type { MatchData, Tournament, TeamData, CategoryData, MatchPhase, PlayoffMatchType, PlayoffMatchup } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, Star } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +38,7 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
     const [time, setTime] = useState('12:00');
     const [phase, setPhase] = useState<MatchPhase>('clasificacion');
     const [playoffType, setPlayoffType] = useState<PlayoffMatchType>('semifinal');
+    const [playoffMatchup, setPlayoffMatchup] = useState<PlayoffMatchup>('1vs4');
 
     const isEditing = !!matchToEdit;
 
@@ -52,6 +53,7 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
             setPlayersPerTeam(String(matchToEdit?.playersPerTeam || '5'));
             setPhase(matchToEdit?.phase || 'clasificacion');
             setPlayoffType(matchToEdit?.playoffType || 'semifinal');
+            setPlayoffMatchup(matchToEdit?.playoffMatchup || '1vs4');
         }
     }, [isOpen, matchToEdit, tournament, selectedDate]);
 
@@ -68,29 +70,40 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
     }, [categoryId, tournament]);
 
     const handleSubmit = () => {
-        if (!tournament?.id || !date || !categoryId || !homeTeamId || !awayTeamId || !playersPerTeam || !time) {
-            toast({ title: 'Error', description: 'Todos los campos son requeridos.', variant: 'destructive' });
+        // Validaciones básicas
+        if (!tournament?.id || !date || !categoryId || !playersPerTeam || !time) {
+            toast({ title: 'Error', description: 'Debes completar fecha, hora, categoría y jugadores por equipo.', variant: 'destructive' });
             return;
         }
 
-        // Validación especial para partidos de playoffs: deben tener posiciones seleccionadas
-        if (phase === 'playoffs') {
-            const isHomePosition = homeTeamId.startsWith('position-');
-            const isAwayPosition = awayTeamId.startsWith('position-');
-
-            if (!isHomePosition || !isAwayPosition) {
-                toast({
-                    title: 'Error',
-                    description: 'Para partidos de playoffs debes seleccionar posiciones (1ero, 2do, 3ero, 4to) para ambos equipos.',
-                    variant: 'destructive'
-                });
+        // Para partidos de clasificación, los equipos son obligatorios
+        if (phase === 'clasificacion') {
+            if (!homeTeamId || !awayTeamId) {
+                toast({ title: 'Error', description: 'Para partidos de clasificación debes seleccionar ambos equipos.', variant: 'destructive' });
+                return;
+            }
+            if (homeTeamId === awayTeamId) {
+                toast({ title: 'Error', description: 'El equipo local y visitante no pueden ser el mismo.', variant: 'destructive' });
                 return;
             }
         }
 
-        if (homeTeamId === awayTeamId) {
-            toast({ title: 'Error', description: 'El equipo local y visitante no pueden ser el mismo.', variant: 'destructive' });
-            return;
+        // Para partidos de playoffs
+        if (phase === 'playoffs') {
+            // Validar que si se definen equipos, ambos estén definidos y sean diferentes
+            if ((homeTeamId && !awayTeamId) || (!homeTeamId && awayTeamId)) {
+                toast({ title: 'Error', description: 'Si defines un equipo, debes definir ambos.', variant: 'destructive' });
+                return;
+            }
+            if (homeTeamId && awayTeamId && homeTeamId === awayTeamId) {
+                toast({ title: 'Error', description: 'Los equipos no pueden ser el mismo.', variant: 'destructive' });
+                return;
+            }
+            // Para semifinales, el matchup es obligatorio
+            if (playoffType === 'semifinal' && !playoffMatchup) {
+                toast({ title: 'Error', description: 'Debes seleccionar el enfrentamiento (1vs4, 2vs3, etc).', variant: 'destructive' });
+                return;
+            }
         }
 
         const [hours, minutes] = time.split(':').map(Number);
@@ -99,11 +112,12 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
         const matchData: Omit<MatchData, 'id'> = {
             date: finalDate.toISOString(),
             categoryId,
-            homeTeamId,
-            awayTeamId,
+            ...(homeTeamId && { homeTeamId }),
+            ...(awayTeamId && { awayTeamId }),
             playersPerTeam: parseInt(playersPerTeam, 10),
             phase,
-            ...(phase === 'playoffs' && { playoffType })
+            ...(phase === 'playoffs' && { playoffType }),
+            ...(phase === 'playoffs' && playoffType === 'semifinal' && { playoffMatchup })
         };
 
         if (isEditing && matchToEdit) {
@@ -157,60 +171,76 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
                         </Select>
                     </div>
                     {phase === 'playoffs' && (
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="playoffType" className="text-right">Tipo</Label>
-                            <Select value={playoffType} onValueChange={(value) => setPlayoffType(value as PlayoffMatchType)}>
-                                <SelectTrigger id="playoffType" className="col-span-3">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="semifinal">Semifinal</SelectItem>
-                                    <SelectItem value="final">Final</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        <>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="playoffType" className="text-right">Tipo</Label>
+                                <Select value={playoffType} onValueChange={(value) => setPlayoffType(value as PlayoffMatchType)}>
+                                    <SelectTrigger id="playoffType" className="col-span-3">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="semifinal">Semifinal</SelectItem>
+                                        <SelectItem value="final">Final</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {playoffType === 'semifinal' && (
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="playoffMatchup" className="text-right">Enfrentamiento</Label>
+                                    <Select value={playoffMatchup} onValueChange={(value) => setPlayoffMatchup(value as PlayoffMatchup)}>
+                                        <SelectTrigger id="playoffMatchup" className="col-span-3">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="1vs4">
+                                                <div className="flex items-center gap-2">
+                                                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                                    <span>1ero vs 4to</span>
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="2vs3">
+                                                <div className="flex items-center gap-2">
+                                                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                                    <span>2do vs 3ero</span>
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="1vs2">1ero vs 2do</SelectItem>
+                                            <SelectItem value="1vs3">1ero vs 3ero</SelectItem>
+                                            <SelectItem value="2vs4">2do vs 4to</SelectItem>
+                                            <SelectItem value="3vs4">3ero vs 4to</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                        </>
                     )}
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="homeTeam" className="text-right">Local</Label>
+                        <Label htmlFor="homeTeam" className="text-right">
+                            Local {phase === 'playoffs' && <span className="text-xs text-muted-foreground">(opcional)</span>}
+                        </Label>
                         <Select value={homeTeamId} onValueChange={setHomeTeamId} disabled={!categoryId}>
                             <SelectTrigger id="homeTeam" className="col-span-3">
-                                <SelectValue placeholder={phase === 'playoffs' ? 'Seleccionar posición...' : 'Seleccionar equipo local...'} />
+                                <SelectValue placeholder={phase === 'playoffs' ? 'Equipo no definido...' : 'Seleccionar equipo local...'} />
                             </SelectTrigger>
                             <SelectContent>
-                                {phase === 'playoffs' ? (
-                                    <>
-                                        <SelectItem value="position-1" disabled={awayTeamId === 'position-1'}>1ero</SelectItem>
-                                        <SelectItem value="position-2" disabled={awayTeamId === 'position-2'}>2do</SelectItem>
-                                        <SelectItem value="position-3" disabled={awayTeamId === 'position-3'}>3ero</SelectItem>
-                                        <SelectItem value="position-4" disabled={awayTeamId === 'position-4'}>4to</SelectItem>
-                                    </>
-                                ) : (
-                                    teamsInCategory.map(team => (
-                                        <SelectItem key={team.id} value={team.id} disabled={team.id === awayTeamId}>{team.name}</SelectItem>
-                                    ))
-                                )}
+                                {teamsInCategory.map(team => (
+                                    <SelectItem key={team.id} value={team.id} disabled={team.id === awayTeamId}>{team.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="awayTeam" className="text-right">Visitante</Label>
+                        <Label htmlFor="awayTeam" className="text-right">
+                            Visitante {phase === 'playoffs' && <span className="text-xs text-muted-foreground">(opcional)</span>}
+                        </Label>
                         <Select value={awayTeamId} onValueChange={setAwayTeamId} disabled={!categoryId}>
                             <SelectTrigger id="awayTeam" className="col-span-3">
-                                <SelectValue placeholder={phase === 'playoffs' ? 'Seleccionar posición...' : 'Seleccionar equipo visitante...'} />
+                                <SelectValue placeholder={phase === 'playoffs' ? 'Equipo no definido...' : 'Seleccionar equipo visitante...'} />
                             </SelectTrigger>
                             <SelectContent>
-                                {phase === 'playoffs' ? (
-                                    <>
-                                        <SelectItem value="position-1" disabled={homeTeamId === 'position-1'}>1ero</SelectItem>
-                                        <SelectItem value="position-2" disabled={homeTeamId === 'position-2'}>2do</SelectItem>
-                                        <SelectItem value="position-3" disabled={homeTeamId === 'position-3'}>3ero</SelectItem>
-                                        <SelectItem value="position-4" disabled={homeTeamId === 'position-4'}>4to</SelectItem>
-                                    </>
-                                ) : (
-                                    teamsInCategory.map(team => (
-                                        <SelectItem key={team.id} value={team.id} disabled={team.id === homeTeamId}>{team.name}</SelectItem>
-                                    ))
-                                )}
+                                {teamsInCategory.map(team => (
+                                    <SelectItem key={team.id} value={team.id} disabled={team.id === homeTeamId}>{team.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>

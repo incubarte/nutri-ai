@@ -161,7 +161,9 @@ function getTeamNameFromPosition(position: string, standings: any[]) {
 }
 
 // Helper para obtener el nombre de un equipo (de ID real o posición)
-function getTeamName(teamId: string, tournament: Tournament, standings: any[]): string {
+function getTeamName(teamId: string | undefined, tournament: Tournament, standings: any[]): string {
+    if (!teamId) return '?';
+
     // Si es una posición, obtener el equipo desde la tabla de standings
     if (teamId.startsWith('position-')) {
         return getTeamNameFromPosition(teamId, standings);
@@ -170,6 +172,26 @@ function getTeamName(teamId: string, tournament: Tournament, standings: any[]): 
     // Si no, buscar el equipo por ID en el torneo
     const team = tournament.teams?.find(t => t.id === teamId);
     return team?.name || teamId;
+}
+
+// Helper para obtener los nombres de equipos de una semifinal según matchup
+function getSemiMatchupNames(matchup: string, standings: any[]): { home: string, away: string } {
+    const matchupMap: Record<string, { home: number, away: number }> = {
+        '1vs4': { home: 0, away: 3 },
+        '2vs3': { home: 1, away: 2 },
+        '1vs2': { home: 0, away: 1 },
+        '1vs3': { home: 0, away: 2 },
+        '2vs4': { home: 1, away: 3 },
+        '3vs4': { home: 2, away: 3 }
+    };
+
+    const positions = matchupMap[matchup];
+    if (!positions) return { home: '?', away: '?' };
+
+    return {
+        home: standings[positions.home]?.name || `${positions.home + 1}ero`,
+        away: standings[positions.away]?.name || `${positions.away + 1}to`
+    };
 }
 
 // Helper para obtener ganador de un partido
@@ -197,8 +219,10 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
         );
     }, [tournament.matches, categoryId]);
 
-    const semi1 = playoffMatches.find(m => m.playoffType === 'semifinal' && m.homeTeamId === 'position-1');
-    const semi2 = playoffMatches.find(m => m.playoffType === 'semifinal' && m.homeTeamId === 'position-2');
+    // Encontrar semifinales por playoffMatchup (1vs4, 2vs3, etc.)
+    const semis = playoffMatches.filter(m => m.playoffType === 'semifinal');
+    const semi1 = semis[0]; // Primera semifinal encontrada
+    const semi2 = semis[1]; // Segunda semifinal encontrada
     const final = playoffMatches.find(m => m.playoffType === 'final');
 
     const semi1Winner = semi1 ? getWinnerTeam(semi1, tournament, standings) : null;
@@ -206,10 +230,28 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
     const finalWinner = final ? getWinnerTeam(final, tournament, standings) : null;
 
     // Obtener los nombres de los equipos para cada semifinal
-    const semi1Home = semi1 ? getTeamName(semi1.homeTeamId, tournament, standings) : (standings[0]?.name || '1ero');
-    const semi1Away = semi1 ? getTeamName(semi1.awayTeamId, tournament, standings) : (standings[3]?.name || '4to');
-    const semi2Home = semi2 ? getTeamName(semi2.homeTeamId, tournament, standings) : (standings[1]?.name || '2do');
-    const semi2Away = semi2 ? getTeamName(semi2.awayTeamId, tournament, standings) : (standings[2]?.name || '3ero');
+    // Si tienen equipos definidos, mostrarlos. Si no, usar el matchup para derivarlos de standings
+    const getSemiTeamNames = (semi: MatchData | undefined) => {
+        if (!semi) return { home: '?', away: '?' };
+
+        // Si ambos equipos están definidos, usarlos
+        if (semi.homeTeamId && semi.awayTeamId) {
+            return {
+                home: getTeamName(semi.homeTeamId, tournament, standings),
+                away: getTeamName(semi.awayTeamId, tournament, standings)
+            };
+        }
+
+        // Si no, usar el matchup para derivar de standings
+        if (semi.playoffMatchup) {
+            return getSemiMatchupNames(semi.playoffMatchup, standings);
+        }
+
+        return { home: '?', away: '?' };
+    };
+
+    const semi1Teams = getSemiTeamNames(semi1);
+    const semi2Teams = getSemiTeamNames(semi2);
 
     return (
         <Card>
@@ -232,10 +274,12 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
                             "border-2 rounded-lg p-4 space-y-2",
                             semi1Winner ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-border"
                         )}>
-                            <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">Semi 1</div>
+                            <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                {semi1?.playoffMatchup ? `Semi 1 (${semi1.playoffMatchup.replace('vs', ' vs ')})` : 'Semi 1'}
+                            </div>
                             <div className="flex items-center justify-between">
                                 <span className="font-medium">
-                                    {semi1Home}
+                                    {semi1Teams.home}
                                 </span>
                                 {semi1?.summary && (
                                     <span className="font-bold">
@@ -245,7 +289,7 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
                             </div>
                             <div className="flex items-center justify-between border-t pt-2">
                                 <span className="font-medium">
-                                    {semi1Away}
+                                    {semi1Teams.away}
                                 </span>
                                 {semi1?.summary && (
                                     <span className="font-bold">
@@ -271,10 +315,12 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
                             "border-2 rounded-lg p-4 space-y-2",
                             semi2Winner ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-border"
                         )}>
-                            <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">Semi 2</div>
+                            <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                {semi2?.playoffMatchup ? `Semi 2 (${semi2.playoffMatchup.replace('vs', ' vs ')})` : 'Semi 2'}
+                            </div>
                             <div className="flex items-center justify-between">
                                 <span className="font-medium">
-                                    {semi2Home}
+                                    {semi2Teams.home}
                                 </span>
                                 {semi2?.summary && (
                                     <span className="font-bold">
@@ -284,7 +330,7 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
                             </div>
                             <div className="flex items-center justify-between border-t pt-2">
                                 <span className="font-medium">
-                                    {semi2Away}
+                                    {semi2Teams.away}
                                 </span>
                                 {semi2?.summary && (
                                     <span className="font-bold">
@@ -326,7 +372,9 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
                             <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">Final</div>
                             <div className="flex items-center justify-between">
                                 <span className="font-medium">
-                                    {semi1Winner || 'Ganador Semi 1'}
+                                    {final?.homeTeamId
+                                        ? getTeamName(final.homeTeamId, tournament, standings)
+                                        : (semi1Winner || 'Ganador Semi 1')}
                                 </span>
                                 {final?.summary && (
                                     <span className="font-bold">
@@ -336,7 +384,9 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
                             </div>
                             <div className="flex items-center justify-between border-t pt-2">
                                 <span className="font-medium">
-                                    {semi2Winner || 'Ganador Semi 2'}
+                                    {final?.awayTeamId
+                                        ? getTeamName(final.awayTeamId, tournament, standings)
+                                        : (semi2Winner || 'Ganador Semi 2')}
                                 </span>
                                 {final?.summary && (
                                     <span className="font-bold">
