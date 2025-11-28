@@ -24,7 +24,12 @@ export function useStandings(tournament: Tournament | null | undefined, category
   const standings = useMemo(() => {
     if (!tournament || !categoryId) return [];
 
-    const finishedMatches = (tournament.matches || []).filter(m => m.summary && m.categoryId === categoryId);
+    // Solo considerar partidos de fase de clasificación para la tabla de posiciones
+    const finishedMatches = (tournament.matches || []).filter(m =>
+      m.summary &&
+      m.categoryId === categoryId &&
+      m.phase === 'clasificacion'
+    );
     const teamsInCategory = (tournament.teams || []).filter(t => t.category === categoryId);
       
     const stats: TeamStats[] = teamsInCategory.map(team => {

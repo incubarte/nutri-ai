@@ -90,7 +90,13 @@ export async function readTournament(tournamentId: string): Promise<Partial<Tour
             const matchSummaryPromises = partialTournament.matches.map(async (match: MatchData) => {
                 const summaryKey = `${tournamentPrefix}summaries/${match.id}.json`;
                 const summary = await readJsonFile<GameSummary>(summaryKey);
-                return { ...match, summary: summary || undefined };
+                // Migración: agregar campo 'phase' a partidos existentes sin este campo
+                const migratedMatch = {
+                    ...match,
+                    phase: match.phase || 'clasificacion' as const,
+                    summary: summary || undefined
+                };
+                return migratedMatch;
             });
             partialTournament.matches = await Promise.all(matchSummaryPromises);
         }

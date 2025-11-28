@@ -24,7 +24,10 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
                 <CardTitle className="flex items-center justify-between gap-3 text-2xl">
                     <div className="flex items-center gap-3">
                         <Trophy className="h-6 w-6 text-amber-400" />
-                        {categoryName}
+                        <div className="flex flex-col">
+                            <span>{categoryName}</span>
+                            <span className="text-sm font-normal text-muted-foreground">Fase de Clasificación</span>
+                        </div>
                     </div>
                     {/* Botón para expandir/contraer en mobile */}
                     <Button
@@ -68,8 +71,11 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {stats.map(team => (
-                                <TableRow key={team.id}>
+                            {stats.map((team, index) => (
+                                <TableRow
+                                    key={team.id}
+                                    className={cn(index === 3 ? "border-b border-blue-100 dark:border-blue-900" : "")}
+                                >
                                     <TableCell className="text-center font-bold">{team.rank}</TableCell>
                                     <TableCell className="font-medium">{team.name}</TableCell>
                                     <TableCell className="text-center">{team.pj}</TableCell>
@@ -112,8 +118,11 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {stats.map(team => (
-                                <TableRow key={team.id}>
+                            {stats.map((team, index) => (
+                                <TableRow
+                                    key={team.id}
+                                    className={cn(index === 3 ? "border-b border-blue-100 dark:border-blue-900" : "")}
+                                >
                                     <TableCell className="text-center font-bold text-sm">{team.rank}</TableCell>
                                     <TableCell className="font-medium text-sm truncate max-w-[120px]">{team.name}</TableCell>
                                     <TableCell className="text-center text-sm">{team.pj}</TableCell>

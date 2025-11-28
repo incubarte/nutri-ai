@@ -11,7 +11,7 @@ import { format, parseISO, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AddEditMatchDialog } from './add-edit-match-dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import type { MatchData } from '@/types';
+import type { MatchData, TeamData } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { FixtureMatchSummaryDialog } from './fixture-match-summary-dialog';
@@ -22,6 +22,20 @@ import { cn } from '@/lib/utils';
 import { Calendar } from '../ui/calendar';
 import { calculateScoreFromSummary, hasOvertimeOrShootout } from '@/lib/match-helpers';
 import { deleteMatchWithSummary, cleanMatchSummary } from '@/lib/summary-management';
+
+// Helper para obtener el nombre del equipo o posición
+function getTeamOrPositionName(teamId: string, teams: TeamData[] | undefined): string {
+  if (teamId.startsWith('position-')) {
+    const positionMap: Record<string, string> = {
+      'position-1': '1ero',
+      'position-2': '2do',
+      'position-3': '3ero',
+      'position-4': '4to'
+    };
+    return positionMap[teamId] || '?';
+  }
+  return teams?.find(t => t.id === teamId)?.name || '?';
+}
 
 export function FixtureListView() {
   const { state, dispatch } = useGameState();
@@ -71,9 +85,9 @@ export function FixtureListView() {
     if (teamSearch.trim()) {
         const lowerCaseSearch = teamSearch.toLowerCase();
         filtered = filtered.filter(match => {
-            const homeTeam = selectedTournament.teams.find(t => t.id === match.homeTeamId);
-            const awayTeam = selectedTournament.teams.find(t => t.id === match.awayTeamId);
-            return homeTeam?.name.toLowerCase().includes(lowerCaseSearch) || awayTeam?.name.toLowerCase().includes(lowerCaseSearch);
+            const homeName = getTeamOrPositionName(match.homeTeamId, selectedTournament.teams);
+            const awayName = getTeamOrPositionName(match.awayTeamId, selectedTournament.teams);
+            return homeName.toLowerCase().includes(lowerCaseSearch) || awayName.toLowerCase().includes(lowerCaseSearch);
         });
     }
     
@@ -206,6 +220,7 @@ export function FixtureListView() {
             <TableRow>
               <TableHead>Fecha y Hora</TableHead>
               <TableHead>Categoría</TableHead>
+              <TableHead>Fase</TableHead>
               <TableHead>Equipo Local</TableHead>
               <TableHead>Equipo Visitante</TableHead>
               <TableHead className="text-center">Resultado</TableHead>
@@ -216,8 +231,8 @@ export function FixtureListView() {
           <TableBody>
             {sortedMatches.length > 0 ? (
               sortedMatches.map(match => {
-                const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
-                const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
+                const homeName = getTeamOrPositionName(match.homeTeamId, selectedTournament?.teams);
+                const awayName = getTeamOrPositionName(match.awayTeamId, selectedTournament?.teams);
 
                 // Calculate score from summary (single source of truth)
                 const score = match.summary
@@ -228,13 +243,32 @@ export function FixtureListView() {
                     : '-';
 
                 const wentToOTOrSO = match.summary ? hasOvertimeOrShootout(match.summary) : false;
+                const isPlayoff = match.phase === 'playoffs';
+                const isFinal = isPlayoff && match.playoffType === 'final';
 
                 return (
-                  <TableRow key={match.id}>
+                  <TableRow key={match.id} className={cn(isFinal && "border-l-2 border-l-amber-400")}>
                     <TableCell>{format(new Date(match.date), "dd/MM/yy HH:mm", { locale: es })}</TableCell>
                     <TableCell>{getCategoryNameById(match.categoryId, selectedTournament?.categories) || 'N/A'}</TableCell>
-                    <TableCell>{homeTeam?.name || 'Equipo no encontrado'}</TableCell>
-                    <TableCell>{awayTeam?.name || 'Equipo no encontrado'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <span>
+                          {match.phase === 'clasificacion' ? 'Clasificación' : 'Playoffs'}
+                        </span>
+                        {isPlayoff && match.playoffType && (
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded font-medium",
+                            isFinal
+                              ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400"
+                              : "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400"
+                          )}>
+                            {match.playoffType === 'semifinal' ? 'SF' : 'F'}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{homeName}</TableCell>
+                    <TableCell>{awayName}</TableCell>
                     <TableCell className="text-center font-mono font-bold">{score}</TableCell>
                     <TableCell className="text-center">{wentToOTOrSO && <CheckIcon className="h-4 w-4 mx-auto text-green-500"/>}</TableCell>
                     <TableCell className="text-right">
@@ -269,7 +303,7 @@ export function FixtureListView() {
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   {isAnyFilterActive ? "No se encontraron partidos con los filtros aplicados." : "No hay partidos programados."}
                 </TableCell>
               </TableRow>

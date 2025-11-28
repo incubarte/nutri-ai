@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGameState } from '@/contexts/game-state-context';
-import type { MatchData, Tournament, TeamData, CategoryData } from '@/types';
+import type { MatchData, Tournament, TeamData, CategoryData, MatchPhase, PlayoffMatchType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -36,6 +36,8 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
     const [awayTeamId, setAwayTeamId] = useState<string>('');
     const [playersPerTeam, setPlayersPerTeam] = useState<string>('5');
     const [time, setTime] = useState('12:00');
+    const [phase, setPhase] = useState<MatchPhase>('clasificacion');
+    const [playoffType, setPlayoffType] = useState<PlayoffMatchType>('semifinal');
 
     const isEditing = !!matchToEdit;
 
@@ -48,6 +50,8 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
             setHomeTeamId(matchToEdit?.homeTeamId || '');
             setAwayTeamId(matchToEdit?.awayTeamId || '');
             setPlayersPerTeam(String(matchToEdit?.playersPerTeam || '5'));
+            setPhase(matchToEdit?.phase || 'clasificacion');
+            setPlayoffType(matchToEdit?.playoffType || 'semifinal');
         }
     }, [isOpen, matchToEdit, tournament, selectedDate]);
 
@@ -82,7 +86,9 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
             categoryId,
             homeTeamId,
             awayTeamId,
-            playersPerTeam: parseInt(playersPerTeam, 10)
+            playersPerTeam: parseInt(playersPerTeam, 10),
+            phase,
+            ...(phase === 'playoffs' && { playoffType })
         };
 
         if (isEditing && matchToEdit) {
@@ -124,12 +130,46 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
                         </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="phase" className="text-right">Fase</Label>
+                        <Select value={phase} onValueChange={(value) => setPhase(value as MatchPhase)}>
+                            <SelectTrigger id="phase" className="col-span-3">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="clasificacion">Clasificación</SelectItem>
+                                <SelectItem value="playoffs">Playoffs</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    {phase === 'playoffs' && (
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="playoffType" className="text-right">Tipo</Label>
+                            <Select value={playoffType} onValueChange={(value) => setPlayoffType(value as PlayoffMatchType)}>
+                                <SelectTrigger id="playoffType" className="col-span-3">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="semifinal">Semifinal</SelectItem>
+                                    <SelectItem value="final">Final</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="homeTeam" className="text-right">Local</Label>
                         <Select value={homeTeamId} onValueChange={setHomeTeamId} disabled={!categoryId}>
                             <SelectTrigger id="homeTeam" className="col-span-3">
-                                <SelectValue placeholder="Seleccionar equipo local..." />
+                                <SelectValue placeholder={phase === 'playoffs' ? 'Seleccionar posición o equipo...' : 'Seleccionar equipo local...'} />
                             </SelectTrigger>
                             <SelectContent>
+                                {phase === 'playoffs' && (
+                                    <>
+                                        <SelectItem value="position-1" disabled={awayTeamId === 'position-1'}>1ero</SelectItem>
+                                        <SelectItem value="position-2" disabled={awayTeamId === 'position-2'}>2do</SelectItem>
+                                        <SelectItem value="position-3" disabled={awayTeamId === 'position-3'}>3ero</SelectItem>
+                                        <SelectItem value="position-4" disabled={awayTeamId === 'position-4'}>4to</SelectItem>
+                                    </>
+                                )}
                                 {teamsInCategory.map(team => (
                                     <SelectItem key={team.id} value={team.id} disabled={team.id === awayTeamId}>{team.name}</SelectItem>
                                 ))}
@@ -140,9 +180,17 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
                         <Label htmlFor="awayTeam" className="text-right">Visitante</Label>
                         <Select value={awayTeamId} onValueChange={setAwayTeamId} disabled={!categoryId}>
                             <SelectTrigger id="awayTeam" className="col-span-3">
-                                <SelectValue placeholder="Seleccionar equipo visitante..." />
+                                <SelectValue placeholder={phase === 'playoffs' ? 'Seleccionar posición o equipo...' : 'Seleccionar equipo visitante...'} />
                             </SelectTrigger>
                             <SelectContent>
+                                {phase === 'playoffs' && (
+                                    <>
+                                        <SelectItem value="position-1" disabled={homeTeamId === 'position-1'}>1ero</SelectItem>
+                                        <SelectItem value="position-2" disabled={homeTeamId === 'position-2'}>2do</SelectItem>
+                                        <SelectItem value="position-3" disabled={homeTeamId === 'position-3'}>3ero</SelectItem>
+                                        <SelectItem value="position-4" disabled={homeTeamId === 'position-4'}>4to</SelectItem>
+                                    </>
+                                )}
                                 {teamsInCategory.map(team => (
                                     <SelectItem key={team.id} value={team.id} disabled={team.id === homeTeamId}>{team.name}</SelectItem>
                                 ))}

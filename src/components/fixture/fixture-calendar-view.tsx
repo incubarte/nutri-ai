@@ -11,7 +11,7 @@ import { es } from 'date-fns/locale';
 import { AddEditMatchDialog } from './add-edit-match-dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
-import type { MatchData } from '@/types';
+import type { MatchData, TeamData } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,20 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
+
+// Helper para obtener el nombre del equipo o posición
+function getTeamOrPositionName(teamId: string, teams: TeamData[] | undefined): string {
+  if (teamId.startsWith('position-')) {
+    const positionMap: Record<string, string> = {
+      'position-1': '1ero',
+      'position-2': '2do',
+      'position-3': '3ero',
+      'position-4': '4to'
+    };
+    return positionMap[teamId] || '?';
+  }
+  return teams?.find(t => t.id === teamId)?.name || '?';
+}
 
 export function FixtureCalendarView() {
   const { state, dispatch } = useGameState();
@@ -54,17 +68,17 @@ export function FixtureCalendarView() {
     if (!isAnyFilterActive) return null; // Return null if no filters are active
 
     const lowerCaseSearch = teamSearch.toLowerCase();
-    
+
     return new Set(
       matches
         .filter(match => {
           const categoryMatch = categoryFilter.length === 0 || categoryFilter.includes(match.categoryId);
-          
-          const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
-          const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
+
+          const homeName = getTeamOrPositionName(match.homeTeamId, selectedTournament?.teams);
+          const awayName = getTeamOrPositionName(match.awayTeamId, selectedTournament?.teams);
           const teamMatch = !lowerCaseSearch ||
-            homeTeam?.name.toLowerCase().includes(lowerCaseSearch) ||
-            awayTeam?.name.toLowerCase().includes(lowerCaseSearch);
+            homeName.toLowerCase().includes(lowerCaseSearch) ||
+            awayName.toLowerCase().includes(lowerCaseSearch);
 
           return categoryMatch && teamMatch;
         })
@@ -199,10 +213,13 @@ export function FixtureCalendarView() {
               <ScrollArea className="flex-grow mt-1">
                 <div className="space-y-1 pr-1">
                   {matchesForDay.map(match => {
-                    const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
-                    const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
+                    const homeName = getTeamOrPositionName(match.homeTeamId, selectedTournament?.teams);
+                    const awayName = getTeamOrPositionName(match.awayTeamId, selectedTournament?.teams);
                     const hasSummary = !!match.summary;
-                    
+                    const isPlayoff = match.phase === 'playoffs';
+                    const isFinal = isPlayoff && match.playoffType === 'final';
+                    const isSemifinal = isPlayoff && match.playoffType === 'semifinal';
+
                     const isHighlighted = filteredMatchIds ? filteredMatchIds.has(match.id) : true;
 
                     return (
@@ -210,15 +227,28 @@ export function FixtureCalendarView() {
                         key={match.id}
                         onClick={() => setSelectedMatch(match)}
                         className={cn(
-                          "text-xs p-1.5 rounded-md bg-background/50 border border-border/50 transition-all duration-300 cursor-pointer hover:bg-accent/50 hover:border-accent",
+                          "text-xs p-1.5 rounded-md bg-background/50 border transition-all duration-300 cursor-pointer hover:bg-accent/50 hover:border-accent",
                           !isHighlighted && "opacity-30",
-                          hasSummary && "border-l-2 border-l-blue-400"
+                          hasSummary && "border-l-2 border-l-blue-400",
+                          isFinal ? "border-2 border-amber-400 dark:border-amber-500 shadow-sm" : "border-border/50"
                         )}
                       >
-                        <div className="font-semibold text-[10px] leading-tight mb-0.5">{format(new Date(match.date), 'HH:mm')}</div>
-                        <div className="font-medium text-[11px] leading-tight">{homeTeam?.name || '?'}</div>
+                        {isSemifinal && (
+                          <div className="text-[9px] font-semibold text-blue-600 dark:text-blue-400 mb-0.5 uppercase tracking-wide">
+                            Semifinal
+                          </div>
+                        )}
+                        {isFinal && (
+                          <div className="text-[9px] font-semibold text-amber-600 dark:text-amber-400 mb-0.5 uppercase tracking-wide">
+                            Final
+                          </div>
+                        )}
+                        <div className="font-semibold text-[10px] leading-tight mb-0.5">
+                          {format(new Date(match.date), 'HH:mm')}
+                        </div>
+                        <div className="font-medium text-[11px] leading-tight">{homeName}</div>
                         <div className="text-muted-foreground text-[10px] leading-tight">vs</div>
-                        <div className="font-medium text-[11px] leading-tight">{awayTeam?.name || '?'}</div>
+                        <div className="font-medium text-[11px] leading-tight">{awayName}</div>
                       </div>
                     );
                   })}
@@ -261,17 +291,29 @@ export function FixtureCalendarView() {
               <div className="space-y-2">
                 <div className="text-sm text-muted-foreground">Equipos</div>
                 <div className="text-lg font-semibold">
-                  {selectedTournament?.teams.find(t => t.id === selectedMatch.homeTeamId)?.name || 'Equipo Local'}
+                  {getTeamOrPositionName(selectedMatch.homeTeamId, selectedTournament?.teams)}
                 </div>
                 <div className="text-center text-muted-foreground">vs</div>
                 <div className="text-lg font-semibold">
-                  {selectedTournament?.teams.find(t => t.id === selectedMatch.awayTeamId)?.name || 'Equipo Visitante'}
+                  {getTeamOrPositionName(selectedMatch.awayTeamId, selectedTournament?.teams)}
                 </div>
               </div>
 
               <div className="space-y-1">
                 <div className="text-sm text-muted-foreground">Categoría</div>
                 <div className="font-medium">{getCategoryNameById(selectedMatch.categoryId, selectedTournament?.categories) || 'N/A'}</div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">Fase</div>
+                <div className="font-medium">
+                  {selectedMatch.phase === 'clasificacion' ? 'Clasificación' : 'Playoffs'}
+                  {selectedMatch.phase === 'playoffs' && selectedMatch.playoffType && (
+                    <span className="text-amber-600 dark:text-amber-400 ml-2">
+                      ({selectedMatch.playoffType === 'semifinal' ? 'Semifinal' : 'Final'})
+                    </span>
+                  )}
+                </div>
               </div>
 
               {selectedMatch.summary && (
