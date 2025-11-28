@@ -267,7 +267,7 @@ export function FixtureCalendarView() {
                           // Border base
                           isFinal ? "border-2 border-amber-400 dark:border-amber-500 shadow-sm" : "border border-border/50",
                           // Border izquierdo para partidos jugados (siempre se aplica al final)
-                          hasSummary && "!border-l-4 !border-l-green-500"
+                          hasSummary && "!border-l-2 !border-l-blue-400"
                         )}
                       >
                         {isSemifinal && (

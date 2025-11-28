@@ -154,6 +154,29 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
     );
 };
 
+// Helper para verificar si la fase de clasificación está completa para una categoría
+function isClassificationComplete(tournament: Tournament, categoryId: string): boolean {
+    const categoryTeams = tournament.teams?.filter(t => t.category === categoryId) || [];
+    const numTeams = categoryTeams.length;
+
+    if (numTeams < 2) return false; // No hay suficientes equipos
+
+    const rounds = tournament.classificationRounds || 1;
+
+    // Calcular partidos esperados: cada equipo juega contra cada otro (n-1) equipos, por número de vueltas
+    // Total de partidos = (n * (n-1) / 2) * rounds
+    const expectedMatches = (numTeams * (numTeams - 1) / 2) * rounds;
+
+    // Contar partidos de clasificación jugados (con summary) para esta categoría
+    const playedMatches = tournament.matches?.filter(m =>
+        m.categoryId === categoryId &&
+        m.phase === 'clasificacion' &&
+        m.summary
+    ).length || 0;
+
+    return playedMatches >= expectedMatches;
+}
+
 // Helper para obtener el nombre del equipo basado en posición y tabla de standings
 function getTeamNameFromPosition(position: string, standings: any[]) {
     const positionIndex = parseInt(position.replace('position-', '')) - 1;
@@ -175,22 +198,31 @@ function getTeamName(teamId: string | undefined, tournament: Tournament, standin
 }
 
 // Helper para obtener los nombres de equipos de una semifinal según matchup
-function getSemiMatchupNames(matchup: string, standings: any[]): { home: string, away: string } {
-    const matchupMap: Record<string, { home: number, away: number }> = {
-        '1vs4': { home: 0, away: 3 },
-        '2vs3': { home: 1, away: 2 },
-        '1vs2': { home: 0, away: 1 },
-        '1vs3': { home: 0, away: 2 },
-        '2vs4': { home: 1, away: 3 },
-        '3vs4': { home: 2, away: 3 }
+function getSemiMatchupNames(matchup: string, standings: any[], classificationComplete: boolean): { home: string, away: string } {
+    const matchupMap: Record<string, { home: number, away: number, homeLabel: string, awayLabel: string }> = {
+        '1vs4': { home: 0, away: 3, homeLabel: '1ero', awayLabel: '4to' },
+        '2vs3': { home: 1, away: 2, homeLabel: '2do', awayLabel: '3ero' },
+        '1vs2': { home: 0, away: 1, homeLabel: '1ero', awayLabel: '2do' },
+        '1vs3': { home: 0, away: 2, homeLabel: '1ero', awayLabel: '3ero' },
+        '2vs4': { home: 1, away: 3, homeLabel: '2do', awayLabel: '4to' },
+        '3vs4': { home: 2, away: 3, homeLabel: '3ero', awayLabel: '4to' }
     };
 
     const positions = matchupMap[matchup];
     if (!positions) return { home: '?', away: '?' };
 
+    // Si la clasificación no está completa, solo mostrar posiciones genéricas
+    if (!classificationComplete) {
+        return {
+            home: positions.homeLabel,
+            away: positions.awayLabel
+        };
+    }
+
+    // Si está completa, usar los nombres reales de la tabla
     return {
-        home: standings[positions.home]?.name || `${positions.home + 1}ero`,
-        away: standings[positions.away]?.name || `${positions.away + 1}to`
+        home: standings[positions.home]?.name || positions.homeLabel,
+        away: standings[positions.away]?.name || positions.awayLabel
     };
 }
 
@@ -211,6 +243,12 @@ function getWinnerTeam(match: MatchData, tournament: Tournament, standings: any[
 
 const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName: string, categoryId: string, tournament: Tournament }) => {
     const standings = useStandings(tournament, categoryId);
+
+    // Verificar si la clasificación está completa
+    const classificationComplete = useMemo(() =>
+        isClassificationComplete(tournament, categoryId),
+        [tournament, categoryId]
+    );
 
     // Obtener partidos de playoffs para esta categoría
     const playoffMatches = useMemo(() => {
@@ -242,9 +280,9 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
             };
         }
 
-        // Si no, usar el matchup para derivar de standings
+        // Si no, usar el matchup para derivar de standings (solo si clasificación completa)
         if (semi.playoffMatchup) {
-            return getSemiMatchupNames(semi.playoffMatchup, standings);
+            return getSemiMatchupNames(semi.playoffMatchup, standings, classificationComplete);
         }
 
         return { home: '?', away: '?' };
@@ -262,6 +300,14 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
                 </CardTitle>
             </CardHeader>
             <CardContent>
+                {!classificationComplete && (
+                    <div className="mb-6 p-3 text-sm border rounded-lg bg-muted/50 text-muted-foreground flex items-start gap-2">
+                        <Info className="h-5 w-5 mt-0.5 shrink-0"/>
+                        <p>
+                            La fase de clasificación aún no ha finalizado. Los equipos que participarán en playoffs se determinarán cuando todos los partidos de clasificación hayan sido jugados.
+                        </p>
+                    </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
                     {/* Semifinales */}
                     <div className="space-y-6">

@@ -70,6 +70,7 @@ export interface Tournament {
   teams: TeamData[];
   categories: CategoryData[];
   matches: MatchData[];
+  classificationRounds?: number; // Número de vueltas de todos contra todos (1, 2, 3...). Default: 1
 }
 
 export interface CategoryData {

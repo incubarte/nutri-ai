@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Trophy, PlusCircle, Edit, Trash2, Info, Loader2 } from "lucide-react";
+import { safeUUID } from "@/lib/utils";
+import type { CategoryData } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Tournament } from "@/types";
@@ -61,6 +63,8 @@ function CreateEditTournamentDialog({
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [status, setStatus] = useState<Tournament['status']>("inactive");
+  const [classificationRounds, setClassificationRounds] = useState<number>(1);
+  const [categoriesString, setCategoriesString] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [removeLogo, setRemoveLogo] = useState(false);
@@ -72,6 +76,8 @@ function CreateEditTournamentDialog({
       if (isEditing && tournamentToEdit) {
         setName(tournamentToEdit.name);
         setStatus(tournamentToEdit.status);
+        setClassificationRounds(tournamentToEdit.classificationRounds || 1);
+        setCategoriesString((tournamentToEdit.categories || []).map(c => c.name).join(", "));
         setLogoFile(null);
         setLogoPreview(null);
         setRemoveLogo(false);
@@ -87,6 +93,8 @@ function CreateEditTournamentDialog({
       } else {
         setName("");
         setStatus("inactive");
+        setClassificationRounds(1);
+        setCategoriesString("");
         setLogoFile(null);
         setLogoPreview(null);
         setRemoveLogo(false);
@@ -145,23 +153,56 @@ function CreateEditTournamentDialog({
       return;
     }
 
+    // Parse and validate categories
+    const categoryNames = categoriesString
+      .split(',')
+      .map(name => name.trim())
+      .filter(name => name.length > 0);
+
+    const uniqueCategoryNames = Array.from(new Set(categoryNames.map(name => name.toLowerCase())));
+
+    if (uniqueCategoryNames.length !== categoryNames.length) {
+       toast({
+          title: "Error en Categorías",
+          description: "Los nombres de las categorías deben ser únicos (ignorando mayúsculas/minúsculas).",
+          variant: "destructive",
+      });
+      return;
+    }
+
+    const categories: CategoryData[] = Array.from(new Set(categoryNames))
+        .map(name => ({ id: safeUUID(), name }));
+
     let tournamentId: string;
 
     if (isEditing && tournamentToEdit) {
       tournamentId = tournamentToEdit.id;
       dispatch({
         type: "UPDATE_TOURNAMENT",
-        payload: { id: tournamentId, name: trimmedName, status },
+        payload: { id: tournamentId, name: trimmedName, status, classificationRounds },
       });
+
+      // Update categories separately
+      dispatch({
+        type: "SET_CATEGORIES_FOR_TOURNAMENT",
+        payload: { tournamentId, categories }
+      });
+
       toast({ title: "Torneo Actualizado", description: `"${trimmedName}" ha sido actualizado.` });
     } else {
-      const newTournament = { name: trimmedName, status: status || 'inactive' };
+      const newTournament = { name: trimmedName, status: status || 'inactive', classificationRounds };
       dispatch({ type: "ADD_TOURNAMENT", payload: newTournament });
       // Get the tournament ID from the state after it's added
       const tournaments = state.config.tournaments || [];
       const addedTournament = tournaments.find(t => t.name === trimmedName);
       if (addedTournament) {
         tournamentId = addedTournament.id;
+
+        // Set categories for new tournament
+        dispatch({
+          type: "SET_CATEGORIES_FOR_TOURNAMENT",
+          payload: { tournamentId, categories }
+        });
       } else {
         toast({ title: "Torneo Creado", description: `"${trimmedName}" ha sido creado.` });
         onOpenChange(false);
@@ -225,6 +266,38 @@ function CreateEditTournamentDialog({
                 <SelectItem value="finished">Finalizado</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="rounds" className="text-right">
+              Vueltas
+            </Label>
+            <Select value={String(classificationRounds)} onValueChange={(value) => setClassificationRounds(parseInt(value))}>
+              <SelectTrigger id="rounds" className="col-span-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 vuelta (todos contra todos)</SelectItem>
+                <SelectItem value="2">2 vueltas (ida y vuelta)</SelectItem>
+                <SelectItem value="3">3 vueltas</SelectItem>
+                <SelectItem value="4">4 vueltas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="categories" className="text-right pt-2">
+              Categorías
+            </Label>
+            <div className="col-span-3 space-y-1">
+              <Input
+                id="categories"
+                value={categoriesString}
+                onChange={(e) => setCategoriesString(e.target.value)}
+                placeholder="Sub-8, Sub-10, Sub-12..."
+              />
+              <p className="text-xs text-muted-foreground">
+                Separar por comas. Ejemplo: Sub-8, Sub-10, Sub-12
+              </p>
+            </div>
           </div>
           <div className="grid grid-cols-4 items-start gap-4">
             <Label htmlFor="logo" className="text-right pt-2">

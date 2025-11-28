@@ -8,11 +8,9 @@ import { Button } from '@/components/ui/button';
 import { HockeyPuckSpinner } from '@/components/ui/hockey-puck-spinner';
 import { ArrowLeft, Trophy, Info } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CategorySettingsCard } from '@/components/config/category-settings-card';
 import { TeamsManagementTab } from '@/components/config/teams-management-tab';
 import { FixtureCalendarView } from '@/components/fixture/fixture-calendar-view';
 import { FixtureListView } from '@/components/fixture/fixture-list-view';
-import { Separator } from '@/components/ui/separator';
 import { StandingsTab } from '@/components/tournaments/standings-tab';
 import { PlayerStatsTab } from '@/components/tournaments/player-stats-tab';
 import { useTournamentLogo } from '@/hooks/use-tournament-logo';
@@ -31,7 +29,6 @@ export default function TournamentDetailPage() {
   const initialFixtureView = searchParams.get('view') === 'list' ? 'list' : 'calendar';
 
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [isCategoryDirty, setIsCategoryDirty] = useState(false);
 
   const { logo } = useTournamentLogo(tournamentId);
   
@@ -91,7 +88,7 @@ export default function TournamentDetailPage() {
         <h1 className="text-4xl font-bold text-primary-foreground">{selectedTournament.name}</h1>
       </div>
 
-      <Separator />
+      <div className="border-b" />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className={`grid w-full ${
@@ -99,7 +96,7 @@ export default function TournamentDetailPage() {
             ? (state.config.showShotsData ? 'grid-cols-3' : 'grid-cols-2')
             : (state.config.showShotsData ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3')
         } gap-1`}>
-          {!isReadOnly && <TabsTrigger value="teamsAndCategories" className="text-xs sm:text-sm">Equipos y Categorías</TabsTrigger>}
+          {!isReadOnly && <TabsTrigger value="teamsAndCategories" className="text-xs sm:text-sm">Equipos</TabsTrigger>}
           <TabsTrigger value="fixture" className="text-xs sm:text-sm">Fixture</TabsTrigger>
           <TabsTrigger value="standings" className="text-xs sm:text-sm">Tabla de Posiciones</TabsTrigger>
           {state.config.showShotsData && <TabsTrigger value="playerStats" className="text-xs sm:text-sm">Estadísticas</TabsTrigger>}
@@ -107,16 +104,7 @@ export default function TournamentDetailPage() {
 
         {!isReadOnly && (
           <TabsContent value="teamsAndCategories" className="mt-6">
-            <div className="space-y-8">
-              <CategorySettingsCard onDirtyChange={setIsCategoryDirty} />
-              {isCategoryDirty && (
-                <div className="flex justify-end gap-2">
-                  <p className="text-sm text-muted-foreground self-center">Hay cambios sin guardar en las categorías.</p>
-                </div>
-              )}
-              <Separator />
-              <TeamsManagementTab />
-            </div>
+            <TeamsManagementTab />
           </TabsContent>
         )}
 
