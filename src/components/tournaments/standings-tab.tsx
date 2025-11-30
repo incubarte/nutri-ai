@@ -155,13 +155,15 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
 };
 
 // Helper para verificar si la fase de clasificación está completa para una categoría
-function isClassificationComplete(tournament: Tournament, categoryId: string): boolean {
+function isClassificationComplete(tournament: Tournament, categoryId: string): { complete: boolean, played: number, expected: number } {
     const categoryTeams = tournament.teams?.filter(t => t.category === categoryId) || [];
     const numTeams = categoryTeams.length;
 
-    if (numTeams < 2) return false; // No hay suficientes equipos
+    if (numTeams < 2) return { complete: false, played: 0, expected: 0 }; // No hay suficientes equipos
 
-    const rounds = tournament.classificationRounds || 1;
+    // Obtener las vueltas de la categoría específica
+    const category = tournament.categories?.find(c => c.id === categoryId);
+    const rounds = category?.classificationRounds || 1;
 
     // Calcular partidos esperados: cada equipo juega contra cada otro (n-1) equipos, por número de vueltas
     // Total de partidos = (n * (n-1) / 2) * rounds
@@ -174,7 +176,11 @@ function isClassificationComplete(tournament: Tournament, categoryId: string): b
         m.summary
     ).length || 0;
 
-    return playedMatches >= expectedMatches;
+    return {
+        complete: playedMatches >= expectedMatches,
+        played: playedMatches,
+        expected: expectedMatches
+    };
 }
 
 // Helper para obtener el nombre del equipo basado en posición y tabla de standings
@@ -245,10 +251,12 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
     const standings = useStandings(tournament, categoryId);
 
     // Verificar si la clasificación está completa
-    const classificationComplete = useMemo(() =>
+    const classificationStatus = useMemo(() =>
         isClassificationComplete(tournament, categoryId),
         [tournament, categoryId]
     );
+
+    const classificationComplete = classificationStatus.complete;
 
     // Obtener partidos de playoffs para esta categoría
     const playoffMatches = useMemo(() => {
@@ -300,14 +308,23 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                {!classificationComplete && (
-                    <div className="mb-6 p-3 text-sm border rounded-lg bg-muted/50 text-muted-foreground flex items-start gap-2">
-                        <Info className="h-5 w-5 mt-0.5 shrink-0"/>
-                        <p>
-                            La fase de clasificación aún no ha finalizado. Los equipos que participarán en playoffs se determinarán cuando todos los partidos de clasificación hayan sido jugados.
-                        </p>
-                    </div>
-                )}
+                {!classificationComplete && (() => {
+                    const category = tournament.categories?.find(c => c.id === categoryId);
+                    const rounds = category?.classificationRounds || 1;
+                    return (
+                        <div className="mb-6 p-3 text-sm border rounded-lg bg-muted/50 text-muted-foreground flex items-start gap-2">
+                            <Info className="h-5 w-5 mt-0.5 shrink-0"/>
+                            <div>
+                                <p className="mb-1">
+                                    La fase de clasificación aún no ha finalizado. Los equipos que participarán en playoffs se determinarán cuando todos los partidos de clasificación hayan sido jugados.
+                                </p>
+                                <p className="text-xs">
+                                    Partidos jugados: {classificationStatus.played} de {classificationStatus.expected} ({rounds} {rounds === 1 ? 'vuelta' : 'vueltas'})
+                                </p>
+                            </div>
+                        </div>
+                    );
+                })()}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
                     {/* Semifinales */}
                     <div className="space-y-6">

@@ -63,8 +63,7 @@ function CreateEditTournamentDialog({
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [status, setStatus] = useState<Tournament['status']>("inactive");
-  const [classificationRounds, setClassificationRounds] = useState<number>(1);
-  const [categoriesString, setCategoriesString] = useState("");
+  const [categories, setCategories] = useState<Array<{ id?: string; name: string; classificationRounds: number }>>([]);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [removeLogo, setRemoveLogo] = useState(false);
@@ -76,8 +75,11 @@ function CreateEditTournamentDialog({
       if (isEditing && tournamentToEdit) {
         setName(tournamentToEdit.name);
         setStatus(tournamentToEdit.status);
-        setClassificationRounds(tournamentToEdit.classificationRounds || 1);
-        setCategoriesString((tournamentToEdit.categories || []).map(c => c.name).join(", "));
+        setCategories((tournamentToEdit.categories || []).map(c => ({
+          id: c.id, // Preserve existing ID
+          name: c.name,
+          classificationRounds: c.classificationRounds
+        })));
         setLogoFile(null);
         setLogoPreview(null);
         setRemoveLogo(false);
@@ -93,8 +95,7 @@ function CreateEditTournamentDialog({
       } else {
         setName("");
         setStatus("inactive");
-        setClassificationRounds(1);
-        setCategoriesString("");
+        setCategories([]);
         setLogoFile(null);
         setLogoPreview(null);
         setRemoveLogo(false);
@@ -107,7 +108,7 @@ function CreateEditTournamentDialog({
     if (file) {
       if (file.type !== 'image/png' && file.type !== 'image/jpeg') {
         toast({
-          title: "Formato Inv\u00e1lido",
+          title: "Formato Inválido",
           description: "El logo debe ser una imagen PNG o JPG.",
           variant: "destructive",
         });
@@ -127,6 +128,26 @@ function CreateEditTournamentDialog({
     setLogoFile(null);
     setLogoPreview(null);
     setRemoveLogo(true);
+  };
+
+  const handleAddCategory = () => {
+    setCategories([...categories, { name: "", classificationRounds: 1 }]); // No id yet, will be generated on save
+  };
+
+  const handleRemoveCategory = (index: number) => {
+    setCategories(categories.filter((_, i) => i !== index));
+  };
+
+  const handleCategoryNameChange = (index: number, newName: string) => {
+    const newCategories = [...categories];
+    newCategories[index].name = newName;
+    setCategories(newCategories);
+  };
+
+  const handleCategoryRoundsChange = (index: number, rounds: number) => {
+    const newCategories = [...categories];
+    newCategories[index].classificationRounds = rounds;
+    setCategories(newCategories);
   };
 
   const handleSubmit = async () => {
@@ -153,25 +174,36 @@ function CreateEditTournamentDialog({
       return;
     }
 
-    // Parse and validate categories
-    const categoryNames = categoriesString
-      .split(',')
-      .map(name => name.trim())
-      .filter(name => name.length > 0);
+    // Validate categories
+    const trimmedCategories = categories.map(c => ({ ...c, name: c.name.trim() })).filter(c => c.name.length > 0);
 
-    const uniqueCategoryNames = Array.from(new Set(categoryNames.map(name => name.toLowerCase())));
-
-    if (uniqueCategoryNames.length !== categoryNames.length) {
-       toast({
-          title: "Error en Categorías",
-          description: "Los nombres de las categorías deben ser únicos (ignorando mayúsculas/minúsculas).",
-          variant: "destructive",
+    if (trimmedCategories.length === 0) {
+      toast({
+        title: "Categorías Requeridas",
+        description: "Debes agregar al menos una categoría.",
+        variant: "destructive",
       });
       return;
     }
 
-    const categories: CategoryData[] = Array.from(new Set(categoryNames))
-        .map(name => ({ id: safeUUID(), name }));
+    const categoryNames = trimmedCategories.map(c => c.name.toLowerCase());
+    const uniqueNames = new Set(categoryNames);
+
+    if (uniqueNames.size !== categoryNames.length) {
+      toast({
+        title: "Error en Categorías",
+        description: "Los nombres de las categorías deben ser únicos (ignorando mayúsculas/minúsculas).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Preserve existing IDs, generate new ones only for new categories
+    const categoriesData: CategoryData[] = trimmedCategories.map(c => ({
+      id: c.id || safeUUID(), // Use existing ID if available, otherwise generate new one
+      name: c.name,
+      classificationRounds: c.classificationRounds
+    }));
 
     let tournamentId: string;
 
@@ -179,18 +211,18 @@ function CreateEditTournamentDialog({
       tournamentId = tournamentToEdit.id;
       dispatch({
         type: "UPDATE_TOURNAMENT",
-        payload: { id: tournamentId, name: trimmedName, status, classificationRounds },
+        payload: { id: tournamentId, name: trimmedName, status },
       });
 
       // Update categories separately
       dispatch({
         type: "SET_CATEGORIES_FOR_TOURNAMENT",
-        payload: { tournamentId, categories }
+        payload: { tournamentId, categories: categoriesData }
       });
 
       toast({ title: "Torneo Actualizado", description: `"${trimmedName}" ha sido actualizado.` });
     } else {
-      const newTournament = { name: trimmedName, status: status || 'inactive', classificationRounds };
+      const newTournament = { name: trimmedName, status: status || 'inactive' };
       dispatch({ type: "ADD_TOURNAMENT", payload: newTournament });
       // Get the tournament ID from the state after it's added
       const tournaments = state.config.tournaments || [];
@@ -201,7 +233,7 @@ function CreateEditTournamentDialog({
         // Set categories for new tournament
         dispatch({
           type: "SET_CATEGORIES_FOR_TOURNAMENT",
-          payload: { tournamentId, categories }
+          payload: { tournamentId, categories: categoriesData }
         });
       } else {
         toast({ title: "Torneo Creado", description: `"${trimmedName}" ha sido creado.` });
@@ -241,7 +273,7 @@ function CreateEditTournamentDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Editar Torneo" : "Crear Nuevo Torneo"}</DialogTitle>
         </DialogHeader>
@@ -267,36 +299,51 @@ function CreateEditTournamentDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="rounds" className="text-right">
-              Vueltas
-            </Label>
-            <Select value={String(classificationRounds)} onValueChange={(value) => setClassificationRounds(parseInt(value))}>
-              <SelectTrigger id="rounds" className="col-span-3">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">1 vuelta (todos contra todos)</SelectItem>
-                <SelectItem value="2">2 vueltas (ida y vuelta)</SelectItem>
-                <SelectItem value="3">3 vueltas</SelectItem>
-                <SelectItem value="4">4 vueltas</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
           <div className="grid grid-cols-4 items-start gap-4">
-            <Label htmlFor="categories" className="text-right pt-2">
+            <Label className="text-right pt-2">
               Categorías
             </Label>
-            <div className="col-span-3 space-y-1">
-              <Input
-                id="categories"
-                value={categoriesString}
-                onChange={(e) => setCategoriesString(e.target.value)}
-                placeholder="Sub-8, Sub-10, Sub-12..."
-              />
-              <p className="text-xs text-muted-foreground">
-                Separar por comas. Ejemplo: Sub-8, Sub-10, Sub-12
-              </p>
+            <div className="col-span-3 space-y-3">
+              {categories.map((category, index) => (
+                <div key={index} className="flex gap-2 items-center">
+                  <Input
+                    value={category.name}
+                    onChange={(e) => handleCategoryNameChange(index, e.target.value)}
+                    placeholder="Nombre de categoría"
+                    className="flex-1"
+                  />
+                  <Select
+                    value={String(category.classificationRounds)}
+                    onValueChange={(value) => handleCategoryRoundsChange(index, parseInt(value))}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 vuelta</SelectItem>
+                      <SelectItem value="2">2 vueltas</SelectItem>
+                      <SelectItem value="3">3 vueltas</SelectItem>
+                      <SelectItem value="4">4 vueltas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => handleRemoveCategory(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddCategory}
+                className="w-full"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" /> Agregar Categoría
+              </Button>
             </div>
           </div>
           <div className="grid grid-cols-4 items-start gap-4">
@@ -374,7 +421,7 @@ export default function TournamentsPage() {
   const handleDelete = (tournament: Tournament) => {
     setTournamentToDelete(tournament);
   };
-  
+
   const handleTournamentClick = (tournamentId: string) => {
     setIsLoadingTournament(tournamentId);
     router.push(`/tournaments/${tournamentId}`);
@@ -416,7 +463,7 @@ export default function TournamentsPage() {
           </div>
         ) : (
           tournaments.map((tournament) => (
-            <Card 
+            <Card
               key={tournament.id}
               className={cn("hover:shadow-lg transition-shadow cursor-pointer", isLoadingTournament === tournament.id && "animate-pulse")}
               onClick={() => handleTournamentClick(tournament.id)}
@@ -432,19 +479,19 @@ export default function TournamentsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    {isLoadingTournament === tournament.id && (
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    )}
-                    {!isReadOnly && (
-                        <>
-                            <Button variant="outline" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(tournament); }}>
-                            <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="destructive" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(tournament); }}>
-                            <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </>
-                    )}
+                  {isLoadingTournament === tournament.id && (
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  )}
+                  {!isReadOnly && (
+                    <>
+                      <Button variant="outline" size="icon" onClick={(e) => { e.stopPropagation(); handleEdit(tournament); }}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="destructive" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(tournament); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
