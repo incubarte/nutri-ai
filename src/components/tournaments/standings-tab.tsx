@@ -112,8 +112,8 @@ const StandingsTable = ({ categoryName, categoryId, tournament }: { categoryName
                                 <TableHead className="text-center font-bold text-xs">Pts</TableHead>
                                 {isExpanded && (
                                     <>
-                                        <TableHead className="text-center text-xs">PG<br/>(OT)</TableHead>
-                                        <TableHead className="text-center text-xs">PP<br/>(OT)</TableHead>
+                                        <TableHead className="text-center text-xs">PG<br />(OT)</TableHead>
+                                        <TableHead className="text-center text-xs">PP<br />(OT)</TableHead>
                                         <TableHead className="text-center text-xs">PE</TableHead>
                                         <TableHead className="text-center text-xs">PP</TableHead>
                                         <TableHead className="text-center text-xs">GF</TableHead>
@@ -176,11 +176,16 @@ function isClassificationComplete(tournament: Tournament, categoryId: string): {
         m.summary
     ).length || 0;
 
-    return {
+    const result = {
         complete: playedMatches >= expectedMatches,
         played: playedMatches,
         expected: expectedMatches
     };
+
+    // Debug log
+    console.log(`[${category?.name || categoryId}] Teams: ${numTeams}, Rounds: ${rounds}, Expected: ${expectedMatches}, Played: ${playedMatches}, Complete: ${result.complete}`);
+
+    return result;
 }
 
 // Helper para obtener el nombre del equipo basado en posición y tabla de standings
@@ -313,7 +318,7 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
                     const rounds = category?.classificationRounds || 1;
                     return (
                         <div className="mb-6 p-3 text-sm border rounded-lg bg-muted/50 text-muted-foreground flex items-start gap-2">
-                            <Info className="h-5 w-5 mt-0.5 shrink-0"/>
+                            <Info className="h-5 w-5 mt-0.5 shrink-0" />
                             <div>
                                 <p className="mb-1">
                                     La fase de clasificación aún no ha finalizado. Los equipos que participarán en playoffs se determinarán cuando todos los partidos de clasificación hayan sido jugados.
@@ -335,7 +340,7 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
                         {/* Semi 1 */}
                         <div className={cn(
                             "border-2 rounded-lg p-4 space-y-2",
-                            semi1Winner ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-border"
+                            semi1Winner ? "border-green-500" : "border-border"
                         )}>
                             <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">
                                 {semi1?.playoffMatchup ? `Semi 1 (${semi1.playoffMatchup.replace('vs', ' vs ')})` : 'Semi 1'}
@@ -376,7 +381,7 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
                         {/* Semi 2 */}
                         <div className={cn(
                             "border-2 rounded-lg p-4 space-y-2",
-                            semi2Winner ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-border"
+                            semi2Winner ? "border-green-500" : "border-border"
                         )}>
                             <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">
                                 {semi2?.playoffMatchup ? `Semi 2 (${semi2.playoffMatchup.replace('vs', ' vs ')})` : 'Semi 2'}
@@ -430,7 +435,7 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
 
                         <div className={cn(
                             "border-2 rounded-lg p-4 space-y-2",
-                            finalWinner ? "border-amber-500 bg-amber-50 dark:bg-amber-950/20" : "border-border"
+                            finalWinner ? "border-amber-500" : "border-border"
                         )}>
                             <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">Final</div>
                             <div className="flex items-center justify-between">
@@ -485,67 +490,67 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
 };
 
 export function StandingsTab() {
-  const { state } = useGameState();
-  const { tournaments, selectedTournamentId } = state.config;
+    const { state } = useGameState();
+    const { tournaments, selectedTournamentId } = state.config;
 
-  const selectedTournament = useMemo(() => {
-    return (tournaments || []).find(t => t.id === selectedTournamentId);
-  }, [tournaments, selectedTournamentId]);
+    const selectedTournament = useMemo(() => {
+        return (tournaments || []).find(t => t.id === selectedTournamentId);
+    }, [tournaments, selectedTournamentId]);
 
-  const categoriesWithTeams = useMemo(() => {
-    if (!selectedTournament) return [];
-    return selectedTournament.categories.filter(cat =>
-        (selectedTournament.teams || []).some(team => team.category === cat.id)
+    const categoriesWithTeams = useMemo(() => {
+        if (!selectedTournament) return [];
+        return selectedTournament.categories.filter(cat =>
+            (selectedTournament.teams || []).some(team => team.category === cat.id)
+        );
+    }, [selectedTournament]);
+
+    if (!selectedTournament) return null;
+
+    return (
+        <Tabs defaultValue="clasificacion" className="space-y-6">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+                <TabsTrigger value="clasificacion">Clasificación</TabsTrigger>
+                <TabsTrigger value="playoffs">Playoffs</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="clasificacion" className="space-y-8">
+                <div className="flex items-start gap-2 p-3 text-sm border rounded-lg bg-muted/50 text-muted-foreground">
+                    <Info className="h-5 w-5 mt-0.5 shrink-0" />
+                    <p>El sistema de puntos es: 3 por victoria, 2 por victoria en OT/Penales, 1 por derrota en OT/Penales, y 1 por empate.</p>
+                </div>
+
+                {categoriesWithTeams.map(category => (
+                    <StandingsTable
+                        key={category.id}
+                        categoryName={category.name}
+                        categoryId={category.id}
+                        tournament={selectedTournament}
+                    />
+                ))}
+
+                {categoriesWithTeams.length === 0 && (
+                    <div className="text-center py-12">
+                        <p className="text-muted-foreground">No hay datos de posiciones para mostrar. Juega y finaliza partidos para empezar.</p>
+                    </div>
+                )}
+            </TabsContent>
+
+            <TabsContent value="playoffs" className="space-y-8">
+                {categoriesWithTeams.map(category => (
+                    <PlayoffBracket
+                        key={category.id}
+                        categoryName={category.name}
+                        categoryId={category.id}
+                        tournament={selectedTournament}
+                    />
+                ))}
+
+                {categoriesWithTeams.length === 0 && (
+                    <div className="text-center py-12">
+                        <p className="text-muted-foreground">No hay categorías disponibles.</p>
+                    </div>
+                )}
+            </TabsContent>
+        </Tabs>
     );
-  }, [selectedTournament]);
-
-  if (!selectedTournament) return null;
-
-  return (
-    <Tabs defaultValue="clasificacion" className="space-y-6">
-      <TabsList className="grid w-full max-w-md grid-cols-2">
-        <TabsTrigger value="clasificacion">Clasificación</TabsTrigger>
-        <TabsTrigger value="playoffs">Playoffs</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="clasificacion" className="space-y-8">
-        <div className="flex items-start gap-2 p-3 text-sm border rounded-lg bg-muted/50 text-muted-foreground">
-            <Info className="h-5 w-5 mt-0.5 shrink-0"/>
-            <p>El sistema de puntos es: 3 por victoria, 2 por victoria en OT/Penales, 1 por derrota en OT/Penales, y 1 por empate.</p>
-        </div>
-
-        {categoriesWithTeams.map(category => (
-            <StandingsTable
-                key={category.id}
-                categoryName={category.name}
-                categoryId={category.id}
-                tournament={selectedTournament}
-            />
-        ))}
-
-        {categoriesWithTeams.length === 0 && (
-            <div className="text-center py-12">
-                <p className="text-muted-foreground">No hay datos de posiciones para mostrar. Juega y finaliza partidos para empezar.</p>
-            </div>
-        )}
-      </TabsContent>
-
-      <TabsContent value="playoffs" className="space-y-8">
-        {categoriesWithTeams.map(category => (
-            <PlayoffBracket
-                key={category.id}
-                categoryName={category.name}
-                categoryId={category.id}
-                tournament={selectedTournament}
-            />
-        ))}
-
-        {categoriesWithTeams.length === 0 && (
-            <div className="text-center py-12">
-                <p className="text-muted-foreground">No hay categorías disponibles.</p>
-            </div>
-        )}
-      </TabsContent>
-    </Tabs>
-  );
 }
