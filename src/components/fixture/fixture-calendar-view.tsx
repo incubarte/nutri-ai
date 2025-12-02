@@ -6,8 +6,9 @@ import { useGameState, getCategoryNameById } from '@/contexts/game-state-context
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2, ChevronLeft, ChevronRight, FileText, ListFilter, Search, X, Play } from 'lucide-react';
-import { addMonths, subMonths, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
+import { addMonths, subMonths, addDays, subDays, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { AddEditMatchDialog } from './add-edit-match-dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
@@ -78,7 +79,8 @@ export function FixtureCalendarView() {
   const router = useRouter();
   const { selectedTournamentId, tournaments } = state.config;
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  
+  const [currentCenterDate, setCurrentCenterDate] = useState(startOfDay(new Date())); // Para vista mobile de 3 días
+
   const [isAddEditDialogOpen, setIsAddEditDialogOpen] = useState(false);
   const [matchToEdit, setMatchToEdit] = useState<MatchData | null>(null);
   const [matchToDelete, setMatchToDelete] = useState<MatchData | null>(null);
@@ -91,6 +93,7 @@ export function FixtureCalendarView() {
   const [teamSearch, setTeamSearch] = useState('');
 
   const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const selectedTournament = useMemo(() => {
     return tournaments.find(t => t.id === selectedTournamentId);
@@ -153,13 +156,29 @@ export function FixtureCalendarView() {
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
 
-  const daysOfWeek = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
-  const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  // Navegación para vista mobile de 7 días (una semana)
+  const nextWeek = () => setCurrentCenterDate(addDays(currentCenterDate, 7));
+  const prevWeek = () => setCurrentCenterDate(subDays(currentCenterDate, 7));
 
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
+  const daysOfWeek = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+  // Calcular días a mostrar según el tamaño de pantalla
+  const days = useMemo(() => {
+    if (isMobile) {
+      // Vista mobile: 7 días consecutivos empezando desde currentCenterDate
+      return eachDayOfInterval({
+        start: currentCenterDate,
+        end: addDays(currentCenterDate, 6)
+      });
+    } else {
+      // Vista desktop: semana completa del mes
+      const monthStart = startOfMonth(currentMonth);
+      const monthEnd = endOfMonth(currentMonth);
+      const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+      const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+      return eachDayOfInterval({ start: startDate, end: endDate });
+    }
+  }, [isMobile, currentMonth, currentCenterDate]);
   
   const clearFilters = () => {
     setCategoryFilter([]);
@@ -171,11 +190,31 @@ export function FixtureCalendarView() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-2">
-        <h3 className="text-xl font-semibold">{format(currentMonth, "MMMM yyyy", { locale: es })}</h3>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={prevMonth}><ChevronLeft className="h-4 w-4" /></Button>
-          <Button variant="outline" size="icon" onClick={nextMonth}><ChevronRight className="h-4 w-4" /></Button>
-        </div>
+        {isMobile ? (
+          <>
+            <h3 className="text-base font-semibold text-center">
+              {format(currentCenterDate, "d", { locale: es })} - {format(addDays(currentCenterDate, 6), "d 'de' MMMM yyyy", { locale: es })}
+            </h3>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={prevWeek}>
+                <ChevronLeft className="h-4 w-4" />
+                <span className="ml-1">Semana</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={nextWeek}>
+                <span className="mr-1">Semana</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h3 className="text-xl font-semibold">{format(currentMonth, "MMMM yyyy", { locale: es })}</h3>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={prevMonth}><ChevronLeft className="h-4 w-4" /></Button>
+              <Button variant="outline" size="icon" onClick={nextMonth}><ChevronRight className="h-4 w-4" /></Button>
+            </div>
+          </>
+        )}
       </div>
       
        <div className="flex flex-col sm:flex-row gap-2">
@@ -223,28 +262,41 @@ export function FixtureCalendarView() {
          )}
       </div>
       
-      <div className="grid grid-cols-7 border-t border-l">
-        {daysOfWeek.map(day => (
-          <div key={day} className="text-center font-bold p-2 border-b border-r bg-muted/50">{day}</div>
-        ))}
-        {days.map(day => {
+      <div className={cn("grid border-t border-l", isMobile ? "grid-cols-3" : "grid-cols-7")}>
+        {!isMobile && (
+          // Header desktop: mostrar días de la semana completos
+          daysOfWeek.map(day => (
+            <div key={day} className="text-center font-bold p-2 border-b border-r bg-muted/50">{day}</div>
+          ))
+        )}
+        {days.map((day, index) => {
           const matchesForDay = matches
             .filter(match => isSameDay(new Date(match.date), day))
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
           return (
-            <div 
+            <div
               key={day.toString()}
               className={cn(
-                "relative p-2 border-b border-r min-h-[120px] flex flex-col", 
-                !isSameMonth(day, currentMonth) && "bg-muted/20 text-muted-foreground"
+                "relative p-2 border-b border-r min-h-[120px] flex flex-col",
+                // En desktop, marcar días fuera del mes. En mobile, siempre mostrar normal
+                !isMobile && !isSameMonth(day, currentMonth) && "bg-muted/20 text-muted-foreground"
               )}
             >
-              <div 
+              <div
                 className={cn("font-medium", !isReadOnly && "cursor-pointer hover:text-blue-500", isSameDay(day, new Date()) && "text-blue-500 font-bold")}
                 onClick={() => handleDayClick(day)}
               >
-                {format(day, "d")}
+                {isMobile ? (
+                  // Mobile: mostrar día de semana + número
+                  <div className="text-center">
+                    <div className="text-[10px] text-muted-foreground uppercase">{format(day, "EEE", { locale: es })}</div>
+                    <div className="text-sm font-bold">{format(day, "d")}</div>
+                  </div>
+                ) : (
+                  // Desktop: solo número
+                  format(day, "d")
+                )}
               </div>
               <ScrollArea className="flex-grow mt-1">
                 <div className="space-y-1 pr-1">
@@ -254,6 +306,7 @@ export function FixtureCalendarView() {
                     const isPlayoff = match.phase === 'playoffs';
                     const isFinal = isPlayoff && match.playoffType === 'final';
                     const isSemifinal = isPlayoff && match.playoffType === 'semifinal';
+                    const is3erPuesto = isPlayoff && match.playoffType === '3er-puesto';
 
                     const isHighlighted = filteredMatchIds ? filteredMatchIds.has(match.id) : true;
 
@@ -265,7 +318,9 @@ export function FixtureCalendarView() {
                           "text-xs p-1.5 rounded-md bg-background/50 transition-all duration-300 cursor-pointer hover:bg-accent/50 hover:border-accent",
                           !isHighlighted && "opacity-30",
                           // Border base
-                          isFinal ? "border-2 border-amber-400 dark:border-amber-500 shadow-sm" : "border border-border/50",
+                          isFinal ? "border-2 border-amber-400 dark:border-amber-500 shadow-sm" :
+                          is3erPuesto ? "border-2 border-orange-400 dark:border-orange-500 shadow-sm" :
+                          "border border-border/50",
                           // Border izquierdo para partidos jugados (siempre se aplica al final)
                           hasSummary && "!border-l-2 !border-l-blue-400"
                         )}
@@ -278,6 +333,11 @@ export function FixtureCalendarView() {
                         {isFinal && (
                           <div className="text-[9px] font-semibold text-amber-600 dark:text-amber-400 mb-0.5 uppercase tracking-wide">
                             Final
+                          </div>
+                        )}
+                        {is3erPuesto && (
+                          <div className="text-[9px] font-semibold text-orange-600 dark:text-orange-400 mb-0.5 uppercase tracking-wide">
+                            3er Puesto
                           </div>
                         )}
                         <div className="font-semibold text-[10px] leading-tight mb-0.5">

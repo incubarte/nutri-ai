@@ -36,7 +36,7 @@ export interface PlayerData {
 }
 
 export type MatchPhase = 'clasificacion' | 'playoffs';
-export type PlayoffMatchType = 'semifinal' | 'final';
+export type PlayoffMatchType = 'semifinal' | 'final' | '3er-puesto';
 export type PlayoffMatchup = '1vs2' | '1vs3' | '1vs4' | '2vs3' | '2vs4' | '3vs4'; // Para semifinales
 
 export interface MatchData {

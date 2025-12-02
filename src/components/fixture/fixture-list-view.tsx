@@ -280,9 +280,13 @@ export function FixtureListView() {
                 const wentToOTOrSO = match.summary ? hasOvertimeOrShootout(match.summary) : false;
                 const isPlayoff = match.phase === 'playoffs';
                 const isFinal = isPlayoff && match.playoffType === 'final';
+                const is3erPuesto = isPlayoff && match.playoffType === '3er-puesto';
 
                 return (
-                  <TableRow key={match.id} className={cn(isFinal && "border-l-2 border-l-amber-400")}>
+                  <TableRow key={match.id} className={cn(
+                    isFinal && "border-l-2 border-l-amber-400",
+                    is3erPuesto && "border-l-2 border-l-orange-400"
+                  )}>
                     <TableCell>{format(new Date(match.date), "dd/MM/yy HH:mm", { locale: es })}</TableCell>
                     <TableCell>{getCategoryNameById(match.categoryId, selectedTournament?.categories) || 'N/A'}</TableCell>
                     <TableCell>
@@ -295,9 +299,11 @@ export function FixtureListView() {
                             "text-[10px] px-1.5 py-0.5 rounded font-medium",
                             isFinal
                               ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400"
+                              : is3erPuesto
+                              ? "bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-400"
                               : "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400"
                           )}>
-                            {match.playoffType === 'semifinal' ? 'SF' : 'F'}
+                            {match.playoffType === 'semifinal' ? 'SF' : match.playoffType === 'final' ? 'F' : '3°'}
                           </span>
                         )}
                       </div>

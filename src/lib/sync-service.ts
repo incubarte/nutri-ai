@@ -189,7 +189,13 @@ export async function analyzeSync(): Promise<SyncPlan> {
             plan.status = 'pending'; // Has conflicts that need resolution
         }
 
-        // 8. Save plan
+        // 8. Download remote files in conflict for comparison
+        if (plan.conflicts.length > 0) {
+            console.log('[Sync] Downloading remote files for', plan.conflicts.length, 'conflicts...');
+            await downloadConflictRemoteFiles(plan.conflicts);
+        }
+
+        // 9. Save plan
         await writePlan(plan);
         console.log('[Sync] Plan created:', {
             status: plan.status,
@@ -255,6 +261,70 @@ async function checkFileExistsRemotely(filePath: string): Promise<boolean> {
     } catch (error) {
         console.error(`[Sync] Error checking if file exists remotely: ${filePath}`, error);
         return true; // Assume exists on error to be safe
+    }
+}
+
+/**
+ * Download remote files in conflict and save them to a temporary directory
+ * This allows the UI to display file comparisons without re-downloading
+ */
+async function downloadConflictRemoteFiles(conflicts: SyncPlanConflict[]): Promise<void> {
+    try {
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+        const bucket = process.env.SUPABASE_BUCKET;
+
+        if (!supabaseUrl || !supabaseKey || !bucket) {
+            throw new Error('Supabase configuration missing');
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Get storage directory
+        const storagePath = process.env.STORAGE_PATH || 'storage';
+        const storageDir = path.isAbsolute(storagePath)
+            ? storagePath
+            : path.join(process.cwd(), storagePath);
+
+        const conflictsDir = path.join(storageDir, 'sync-conflicts-remote');
+
+        // Create directory if it doesn't exist
+        await fs.mkdir(conflictsDir, { recursive: true });
+
+        // Download each conflict file
+        for (const conflict of conflicts) {
+            try {
+                const { data, error } = await supabase.storage
+                    .from(bucket)
+                    .download(conflict.filePath);
+
+                if (error || !data) {
+                    console.error(`[Sync] Failed to download remote conflict file: ${conflict.filePath}`, error);
+                    continue;
+                }
+
+                // Save to temporary directory preserving the path structure
+                const targetPath = path.join(conflictsDir, conflict.filePath);
+                const targetDir = path.dirname(targetPath);
+
+                // Create subdirectories if needed
+                await fs.mkdir(targetDir, { recursive: true });
+
+                // Convert blob to buffer and write
+                const arrayBuffer = await data.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+                await fs.writeFile(targetPath, buffer);
+
+                console.log(`[Sync] Downloaded remote conflict file: ${conflict.filePath}`);
+            } catch (error) {
+                console.error(`[Sync] Error downloading conflict file ${conflict.filePath}:`, error);
+            }
+        }
+
+        console.log(`[Sync] Downloaded ${conflicts.length} remote conflict files to ${conflictsDir}`);
+    } catch (error) {
+        console.error('[Sync] Error downloading conflict remote files:', error);
+        // Don't throw - this is not critical, just means comparison won't work
     }
 }
 

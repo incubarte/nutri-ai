@@ -181,6 +181,7 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
                                     <SelectContent>
                                         <SelectItem value="semifinal">Semifinal</SelectItem>
                                         <SelectItem value="final">Final</SelectItem>
+                                        <SelectItem value="3er-puesto">3er Puesto</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

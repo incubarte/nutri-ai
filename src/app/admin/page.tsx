@@ -30,6 +30,15 @@ import { cn } from "@/lib/utils";
 import type { Tournament } from "@/types";
 import { format as formatDate } from "date-fns";
 import { es } from "date-fns/locale";
+import dynamic from "next/dynamic";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
+
+// Dynamically import react-diff-viewer to avoid SSR issues
+const ReactDiffViewer = dynamic(() => import('react-diff-viewer-continued'), {
+    ssr: false,
+    loading: () => <p>Cargando comparación...</p>
+});
 
 /**
  * Extract match information from a file path
@@ -224,6 +233,11 @@ function SyncAnalysisCard() {
     const [isReloadingContext, setIsReloadingContext] = useState(false);
     const [plan, setPlan] = useState<any>(null);
     const [selectedConflict, setSelectedConflict] = useState<any>(null);
+    const [localContent, setLocalContent] = useState<string>('');
+    const [remoteContent, setRemoteContent] = useState<string>('');
+    const [isLoadingContent, setIsLoadingContent] = useState(false);
+    const [showComparison, setShowComparison] = useState(false);
+    const [showMetadata, setShowMetadata] = useState(false);
 
     // Auto-sync configuration states
     const [autoAnalysisEnabled, setAutoAnalysisEnabled] = useState((state.config.autoSyncAnalysisIntervalMinutes || 0) > 0);
@@ -382,6 +396,61 @@ function SyncAnalysisCard() {
         }
     };
 
+    // Load file content for comparison
+    const loadFileContent = async (filePath: string) => {
+        setIsLoadingContent(true);
+        try {
+            console.log('[Admin] Loading file content for:', filePath);
+
+            // Load local content
+            const localResponse = await fetch(`/api/sync/file-content?filePath=${encodeURIComponent(filePath)}&source=local`);
+            const localData = await localResponse.json();
+
+            console.log('[Admin] Local response:', localData);
+
+            // Load remote content
+            const remoteResponse = await fetch(`/api/sync/file-content?filePath=${encodeURIComponent(filePath)}&source=remote`);
+            const remoteData = await remoteResponse.json();
+
+            console.log('[Admin] Remote response:', remoteData);
+
+            if (localData.success && remoteData.success) {
+                setLocalContent(localData.content);
+                setRemoteContent(remoteData.content);
+                console.log('[Admin] Content loaded successfully');
+            } else {
+                const errorMsg = `Local: ${localData.error || 'OK'}, Remote: ${remoteData.error || 'OK'}`;
+                console.error('[Admin] Failed to load content:', errorMsg);
+                toast({
+                    title: "⚠️ Error Cargando Contenido",
+                    description: errorMsg,
+                    variant: "destructive",
+                });
+            }
+        } catch (error) {
+            console.error('[Admin] Error loading file content:', error);
+            toast({
+                title: "❌ Error",
+                description: error instanceof Error ? error.message : "No se pudo cargar el contenido de los archivos",
+                variant: "destructive",
+            });
+        } finally {
+            setIsLoadingContent(false);
+        }
+    };
+
+    // Handle conflict selection
+    const handleConflictClick = async (conflict: any) => {
+        setSelectedConflict(conflict);
+        setShowComparison(false);
+        setShowMetadata(false);
+        setLocalContent('');
+        setRemoteContent('');
+
+        // Load content automatically
+        await loadFileContent(conflict.filePath);
+    };
+
     const handleResolveConflict = async (filePath: string, decision: 'local-wins' | 'remote-wins' | 'skip') => {
         try {
             const response = await fetch('/api/sync/plan', {
@@ -397,6 +466,8 @@ function SyncAnalysisCard() {
             if (response.ok && data.plan) {
                 setPlan(data.plan);
                 setSelectedConflict(null);
+                setLocalContent('');
+                setRemoteContent('');
                 toast({
                     title: "✅ Conflicto Resuelto",
                     description: `${filePath}: ${decision === 'local-wins' ? 'Local gana' : decision === 'remote-wins' ? 'Remoto gana' : 'Omitir'}`,
@@ -706,7 +777,24 @@ function SyncAnalysisCard() {
                                                         <li className="text-red-600">Eliminar {plan.summary.deleteRemoteCount} archivo(s) en Supabase (fueron eliminados localmente)</li>
                                                     )}
                                                     {plan.summary.conflictCount > 0 && (
-                                                        <li>Resolver {plan.summary.conflictCount} conflicto(s) - Local gana, remoto se respalda</li>
+                                                        <li>
+                                                            Resolver {plan.summary.conflictCount} conflicto(s):
+                                                            <ul className="ml-4 mt-1 space-y-0.5">
+                                                                {plan.conflicts.map((conflict: any) => {
+                                                                    const decision = conflict.decision;
+                                                                    if (!decision || decision === 'skip') return null;
+
+                                                                    return (
+                                                                        <li key={conflict.filePath} className="text-xs">
+                                                                            {conflict.filePath.split('/').pop()} → {
+                                                                                decision === 'local-wins' ? '💻 Local gana' :
+                                                                                decision === 'remote-wins' ? '☁️ Remoto gana' : ''
+                                                                            }
+                                                                        </li>
+                                                                    );
+                                                                })}
+                                                            </ul>
+                                                        </li>
                                                     )}
                                                 </ul>
                                                 <p className="mt-2 font-semibold">¿Deseas continuar?</p>
@@ -853,7 +941,7 @@ function SyncAnalysisCard() {
                                                 key={item.filePath}
                                                 title="Click para ver detalles y resolver"
                                                 className="cursor-pointer hover:underline hover:text-yellow-600 dark:hover:text-yellow-400"
-                                                onClick={() => setSelectedConflict(item)}
+                                                onClick={() => handleConflictClick(item)}
                                             >
                                                 <span className="font-mono">{item.filePath}</span>
                                                 {matchInfo && (
@@ -876,108 +964,221 @@ function SyncAnalysisCard() {
 
                         {/* Conflict Details Dialog */}
                         <AlertDialog open={!!selectedConflict} onOpenChange={(open) => !open && setSelectedConflict(null)}>
-                            <AlertDialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                            <AlertDialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
                                 <AlertDialogHeader>
                                     <AlertDialogTitle className="text-yellow-600">
                                         ⚠️ Conflicto: {selectedConflict?.filePath}
                                     </AlertDialogTitle>
                                     <AlertDialogDescription asChild>
-                                        <div>
+                                        <div className="space-y-4">
                                             <p className="mb-4 text-yellow-700 dark:text-yellow-300">
                                                 Ambas versiones han cambiado desde la última sincronización. Elegí qué versión debe ganar o omitir el archivo.
                                             </p>
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 {/* Local Version */}
-                                                <div className="bg-green-50 dark:bg-green-950/30 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                                                    <h4 className="font-semibold mb-3 text-green-800 dark:text-green-200 flex items-center gap-2">
-                                                        <span className="text-lg">💻</span> Versión Local
-                                                    </h4>
-                                                    {selectedConflict?.localMetadata && (
-                                                        <dl className="space-y-2 text-sm">
-                                                            <div>
-                                                                <dt className="font-semibold text-green-700 dark:text-green-300">Hash:</dt>
-                                                                <dd className="font-mono text-xs text-green-600 dark:text-green-400 break-all">
-                                                                    {selectedConflict.localMetadata.hash}
-                                                                </dd>
-                                                            </div>
-                                                            <div>
-                                                                <dt className="font-semibold text-green-700 dark:text-green-300">Última modificación:</dt>
-                                                                <dd className="text-green-600 dark:text-green-400">
-                                                                    {new Date(selectedConflict.localMetadata.lastModified).toLocaleString()}
-                                                                </dd>
-                                                            </div>
-                                                            <div>
-                                                                <dt className="font-semibold text-green-700 dark:text-green-300">Tamaño:</dt>
-                                                                <dd className="text-green-600 dark:text-green-400">
-                                                                    {selectedConflict.localMetadata.size} bytes
-                                                                </dd>
-                                                            </div>
-                                                            {selectedConflict.localMetadata.previousVersion && (
-                                                                <div className="mt-3 pt-3 border-t border-green-300 dark:border-green-700">
-                                                                    <dt className="font-semibold text-green-700 dark:text-green-300 mb-2">Versión anterior:</dt>
-                                                                    <dd className="text-xs space-y-1">
-                                                                        <div>
-                                                                            <span className="text-green-600 dark:text-green-400">Hash: </span>
-                                                                            <span className="font-mono text-green-500 dark:text-green-500 break-all">
-                                                                                {selectedConflict.localMetadata.previousVersion.hash}
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="text-green-600 dark:text-green-400">
-                                                                            Modificado: {new Date(selectedConflict.localMetadata.previousVersion.lastModified).toLocaleString()}
-                                                                        </div>
+                                                <Collapsible
+                                                    open={showMetadata}
+                                                    onOpenChange={setShowMetadata}
+                                                    className="bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800"
+                                                >
+                                                    <CollapsibleTrigger asChild>
+                                                        <button className="w-full p-4 text-left hover:bg-green-100 dark:hover:bg-green-900/20 transition-colors rounded-lg">
+                                                            <h4 className="font-semibold text-green-800 dark:text-green-200 flex items-center justify-between gap-2">
+                                                                <span className="flex items-center gap-2">
+                                                                    <span className="text-lg">💻</span>
+                                                                    Versión Local
+                                                                    {selectedConflict?.localMetadata && (
+                                                                        <span className="text-xs font-normal text-green-600 dark:text-green-400">
+                                                                            - {new Date(selectedConflict.localMetadata.lastModified).toLocaleString('es-AR', {
+                                                                                day: '2-digit',
+                                                                                month: '2-digit',
+                                                                                year: 'numeric',
+                                                                                hour: '2-digit',
+                                                                                minute: '2-digit'
+                                                                            })}
+                                                                        </span>
+                                                                    )}
+                                                                </span>
+                                                                <ChevronDown className={`h-4 w-4 transition-transform ${showMetadata ? 'rotate-180' : ''}`} />
+                                                            </h4>
+                                                        </button>
+                                                    </CollapsibleTrigger>
+                                                    <CollapsibleContent className="px-4 pb-4">
+                                                        {selectedConflict?.localMetadata && (
+                                                            <dl className="space-y-2 text-sm">
+                                                                <div>
+                                                                    <dt className="font-semibold text-green-700 dark:text-green-300">Hash:</dt>
+                                                                    <dd className="font-mono text-xs text-green-600 dark:text-green-400 break-all">
+                                                                        {selectedConflict.localMetadata.hash}
                                                                     </dd>
                                                                 </div>
-                                                            )}
-                                                        </dl>
-                                                    )}
-                                                </div>
+                                                                <div>
+                                                                    <dt className="font-semibold text-green-700 dark:text-green-300">Tamaño:</dt>
+                                                                    <dd className="text-green-600 dark:text-green-400">
+                                                                        {selectedConflict.localMetadata.size} bytes
+                                                                    </dd>
+                                                                </div>
+                                                                {selectedConflict.localMetadata.previousVersion && (
+                                                                    <div className="mt-3 pt-3 border-t border-green-300 dark:border-green-700">
+                                                                        <dt className="font-semibold text-green-700 dark:text-green-300 mb-2">Versión anterior:</dt>
+                                                                        <dd className="text-xs space-y-1">
+                                                                            <div>
+                                                                                <span className="text-green-600 dark:text-green-400">Hash: </span>
+                                                                                <span className="font-mono text-green-500 dark:text-green-500 break-all">
+                                                                                    {selectedConflict.localMetadata.previousVersion.hash}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="text-green-600 dark:text-green-400">
+                                                                                Modificado: {new Date(selectedConflict.localMetadata.previousVersion.lastModified).toLocaleString()}
+                                                                            </div>
+                                                                        </dd>
+                                                                    </div>
+                                                                )}
+                                                            </dl>
+                                                        )}
+                                                    </CollapsibleContent>
+                                                </Collapsible>
 
                                                 {/* Remote Version */}
-                                                <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                                                    <h4 className="font-semibold mb-3 text-blue-800 dark:text-blue-200 flex items-center gap-2">
-                                                        <span className="text-lg">☁️</span> Versión Remota
-                                                    </h4>
-                                                    {selectedConflict?.remoteMetadata && (
-                                                        <dl className="space-y-2 text-sm">
-                                                            <div>
-                                                                <dt className="font-semibold text-blue-700 dark:text-blue-300">Hash:</dt>
-                                                                <dd className="font-mono text-xs text-blue-600 dark:text-blue-400 break-all">
-                                                                    {selectedConflict.remoteMetadata.hash}
-                                                                </dd>
-                                                            </div>
-                                                            <div>
-                                                                <dt className="font-semibold text-blue-700 dark:text-blue-300">Última modificación:</dt>
-                                                                <dd className="text-blue-600 dark:text-blue-400">
-                                                                    {new Date(selectedConflict.remoteMetadata.lastModified).toLocaleString()}
-                                                                </dd>
-                                                            </div>
-                                                            <div>
-                                                                <dt className="font-semibold text-blue-700 dark:text-blue-300">Tamaño:</dt>
-                                                                <dd className="text-blue-600 dark:text-blue-400">
-                                                                    {selectedConflict.remoteMetadata.size} bytes
-                                                                </dd>
-                                                            </div>
-                                                            {selectedConflict.remoteMetadata.previousVersion && (
-                                                                <div className="mt-3 pt-3 border-t border-blue-300 dark:border-blue-700">
-                                                                    <dt className="font-semibold text-blue-700 dark:text-blue-300 mb-2">Versión anterior:</dt>
-                                                                    <dd className="text-xs space-y-1">
-                                                                        <div>
-                                                                            <span className="text-blue-600 dark:text-blue-400">Hash: </span>
-                                                                            <span className="font-mono text-blue-500 dark:text-blue-500 break-all">
-                                                                                {selectedConflict.remoteMetadata.previousVersion.hash}
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="text-blue-600 dark:text-blue-400">
-                                                                            Modificado: {new Date(selectedConflict.remoteMetadata.previousVersion.lastModified).toLocaleString()}
-                                                                        </div>
+                                                <Collapsible
+                                                    open={showMetadata}
+                                                    onOpenChange={setShowMetadata}
+                                                    className="bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800"
+                                                >
+                                                    <CollapsibleTrigger asChild>
+                                                        <button className="w-full p-4 text-left hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors rounded-lg">
+                                                            <h4 className="font-semibold text-blue-800 dark:text-blue-200 flex items-center justify-between gap-2">
+                                                                <span className="flex items-center gap-2">
+                                                                    <span className="text-lg">☁️</span>
+                                                                    Versión Remota
+                                                                    {selectedConflict?.remoteMetadata && (
+                                                                        <span className="text-xs font-normal text-blue-600 dark:text-blue-400">
+                                                                            - {new Date(selectedConflict.remoteMetadata.lastModified).toLocaleString('es-AR', {
+                                                                                day: '2-digit',
+                                                                                month: '2-digit',
+                                                                                year: 'numeric',
+                                                                                hour: '2-digit',
+                                                                                minute: '2-digit'
+                                                                            })}
+                                                                        </span>
+                                                                    )}
+                                                                </span>
+                                                                <ChevronDown className={`h-4 w-4 transition-transform ${showMetadata ? 'rotate-180' : ''}`} />
+                                                            </h4>
+                                                        </button>
+                                                    </CollapsibleTrigger>
+                                                    <CollapsibleContent className="px-4 pb-4">
+                                                        {selectedConflict?.remoteMetadata && (
+                                                            <dl className="space-y-2 text-sm">
+                                                                <div>
+                                                                    <dt className="font-semibold text-blue-700 dark:text-blue-300">Hash:</dt>
+                                                                    <dd className="font-mono text-xs text-blue-600 dark:text-blue-400 break-all">
+                                                                        {selectedConflict.remoteMetadata.hash}
                                                                     </dd>
                                                                 </div>
-                                                            )}
-                                                        </dl>
-                                                    )}
-                                                </div>
+                                                                <div>
+                                                                    <dt className="font-semibold text-blue-700 dark:text-blue-300">Tamaño:</dt>
+                                                                    <dd className="text-blue-600 dark:text-blue-400">
+                                                                        {selectedConflict.remoteMetadata.size} bytes
+                                                                    </dd>
+                                                                </div>
+                                                                {selectedConflict.remoteMetadata.previousVersion && (
+                                                                    <div className="mt-3 pt-3 border-t border-blue-300 dark:border-blue-700">
+                                                                        <dt className="font-semibold text-blue-700 dark:text-blue-300 mb-2">Versión anterior:</dt>
+                                                                        <dd className="text-xs space-y-1">
+                                                                            <div>
+                                                                                <span className="text-blue-600 dark:text-blue-400">Hash: </span>
+                                                                                <span className="font-mono text-blue-500 dark:text-blue-500 break-all">
+                                                                                    {selectedConflict.remoteMetadata.previousVersion.hash}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="text-blue-600 dark:text-blue-400">
+                                                                                Modificado: {new Date(selectedConflict.remoteMetadata.previousVersion.lastModified).toLocaleString()}
+                                                                            </div>
+                                                                        </dd>
+                                                                    </div>
+                                                                )}
+                                                            </dl>
+                                                        )}
+                                                    </CollapsibleContent>
+                                                </Collapsible>
                                             </div>
+
+                                            {/* File Comparison Section */}
+                                            <Collapsible
+                                                open={showComparison}
+                                                onOpenChange={setShowComparison}
+                                                className="mt-6 border rounded-lg"
+                                            >
+                                                <CollapsibleTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full justify-between"
+                                                        disabled={isLoadingContent}
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <FileSearch className="h-4 w-4" />
+                                                            {isLoadingContent ? 'Cargando contenido...' : 'Ver Comparación de Contenido'}
+                                                        </span>
+                                                        <ChevronDown className={`h-4 w-4 transition-transform ${showComparison ? 'rotate-180' : ''}`} />
+                                                    </Button>
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent className="p-4">
+                                                    {isLoadingContent ? (
+                                                        <div className="flex items-center justify-center py-8">
+                                                            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                                            <span>Cargando archivos...</span>
+                                                        </div>
+                                                    ) : localContent && remoteContent ? (
+                                                        <div className="space-y-3">
+                                                            <div className="bg-muted/50 p-3 rounded-lg">
+                                                                <p className="text-sm text-muted-foreground">
+                                                                    Las líneas en <span className="text-green-600 font-semibold">verde</span> son adiciones,
+                                                                    las líneas en <span className="text-red-600 font-semibold">rojo</span> son eliminaciones.
+                                                                    Usa los botones <span className="font-semibold">"Expand"</span> para ver más contexto.
+                                                                </p>
+                                                            </div>
+                                                            <div className="border rounded-lg overflow-hidden">
+                                                                <ReactDiffViewer
+                                                                    oldValue={localContent}
+                                                                    newValue={remoteContent}
+                                                                    splitView={true}
+                                                                    leftTitle="💻 Local"
+                                                                    rightTitle="☁️ Remoto (Supabase)"
+                                                                    showDiffOnly={true}
+                                                                    extraLinesSurroundingDiff={5}
+                                                                    useDarkTheme={false}
+                                                                    styles={{
+                                                                        variables: {
+                                                                            light: {
+                                                                                diffViewerBackground: '#fff',
+                                                                                diffViewerColor: '#212529',
+                                                                                addedBackground: '#e6ffed',
+                                                                                addedColor: '#24292e',
+                                                                                removedBackground: '#ffeef0',
+                                                                                removedColor: '#24292e',
+                                                                                wordAddedBackground: '#acf2bd',
+                                                                                wordRemovedBackground: '#fdb8c0',
+                                                                                addedGutterBackground: '#cdffd8',
+                                                                                removedGutterBackground: '#ffdce0',
+                                                                                gutterBackground: '#f7f7f7',
+                                                                                gutterBackgroundDark: '#f3f1f1',
+                                                                                highlightBackground: '#fffbdd',
+                                                                                highlightGutterBackground: '#fff5b1',
+                                                                            },
+                                                                        },
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-center text-muted-foreground py-4">
+                                                            No se pudo cargar el contenido de los archivos
+                                                        </p>
+                                                    )}
+                                                </CollapsibleContent>
+                                            </Collapsible>
                                         </div>
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
