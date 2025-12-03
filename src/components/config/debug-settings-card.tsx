@@ -40,7 +40,11 @@ export const DebugSettingsCard = forwardRef<DebugSettingsCardRef, DebugSettingsC
   useImperativeHandle(ref, () => ({
     handleSave: () => {
       if (!isDirtyLocal) return true;
-      dispatch({ type: "UPDATE_CONFIG_FIELDS", payload: { enableDebugMode: localEnableDebugMode } });
+      dispatch({
+        type: "UPDATE_CONFIG_FIELDS", payload: {
+          enableDebugMode: localEnableDebugMode
+        }
+      });
       setIsDirtyLocal(false);
       return true;
     },

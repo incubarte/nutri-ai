@@ -13,6 +13,7 @@ import { FixtureCalendarView } from '@/components/fixture/fixture-calendar-view'
 import { FixtureListView } from '@/components/fixture/fixture-list-view';
 import { StandingsTab } from '@/components/tournaments/standings-tab';
 import { PlayerStatsTab } from '@/components/tournaments/player-stats-tab';
+import { TodayMatchesSection } from '@/components/tournaments/today-matches-section';
 import { useTournamentLogo } from '@/hooks/use-tournament-logo';
 import Image from 'next/image';
 
@@ -89,6 +90,8 @@ export default function TournamentDetailPage() {
       </div>
 
       <div className="border-b" />
+
+      {tournamentId && <TodayMatchesSection tournamentId={tournamentId} />}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className={`grid w-full ${

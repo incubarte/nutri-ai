@@ -52,9 +52,9 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
   // Guard against rendering with incomplete state
   if (!state.live || !state.config) {
-    return null; 
+    return null;
   }
-  
+
   const isMatchFromFixture = !!state.live.matchId;
   const isWarmup = state.live.clock.periodDisplayOverride === 'Warm-up';
 
@@ -84,7 +84,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const [isHomePlayersDialogOpen, setIsHomePlayersDialogOpen] = useState(false);
   const [isAwayPlayersDialogOpen, setIsAwayPlayersDialogOpen] = useState(false);
   const [isTimeoutConfirmOpen, setIsTimeoutConfirmOpen] = useState(false);
-  
+
   useEffect(() => {
     setLocalHomeTeamName(state.live.homeTeamName);
     setLocalHomeTeamSubName(state.live.homeTeamSubName);
@@ -103,11 +103,11 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     const tenths = Math.floor((safeTimeCs % 100) / 10);
     return { minutes, seconds, tenths };
   }, []);
-  
+
   const getDisplayTimeParts = useCallback((timeCs: number) => {
     const safeTimeCs = Math.max(0, timeCs);
     const isUnderMinute = safeTimeCs < 6000;
-    
+
     let totalSecondsOnly;
     if (isUnderMinute) {
       // Don't round when under a minute
@@ -123,7 +123,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     return { minutes, seconds, tenths };
   }, []);
 
-  const timeParts = getFlooredTimeParts(state.live.clock.currentTime); 
+  const timeParts = getFlooredTimeParts(state.live.clock.currentTime);
   const displayTimeParts = getDisplayTimeParts(state.live.clock.currentTime);
 
   useEffect(() => {
@@ -142,10 +142,10 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero) return;
     setEditingSegment(null);
     const isFirstGameAction = state.live.clock.currentPeriod === 0 &&
-                              state.live.clock.periodDisplayOverride === 'Warm-up' &&
-                              state.live.clock.currentTime === state.config.defaultWarmUpDuration;
+      state.live.clock.periodDisplayOverride === 'Warm-up' &&
+      state.live.clock.currentTime === state.config.defaultWarmUpDuration;
     const hasDefaultTeamNames = (state.live.homeTeamName.trim().toUpperCase() === 'LOCAL' || state.live.homeTeamName.trim() === '') ||
-                                (state.live.awayTeamName.trim().toUpperCase() === 'VISITANTE' || state.live.awayTeamName.trim() === '');
+      (state.live.awayTeamName.trim().toUpperCase() === 'VISITANTE' || state.live.awayTeamName.trim() === '');
 
     const toggleAction = () => {
       dispatch({ type: 'TOGGLE_CLOCK' });
@@ -187,35 +187,35 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
   const handlePreviousPeriod = () => {
     setEditingSegment(null);
-    
+
     if (state.live.clock.periodDisplayOverride === "Time Out") {
       toast({ title: "Time Out Activo", description: "Finaliza el Time Out para cambiar de período.", variant: "destructive" });
       return;
     }
-    
+
     if (state.live.clock.periodDisplayOverride === "End of Game") {
-        const lastPlayedPeriodText = (state.live.playedPeriods || []).slice(-1)[0];
-        if (lastPlayedPeriodText) {
-            let lastPeriodNumber = 0;
-            if (lastPlayedPeriodText.startsWith('OT')) {
-                lastPeriodNumber = state.config.numberOfRegularPeriods + (parseInt(lastPlayedPeriodText.replace('OT', '') || '1', 10));
-            } else {
-                lastPeriodNumber = parseInt(lastPlayedPeriodText.replace(/\D/g, ''), 10) || 0;
-            }
-            if(lastPeriodNumber > 0) {
-                 dispatch({ type: 'SET_PERIOD', payload: lastPeriodNumber });
-            }
+      const lastPlayedPeriodText = (state.live.playedPeriods || []).slice(-1)[0];
+      if (lastPlayedPeriodText) {
+        let lastPeriodNumber = 0;
+        if (lastPlayedPeriodText.startsWith('OT')) {
+          lastPeriodNumber = state.config.numberOfRegularPeriods + (parseInt(lastPlayedPeriodText.replace('OT', '') || '1', 10));
+        } else {
+          lastPeriodNumber = parseInt(lastPlayedPeriodText.replace(/\D/g, ''), 10) || 0;
         }
-       return;
+        if (lastPeriodNumber > 0) {
+          dispatch({ type: 'SET_PERIOD', payload: lastPeriodNumber });
+        }
+      }
+      return;
     }
-    
+
     if (state.live.clock.periodDisplayOverride === "Shootout") {
-        dispatch({ type: 'MANUAL_END_GAME' }); // This will check for a tie and go to AwaitingDecision
-        return;
+      dispatch({ type: 'MANUAL_END_GAME' }); // This will check for a tie and go to AwaitingDecision
+      return;
     }
-     if (state.live.clock.periodDisplayOverride === "AwaitingDecision") {
-        dispatch({ type: 'SET_PERIOD', payload: state.live.clock.currentPeriod });
-        return;
+    if (state.live.clock.periodDisplayOverride === "AwaitingDecision") {
+      dispatch({ type: 'SET_PERIOD', payload: state.live.clock.currentPeriod });
+      return;
     }
 
     if (state.live.clock.periodDisplayOverride === "Break" || state.live.clock.periodDisplayOverride === "Pre-OT Break") {
@@ -248,15 +248,15 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
         );
       } else if (state.live.clock.currentPeriod > 1) {
         const actionToConfirm = () => {
-          const periodBeforeIntendedBreak = state.live.clock.currentPeriod -1;
+          const periodBeforeIntendedBreak = state.live.clock.currentPeriod - 1;
           dispatch({ type: 'START_BREAK_AFTER_PREVIOUS_PERIOD' });
           const isPreOT = periodBeforeIntendedBreak >= state.config.numberOfRegularPeriods;
           const breakType = isPreOT ? "Pre-OT Break" : "Break";
           const durationCs = isPreOT ? state.config.defaultPreOTBreakDuration : state.config.defaultBreakDuration;
           const autoStart = isPreOT ? state.config.autoStartPreOTBreaks : state.config.autoStartBreaks;
           toast({
-              title: `${breakType} Iniciado`,
-              description: `${breakType} iniciado después de ${getPeriodText(periodBeforeIntendedBreak, state.config.numberOfRegularPeriods)} (${centisecondsToDisplayMinutes(durationCs)} min). Reloj ${autoStart ? 'corriendo' : 'pausado'}.`
+            title: `${breakType} Iniciado`,
+            description: `${breakType} iniciado después de ${getPeriodText(periodBeforeIntendedBreak, state.config.numberOfRegularPeriods)} (${centisecondsToDisplayMinutes(durationCs)} min). Reloj ${autoStart ? 'corriendo' : 'pausado'}.`
           });
         };
 
@@ -277,7 +277,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
   const handleNextAction = () => {
     setEditingSegment(null);
-    
+
     if (state.live.clock.periodDisplayOverride === "Time Out") {
       if (state.live.clock.currentTime <= 0) {
         dispatch({ type: 'END_TIMEOUT' });
@@ -288,91 +288,87 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
       return;
     }
 
-    const performAction = () => {
-        if (state.live.clock.currentPeriod === 0 && state.live.clock.periodDisplayOverride === "Warm-up") {
-            // Check attendance before starting Period 1
-            const homeAttendance = state.live.attendance.home;
-            const awayAttendance = state.live.attendance.away;
-            const minPlayers = state.config.playersPerTeamOnIce;
+    const warnings: string[] = [];
+    let actionDescription = "Confirmar Acción";
 
-            const homeActiveGK = state.live.homeActiveGoalkeeperId;
-            const awayActiveGK = state.live.awayActiveGoalkeeperId;
-
-            const warnings: string[] = [];
-
-            if (!homeActiveGK || !awayActiveGK) {
-                const missingGKTeams: string[] = [];
-                if (!homeActiveGK) missingGKTeams.push(state.live.homeTeamName);
-                if (!awayActiveGK) missingGKTeams.push(state.live.awayTeamName);
-                warnings.push(`⚠️ Sin arquero activo seleccionado: ${missingGKTeams.join(', ')}`);
-            }
-
-            if (homeAttendance.length < minPlayers || awayAttendance.length < minPlayers) {
-                const insufficientTeams: string[] = [];
-                if (homeAttendance.length < minPlayers) {
-                    insufficientTeams.push(`${state.live.homeTeamName} (${homeAttendance.length}/${minPlayers})`);
-                }
-                if (awayAttendance.length < minPlayers) {
-                    insufficientTeams.push(`${state.live.awayTeamName} (${awayAttendance.length}/${minPlayers})`);
-                }
-                warnings.push(`⚠️ Jugadores insuficientes: ${insufficientTeams.join(', ')}`);
-            }
-
-            const startPeriod1 = () => {
-                dispatch({ type: 'SET_PERIOD', payload: 1 });
-                toast({ title: "1er Período Iniciado", description: `Reloj de 1er Período (${centisecondsToDisplayMinutes(state.config.defaultPeriodDuration)} min) pausado.` });
-            };
-
-            if (warnings.length > 0) {
-                checkAndConfirm(
-                    true,
-                    "Advertencia de Asistencia",
-                    `${warnings.join('\n\n')}\n\n¿Deseas iniciar el 1er Período de todas formas?`,
-                    startPeriod1
-                );
-            } else {
-                startPeriod1();
-            }
-        } else if (state.live.clock.periodDisplayOverride === "Break" || state.live.clock.periodDisplayOverride === "Pre-OT Break") {
-            const nextNumericPeriod = state.live.clock.currentPeriod + 1;
-            if (nextNumericPeriod <= MAX_TOTAL_GAME_PERIODS) {
-                dispatch({ type: 'SET_PERIOD', payload: nextNumericPeriod });
-                toast({ title: "Período Cambiado", description: `Período establecido a ${getPeriodText(nextNumericPeriod, state.config.numberOfRegularPeriods)}. Reloj reiniciado y pausado.` });
-            } else {
-                 dispatch({ type: 'MANUAL_END_GAME' });
-            }
-        } else if (state.live.clock.periodDisplayOverride === null) { // During a regular or OT period
-            dispatch({ type: 'MANUAL_END_GAME' });
-        }
-    };
-    
-    let shouldConfirm = false;
-    let confirmDescription = "";
-
+    // 1. Check Time-based warnings
     if (state.live.clock.periodDisplayOverride === "Warm-up" && state.live.clock.currentTime > 0 && state.live.clock.currentTime < state.config.defaultWarmUpDuration) {
-        shouldConfirm = true;
-        confirmDescription = "La Entrada en Calor no ha finalizado. ¿Estás seguro de que quieres iniciar el 1er Período?";
+      warnings.push("La Entrada en Calor no ha finalizado.");
+      actionDescription = "¿Estás seguro de que quieres iniciar el 1er Período?";
     } else if (state.live.clock.periodDisplayOverride === "Break" && state.live.clock.currentTime > 0 && state.live.clock.currentTime < state.config.defaultBreakDuration) {
-        shouldConfirm = true;
-        confirmDescription = `El descanso no ha finalizado. ¿Estás seguro de que quieres iniciar ${getPeriodText(state.live.clock.currentPeriod + 1, state.config.numberOfRegularPeriods)}?`;
+      warnings.push("El descanso no ha finalizado.");
+      actionDescription = `¿Estás seguro de que quieres iniciar ${getPeriodText(state.live.clock.currentPeriod + 1, state.config.numberOfRegularPeriods)}?`;
     } else if (state.live.clock.periodDisplayOverride === "Pre-OT Break" && state.live.clock.currentTime > 0 && state.live.clock.currentTime < state.config.defaultPreOTBreakDuration) {
-        shouldConfirm = true;
-        confirmDescription = `El descanso no ha finalizado. ¿Estás seguro de que quieres iniciar ${getPeriodText(state.live.clock.currentPeriod + 1, state.config.numberOfRegularPeriods)}?`;
+      warnings.push("El descanso no ha finalizado.");
+      actionDescription = `¿Estás seguro de que quieres iniciar ${getPeriodText(state.live.clock.currentPeriod + 1, state.config.numberOfRegularPeriods)}?`;
     } else if (state.live.clock.periodDisplayOverride === null && state.live.clock.currentTime > 0) {
-        const isCurrentPeriodOT = state.live.clock.currentPeriod > state.config.numberOfRegularPeriods;
-        const currentPeriodExpectedDurationCs = isCurrentPeriodOT ? state.config.defaultOTPeriodDuration : state.config.defaultPeriodDuration;
-        if (state.live.clock.currentTime < currentPeriodExpectedDurationCs) {
-            shouldConfirm = true;
-            if (state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS) {
-                // Game ending, no confirmation needed.
-            } else {
-               confirmDescription = "El reloj del período actual ha corrido. ¿Estás seguro de que quieres iniciar el descanso?";
-            }
+      const isCurrentPeriodOT = state.live.clock.currentPeriod > state.config.numberOfRegularPeriods;
+      const currentPeriodExpectedDurationCs = isCurrentPeriodOT ? state.config.defaultOTPeriodDuration : state.config.defaultPeriodDuration;
+      if (state.live.clock.currentTime < currentPeriodExpectedDurationCs) {
+        if (state.live.clock.currentPeriod < MAX_TOTAL_GAME_PERIODS) {
+          warnings.push("El reloj del período actual ha corrido.");
+          actionDescription = "¿Estás seguro de que quieres iniciar el descanso?";
         }
+      }
     }
 
-    checkAndConfirm(shouldConfirm, "Confirmar Acción", confirmDescription, performAction);
-};
+    // 2. Check Attendance warnings (only if starting Period 1)
+    if (state.live.clock.currentPeriod === 0 && state.live.clock.periodDisplayOverride === "Warm-up") {
+      const homeAttendance = state.live.attendance.home;
+      const awayAttendance = state.live.attendance.away;
+      const minPlayers = state.config.playersPerTeamOnIce;
+      const homeActiveGK = state.live.homeActiveGoalkeeperId;
+      const awayActiveGK = state.live.awayActiveGoalkeeperId;
+
+      if (!homeActiveGK || !awayActiveGK) {
+        const missingGKTeams: string[] = [];
+        if (!homeActiveGK) missingGKTeams.push(state.live.homeTeamName);
+        if (!awayActiveGK) missingGKTeams.push(state.live.awayTeamName);
+        warnings.push(`⚠️ Sin arquero activo seleccionado: ${missingGKTeams.join(', ')}`);
+      }
+
+      if (homeAttendance.length < minPlayers || awayAttendance.length < minPlayers) {
+        const insufficientTeams: string[] = [];
+        if (homeAttendance.length < minPlayers) {
+          insufficientTeams.push(`${state.live.homeTeamName} (${homeAttendance.length}/${minPlayers})`);
+        }
+        if (awayAttendance.length < minPlayers) {
+          insufficientTeams.push(`${state.live.awayTeamName} (${awayAttendance.length}/${minPlayers})`);
+        }
+        warnings.push(`⚠️ Jugadores insuficientes: ${insufficientTeams.join(', ')}`);
+      }
+    }
+
+    // Define the final action to execute
+    const executeAction = () => {
+      if (state.live.clock.currentPeriod === 0 && state.live.clock.periodDisplayOverride === "Warm-up") {
+        dispatch({ type: 'SET_PERIOD', payload: 1 });
+        toast({ title: "1er Período Iniciado", description: `Reloj de 1er Período (${centisecondsToDisplayMinutes(state.config.defaultPeriodDuration)} min) pausado.` });
+      } else if (state.live.clock.periodDisplayOverride === "Break" || state.live.clock.periodDisplayOverride === "Pre-OT Break") {
+        const nextNumericPeriod = state.live.clock.currentPeriod + 1;
+        if (nextNumericPeriod <= MAX_TOTAL_GAME_PERIODS) {
+          dispatch({ type: 'SET_PERIOD', payload: nextNumericPeriod });
+          toast({ title: "Período Cambiado", description: `Período establecido a ${getPeriodText(nextNumericPeriod, state.config.numberOfRegularPeriods)}. Reloj reiniciado y pausado.` });
+        } else {
+          dispatch({ type: 'MANUAL_END_GAME' });
+        }
+      } else if (state.live.clock.periodDisplayOverride === null) {
+        dispatch({ type: 'MANUAL_END_GAME' });
+      }
+    };
+
+    if (warnings.length > 0) {
+      checkAndConfirm(
+        true,
+        "Advertencias",
+        `${warnings.join('\n\n')}\n\n${actionDescription}`,
+        executeAction
+      );
+    } else {
+      executeAction();
+    }
+  };
+
 
 
 
@@ -380,9 +376,9 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
   let isNextActionDisabled = false;
   if (state.live.clock.periodDisplayOverride === "Time Out" && state.live.clock.currentTime > 0) {
-      isNextActionDisabled = true;
+    isNextActionDisabled = true;
   } else if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout" || state.live.clock.periodDisplayOverride === "AwaitingDecision") {
-      isNextActionDisabled = true;
+    isNextActionDisabled = true;
   }
 
 
@@ -390,30 +386,30 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
 
   let nextActionButtonText = "Siguiente";
-  if (state.live.clock.periodDisplayOverride === "Time Out" && state.live.clock.currentTime <=0) {
+  if (state.live.clock.periodDisplayOverride === "Time Out" && state.live.clock.currentTime <= 0) {
     nextActionButtonText = "Finalizar Time Out";
   } else if (state.live.clock.currentPeriod === 0 && state.live.clock.periodDisplayOverride === "Warm-up" && state.live.clock.currentTime <= 0) {
     if (MAX_TOTAL_GAME_PERIODS > 0) {
-        nextActionButtonText = "Iniciar 1er Período";
+      nextActionButtonText = "Iniciar 1er Período";
     } else {
-        nextActionButtonText = "Finalizar Partido"; 
+      nextActionButtonText = "Finalizar Partido";
     }
   } else if (state.live.clock.periodDisplayOverride === null && state.live.clock.currentTime <= 0 && state.live.clock.currentPeriod >= MAX_TOTAL_GAME_PERIODS) {
-     nextActionButtonText = "Finalizar Partido";
+    nextActionButtonText = "Finalizar Partido";
   } else if (state.live.clock.periodDisplayOverride === null && state.live.clock.currentTime <= 0 && state.live.clock.currentPeriod < MAX_TOTAL_GAME_PERIODS) {
     nextActionButtonText = "Iniciar Descanso";
   } else if ((state.live.clock.periodDisplayOverride === "Break" || state.live.clock.periodDisplayOverride === "Pre-OT Break") && state.live.clock.currentTime <= 0) {
-     if (state.live.clock.currentPeriod + 1 <= MAX_TOTAL_GAME_PERIODS) {
-        nextActionButtonText = `Iniciar ${getPeriodText(state.live.clock.currentPeriod + 1, state.config.numberOfRegularPeriods)}`;
-     } else {
-        nextActionButtonText = "Finalizar Partido";
-     }
+    if (state.live.clock.currentPeriod + 1 <= MAX_TOTAL_GAME_PERIODS) {
+      nextActionButtonText = `Iniciar ${getPeriodText(state.live.clock.currentPeriod + 1, state.config.numberOfRegularPeriods)}`;
+    } else {
+      nextActionButtonText = "Finalizar Partido";
+    }
   }
 
 
   const isMainClockLastMinute = state.live.clock.currentTime < 6000 && state.live.clock.currentTime >= 0 &&
-                               (state.live.clock.periodDisplayOverride !== null || state.live.clock.currentPeriod >= 0) &&
-                               state.live.clock.periodDisplayOverride !== "End of Game" && state.live.clock.periodDisplayOverride !== "Shootout";
+    (state.live.clock.periodDisplayOverride !== null || state.live.clock.currentPeriod >= 0) &&
+    state.live.clock.periodDisplayOverride !== "End of Game" && state.live.clock.periodDisplayOverride !== "Shootout";
 
   const preTimeoutTimeCs = state.live.clock.preTimeoutState?.time;
   const isPreTimeoutLastMinute = typeof preTimeoutTimeCs === 'number' && preTimeoutTimeCs < 6000 && preTimeoutTimeCs >= 0;
@@ -461,9 +457,9 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
     const payloadMinutes = Math.floor(newTimeCs / 6000);
     const payloadSeconds = Math.floor((newTimeCs % 6000) / 100);
-    
+
     dispatch({ type: 'SET_TIME', payload: { minutes: payloadMinutes, seconds: payloadSeconds } });
-    
+
     setEditingSegment(null);
   };
 
@@ -489,14 +485,14 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const filteredTeamsForSearch = (searchTerm: string) => {
     const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
     if (!selectedTournament || !selectedTournament.teams) return [];
-    
+
     return selectedTournament.teams.filter(team =>
       team.category === state.config.selectedMatchCategory &&
       (
         team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (team.subName && team.subName.toLowerCase().includes(searchTerm.toLowerCase()))
       )
-    ).sort((a,b) => a.name.localeCompare(b.name));
+    ).sort((a, b) => a.name.localeCompare(b.name));
   };
 
   const filteredHomeTeams = useMemo(() => filteredTeamsForSearch(homeTeamSearchTerm), [homeTeamSearchTerm, state.config.tournaments, state.config.selectedTournamentId, state.config.selectedMatchCategory]);
@@ -551,14 +547,14 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
   const handleTeamNameInputBlur = (teamType: 'home' | 'away', currentLocalName: string) => {
     if (teamType === 'home') {
-      if (currentLocalName.trim() !== state.live.homeTeamName) { 
+      if (currentLocalName.trim() !== state.live.homeTeamName) {
         dispatch({ type: 'SET_HOME_TEAM_NAME', payload: currentLocalName.trim() || 'Local' });
-        dispatch({ type: 'SET_HOME_TEAM_SUB_NAME', payload: undefined }); 
+        dispatch({ type: 'SET_HOME_TEAM_SUB_NAME', payload: undefined });
       }
     } else {
       if (currentLocalName.trim() !== state.live.awayTeamName) {
         dispatch({ type: 'SET_AWAY_TEAM_NAME', payload: currentLocalName.trim() || 'Visitante' });
-        dispatch({ type: 'SET_AWAY_TEAM_SUB_NAME', payload: undefined }); 
+        dispatch({ type: 'SET_AWAY_TEAM_SUB_NAME', payload: undefined });
       }
     }
   };
@@ -585,13 +581,13 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
     const autoStart = state.config.autoStartTimeouts;
     const timeoutDurationSec = state.config.defaultTimeoutDuration / 100;
     toast({
-        title: "Time Out Pedido",
-        description: `Time Out para ${team === 'home' ? state.live.homeTeamName : state.live.awayTeamName}. Duración: ${timeoutDurationSec}s. Reloj ${autoStart ? 'corriendo' : 'pausado'}.`
+      title: "Time Out Pedido",
+      description: `Time Out para ${team === 'home' ? state.live.homeTeamName : state.live.awayTeamName}. Duración: ${timeoutDurationSec}s. Reloj ${autoStart ? 'corriendo' : 'pausado'}.`
     });
     setIsTimeoutConfirmOpen(false);
   };
 
-  const isTimeOutButtonDisabled = 
+  const isTimeOutButtonDisabled =
     state.live.clock.periodDisplayOverride === "Break" ||
     state.live.clock.periodDisplayOverride === "Pre-OT Break" ||
     state.live.clock.periodDisplayOverride === "Time Out" ||
@@ -599,7 +595,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
 
   const timeoutDurationInSeconds = state.config.defaultTimeoutDuration / 100;
   const autoStartBehavior = state.config.autoStartTimeouts ? "se iniciará automáticamente" : "deberá iniciarse manually";
-  
+
   const formattedTime = state.live.clock.isFlashingZero ? "00:00" : formatTime(state.live.clock.currentTime, { showTenths: isMainClockLastMinute, includeMinutesForTenths: false });
 
   const isShootout = state.live.clock.periodDisplayOverride === 'Shootout';
@@ -616,26 +612,26 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
       <div className="absolute top-0 left-0 p-2 sm:p-3 md:p-4 z-20">
         <div className="flex items-center gap-2">
           {availableCategories.length > 0 ? (
-              <Select value={state.config.selectedMatchCategory} onValueChange={handleMatchCategoryChange} disabled={isMatchFromFixture}>
-                  <SelectTrigger className="w-auto min-w-[120px] max-w-[200px] h-8 text-xs bg-card/80 border-border/50 backdrop-blur-sm">
-                      <div className="flex items-center gap-1.5 truncate">
-                          <ListFilter className="h-3.5 w-3.5 text-muted-foreground" />
-                          <SelectValue placeholder="Categoría" />
-                      </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                      {availableCategories.map(cat => (
-                          <SelectItem key={cat.id} value={cat.id} className="text-xs">
-                              {cat.name}
-                          </SelectItem>
-                      ))}
-                  </SelectContent>
-              </Select>
+            <Select value={state.config.selectedMatchCategory} onValueChange={handleMatchCategoryChange} disabled={isMatchFromFixture}>
+              <SelectTrigger className="w-auto min-w-[120px] max-w-[200px] h-8 text-xs bg-card/80 border-border/50 backdrop-blur-sm">
+                <div className="flex items-center gap-1.5 truncate">
+                  <ListFilter className="h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue placeholder="Categoría" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {availableCategories.map(cat => (
+                  <SelectItem key={cat.id} value={cat.id} className="text-xs">
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : (
-              <div className="flex items-center gap-1.5 h-8 px-3 text-xs bg-card/80 border-border/50 rounded-md text-muted-foreground">
-                  <ListFilter className="h-3.5 w-3.5" />
-                  <span>Sin categorías</span>
-              </div>
+            <div className="flex items-center gap-1.5 h-8 px-3 text-xs bg-card/80 border-border/50 rounded-md text-muted-foreground">
+              <ListFilter className="h-3.5 w-3.5" />
+              <span>Sin categorías</span>
+            </div>
           )}
           {state.config.enableDebugMode && (
             <TooltipProvider delayDuration={100}>
@@ -691,78 +687,78 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 <span className="text-xs text-destructive animate-pulse">0 JUGADORES</span>
               )}
             </div>
-             <div className="relative w-full max-w-xs mx-auto my-1">
-                 <div className="flex items-center justify-center">
-                    {showHomeSearchIcon && (
-                        <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0", isMatchFromFixture && "opacity-50 cursor-not-allowed")} asChild>
-                             <Popover open={isHomeTeamSearchOpen} onOpenChange={setIsHomeTeamSearchOpen}>
-                                <PopoverTrigger asChild>
-                                    <button disabled={isMatchFromFixture} aria-label="Buscar equipo local">
-                                        <Search className="h-4 w-4 text-muted-foreground" />
-                                    </button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[240px] p-0" align="start">
-                                    <Command>
-                                        <CommandInput placeholder="Buscar equipo..." value={homeTeamSearchTerm} onValueChange={setHomeTeamSearchTerm} />
-                                        <CommandList>
-                                            <CommandEmpty>No se encontraron equipos.</CommandEmpty>
-                                            <CommandGroup>
-                                                {filteredHomeTeams.map((team) => (
-                                                    <CommandItem
-                                                        key={team.id}
-                                                        value={`${team.name}${team.subName ? ` - ${team.subName}` : ''}`}
-                                                        onSelect={() => handleSelectTeam('home', team)}
-                                                    >
-                                                        <Check className={cn("mr-2 h-4 w-4", localHomeTeamName === team.name && (localHomeTeamSubName || undefined) === (team.subName || undefined) ? "opacity-100" : "opacity-0")} />
-                                                        <span className="truncate">{team.name}{team.subName ? <span className="text-xs text-muted-foreground"> - {team.subName}</span> : ''}</span>
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                        </Button>
-                    )}
-                    <Input
-                        id="homeTeamNameInput"
-                        value={localHomeTeamName}
-                        onChange={(e) => setLocalHomeTeamName(e.target.value)}
-                        onBlur={() => handleTeamNameInputBlur('home', localHomeTeamName)}
-                        onKeyDown={(e) => handleTeamNameInputKeyDown('home', localHomeTeamName, e)}
-                        placeholder="Nombre Local"
-                        className={cn(
-                            "h-8 text-sm uppercase w-auto text-center",
-                             showHomeSearchIcon && "ml-1", 
-                             showHomePlayersIcon && "mr-1"
-                        )}
-                        aria-label="Nombre del equipo local"
-                        autoComplete="off"
-                        disabled={isMatchFromFixture}
-                    />
-                    {showHomePlayersIcon && (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 shrink-0 rounded-full"
-                            onClick={() => setIsHomePlayersDialogOpen(true)}
-                            disabled={!matchedHomeTeamId}
-                            aria-label="Editar jugadores del equipo local"
-                        >
-                            <ClipboardList className={cn("h-4 w-4", isWarmup && isMatchFromFixture ? "animate-pulse text-green-500" : (matchedHomeTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60"))} />
-                        </Button>
-                    )}
-                </div>
-                 {matchedHomeTeamId && localHomeTeamSubName && (
-                    <p className="text-xs text-muted-foreground text-center mt-0.5 truncate">
-                        ({localHomeTeamSubName})
-                    </p>
+            <div className="relative w-full max-w-xs mx-auto my-1">
+              <div className="flex items-center justify-center">
+                {showHomeSearchIcon && (
+                  <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0", isMatchFromFixture && "opacity-50 cursor-not-allowed")} asChild>
+                    <Popover open={isHomeTeamSearchOpen} onOpenChange={setIsHomeTeamSearchOpen}>
+                      <PopoverTrigger asChild>
+                        <button disabled={isMatchFromFixture} aria-label="Buscar equipo local">
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[240px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar equipo..." value={homeTeamSearchTerm} onValueChange={setHomeTeamSearchTerm} />
+                          <CommandList>
+                            <CommandEmpty>No se encontraron equipos.</CommandEmpty>
+                            <CommandGroup>
+                              {filteredHomeTeams.map((team) => (
+                                <CommandItem
+                                  key={team.id}
+                                  value={`${team.name}${team.subName ? ` - ${team.subName}` : ''}`}
+                                  onSelect={() => handleSelectTeam('home', team)}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", localHomeTeamName === team.name && (localHomeTeamSubName || undefined) === (team.subName || undefined) ? "opacity-100" : "opacity-0")} />
+                                  <span className="truncate">{team.name}{team.subName ? <span className="text-xs text-muted-foreground"> - {team.subName}</span> : ''}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </Button>
                 )}
+                <Input
+                  id="homeTeamNameInput"
+                  value={localHomeTeamName}
+                  onChange={(e) => setLocalHomeTeamName(e.target.value)}
+                  onBlur={() => handleTeamNameInputBlur('home', localHomeTeamName)}
+                  onKeyDown={(e) => handleTeamNameInputKeyDown('home', localHomeTeamName, e)}
+                  placeholder="Nombre Local"
+                  className={cn(
+                    "h-8 text-sm uppercase w-auto text-center",
+                    showHomeSearchIcon && "ml-1",
+                    showHomePlayersIcon && "mr-1"
+                  )}
+                  aria-label="Nombre del equipo local"
+                  autoComplete="off"
+                  disabled={isMatchFromFixture}
+                />
+                {showHomePlayersIcon && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 rounded-full"
+                    onClick={() => setIsHomePlayersDialogOpen(true)}
+                    disabled={!matchedHomeTeamId}
+                    aria-label="Editar jugadores del equipo local"
+                  >
+                    <ClipboardList className={cn("h-4 w-4", isWarmup && isMatchFromFixture ? "animate-pulse text-green-500" : (matchedHomeTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60"))} />
+                  </Button>
+                )}
+              </div>
+              {matchedHomeTeamId && localHomeTeamSubName && (
+                <p className="text-xs text-muted-foreground text-center mt-0.5 truncate">
+                  ({localHomeTeamSubName})
+                </p>
+              )}
             </div>
             <p className="text-sm text-muted-foreground text-center my-1">(Local)</p>
             <div className={cn("flex items-center justify-center gap-1 mt-1", isShootout && "invisible")}>
               <Button variant="link" className="p-0 h-auto text-4xl font-bold text-accent w-24 text-center tabular-nums hover:no-underline hover:text-accent/80" onClick={() => onScoreClick('home')}>
-                  {state.live.score.home}
+                {state.live.score.home}
               </Button>
             </div>
             {matchedHomeTeamId && isHomePlayersDialogOpen && (
@@ -779,17 +775,17 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
           {/* Clock & Period Section */}
           <div className="flex-1 space-y-2 text-center">
             <div className={cn("w-full max-w-[180px] mx-auto mb-2 h-9", !showNextActionButton && "invisible")}>
-                {showNextActionButton && (
-                    <Button
-                        onClick={handleNextAction}
-                        className="w-full"
-                        variant="default"
-                        aria-label={nextActionButtonText}
-                        disabled={isNextActionDisabled || state.live.clock.isFlashingZero}
-                    >
-                        <ChevronsRight className="mr-2 h-5 w-5" /> {nextActionButtonText}
-                    </Button>
-                )}
+              {showNextActionButton && (
+                <Button
+                  onClick={handleNextAction}
+                  className="w-full"
+                  variant="default"
+                  aria-label={nextActionButtonText}
+                  disabled={isNextActionDisabled || state.live.clock.isFlashingZero}
+                >
+                  <ChevronsRight className="mr-2 h-5 w-5" /> {nextActionButtonText}
+                </Button>
+              )}
             </div>
 
             <div className={cn(
@@ -903,31 +899,31 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
               )}
             </div>
             <div className={cn("w-full max-w-[180px] mx-auto mt-2 h-9", showNextActionButton && "invisible")}>
-                {state.live.clock.periodDisplayOverride === 'Pre Warm-up' ? (
-                  <Button
-                    onClick={() => dispatch({ type: 'START_WARMUP' })}
-                    className="w-full bg-green-600 hover:bg-green-700 px-2 text-sm font-semibold"
-                    variant="default"
-                  >
-                    <Play className="mr-1 h-4 w-4" />
-                    COMENZAR PARTIDO
-                  </Button>
-                ) : (
-                  <Button
-                      onClick={handleToggleClock}
-                      className="w-full"
-                      variant={state.live.clock.isClockRunning ? "destructive" : "default"}
-                      aria-label={state.live.clock.isClockRunning ? "Pausar Reloj" : "Iniciar Reloj"}
-                      disabled={(state.live.clock.currentTime <= 0 && !state.live.clock.isClockRunning && state.live.clock.periodDisplayOverride !== "Time Out") || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero}
-                  >
-                      {state.live.clock.isClockRunning ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
-                      {state.live.clock.isClockRunning ? 'Pausar' : 'Iniciar'} Reloj
-                  </Button>
-                )}
+              {state.live.clock.periodDisplayOverride === 'Pre Warm-up' ? (
+                <Button
+                  onClick={() => dispatch({ type: 'START_WARMUP' })}
+                  className="w-full bg-green-600 hover:bg-green-700 px-2 text-sm font-semibold"
+                  variant="default"
+                >
+                  <Play className="mr-1 h-4 w-4" />
+                  COMENZAR PARTIDO
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleToggleClock}
+                  className="w-full"
+                  variant={state.live.clock.isClockRunning ? "destructive" : "default"}
+                  aria-label={state.live.clock.isClockRunning ? "Pausar Reloj" : "Iniciar Reloj"}
+                  disabled={(state.live.clock.currentTime <= 0 && !state.live.clock.isClockRunning && state.live.clock.periodDisplayOverride !== "Time Out") || state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero}
+                >
+                  {state.live.clock.isClockRunning ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
+                  {state.live.clock.isClockRunning ? 'Pausar' : 'Iniciar'} Reloj
+                </Button>
+              )}
             </div>
-            
+
             <div className="relative mt-1 flex items-center justify-center gap-2">
-               <Button
+              <Button
                 onClick={handlePreviousPeriod}
                 variant="ghost"
                 size="icon"
@@ -940,7 +936,7 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
               <div
                 className="text-lg text-primary-foreground uppercase w-36 truncate text-center"
               >
-                 {getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout)}
+                {getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout)}
               </div>
               <Button
                 onClick={handleNextAction}
@@ -959,10 +955,10 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
               )}
             </div>
             {state.live.clock.preTimeoutState && state.live.clock.periodDisplayOverride === "Time Out" && (
-              <div 
+              <div
                 className={cn(
-                    "text-xs mt-1 normal-case tracking-normal",
-                    isPreTimeoutLastMinute ? "text-orange-500/80" : "text-muted-foreground"
+                  "text-xs mt-1 normal-case tracking-normal",
+                  isPreTimeoutLastMinute ? "text-orange-500/80" : "text-muted-foreground"
                 )}
               >
                 TIMEOUT {state.live.clock.preTimeoutState.team === 'home' ? state.live.homeTeamName : state.live.awayTeamName}
@@ -980,81 +976,81 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
                 <span className="text-xs text-destructive animate-pulse">0 JUGADORES</span>
               )}
             </div>
-             <div className="relative w-full max-w-xs mx-auto my-1">
-                <div className="flex items-center justify-center">
-                    {showAwaySearchIcon && (
-                        <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0", isMatchFromFixture && "opacity-50 cursor-not-allowed")} asChild>
-                            <Popover open={isAwayTeamSearchOpen} onOpenChange={setIsAwayTeamSearchOpen}>
-                                <PopoverTrigger asChild>
-                                    <button disabled={isMatchFromFixture} aria-label="Buscar equipo visitante">
-                                        <Search className="h-4 w-4 text-muted-foreground" />
-                                    </button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[240px] p-0" align="start">
-                                    <Command>
-                                        <CommandInput placeholder="Buscar equipo..." value={awayTeamSearchTerm} onValueChange={setAwayTeamSearchTerm} />
-                                        <CommandList>
-                                            <CommandEmpty>No se encontraron equipos.</CommandEmpty>
-                                            <CommandGroup>
-                                                {filteredAwayTeams.map((team) => (
-                                                    <CommandItem
-                                                        key={team.id}
-                                                        value={`${team.name}${team.subName ? ` - ${team.subName}` : ''}`}
-                                                        onSelect={() => handleSelectTeam('away', team)}
-                                                    >
-                                                        <Check className={cn("mr-2 h-4 w-4", localAwayTeamName === team.name && (localAwayTeamSubName || undefined) === (team.subName || undefined) ? "opacity-100" : "opacity-0")} />
-                                                        <span className="truncate">{team.name}{team.subName ? <span className="text-xs text-muted-foreground"> - {team.subName}</span> : ''}</span>
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                        </Button>
-                    )}
-                    <Input
-                        id="awayTeamNameInput"
-                        value={localAwayTeamName}
-                        onChange={(e) => setLocalAwayTeamName(e.target.value)}
-                        onBlur={() => handleTeamNameInputBlur('away', localAwayTeamName)}
-                        onKeyDown={(e) => handleTeamNameInputKeyDown('away', localAwayTeamName, e)}
-                        placeholder="Nombre Visitante"
-                         className={cn(
-                            "h-8 text-sm uppercase w-auto text-center",
-                            showAwaySearchIcon && "ml-1",
-                            showAwayPlayersIcon && "mr-1"
-                        )}
-                        aria-label="Nombre del equipo visitante"
-                        autoComplete="off"
-                        disabled={isMatchFromFixture}
-                    />
-                     {showAwayPlayersIcon && (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 shrink-0 rounded-full"
-                            onClick={() => setIsAwayPlayersDialogOpen(true)}
-                            disabled={!matchedAwayTeamId}
-                            aria-label="Editar jugadores del equipo visitante"
-                        >
-                            <ClipboardList className={cn("h-4 w-4", isWarmup && isMatchFromFixture ? "animate-pulse text-green-500" : (matchedAwayTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60"))} />
-                        </Button>
-                    )}
-                </div>
-                {matchedAwayTeamId && localAwayTeamSubName && (
-                    <p className="text-xs text-muted-foreground text-center mt-0.5 truncate">
-                        ({localAwayTeamSubName})
-                    </p>
+            <div className="relative w-full max-w-xs mx-auto my-1">
+              <div className="flex items-center justify-center">
+                {showAwaySearchIcon && (
+                  <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0", isMatchFromFixture && "opacity-50 cursor-not-allowed")} asChild>
+                    <Popover open={isAwayTeamSearchOpen} onOpenChange={setIsAwayTeamSearchOpen}>
+                      <PopoverTrigger asChild>
+                        <button disabled={isMatchFromFixture} aria-label="Buscar equipo visitante">
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[240px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar equipo..." value={awayTeamSearchTerm} onValueChange={setAwayTeamSearchTerm} />
+                          <CommandList>
+                            <CommandEmpty>No se encontraron equipos.</CommandEmpty>
+                            <CommandGroup>
+                              {filteredAwayTeams.map((team) => (
+                                <CommandItem
+                                  key={team.id}
+                                  value={`${team.name}${team.subName ? ` - ${team.subName}` : ''}`}
+                                  onSelect={() => handleSelectTeam('away', team)}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", localAwayTeamName === team.name && (localAwayTeamSubName || undefined) === (team.subName || undefined) ? "opacity-100" : "opacity-0")} />
+                                  <span className="truncate">{team.name}{team.subName ? <span className="text-xs text-muted-foreground"> - {team.subName}</span> : ''}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </Button>
                 )}
+                <Input
+                  id="awayTeamNameInput"
+                  value={localAwayTeamName}
+                  onChange={(e) => setLocalAwayTeamName(e.target.value)}
+                  onBlur={() => handleTeamNameInputBlur('away', localAwayTeamName)}
+                  onKeyDown={(e) => handleTeamNameInputKeyDown('away', localAwayTeamName, e)}
+                  placeholder="Nombre Visitante"
+                  className={cn(
+                    "h-8 text-sm uppercase w-auto text-center",
+                    showAwaySearchIcon && "ml-1",
+                    showAwayPlayersIcon && "mr-1"
+                  )}
+                  aria-label="Nombre del equipo visitante"
+                  autoComplete="off"
+                  disabled={isMatchFromFixture}
+                />
+                {showAwayPlayersIcon && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 rounded-full"
+                    onClick={() => setIsAwayPlayersDialogOpen(true)}
+                    disabled={!matchedAwayTeamId}
+                    aria-label="Editar jugadores del equipo visitante"
+                  >
+                    <ClipboardList className={cn("h-4 w-4", isWarmup && isMatchFromFixture ? "animate-pulse text-green-500" : (matchedAwayTeamId ? "text-muted-foreground" : "text-muted-foreground/50 opacity-60"))} />
+                  </Button>
+                )}
+              </div>
+              {matchedAwayTeamId && localAwayTeamSubName && (
+                <p className="text-xs text-muted-foreground text-center mt-0.5 truncate">
+                  ({localAwayTeamSubName})
+                </p>
+              )}
             </div>
             <p className="text-sm text-muted-foreground text-center my-1">(Visitante)</p>
             <div className={cn("flex items-center justify-center gap-1 mt-1", isShootout && "invisible")}>
               <Button variant="link" className="p-0 h-auto text-4xl font-bold text-accent w-24 text-center tabular-nums hover:no-underline hover:text-accent/80" onClick={() => onScoreClick('away')}>
-                  {state.live.score.away}
+                {state.live.score.away}
               </Button>
             </div>
-             {matchedAwayTeamId && isAwayPlayersDialogOpen && (
+            {matchedAwayTeamId && isAwayPlayersDialogOpen && (
               <EditTeamPlayersDialog
                 isOpen={isAwayPlayersDialogOpen}
                 onOpenChange={setIsAwayPlayersDialogOpen}
@@ -1066,21 +1062,26 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
           </div>
         </CardContent>
       </Card>
-      
+
       {pendingConfirmation && (
         <AlertDialog open={true} onOpenChange={(isOpen) => !isOpen && cancelConfirmation()}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>{pendingConfirmation.title}</AlertDialogTitle>
-              <AlertDialogDescription>
+              <AlertDialogDescription className="whitespace-pre-line">
                 {pendingConfirmation.description}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={cancelConfirmation}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={() => executeConfirmedAction(pendingConfirmation.onConfirm)}>
+              <Button onClick={() => {
+                if (pendingConfirmation?.onConfirm) {
+                  pendingConfirmation.onConfirm();
+                }
+                setPendingConfirmation(null);
+              }}>
                 Confirmar
-              </AlertDialogAction>
+              </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

@@ -6,18 +6,18 @@ export interface PenaltyTypeDefinition {
   id: string;
   name: string;
   duration: number;
-  reducesPlayerCount: boolean; 
-  clearsOnGoal: boolean;      
+  reducesPlayerCount: boolean;
+  clearsOnGoal: boolean;
   isBenchPenalty?: boolean;
 }
 
 export interface Penalty {
-  id:string;
+  id: string;
   playerNumber: string;
-  startTime?: number; 
+  startTime?: number;
   expirationTime?: number;
-  initialDuration: number; 
-  _status?: 'running' | 'pending_concurrent' | 'pending_puck'; 
+  initialDuration: number;
+  _status?: 'running' | 'pending_concurrent' | 'pending_puck';
   reducesPlayerCount: boolean;
   clearsOnGoal: boolean;
   isBenchPenalty?: boolean;
@@ -32,7 +32,7 @@ export interface PlayerData {
   id: string;
   number: string;
   type: PlayerType;
-  name: string; 
+  name: string;
 }
 
 export type MatchPhase = 'clasificacion' | 'playoffs';
@@ -57,10 +57,10 @@ export interface MatchData {
 export interface TeamData {
   id: string;
   name: string;
-  subName?: string; 
-  logoDataUrl?: string | null; 
+  subName?: string;
+  logoDataUrl?: string | null;
   players: PlayerData[];
-  category: string; 
+  category: string;
 }
 
 export interface Tournament {
@@ -172,7 +172,7 @@ export interface GoalLog {
 }
 
 export interface PenaltyLog {
-  id: string; 
+  id: string;
   team: Team;
   playerNumber: string;
   playerName?: string;
@@ -226,10 +226,10 @@ export interface PeriodStats {
 }
 
 export interface PeriodSummary {
-    period: string;
-    stats: PeriodStats;
-    goalkeeperChangesLog?: { home: GoalkeeperChangeLog[], away: GoalkeeperChangeLog[] };
-    periodDuration?: number; // Duration of the period in centiseconds
+  period: string;
+  stats: PeriodStats;
+  goalkeeperChangesLog?: { home: GoalkeeperChangeLog[], away: GoalkeeperChangeLog[] };
+  periodDuration?: number; // Duration of the period in centiseconds
 }
 
 // This is the model for post-game summaries. It should be self-contained.
@@ -253,6 +253,8 @@ export interface TunnelState {
   lastMessage: string | null;
 }
 
+export type PlayoffBracketHighlightStyle = 'pulse' | 'border' | 'glow' | 'trophy';
+
 export interface ConfigFields { // Interface for easier picking of fields
   playSoundAtPeriodEnd: boolean;
   customHornSoundDataUrl: string | null;
@@ -270,6 +272,7 @@ export interface ConfigFields { // Interface for easier picking of fields
   tunnel: TunnelState;
   replays: ReplaySettings;
   showStandingsInWarmup: boolean;
+  playoffBracketHighlightStyle: PlayoffBracketHighlightStyle;
   showShotsData: boolean;
   enableOlympiaTransition: boolean;
   // Auto-sync configuration
@@ -278,6 +281,7 @@ export interface ConfigFields { // Interface for easier picking of fields
   autoSyncResolveConflicts: boolean;
   autoSyncSkipDuringMatch: boolean;
   autoSyncAfterSummaryEdit: boolean; // Triggers after saving tournament (includes match finish + summary edits)
+  enableLiveSync: boolean; // Backup: Upload live.json from local storage to Supabase when clock stops (only works in local mode)
 }
 
 // Separate type for tournaments data (stored in tournaments.json)
@@ -525,34 +529,34 @@ export interface LiveState {
 }
 
 export interface LiveGameState extends LiveState {
-    playersPerTeamOnIce?: number; 
-    numberOfRegularPeriods?: number;
-    // These optional fields are for backward compatibility during transitions.
-    // They will be derived from the selected tournament's data.
-    teams?: TeamData[];
-    availableCategories?: CategoryData[]; 
-    selectedMatchCategory?: string;
-    penaltyTypes?: PenaltyTypeDefinition[];
-    defaultPenaltyTypeId?: string | null;
+  playersPerTeamOnIce?: number;
+  numberOfRegularPeriods?: number;
+  // These optional fields are for backward compatibility during transitions.
+  // They will be derived from the selected tournament's data.
+  teams?: TeamData[];
+  availableCategories?: CategoryData[];
+  selectedMatchCategory?: string;
+  penaltyTypes?: PenaltyTypeDefinition[];
+  defaultPenaltyTypeId?: string | null;
 }
 
 export interface MobileData {
-    gameState: LiveGameState | null;
-    penaltyConfig: {
-        penaltyTypes: PenaltyTypeDefinition[];
-        defaultPenaltyTypeId: string | null;
-    }
+  gameState: LiveGameState | null;
+  penaltyConfig: {
+    penaltyTypes: PenaltyTypeDefinition[];
+    defaultPenaltyTypeId: string | null;
+  }
 }
 
 
 // --- Auth Challenge ---
 export interface AccessRequest {
-    id: string;
-    ip: string;
-    timestamp: number;
-    userAgent?: string;
-    verificationNumber: number;
-    approved: boolean;
+  id: string;
+  ip: string;
+  timestamp: number;
+  userAgent?: string;
+  verificationNumber: number;
+  approved: boolean;
 }
 
 
@@ -579,7 +583,7 @@ export type GameAction =
   | { type: 'ADJUST_TIME'; payload: number }
   | { type: 'SET_PERIOD'; payload: number }
   | { type: 'RESET_PERIOD_CLOCK' }
-  | { type: 'ADD_GOAL'; payload: Omit<GoalLog, 'id'| 'periodText'> & { periodText?: string } }
+  | { type: 'ADD_GOAL'; payload: Omit<GoalLog, 'id' | 'periodText'> & { periodText?: string } }
   | { type: 'EDIT_GOAL'; payload: { goalId: string; updates: Partial<GoalLog> } }
   | { type: 'DELETE_GOAL'; payload: { goalId: string } }
   | { type: 'ADD_PLAYER_SHOT'; payload: { team: Team; playerNumber: string } }
@@ -635,7 +639,7 @@ export type GameAction =
   | { type: 'UPDATE_TOURNAMENT'; payload: { id: string; name: string; status: Tournament['status'] } }
   | { type: 'DELETE_TOURNAMENT'; payload: { id: string } }
   | { type: 'SET_ACTIVE_TOURNAMENT'; payload: { tournamentId: string | null } }
-  | { type: 'ADD_MATCH_TO_TOURNAMENT'; payload: { tournamentId: string; match: Omit<MatchData, 'id'> & {id: string} } }
+  | { type: 'ADD_MATCH_TO_TOURNAMENT'; payload: { tournamentId: string; match: Omit<MatchData, 'id'> & { id: string } } }
   | { type: 'UPDATE_MATCH_IN_TOURNAMENT'; payload: { tournamentId: string; match: MatchData } }
   | { type: 'DELETE_MATCH_FROM_TOURNAMENT'; payload: { tournamentId: string; matchId: string } }
   | { type: 'CLEAN_MATCH_SUMMARY'; payload: { tournamentId: string; matchId: string } }

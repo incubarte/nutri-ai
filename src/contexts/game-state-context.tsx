@@ -35,8 +35,10 @@ import {
   IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL,
   IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
   IN_CODE_INITIAL_SHOW_STANDINGS_IN_WARMUP,
+  IN_CODE_INITIAL_PLAYOFF_BRACKET_HIGHLIGHT_STYLE,
   IN_CODE_INITIAL_SHOW_SHOTS_DATA,
   IN_CODE_INITIAL_ENABLE_OLYMPIA_TRANSITION,
+  IN_CODE_INITIAL_ENABLE_LIVE_SYNC,
   IN_CODE_INITIAL_TUNNEL_STATE,
   INITIAL_LAYOUT_SETTINGS,
   IN_CODE_INITIAL_REPLAYS_SETTINGS,
@@ -142,7 +144,7 @@ const getInitialState = (): GameState => {
       enableStoppedTimeAlert: false,
       stoppedTimeAlertGoalDiff: 1,
       stoppedTimeAlertTimeRemaining: 2,
-      penaltyTypes: defaultSettings.penaltyTypes.map(p => ({...p, isBenchPenalty: p.isBenchPenalty || false })) as PenaltyTypeDefinition[],
+      penaltyTypes: defaultSettings.penaltyTypes.map(p => ({ ...p, isBenchPenalty: p.isBenchPenalty || false })) as PenaltyTypeDefinition[],
       defaultPenaltyTypeId: defaultSettings.defaultPenaltyTypeId,
       formatAndTimingsProfiles: [defaultInitialProfile],
       selectedFormatAndTimingsProfileId: defaultInitialProfile.id,
@@ -158,8 +160,10 @@ const getInitialState = (): GameState => {
       customPenaltyBeepSoundDataUrl: IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL,
       enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
       showStandingsInWarmup: IN_CODE_INITIAL_SHOW_STANDINGS_IN_WARMUP,
+      playoffBracketHighlightStyle: IN_CODE_INITIAL_PLAYOFF_BRACKET_HIGHLIGHT_STYLE,
       showShotsData: IN_CODE_INITIAL_SHOW_SHOTS_DATA,
       enableOlympiaTransition: IN_CODE_INITIAL_ENABLE_OLYMPIA_TRANSITION,
+      enableLiveSync: IN_CODE_INITIAL_ENABLE_LIVE_SYNC,
       tickIntervalMs: 200,
       scoreboardLayout: INITIAL_LAYOUT_SETTINGS,
       scoreboardLayoutProfiles: [defaultInitialLayoutProfile],
@@ -206,9 +210,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
   // Clear pending power play goal confirmation on almost any penalty change
   if (action.type !== 'ADD_GOAL' && action.type !== 'CLEAR_PENDING_POWER_PLAY_GOAL' && action.type !== 'TICK' && state.live.pendingPowerPlayGoal) {
-      if ('payload' in action && typeof action.payload === 'object' && action.payload && 'team' in action.payload && action.payload.team === state.live.pendingPowerPlayGoal.team) {
-          newState.live.pendingPowerPlayGoal = null;
-      }
+    if ('payload' in action && typeof action.payload === 'object' && action.payload && 'team' in action.payload && action.payload.team === state.live.pendingPowerPlayGoal.team) {
+      newState.live.pendingPowerPlayGoal = null;
+    }
   }
 
   switch (action.type) {
@@ -222,10 +226,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newState = { ...state, live: { ...state.live, replayLoadRequest: { id: safeUUID(), ...action.payload } } };
       break;
     case 'SHOW_REPLAY_OVERLAY':
-      newState = { ...state, live: { ...state.live, replayLoadRequest: null, replayOverlay: { id: safeUUID(), ...action.payload }}};
+      newState = { ...state, live: { ...state.live, replayLoadRequest: null, replayOverlay: { id: safeUUID(), ...action.payload } } };
       break;
     case 'HIDE_REPLAY_OVERLAY':
-      newState = { ...state, live: { ...state.live, replayOverlay: null }};
+      newState = { ...state, live: { ...state.live, replayOverlay: null } };
       break;
     case 'SHOW_GOAL_CELEBRATION':
       newState = { ...state, live: { ...state.live, goalCelebration: { id: safeUUID(), ...action.payload } } };
@@ -234,67 +238,67 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newState = { ...state, live: { ...state.live, goalCelebration: null } };
       break;
     case 'HYDRATE_FROM_SERVER': {
-        const serverState = action.payload;
-        if (!serverState.config) {
-            console.error("Hydration from server failed: config is missing.");
-            return state; // Return current state if server data is incomplete
-        }
+      const serverState = action.payload;
+      if (!serverState.config) {
+        console.error("Hydration from server failed: config is missing.");
+        return state; // Return current state if server data is incomplete
+      }
 
-        // Merge server config with initial state to ensure all properties exist
-        const initialState = getInitialState();
-        let finalState: GameState = {
-            ...initialState,
-            config: {
-                ...initialState.config,
-                ...serverState.config,
-                // Ensure critical properties have defaults if missing
-                tunnel: serverState.config.tunnel || initialState.config.tunnel,
-                replays: serverState.config.replays || initialState.config.replays,
-            },
-            _initialConfigLoadComplete: true,
-        };
+      // Merge server config with initial state to ensure all properties exist
+      const initialState = getInitialState();
+      let finalState: GameState = {
+        ...initialState,
+        config: {
+          ...initialState.config,
+          ...serverState.config,
+          // Ensure critical properties have defaults if missing
+          tunnel: serverState.config.tunnel || initialState.config.tunnel,
+          replays: serverState.config.replays || initialState.config.replays,
+        },
+        _initialConfigLoadComplete: true,
+      };
 
-        // Auto-select first tournament if none is selected but tournaments exist
-        if (!finalState.config.selectedTournamentId && finalState.config.tournaments && finalState.config.tournaments.length > 0) {
-            console.log('[Reducer] No tournament selected, auto-selecting first tournament:', finalState.config.tournaments[0].id);
-            finalState.config.selectedTournamentId = finalState.config.tournaments[0].id;
-        }
+      // Auto-select first tournament if none is selected but tournaments exist
+      if (!finalState.config.selectedTournamentId && finalState.config.tournaments && finalState.config.tournaments.length > 0) {
+        console.log('[Reducer] No tournament selected, auto-selecting first tournament:', finalState.config.tournaments[0].id);
+        finalState.config.selectedTournamentId = finalState.config.tournaments[0].id;
+      }
 
-        if (serverState.live && serverState.live.clock) {
-            finalState.live = serverState.live;
-        }
+      if (serverState.live && serverState.live.clock) {
+        finalState.live = serverState.live;
+      }
 
-        newState = applyFormatAndTimingsProfileToState(finalState, finalState.config.selectedFormatAndTimingsProfileId);
-        newState = applyScoreboardLayoutProfileToState(newState, finalState.config.selectedScoreboardLayoutProfileId);
-        break;
+      newState = applyFormatAndTimingsProfileToState(finalState, finalState.config.selectedFormatAndTimingsProfileId);
+      newState = applyScoreboardLayoutProfileToState(newState, finalState.config.selectedScoreboardLayoutProfileId);
+      break;
     }
     case 'HYDRATE_TOURNAMENT_DETAILS': {
-        const { tournamentData } = action.payload;
-        if (!tournamentData) return state;
-        console.log('[Reducer] HYDRATE_TOURNAMENT_DETAILS', tournamentData.id, 'teams:', tournamentData.teams?.length, 'categories:', tournamentData.categories?.length);
-        const newTournaments = state.config.tournaments.map(t =>
-            t.id === tournamentData.id ? { ...t, ...tournamentData } : t
-        );
-        newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
-        break;
+      const { tournamentData } = action.payload;
+      if (!tournamentData) return state;
+      console.log('[Reducer] HYDRATE_TOURNAMENT_DETAILS', tournamentData.id, 'teams:', tournamentData.teams?.length, 'categories:', tournamentData.categories?.length);
+      const newTournaments = state.config.tournaments.map(t =>
+        t.id === tournamentData.id ? { ...t, ...tournamentData } : t
+      );
+      newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
+      break;
     }
     case 'SET_STATE_FROM_LOCAL_BROADCAST': {
-        const incomingTimestamp = action.payload._lastUpdatedTimestamp;
-        const currentTimestamp = state._lastUpdatedTimestamp;
+      const incomingTimestamp = action.payload._lastUpdatedTimestamp;
+      const currentTimestamp = state._lastUpdatedTimestamp;
 
-        if (incomingTimestamp && currentTimestamp && incomingTimestamp <= currentTimestamp) {
-            return state;
-        }
-        
-        const broadcastedState = {...action.payload};
+      if (incomingTimestamp && currentTimestamp && incomingTimestamp <= currentTimestamp) {
+        return state;
+      }
 
-        newState = { ...broadcastedState, _lastActionOriginator: undefined };
-        break;
+      const broadcastedState = { ...action.payload };
+
+      newState = { ...broadcastedState, _lastActionOriginator: undefined };
+      break;
     }
     case 'TOGGLE_CLOCK': {
       if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.isFlashingZero) break;
       const { isClockRunning, clockStartTimeMs, remainingTimeAtStartCs, currentTime, periodDisplayOverride, absoluteElapsedTimeCs } = state.live.clock;
-      
+
       let newClockState: Partial<ClockState> = {};
       let newAbsoluteElapsedTimeCs = absoluteElapsedTimeCs;
 
@@ -306,41 +310,44 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           if (periodDisplayOverride === null) newAbsoluteElapsedTimeCs += elapsedCs;
         }
         newClockState = {
-            currentTime: preciseCurrentTimeCs,
-            isClockRunning: false,
-            clockStartTimeMs: null,
-            remainingTimeAtStartCs: null,
-            absoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
-            _liveAbsoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
+          currentTime: preciseCurrentTimeCs,
+          isClockRunning: false,
+          clockStartTimeMs: null,
+          remainingTimeAtStartCs: null,
+          absoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
+          _liveAbsoluteElapsedTimeCs: newAbsoluteElapsedTimeCs,
         };
 
       } else { // Starting the clock
         if (currentTime > 0) {
-            newClockState = {
-                isClockRunning: true,
-                clockStartTimeMs: Date.now(),
-                remainingTimeAtStartCs: currentTime,
-            };
+          newClockState = {
+            isClockRunning: true,
+            clockStartTimeMs: Date.now(),
+            remainingTimeAtStartCs: currentTime,
+          };
         }
       }
-      
+
       const updatedLiveState = {
         ...state.live,
         clock: { ...state.live.clock, ...newClockState },
       };
-      
+
       newState = { ...state, live: updatedLiveState };
+
       break;
     }
     case 'SET_TIME': {
-        if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout") break;
-        const newTimeCs = Math.max(0, (action.payload.minutes * 60 + action.payload.seconds) * CENTISECONDS_PER_SECOND);
-        const newIsClockRunning = newTimeCs > 0 ? state.live.clock.isClockRunning : false;
-        let newAbsoluteTime = state.live.clock.absoluteElapsedTimeCs;
-        if (state.live.clock.periodDisplayOverride === null) {
-            newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, newTimeCs, state);
-        }
-        newState = { ...state, live: { ...state.live, clock: {
+      if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout") break;
+      const newTimeCs = Math.max(0, (action.payload.minutes * 60 + action.payload.seconds) * CENTISECONDS_PER_SECOND);
+      const newIsClockRunning = newTimeCs > 0 ? state.live.clock.isClockRunning : false;
+      let newAbsoluteTime = state.live.clock.absoluteElapsedTimeCs;
+      if (state.live.clock.periodDisplayOverride === null) {
+        newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, newTimeCs, state);
+      }
+      newState = {
+        ...state, live: {
+          ...state.live, clock: {
             ...state.live.clock,
             currentTime: newTimeCs,
             isClockRunning: newIsClockRunning,
@@ -348,24 +355,28 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             remainingTimeAtStartCs: newIsClockRunning ? newTimeCs : null,
             absoluteElapsedTimeCs: newAbsoluteTime,
             _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
-        }}};
-        toastMessage = { title: "Reloj Actualizado", description: `Tiempo establecido a ${formatTime(newTimeCs, { showTenths: newTimeCs < 6000, includeMinutesForTenths: true })}` };
-        break;
+          }
+        }
+      };
+      toastMessage = { title: "Reloj Actualizado", description: `Tiempo establecido a ${formatTime(newTimeCs, { showTenths: newTimeCs < 6000, includeMinutesForTenths: true })}` };
+      break;
     }
     case 'ADJUST_TIME': {
-        if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout") break;
-        const { isClockRunning, clockStartTimeMs, remainingTimeAtStartCs, currentTime, periodDisplayOverride } = state.live.clock;
-        let currentTimeSnapshotCs = currentTime;
-        if (isClockRunning && clockStartTimeMs && remainingTimeAtStartCs !== null) {
-            currentTimeSnapshotCs = Math.max(0, remainingTimeAtStartCs - Math.floor((Date.now() - clockStartTimeMs) / 10));
-        }
-        const newAdjustedTimeCs = Math.max(0, currentTimeSnapshotCs + action.payload);
-        const newIsClockRunning = newAdjustedTimeCs > 0 ? isClockRunning : false;
-        let newAbsoluteTime = state.live.clock.absoluteElapsedTimeCs;
-        if (periodDisplayOverride === null) {
-            newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, newAdjustedTimeCs, state);
-        }
-        newState = { ...state, live: { ...state.live, clock: {
+      if (state.live.clock.periodDisplayOverride === "End of Game" || state.live.clock.periodDisplayOverride === "Shootout") break;
+      const { isClockRunning, clockStartTimeMs, remainingTimeAtStartCs, currentTime, periodDisplayOverride } = state.live.clock;
+      let currentTimeSnapshotCs = currentTime;
+      if (isClockRunning && clockStartTimeMs && remainingTimeAtStartCs !== null) {
+        currentTimeSnapshotCs = Math.max(0, remainingTimeAtStartCs - Math.floor((Date.now() - clockStartTimeMs) / 10));
+      }
+      const newAdjustedTimeCs = Math.max(0, currentTimeSnapshotCs + action.payload);
+      const newIsClockRunning = newAdjustedTimeCs > 0 ? isClockRunning : false;
+      let newAbsoluteTime = state.live.clock.absoluteElapsedTimeCs;
+      if (periodDisplayOverride === null) {
+        newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, newAdjustedTimeCs, state);
+      }
+      newState = {
+        ...state, live: {
+          ...state.live, clock: {
             ...state.live.clock,
             currentTime: newAdjustedTimeCs,
             isClockRunning: newIsClockRunning,
@@ -373,27 +384,31 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             remainingTimeAtStartCs: newIsClockRunning ? newAdjustedTimeCs : null,
             absoluteElapsedTimeCs: newAbsoluteTime,
             _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
-        }}};
-        break;
+          }
+        }
+      };
+      break;
     }
     case 'SET_PERIOD': {
-        const newPeriod = Math.max(0, action.payload);
-        const { defaultWarmUpDuration, autoStartWarmUp, numberOfRegularPeriods, defaultPeriodDuration, defaultOTPeriodDuration } = state.config;
-        const periodDurationCs = (newPeriod === 0) ? defaultWarmUpDuration : (newPeriod > numberOfRegularPeriods ? defaultOTPeriodDuration : defaultPeriodDuration);
-        const autoStartClock = (newPeriod === 0) ? (autoStartWarmUp && periodDurationCs > 0) : false;
-        const newAbsoluteTime = calculateAbsoluteTimeForPeriod(newPeriod, periodDurationCs, state);
+      const newPeriod = Math.max(0, action.payload);
+      const { defaultWarmUpDuration, autoStartWarmUp, numberOfRegularPeriods, defaultPeriodDuration, defaultOTPeriodDuration } = state.config;
+      const periodDurationCs = (newPeriod === 0) ? defaultWarmUpDuration : (newPeriod > numberOfRegularPeriods ? defaultOTPeriodDuration : defaultPeriodDuration);
+      const autoStartClock = (newPeriod === 0) ? (autoStartWarmUp && periodDurationCs > 0) : false;
+      const newAbsoluteTime = calculateAbsoluteTimeForPeriod(newPeriod, periodDurationCs, state);
 
-        // Si newPeriod === 0, determinar si es Pre Warm-up o Warm-up
-        // - Pre Warm-up: solo si es un partido nuevo (sin períodos jugados y estado actual es Pre Warm-up)
-        // - Warm-up: si estás retrocediendo desde el período 1 (ya has jugado períodos)
-        let periodOverride = null;
-        if (newPeriod === 0) {
-            const hasPlayedPeriods = state.live.playedPeriods && state.live.playedPeriods.length > 0;
-            const isComingFromPreWarmup = state.live.clock.periodDisplayOverride === 'Pre Warm-up';
-            periodOverride = (hasPlayedPeriods || (!isComingFromPreWarmup && state.live.clock.currentPeriod > 0)) ? 'Warm-up' : 'Pre Warm-up';
-        }
+      // Si newPeriod === 0, determinar si es Pre Warm-up o Warm-up
+      // - Pre Warm-up: solo si es un partido nuevo (sin períodos jugados y estado actual es Pre Warm-up)
+      // - Warm-up: si estás retrocediendo desde el período 1 (ya has jugado períodos)
+      let periodOverride = null;
+      if (newPeriod === 0) {
+        const hasPlayedPeriods = state.live.playedPeriods && state.live.playedPeriods.length > 0;
+        const isComingFromPreWarmup = state.live.clock.periodDisplayOverride === 'Pre Warm-up';
+        periodOverride = (hasPlayedPeriods || (!isComingFromPreWarmup && state.live.clock.currentPeriod > 0)) ? 'Warm-up' : 'Pre Warm-up';
+      }
 
-        newState = { ...state, live: { ...state.live, clock: {
+      newState = {
+        ...state, live: {
+          ...state.live, clock: {
             ...state.live.clock,
             currentPeriod: newPeriod,
             periodDisplayOverride: periodOverride,
@@ -404,24 +419,26 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             remainingTimeAtStartCs: autoStartClock ? periodDurationCs : null,
             absoluteElapsedTimeCs: newAbsoluteTime,
             _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
-        }}};
-        break;
+          }
+        }
+      };
+      break;
     }
     case 'ADD_GOAL': {
       const { live, config } = state;
 
       let periodTextForLog: string;
       if (action.payload.periodText) {
-          periodTextForLog = action.payload.periodText;
+        periodTextForLog = action.payload.periodText;
       } else {
-          periodTextForLog = getActualPeriodText(live.clock.currentPeriod, live.clock.periodDisplayOverride, config.numberOfRegularPeriods || 2, live.shootout);
-          if (live.clock.periodDisplayOverride === 'Break' || live.clock.periodDisplayOverride === 'Pre-OT Break') {
-            periodTextForLog = getPeriodText(live.clock.currentPeriod, config.numberOfRegularPeriods || 2);
-          }
+        periodTextForLog = getActualPeriodText(live.clock.currentPeriod, live.clock.periodDisplayOverride, config.numberOfRegularPeriods || 2, live.shootout);
+        if (live.clock.periodDisplayOverride === 'Break' || live.clock.periodDisplayOverride === 'Pre-OT Break') {
+          periodTextForLog = getPeriodText(live.clock.currentPeriod, config.numberOfRegularPeriods || 2);
+        }
       }
 
       const newGoal: GoalLog = { ...action.payload, id: safeUUID(), periodText: periodTextForLog };
-      
+
       const newLiveGoals = { ...live.goals };
       newLiveGoals[action.payload.team] = [...newLiveGoals[action.payload.team], newGoal];
 
@@ -471,36 +488,39 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const concedingTeamOnIce = config.playersPerTeamOnIce - state.live.penalties[teamConceded].filter(p => p._status === 'running' && (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).length;
 
       if (scoringTeamOnIce > concedingTeamOnIce) {
-          const firstEligiblePenalty = state.live.penalties[teamConceded].find(p => 
-              p._status === 'running' && 
-              p.clearsOnGoal &&
-              (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)
-          );
-          if (firstEligiblePenalty) {
-              pendingPPGoal = { team: teamConceded, penaltyId: firstEligiblePenalty.id };
-          }
+        const firstEligiblePenalty = state.live.penalties[teamConceded].find(p =>
+          p._status === 'running' &&
+          p.clearsOnGoal &&
+          (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)
+        );
+        if (firstEligiblePenalty) {
+          pendingPPGoal = { team: teamConceded, penaltyId: firstEligiblePenalty.id };
+        }
       }
-      
+
       // Goal Celebration Logic
       let goalCelebration: LiveState['goalCelebration'] = null;
       const isFinishingSoon = state.live.clock.isClockRunning && state.live.clock.currentTime < 500;
       const anyPenaltyEndingSoon = [...live.penalties.home, ...live.penalties.away].some(p => p.expirationTime && (p.expirationTime - state.live.clock._liveAbsoluteElapsedTimeCs) < 1500);
       if (!isFinishingSoon && !anyPenaltyEndingSoon) {
-          const teamData = config.tournaments.find(t => t.id === config.selectedTournamentId)?.teams.find(t => t.name === live[`${teamScored}TeamName`] && (t.subName || undefined) === (live[`${teamScored}TeamSubName`] || undefined) && t.category === config.selectedMatchCategory);
-          goalCelebration = { id: safeUUID(), goal: newGoal, teamData };
+        const teamData = config.tournaments.find(t => t.id === config.selectedTournamentId)?.teams.find(t => t.name === live[`${teamScored}TeamName`] && (t.subName || undefined) === (live[`${teamScored}TeamSubName`] || undefined) && t.category === config.selectedMatchCategory);
+        goalCelebration = { id: safeUUID(), goal: newGoal, teamData };
       }
-      
-      newState = { ...state, live: { ...state.live,
-        score: newScore,
-        goals: newLiveGoals,
-        attendance: newAttendance,
-        pendingPowerPlayGoal: pendingPPGoal,
-        goalCelebration: goalCelebration,
-      }};
+
+      newState = {
+        ...state, live: {
+          ...state.live,
+          score: newScore,
+          goals: newLiveGoals,
+          attendance: newAttendance,
+          pendingPowerPlayGoal: pendingPPGoal,
+          goalCelebration: goalCelebration,
+        }
+      };
       toastMessage = { title: "Gol Añadido", description: `Gol para el jugador #${action.payload.scorer?.playerNumber} registrado.` };
       break;
     }
-     case 'EDIT_GOAL': {
+    case 'EDIT_GOAL': {
       const { goalId, updates } = action.payload;
       const newLiveGoals = {
         home: [...state.live.goals.home],
@@ -509,20 +529,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       let goalFoundAndUpdated = false;
 
       for (const team of ['home', 'away'] as const) {
-          const goalIndex = newLiveGoals[team].findIndex(g => g.id === goalId);
-          if (goalIndex !== -1) {
-              newLiveGoals[team][goalIndex] = { ...newLiveGoals[team][goalIndex], ...updates };
-              goalFoundAndUpdated = true;
-              break;
-          }
+        const goalIndex = newLiveGoals[team].findIndex(g => g.id === goalId);
+        if (goalIndex !== -1) {
+          newLiveGoals[team][goalIndex] = { ...newLiveGoals[team][goalIndex], ...updates };
+          goalFoundAndUpdated = true;
+          break;
+        }
       }
 
       if (goalFoundAndUpdated) {
         const newScore = { ...state.live.score, home: newLiveGoals.home.length, away: newLiveGoals.away.length };
-        newState = { ...state, live: { ...state.live,
-          score: newScore,
-          goals: newLiveGoals,
-        }};
+        newState = {
+          ...state, live: {
+            ...state.live,
+            score: newScore,
+            goals: newLiveGoals,
+          }
+        };
         toastMessage = { title: "Gol Actualizado", description: "Los cambios en el gol han sido guardados." };
       }
       break;
@@ -533,21 +556,24 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       let goalFoundAndDeleted = false;
 
       for (const team of ['home', 'away'] as const) {
-          const initialLength = newLiveGoals[team].length;
-          newLiveGoals[team] = newLiveGoals[team].filter(g => g.id !== goalId);
-          if (newLiveGoals[team].length < initialLength) {
-              goalFoundAndDeleted = true;
-              break;
-          }
+        const initialLength = newLiveGoals[team].length;
+        newLiveGoals[team] = newLiveGoals[team].filter(g => g.id !== goalId);
+        if (newLiveGoals[team].length < initialLength) {
+          goalFoundAndDeleted = true;
+          break;
+        }
       }
 
       if (goalFoundAndDeleted) {
-          const newScore = { ...state.live.score, home: newLiveGoals.home.length, away: newLiveGoals.away.length };
-          newState = { ...state, live: { ...state.live,
+        const newScore = { ...state.live.score, home: newLiveGoals.home.length, away: newLiveGoals.away.length };
+        newState = {
+          ...state, live: {
+            ...state.live,
             score: newScore,
             goals: newLiveGoals,
-          }};
-          toastMessage = { title: "Gol Eliminado", description: "El gol ha sido eliminado del registro." };
+          }
+        };
+        toastMessage = { title: "Gol Eliminado", description: "El gol ha sido eliminado del registro." };
       }
       break;
     }
@@ -582,20 +608,23 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         awayShots: newShotsLog.away.length,
       };
 
-      newState = { ...state, live: { ...state.live,
-        score: newScore,
-        shotsLog: newShotsLog,
-      }};
+      newState = {
+        ...state, live: {
+          ...state.live,
+          score: newScore,
+          shotsLog: newShotsLog,
+        }
+      };
       break;
     }
     case 'SET_PLAYER_SHOTS': {
-        break;
+      break;
     }
     case 'FINISH_GAME_WITH_OT_GOAL': {
       // First, add the goal to the state
-      let tempState = gameReducer(state, { 
+      let tempState = gameReducer(state, {
         type: 'ADD_GOAL',
-        payload: action.payload 
+        payload: action.payload
       });
 
       // Then, call finalizeMatch with the updated state
@@ -613,11 +642,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         console.error(`Penalty definition with id ${penaltyTypeId} not found.`);
         break;
       }
-      
+
       const newPenaltyId = safeUUID();
       const teamDetails = config.tournaments.find(t => t.id === config.selectedTournamentId)?.teams.find(t => t.name === live[`${team}TeamName`] && (t.subName || undefined) === (live[`${team}TeamSubName`] || undefined) && t.category === config.selectedMatchCategory);
       const playerDetails = teamDetails?.players.find(p => p.number === playerNumber);
-      
+
       const newPenaltyLog: PenaltyLog = {
         id: newPenaltyId, team, playerNumber: playerNumber.toUpperCase(), playerName: playerDetails?.name,
         penaltyName: penaltyDef.name,
@@ -653,16 +682,16 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const playerPenalties = live.penaltiesLog[team].filter(
         p => p.playerNumber === playerNumber && p.endReason !== 'deleted' && !p.isBenchPenalty
       );
-      
+
       if (config.enableMaxPenaltiesLimit && !penaltyDef.isBenchPenalty) {
         if (playerPenalties.length + 1 >= config.maxPenaltiesPerPlayer) {
           limitReachedReasons.push('quantity');
         }
       }
-      
+
       let newStatus: Penalty['_status'];
       let startTime, expirationTime;
-      
+
       if (penaltyDef.reducesPlayerCount) {
         newStatus = config.autoActivatePuckPenalties ? 'pending_concurrent' : 'pending_puck';
         startTime = undefined;
@@ -672,22 +701,25 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         startTime = _liveAbsoluteElapsedTimeCs;
         expirationTime = _liveAbsoluteElapsedTimeCs + penaltyDef.duration * CENTISECONDS_PER_SECOND;
       }
-      
-      const newPenalty: Penalty = { 
+
+      const newPenalty: Penalty = {
         id: newPenaltyId, playerNumber: playerNumber.toUpperCase(), initialDuration: penaltyDef.duration,
         reducesPlayerCount: penaltyDef.reducesPlayerCount, clearsOnGoal: penaltyDef.clearsOnGoal,
         isBenchPenalty: penaltyDef.isBenchPenalty, _status: newStatus, startTime, expirationTime,
         _limitReached: limitReachedReasons.length > 0 ? limitReachedReasons : undefined,
       };
 
-      newState = { ...state, live: { ...live,
-        penalties: { ...live.penalties, [team]: sortPenaltiesByStatus([...live.penalties[team], newPenalty]) },
-        penaltiesLog: newLivePenaltiesLog,
-        attendance: newAttendance
-      }};
+      newState = {
+        ...state, live: {
+          ...live,
+          penalties: { ...live.penalties, [team]: sortPenaltiesByStatus([...live.penalties[team], newPenalty]) },
+          penaltiesLog: newLivePenaltiesLog,
+          attendance: newAttendance
+        }
+      };
       const teamName = team === 'home' ? live.homeTeamName : live.awayTeamName;
       toastMessage = { title: "Penalidad Agregada", description: `Jugador ${playerNumber.toUpperCase()}${playerDetails ? ` (${playerDetails.name})` : ''} de ${teamName} recibió una penalidad de ${penaltyDef.name}.` };
-      
+
       break;
     }
     case 'REMOVE_PENALTY': {
@@ -702,43 +734,52 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       newPenaltiesLog[team] = newPenaltiesLog[team].map(p =>
         p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'deleted', timeServed } : p
       );
-      
-      newState = { ...state, live: { ...state.live,
-        penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId))},
-        penaltiesLog: newPenaltiesLog
-      }};
+
+      newState = {
+        ...state, live: {
+          ...state.live,
+          penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId)) },
+          penaltiesLog: newPenaltiesLog
+        }
+      };
       break;
     }
     case 'DELETE_PENALTY_LOG': {
       const { team, logId } = action.payload;
-      
+
       const newPenaltiesLog = { ...state.live.penaltiesLog };
       newPenaltiesLog[team] = newPenaltiesLog[team].filter((p: PenaltyLog) => p.id !== logId);
-      
-      newState = { ...state, live: { ...state.live, 
-        penaltiesLog: newPenaltiesLog
-      }};
+
+      newState = {
+        ...state, live: {
+          ...state.live,
+          penaltiesLog: newPenaltiesLog
+        }
+      };
       toastMessage = { title: "Penalidad Eliminada del Registro", variant: "destructive" };
       break;
     }
-     case 'END_PENALTY_FOR_GOAL': {
+    case 'END_PENALTY_FOR_GOAL': {
       const { team, penaltyId } = action.payload;
       const penaltyToEnd = state.live.penalties[team].find(p => p.id === penaltyId);
       if (!penaltyToEnd || !penaltyToEnd.clearsOnGoal) break;
 
       const remainingTimeCs = penaltyToEnd.expirationTime !== undefined ? Math.max(0, penaltyToEnd.expirationTime - state.live.clock._liveAbsoluteElapsedTimeCs) : penaltyToEnd.initialDuration * 100;
       const timeServed = penaltyToEnd.initialDuration - Math.round(remainingTimeCs / 100);
-      
+
       const newPenaltiesLog = { ...state.live.penaltiesLog };
       newPenaltiesLog[team] = newPenaltiesLog[team].map(p =>
         p.id === penaltyId && !p.endReason ? { ...p, endTimestamp: Date.now(), endGameTime: state.live.clock.currentTime, endPeriodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout), endReason: 'goal_on_pp', timeServed } : p
       );
 
-      newState = { ...state, live: { ...state.live,
-        penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId))},
-        penaltiesLog: newPenaltiesLog,
-        pendingPowerPlayGoal: null,
-      }};
+      newState = {
+        ...state, live: {
+          ...state.live,
+          penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(state.live.penalties[team].filter(p => p.id !== penaltyId)) },
+          penaltiesLog: newPenaltiesLog,
+          pendingPowerPlayGoal: null,
+        }
+      };
       toastMessage = { title: "Penalidad Finalizada", description: "La penalidad se eliminó por el gol en Power Play." };
       break;
     }
@@ -772,26 +813,32 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           penaltyToToggle._doesNotReducePlayerCountOverride = false;
         }
       }
-      
+
       penaltiesForTeam[penaltyIndex] = penaltyToToggle;
-      
-      newState = { ...state, live: { ...state.live, penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(penaltiesForTeam) }}};
+
+      newState = { ...state, live: { ...state.live, penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(penaltiesForTeam) } } };
       break;
     }
     case 'ADJUST_PENALTY_TIME': {
       const { team, penaltyId, delta } = action.payload;
-       newState = { ...state, live: { ...state.live, penalties: { ...state.live.penalties, [team]: state.live.penalties[team].map(p =>
-        p.id === penaltyId && p.expirationTime !== undefined ? { ...p, expirationTime: p.expirationTime + (delta * CENTISECONDS_PER_SECOND) } : p
-      )}}};
+      newState = {
+        ...state, live: {
+          ...state.live, penalties: {
+            ...state.live.penalties, [team]: state.live.penalties[team].map(p =>
+              p.id === penaltyId && p.expirationTime !== undefined ? { ...p, expirationTime: p.expirationTime + (delta * CENTISECONDS_PER_SECOND) } : p
+            )
+          }
+        }
+      };
       break;
     }
-     case 'SET_PENALTY_TIME': {
+    case 'SET_PENALTY_TIME': {
       const { team, penaltyId, time } = action.payload;
       const newRemainingTimeCs = time * CENTISECONDS_PER_SECOND;
       const updatedPenalties = state.live.penalties[team].map(p =>
         p.id === penaltyId ? { ...p, expirationTime: state.live.clock._liveAbsoluteElapsedTimeCs + newRemainingTimeCs } : p
       );
-      newState = { ...state, live: { ...state.live, penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(updatedPenalties) }}};
+      newState = { ...state, live: { ...state.live, penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(updatedPenalties) } } };
       toastMessage = { title: "Tiempo de Penalidad Establecido", description: `Tiempo actualizado a ${formatTime(newRemainingTimeCs)}.` };
       break;
     }
@@ -800,7 +847,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const currentPenalties = [...state.live.penalties[team]];
       const [removed] = currentPenalties.splice(startIndex, 1);
       if (removed) currentPenalties.splice(endIndex, 0, removed);
-      newState = { ...state, live: { ...state.live, penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(currentPenalties) }}};
+      newState = { ...state, live: { ...state.live, penalties: { ...state.live.penalties, [team]: sortPenaltiesByStatus(currentPenalties) } } };
       toastMessage = { title: "Penalidades Reordenadas", description: `Orden de penalidades para ${team === 'home' ? state.live.homeTeamName : state.live.awayTeamName} actualizado.` };
       break;
     }
@@ -811,7 +858,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         }
         return p;
       });
-      newState = { ...state, live: { ...state.live, penalties: { home: activate(state.live.penalties.home), away: activate(state.live.penalties.away) }}};
+      newState = { ...state, live: { ...state.live, penalties: { home: activate(state.live.penalties.home), away: activate(state.live.penalties.away) } } };
       break;
     }
     case 'TICK': {
@@ -821,7 +868,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const { clock, penalties, penaltiesLog } = state.live;
       const { config } = state;
       const now = Date.now();
-      
+
       let currentTimeSnapshot = clock.currentTime;
       let liveAbsoluteElapsedTimeCs = clock.absoluteElapsedTimeCs;
       let playHornTrigger = state.live.playHornTrigger;
@@ -836,7 +883,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         }
         break;
       }
-      
+
       if (clock.isClockRunning && clock.clockStartTimeMs && clock.remainingTimeAtStartCs !== null) {
         const elapsedCs = Math.floor((Date.now() - clock.clockStartTimeMs) / 10);
         currentTimeSnapshot = Math.max(0, clock.remainingTimeAtStartCs - elapsedCs);
@@ -845,69 +892,69 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       } else if (clock.isClockRunning && clock.currentTime <= 0) {
         currentTimeSnapshot = 0;
       }
-      
+
       const newPenaltiesLog: { home: PenaltyLog[], away: PenaltyLog[] } = penaltiesLog
         ? JSON.parse(JSON.stringify(penaltiesLog))
         : { home: [], away: [] };
-      
-      const processPenalties = (team: Team): Penalty[] => {
-          const teamPenalties = penalties[team];
-          const runningPenalties = teamPenalties.filter(p => p._status === 'running');
-          
-          const expiredPenalties = runningPenalties.filter(p => p.expirationTime !== undefined && liveAbsoluteElapsedTimeCs >= p.expirationTime);
-          if (expiredPenalties.length > 0) significantChangeOccurred = true;
-          
-          expiredPenalties.forEach(p => {
-              const logIndex = newPenaltiesLog[team].findIndex(log => log.id === p.id && !log.endReason);
-              if (logIndex > -1) {
-                  const absoluteEndTime = p.expirationTime ?? liveAbsoluteElapsedTimeCs;
-                  const endTimeContext = getPeriodContextFromAbsoluteTime(absoluteEndTime, state);
-                  newPenaltiesLog[team][logIndex] = {
-                      ...newPenaltiesLog[team][logIndex],
-                      endTimestamp: Date.now(), endGameTime: endTimeContext.timeInPeriodCs,
-                      endPeriodText: endTimeContext.periodText, endReason: 'completed', timeServed: p.initialDuration,
-                  };
-              }
-          });
 
-          let stillRunning = runningPenalties.filter(p => !expiredPenalties.find(exp => exp.id === p.id));
-          let availableSlots = config.maxConcurrentPenalties - stillRunning.filter(p => (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).length;
-          const playersServing = new Set(stillRunning.filter(p => (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).map(p => p.playerNumber));
-          
-          let pendingConcurrent = teamPenalties.filter(p => p._status === 'pending_concurrent');
-          for (const p of pendingConcurrent) {
-              if (availableSlots > 0 && !playersServing.has(p.playerNumber)) {
-                  significantChangeOccurred = true;
-                  stillRunning.push({ ...p, _status: 'running', startTime: liveAbsoluteElapsedTimeCs, expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND) });
-                  if(p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride) {
-                    playersServing.add(p.playerNumber);
-                    availableSlots--;
-                  }
-              }
+      const processPenalties = (team: Team): Penalty[] => {
+        const teamPenalties = penalties[team];
+        const runningPenalties = teamPenalties.filter(p => p._status === 'running');
+
+        const expiredPenalties = runningPenalties.filter(p => p.expirationTime !== undefined && liveAbsoluteElapsedTimeCs >= p.expirationTime);
+        if (expiredPenalties.length > 0) significantChangeOccurred = true;
+
+        expiredPenalties.forEach(p => {
+          const logIndex = newPenaltiesLog[team].findIndex(log => log.id === p.id && !log.endReason);
+          if (logIndex > -1) {
+            const absoluteEndTime = p.expirationTime ?? liveAbsoluteElapsedTimeCs;
+            const endTimeContext = getPeriodContextFromAbsoluteTime(absoluteEndTime, state);
+            newPenaltiesLog[team][logIndex] = {
+              ...newPenaltiesLog[team][logIndex],
+              endTimestamp: Date.now(), endGameTime: endTimeContext.timeInPeriodCs,
+              endPeriodText: endTimeContext.periodText, endReason: 'completed', timeServed: p.initialDuration,
+            };
           }
-          
-          const newlyActivatedIds = new Set(stillRunning.map(p => p.id));
-          const remainingPending = pendingConcurrent.filter(p => !newlyActivatedIds.has(p.id));
-          const pendingPuck = teamPenalties.filter(p => p._status === 'pending_puck');
-          return [...stillRunning, ...remainingPending, ...pendingPuck];
+        });
+
+        let stillRunning = runningPenalties.filter(p => !expiredPenalties.find(exp => exp.id === p.id));
+        let availableSlots = config.maxConcurrentPenalties - stillRunning.filter(p => (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).length;
+        const playersServing = new Set(stillRunning.filter(p => (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).map(p => p.playerNumber));
+
+        let pendingConcurrent = teamPenalties.filter(p => p._status === 'pending_concurrent');
+        for (const p of pendingConcurrent) {
+          if (availableSlots > 0 && !playersServing.has(p.playerNumber)) {
+            significantChangeOccurred = true;
+            stillRunning.push({ ...p, _status: 'running', startTime: liveAbsoluteElapsedTimeCs, expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND) });
+            if (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride) {
+              playersServing.add(p.playerNumber);
+              availableSlots--;
+            }
+          }
+        }
+
+        const newlyActivatedIds = new Set(stillRunning.map(p => p.id));
+        const remainingPending = pendingConcurrent.filter(p => !newlyActivatedIds.has(p.id));
+        const pendingPuck = teamPenalties.filter(p => p._status === 'pending_puck');
+        return [...stillRunning, ...remainingPending, ...pendingPuck];
       };
 
       const homePenaltiesResult = processPenalties('home');
       const awayPenaltiesResult = processPenalties('away');
-      
+
       const checkBeep = (team: Team) => {
-          if (config.enablePenaltyCountdownSound && clock.isClockRunning && clock.periodDisplayOverride === null) {
-              penalties[team].forEach(p => {
-                  if (p._status === 'running' && p.expirationTime !== undefined) {
-                      const prevRem = p.expirationTime - clock._liveAbsoluteElapsedTimeCs;
-                      const currRem = p.expirationTime - liveAbsoluteElapsedTimeCs;
-                      if (currRem / 100 <= config.penaltyCountdownStartTime && currRem > 0 && Math.floor(prevRem / 100) > Math.floor(currRem / 100)) {
-                          playPenaltyBeepTrigger++;
-                          hasChanged = true;
-                      }
-                  }
-              });
-          }
+        if (config.enablePenaltyCountdownSound && clock.isClockRunning && clock.periodDisplayOverride === null) {
+          penalties[team].forEach(p => {
+            if (p._status === 'running' && p.expirationTime !== undefined) {
+              const prevRem = p.expirationTime - clock._liveAbsoluteElapsedTimeCs;
+              const currRem = p.expirationTime - liveAbsoluteElapsedTimeCs;
+              if (currRem / 100 <= config.penaltyCountdownStartTime && currRem > 0 && Math.floor(prevRem / 100) > Math.floor(currRem / 100)) {
+                playPenaltyBeepTrigger++;
+                hasChanged = true;
+              }
+            }
+          });
+        }
       };
       checkBeep('home');
       checkBeep('away');
@@ -915,40 +962,43 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       if (!isEqual(homePenaltiesResult, penalties.home)) { hasChanged = true; significantChangeOccurred = true; }
       if (!isEqual(awayPenaltiesResult, penalties.away)) { hasChanged = true; significantChangeOccurred = true; }
 
-      const stateWithLiveTime = { ...state, live: { ...state.live, clock: { ...state.live.clock, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs }}};
+      const stateWithLiveTime = { ...state, live: { ...state.live, clock: { ...state.live.clock, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs } } };
 
       if (clock.isClockRunning && currentTimeSnapshot <= 0) {
         significantChangeOccurred = true;
-        
+
         const shouldTriggerHorn = clock.periodDisplayOverride !== "Time Out";
-        
+
         newState = {
-            ...state,
-            live: {
-                ...state.live,
-                clock: {
-                    ...clock,
-                    currentTime: 0,
-                    isClockRunning: false,
-                    isFlashingZero: true,
-                    flashingZeroEndTime: now + FLASHING_ZERO_DURATION_MS,
-                    clockStartTimeMs: null,
-                    remainingTimeAtStartCs: null,
-                },
-                playHornTrigger: shouldTriggerHorn ? playHornTrigger + 1 : playHornTrigger,
-            }
+          ...state,
+          live: {
+            ...state.live,
+            clock: {
+              ...clock,
+              currentTime: 0,
+              isClockRunning: false,
+              isFlashingZero: true,
+              flashingZeroEndTime: now + FLASHING_ZERO_DURATION_MS,
+              clockStartTimeMs: null,
+              remainingTimeAtStartCs: null,
+            },
+            playHornTrigger: shouldTriggerHorn ? playHornTrigger + 1 : playHornTrigger,
+          }
         };
       } else if (hasChanged) {
-        newState = { ...state, live: { ...state.live,
+        newState = {
+          ...state, live: {
+            ...state.live,
             clock: { ...clock, currentTime: currentTimeSnapshot, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs },
             penalties: { home: sortPenaltiesByStatus(homePenaltiesResult), away: sortPenaltiesByStatus(awayPenaltiesResult) },
             penaltiesLog: newPenaltiesLog,
             playPenaltyBeepTrigger: playPenaltyBeepTrigger
-        }};
+          }
+        };
       } else {
-        return { ...state, live: { ...state.live, clock: { ...state.live.clock, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs }}};
+        return { ...state, live: { ...state.live, clock: { ...state.live.clock, _liveAbsoluteElapsedTimeCs: liveAbsoluteElapsedTimeCs } } };
       }
-      
+
       newState._lastActionOriginator = significantChangeOccurred ? TAB_ID : undefined;
       newState._lastUpdatedTimestamp = significantChangeOccurred ? newTimestamp : state._lastUpdatedTimestamp;
       return newState;
@@ -958,164 +1008,192 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'SET_AWAY_TEAM_NAME': newState = { ...state, live: { ...state.live, awayTeamName: action.payload || 'Visitante' } }; break;
     case 'SET_AWAY_TEAM_SUB_NAME': newState = { ...state, live: { ...state.live, awayTeamSubName: action.payload } }; break;
     case 'START_BREAK': {
-        const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
-        const autoStart = state.config.autoStartBreaks && state.config.defaultBreakDuration > 0;
-        const finishedPeriodText = getPeriodText(state.live.clock.currentPeriod, state.config.numberOfRegularPeriods);
-        const playedPeriods = [...state.live.playedPeriods];
-        if (!playedPeriods.includes(finishedPeriodText)) {
-            playedPeriods.push(finishedPeriodText);
-        }
-        newState = { ...state, live: { ...state.live,
-            playedPeriods, 
-            clock: { ...state.live.clock,
+      const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
+      const autoStart = state.config.autoStartBreaks && state.config.defaultBreakDuration > 0;
+      const finishedPeriodText = getPeriodText(state.live.clock.currentPeriod, state.config.numberOfRegularPeriods);
+      const playedPeriods = [...state.live.playedPeriods];
+      if (!playedPeriods.includes(finishedPeriodText)) {
+        playedPeriods.push(finishedPeriodText);
+      }
+      newState = {
+        ...state, live: {
+          ...state.live,
+          playedPeriods,
+          clock: {
+            ...state.live.clock,
             currentTime: state.config.defaultBreakDuration, periodDisplayOverride: 'Break', isClockRunning: autoStart, preTimeoutState: null,
             clockStartTimeMs: autoStart ? Date.now() : null, remainingTimeAtStartCs: autoStart ? state.config.defaultBreakDuration : null,
             absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
-        }}};
-        break;
+          }
+        }
+      };
+      break;
     }
     case 'START_PRE_OT_BREAK': {
-        const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
-        const autoStart = state.config.autoStartPreOTBreaks && state.config.defaultPreOTBreakDuration > 0;
-        const finishedPeriodText = getPeriodText(state.live.clock.currentPeriod, state.config.numberOfRegularPeriods);
-        const playedPeriods = [...state.live.playedPeriods];
-        if (!playedPeriods.includes(finishedPeriodText)) {
-            playedPeriods.push(finishedPeriodText);
-        }
-        newState = { ...state, live: { ...state.live, 
-            playedPeriods,
-            clock: { ...state.live.clock,
+      const newAbsoluteTime = calculateAbsoluteTimeForPeriod(state.live.clock.currentPeriod, 0, state);
+      const autoStart = state.config.autoStartPreOTBreaks && state.config.defaultPreOTBreakDuration > 0;
+      const finishedPeriodText = getPeriodText(state.live.clock.currentPeriod, state.config.numberOfRegularPeriods);
+      const playedPeriods = [...state.live.playedPeriods];
+      if (!playedPeriods.includes(finishedPeriodText)) {
+        playedPeriods.push(finishedPeriodText);
+      }
+      newState = {
+        ...state, live: {
+          ...state.live,
+          playedPeriods,
+          clock: {
+            ...state.live.clock,
             currentTime: state.config.defaultPreOTBreakDuration, periodDisplayOverride: 'Pre-OT Break', isClockRunning: autoStart, preTimeoutState: null,
             clockStartTimeMs: autoStart ? Date.now() : null, remainingTimeAtStartCs: autoStart ? state.config.defaultPreOTBreakDuration : null,
             absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
-        }}};
-        break;
+          }
+        }
+      };
+      break;
     }
     case 'START_BREAK_AFTER_PREVIOUS_PERIOD': {
-        const { currentPeriod, periodDisplayOverride } = state.live.clock;
-        const periodBeforeBreak = (periodDisplayOverride === 'Break' || periodDisplayOverride === 'Pre-OT Break') ? currentPeriod : currentPeriod - 1;
-        if (periodBeforeBreak < 1) break;
-        const newAbsoluteTime = calculateAbsoluteTimeForPeriod(periodBeforeBreak, 0, state);
-        const isPreOT = periodBeforeBreak >= state.config.numberOfRegularPeriods;
-        const breakDurationCs = isPreOT ? state.config.defaultPreOTBreakDuration : state.config.defaultBreakDuration;
-        const autoStart = isPreOT ? state.config.autoStartPreOTBreaks : state.config.autoStartBreaks;
-        newState = { ...state, live: { ...state.live, clock: { ...state.live.clock,
+      const { currentPeriod, periodDisplayOverride } = state.live.clock;
+      const periodBeforeBreak = (periodDisplayOverride === 'Break' || periodDisplayOverride === 'Pre-OT Break') ? currentPeriod : currentPeriod - 1;
+      if (periodBeforeBreak < 1) break;
+      const newAbsoluteTime = calculateAbsoluteTimeForPeriod(periodBeforeBreak, 0, state);
+      const isPreOT = periodBeforeBreak >= state.config.numberOfRegularPeriods;
+      const breakDurationCs = isPreOT ? state.config.defaultPreOTBreakDuration : state.config.defaultBreakDuration;
+      const autoStart = isPreOT ? state.config.autoStartPreOTBreaks : state.config.autoStartBreaks;
+      newState = {
+        ...state, live: {
+          ...state.live, clock: {
+            ...state.live.clock,
             currentPeriod: periodBeforeBreak, currentTime: breakDurationCs, periodDisplayOverride: isPreOT ? 'Pre-OT Break' : 'Break',
             isClockRunning: autoStart && breakDurationCs > 0, preTimeoutState: null,
             clockStartTimeMs: autoStart && breakDurationCs > 0 ? Date.now() : null, remainingTimeAtStartCs: autoStart && breakDurationCs > 0 ? breakDurationCs : null,
             absoluteElapsedTimeCs: newAbsoluteTime, _liveAbsoluteElapsedTimeCs: newAbsoluteTime,
-        }}};
-        break;
+          }
+        }
+      };
+      break;
     }
     case 'START_WARMUP': {
-        // Transition from 'Pre Warm-up' to 'Warm-up' (triggered by operator clicking "Comenzar Partido")
-        if (state.live.clock.periodDisplayOverride !== 'Pre Warm-up') break;
+      // Transition from 'Pre Warm-up' to 'Warm-up' (triggered by operator clicking "Comenzar Partido")
+      if (state.live.clock.periodDisplayOverride !== 'Pre Warm-up') break;
 
-        const { defaultWarmUpDuration, autoStartWarmUp } = state.config;
-        const autoStartClock = autoStartWarmUp && defaultWarmUpDuration > 0;
+      const { defaultWarmUpDuration, autoStartWarmUp } = state.config;
+      const autoStartClock = autoStartWarmUp && defaultWarmUpDuration > 0;
 
-        newState = { ...state, live: { ...state.live, clock: {
+      newState = {
+        ...state, live: {
+          ...state.live, clock: {
             ...state.live.clock,
             periodDisplayOverride: 'Warm-up',
             currentTime: defaultWarmUpDuration,
             isClockRunning: autoStartClock,
             clockStartTimeMs: autoStartClock ? Date.now() : null,
             remainingTimeAtStartCs: autoStartClock ? defaultWarmUpDuration : null,
-        }}};
-        toastMessage = { title: "Warm-up Iniciado", description: `El partido ha comenzado. Reloj ${autoStartClock ? 'corriendo' : 'pausado'}.` };
-        break;
+          }
+        }
+      };
+      toastMessage = { title: "Warm-up Iniciado", description: `El partido ha comenzado. Reloj ${autoStartClock ? 'corriendo' : 'pausado'}.` };
+      break;
     }
     case 'START_TIMEOUT': {
-        const { team } = action.payload;
-        let { currentTime, absoluteElapsedTimeCs, isClockRunning, clockStartTimeMs, remainingTimeAtStartCs, periodDisplayOverride } = state.live.clock;
-        if (isClockRunning && clockStartTimeMs && remainingTimeAtStartCs !== null) {
-            const elapsedCs = Math.floor((Date.now() - clockStartTimeMs) / 10);
-            currentTime = Math.max(0, remainingTimeAtStartCs - elapsedCs);
-            if (periodDisplayOverride === null) absoluteElapsedTimeCs += elapsedCs;
-        }
-        const autoStart = state.config.autoStartTimeouts && state.config.defaultTimeoutDuration > 0;
-        newState = { ...state, live: { ...state.live, clock: { ...state.live.clock,
+      const { team } = action.payload;
+      let { currentTime, absoluteElapsedTimeCs, isClockRunning, clockStartTimeMs, remainingTimeAtStartCs, periodDisplayOverride } = state.live.clock;
+      if (isClockRunning && clockStartTimeMs && remainingTimeAtStartCs !== null) {
+        const elapsedCs = Math.floor((Date.now() - clockStartTimeMs) / 10);
+        currentTime = Math.max(0, remainingTimeAtStartCs - elapsedCs);
+        if (periodDisplayOverride === null) absoluteElapsedTimeCs += elapsedCs;
+      }
+      const autoStart = state.config.autoStartTimeouts && state.config.defaultTimeoutDuration > 0;
+      newState = {
+        ...state, live: {
+          ...state.live, clock: {
+            ...state.live.clock,
             preTimeoutState: {
-                period: state.live.clock.currentPeriod, time: currentTime, isClockRunning: isClockRunning,
-                override: periodDisplayOverride, clockStartTimeMs: clockStartTimeMs, remainingTimeAtStartCs: remainingTimeAtStartCs,
-                absoluteElapsedTimeCs: absoluteElapsedTimeCs,
-                team,
+              period: state.live.clock.currentPeriod, time: currentTime, isClockRunning: isClockRunning,
+              override: periodDisplayOverride, clockStartTimeMs: clockStartTimeMs, remainingTimeAtStartCs: remainingTimeAtStartCs,
+              absoluteElapsedTimeCs: absoluteElapsedTimeCs,
+              team,
             },
             currentTime: state.config.defaultTimeoutDuration, periodDisplayOverride: 'Time Out', isClockRunning: autoStart,
             clockStartTimeMs: autoStart ? Date.now() : null, remainingTimeAtStartCs: autoStart ? state.config.defaultTimeoutDuration : null,
             absoluteElapsedTimeCs: absoluteElapsedTimeCs,
-        }}};
-        toastMessage = { title: "Time Out Iniciado", description: `Time Out de ${state.config.defaultTimeoutDuration / 100} segundos. Reloj ${autoStart ? 'corriendo' : 'pausado'}.` };
-        break;
+          }
+        }
+      };
+      toastMessage = { title: "Time Out Iniciado", description: `Time Out de ${state.config.defaultTimeoutDuration / 100} segundos. Reloj ${autoStart ? 'corriendo' : 'pausado'}.` };
+      break;
     }
-     case 'END_TIMEOUT': {
+    case 'END_TIMEOUT': {
       if (state.live.clock.preTimeoutState) {
         const { period, time, override, absoluteElapsedTimeCs } = state.live.clock.preTimeoutState;
-        newState = { ...state, live: { ...state.live, clock: {
-            ...state.live.clock, currentPeriod: period, currentTime: time, isClockRunning: false,
-            periodDisplayOverride: override, clockStartTimeMs: null, remainingTimeAtStartCs: null,
-            preTimeoutState: null, absoluteElapsedTimeCs: absoluteElapsedTimeCs, _liveAbsoluteElapsedTimeCs: absoluteElapsedTimeCs,
-        }}};
+        newState = {
+          ...state, live: {
+            ...state.live, clock: {
+              ...state.live.clock, currentPeriod: period, currentTime: time, isClockRunning: false,
+              periodDisplayOverride: override, clockStartTimeMs: null, remainingTimeAtStartCs: null,
+              preTimeoutState: null, absoluteElapsedTimeCs: absoluteElapsedTimeCs, _liveAbsoluteElapsedTimeCs: absoluteElapsedTimeCs,
+            }
+          }
+        };
         toastMessage = { title: "Time Out Finalizado", description: "Juego reanudado al estado anterior." };
       }
       break;
     }
     case 'MANUAL_END_GAME': {
-        const { live, config } = state;
-        const { clock, score } = live;
+      const { live, config } = state;
+      const { clock, score } = live;
 
-        // This action should only be triggered from an active period
-        if (clock.periodDisplayOverride !== null) break;
+      // This action should only be triggered from an active period
+      if (clock.periodDisplayOverride !== null) break;
 
-        const isLastRegularPeriod = clock.currentPeriod === config.numberOfRegularPeriods;
+      const isLastRegularPeriod = clock.currentPeriod === config.numberOfRegularPeriods;
 
-        if (isLastRegularPeriod) {
-            if (score.home !== score.away) {
-                return finalizeMatch(state);
-            } else {
-                if (config.numberOfOvertimePeriods > 0) {
-                    return gameReducer(state, { type: 'START_PRE_OT_BREAK' });
-                } else {
-                    // No OTs configured, go straight to decision
-                    return { ...state, live: { ...live, clock: { ...clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' } } };
-                }
-            }
-        } else if (clock.currentPeriod < config.numberOfRegularPeriods) {
-            // Not the last regular period, so just start a normal break
-            return gameReducer(state, { type: 'START_BREAK' });
+      if (isLastRegularPeriod) {
+        if (score.home !== score.away) {
+          return finalizeMatch(state);
         } else {
-            // This is an OT period
-             const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
-             if(clock.currentPeriod >= totalGamePeriods) {
-                if (score.home !== score.away) {
-                  return finalizeMatch(state);
-                } else {
-                  return { ...state, live: { ...live, clock: { ...clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' } } };
-                }
-             } else {
-                // Not the final OT, but tied. Go to next break.
-                if(score.home === score.away) {
-                  return gameReducer(state, { type: 'START_PRE_OT_BREAK' });
-                } else {
-                  // Game ends on golden goal in OT.
-                  return finalizeMatch(state);
-                }
-             }
+          if (config.numberOfOvertimePeriods > 0) {
+            return gameReducer(state, { type: 'START_PRE_OT_BREAK' });
+          } else {
+            // No OTs configured, go straight to decision
+            return { ...state, live: { ...live, clock: { ...clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' } } };
+          }
         }
-        break;
+      } else if (clock.currentPeriod < config.numberOfRegularPeriods) {
+        // Not the last regular period, so just start a normal break
+        return gameReducer(state, { type: 'START_BREAK' });
+      } else {
+        // This is an OT period
+        const totalGamePeriods = config.numberOfRegularPeriods + config.numberOfOvertimePeriods;
+        if (clock.currentPeriod >= totalGamePeriods) {
+          if (score.home !== score.away) {
+            return finalizeMatch(state);
+          } else {
+            return { ...state, live: { ...live, clock: { ...clock, currentTime: 0, isClockRunning: false, periodDisplayOverride: 'AwaitingDecision' } } };
+          }
+        } else {
+          // Not the final OT, but tied. Go to next break.
+          if (score.home === score.away) {
+            return gameReducer(state, { type: 'START_PRE_OT_BREAK' });
+          } else {
+            // Game ends on golden goal in OT.
+            return finalizeMatch(state);
+          }
+        }
+      }
+      break;
     }
     case 'ADD_EXTRA_OVERTIME': {
       if (state.live.clock.periodDisplayOverride !== 'AwaitingDecision') break;
       const { config, live } = state;
       const newNumberOfOTs = config.numberOfOvertimePeriods + 1;
-      
+
       const newAbsoluteTime = calculateAbsoluteTimeForPeriod(live.clock.currentPeriod, 0, state);
       const autoStart = config.autoStartPreOTBreaks && config.defaultPreOTBreakDuration > 0;
-      
+
       const finishedPeriodText = getPeriodText(live.clock.currentPeriod, config.numberOfRegularPeriods);
       const playedPeriods = [...live.playedPeriods];
       if (!playedPeriods.includes(finishedPeriodText)) {
-          playedPeriods.push(finishedPeriodText);
+        playedPeriods.push(finishedPeriodText);
       }
 
       newState = {
@@ -1149,61 +1227,66 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const finishedPeriodText = getPeriodText(live.clock.currentPeriod, config.numberOfRegularPeriods);
       const playedPeriods = [...live.playedPeriods];
       if (!playedPeriods.includes(finishedPeriodText)) {
-          playedPeriods.push(finishedPeriodText);
+        playedPeriods.push(finishedPeriodText);
       }
-      
-      newState = { ...state, live: { ...state.live, 
-        playedPeriods,
-        shootout: {
-          ...INITIAL_LIVE_DATA.shootout,
-          isActive: true,
-        },
-        clock: {
+
+      newState = {
+        ...state, live: {
+          ...state.live,
+          playedPeriods,
+          shootout: {
+            ...INITIAL_LIVE_DATA.shootout,
+            isActive: true,
+          },
+          clock: {
             ...state.live.clock,
             periodDisplayOverride: 'Shootout'
+          }
         }
-      }};
+      };
       toastMessage = { title: "Tanda de Penales Iniciada" };
       break;
     }
     case 'UPDATE_SHOOTOUT_ROUNDS':
-        if (!state.live.shootout) break;
-        newState = {
-            ...state,
-            live: { ...state.live,
-                shootout: {
-                    ...state.live.shootout,
-                    rounds: action.payload,
-                }
-            }
-        };
-        break;
+      if (!state.live.shootout) break;
+      newState = {
+        ...state,
+        live: {
+          ...state.live,
+          shootout: {
+            ...state.live.shootout,
+            rounds: action.payload,
+          }
+        }
+      };
+      break;
     case 'RECORD_SHOOTOUT_ATTEMPT': {
       if (!state.live.shootout) break;
       const { team, ...attemptData } = action.payload;
       const { shootout } = state.live;
       const currentAttempts = shootout[team === 'home' ? 'homeAttempts' : 'awayAttempts'];
-      
+
       const newAttempt: ShootoutAttempt = {
-          id: safeUUID(),
-          round: currentAttempts.length + 1,
-          ...attemptData,
+        id: safeUUID(),
+        round: currentAttempts.length + 1,
+        ...attemptData,
       };
 
       let newInitiator = shootout.initiator;
       if (!newInitiator) {
-          newInitiator = team;
+        newInitiator = team;
       }
 
       newState = {
-          ...state,
-          live: { ...state.live,
-              shootout: {
-                  ...shootout,
-                  initiator: newInitiator,
-                  [team === 'home' ? 'homeAttempts' : 'awayAttempts']: [...currentAttempts, newAttempt],
-              }
+        ...state,
+        live: {
+          ...state.live,
+          shootout: {
+            ...shootout,
+            initiator: newInitiator,
+            [team === 'home' ? 'homeAttempts' : 'awayAttempts']: [...currentAttempts, newAttempt],
           }
+        }
       };
       break;
     }
@@ -1215,15 +1298,17 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const { shootout } = state.live;
       const attemptsKey = team === 'home' ? 'homeAttempts' : 'awayAttempts';
       const currentAttempts = shootout[attemptsKey];
-      
+
       const newAttempts = currentAttempts.slice(0, -1);
-      
+
       let newInitiator = shootout.initiator;
       if (shootout.homeAttempts.length + shootout.awayAttempts.length === 1) {
-          newInitiator = null;
+        newInitiator = null;
       }
 
-      newState = { ...state, live: { ...state.live,
+      newState = {
+        ...state, live: {
+          ...state.live,
           shootout: {
             ...shootout,
             initiator: newInitiator,
@@ -1245,8 +1330,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           finalScore.away += 1;
         }
       }
-      
-      const tempState = { ...state, live: { ...state.live, score: finalScore, shootout: { ...state.live.shootout, isActive: false } }};
+
+      const tempState = { ...state, live: { ...state.live, score: finalScore, shootout: { ...state.live.shootout, isActive: false } } };
       const finalizedState = finalizeMatch(tempState);
       newState = finalizedState;
       toastMessage = { title: "Tanda de Penales Finalizada", description: "El resultado final ha sido actualizado." };
@@ -1257,59 +1342,59 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       if (!selectedFormatAndTimingsProfileId) break;
 
       const newProfiles = formatAndTimingsProfiles.map(p => {
-          if (p.id === selectedFormatAndTimingsProfileId) {
-              return { ...p, ...action.payload };
-          }
-          return p;
+        if (p.id === selectedFormatAndTimingsProfileId) {
+          return { ...p, ...action.payload };
+        }
+        return p;
       });
 
       const updatedState = {
-          ...state,
-          config: {
-              ...state.config,
-              formatAndTimingsProfiles: newProfiles,
-          },
+        ...state,
+        config: {
+          ...state.config,
+          formatAndTimingsProfiles: newProfiles,
+        },
       };
-      
+
       newState = applyFormatAndTimingsProfileToState(updatedState, selectedFormatAndTimingsProfileId);
       break;
     }
     case 'UPDATE_CONFIG_FIELDS': {
-        newState = {
-            ...state,
-            config: {
-                ...state.config,
-                ...action.payload,
-            }
-        };
-        break;
+      newState = {
+        ...state,
+        config: {
+          ...state.config,
+          ...action.payload,
+        }
+      };
+      break;
     }
-    case 'ADD_FORMAT_AND_TIMINGS_PROFILE': 
-      newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: [...state.config.formatAndTimingsProfiles, createDefaultFormatAndTimingsProfile(undefined, action.payload.name)] } }; 
+    case 'ADD_FORMAT_AND_TIMINGS_PROFILE':
+      newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: [...state.config.formatAndTimingsProfiles, createDefaultFormatAndTimingsProfile(undefined, action.payload.name)] } };
       toastMessage = { title: "Perfil Creado", description: `Perfil "${action.payload.name.trim()}" añadido.` };
       break;
-    case 'UPDATE_FORMAT_AND_TIMINGS_PROFILE_NAME': 
-      newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: state.config.formatAndTimingsProfiles.map(p => p.id === action.payload.profileId ? {...p, name: action.payload.newName} : p) } }; 
+    case 'UPDATE_FORMAT_AND_TIMINGS_PROFILE_NAME':
+      newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: state.config.formatAndTimingsProfiles.map(p => p.id === action.payload.profileId ? { ...p, name: action.payload.newName } : p) } };
       toastMessage = { title: "Nombre de Perfil Actualizado" };
       break;
     case 'DELETE_FORMAT_AND_TIMINGS_PROFILE': {
-        let newProfiles = state.config.formatAndTimingsProfiles.filter(p => p.id !== action.payload.profileId);
-        if (newProfiles.length === 0) newProfiles = [createDefaultFormatAndTimingsProfile()];
-        const newSelectedId = action.payload.profileId === state.config.selectedFormatAndTimingsProfileId ? newProfiles[0].id : state.config.selectedScoreboardLayoutProfileId;
-        newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: newProfiles, selectedFormatAndTimingsProfileId: newSelectedId }};
-        newState = applyFormatAndTimingsProfileToState(newState, newSelectedId);
-        toastMessage = { title: "Perfil Eliminado", variant: "destructive" };
-        break;
+      let newProfiles = state.config.formatAndTimingsProfiles.filter(p => p.id !== action.payload.profileId);
+      if (newProfiles.length === 0) newProfiles = [createDefaultFormatAndTimingsProfile()];
+      const newSelectedId = action.payload.profileId === state.config.selectedFormatAndTimingsProfileId ? newProfiles[0].id : state.config.selectedScoreboardLayoutProfileId;
+      newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: newProfiles, selectedFormatAndTimingsProfileId: newSelectedId } };
+      newState = applyFormatAndTimingsProfileToState(newState, newSelectedId);
+      toastMessage = { title: "Perfil Eliminado", variant: "destructive" };
+      break;
     }
     case 'SELECT_FORMAT_AND_TIMINGS_PROFILE': {
       newState = applyFormatAndTimingsProfileToState(state, action.payload.profileId);
       break;
     }
     case 'LOAD_FORMAT_AND_TIMINGS_PROFILES': {
-        const newProfiles = action.payload.length > 0 ? action.payload : [createDefaultFormatAndTimingsProfile()];
-        newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: newProfiles, selectedFormatAndTimingsProfileId: newProfiles[0].id } };
-        newState = applyFormatAndTimingsProfileToState(newState, newProfiles[0].id);
-        break;
+      const newProfiles = action.payload.length > 0 ? action.payload : [createDefaultFormatAndTimingsProfile()];
+      newState = { ...state, config: { ...state.config, formatAndTimingsProfiles: newProfiles, selectedFormatAndTimingsProfileId: newProfiles[0].id } };
+      newState = applyFormatAndTimingsProfileToState(newState, newProfiles[0].id);
+      break;
     }
     case 'REORDER_PENALTY_TYPES': {
       if (!state.config.selectedFormatAndTimingsProfileId) break;
@@ -1319,146 +1404,146 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         if (p.id === state.config.selectedFormatAndTimingsProfileId) {
           const newPenaltyTypes = [...(p.penaltyTypes || [])];
           const [removed] = newPenaltyTypes.splice(startIndex, 1);
-          if(removed) newPenaltyTypes.splice(endIndex, 0, removed);
+          if (removed) newPenaltyTypes.splice(endIndex, 0, removed);
           return { ...p, penaltyTypes: newPenaltyTypes };
         }
         return p;
       });
 
-      const updatedState = { ...state, config: { ...state.config, formatAndTimingsProfiles: newProfiles }};
+      const updatedState = { ...state, config: { ...state.config, formatAndTimingsProfiles: newProfiles } };
       newState = applyFormatAndTimingsProfileToState(updatedState, state.config.selectedFormatAndTimingsProfileId);
       break;
     }
-    case 'UPDATE_LAYOUT_SETTINGS': newState = { ...state, config: { ...state.config, scoreboardLayout: { ...state.config.scoreboardLayout, ...action.payload } }}; break;
+    case 'UPDATE_LAYOUT_SETTINGS': newState = { ...state, config: { ...state.config, scoreboardLayout: { ...state.config.scoreboardLayout, ...action.payload } } }; break;
     case 'SAVE_CURRENT_LAYOUT_TO_PROFILE': {
-        if (!state.config.selectedScoreboardLayoutProfileId) break;
-        newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: state.config.scoreboardLayoutProfiles.map(p => p.id === state.config.selectedScoreboardLayoutProfileId ? { ...p, ...state.config.scoreboardLayout } : p) }};
-        break;
+      if (!state.config.selectedScoreboardLayoutProfileId) break;
+      newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: state.config.scoreboardLayoutProfiles.map(p => p.id === state.config.selectedScoreboardLayoutProfileId ? { ...p, ...state.config.scoreboardLayout } : p) } };
+      break;
     }
-    case 'ADD_SCOREBOARD_LAYOUT_PROFILE': 
-      newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: [...state.config.scoreboardLayoutProfiles, createDefaultScoreboardLayoutProfile(undefined, action.payload.name)] }}; 
+    case 'ADD_SCOREBOARD_LAYOUT_PROFILE':
+      newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: [...state.config.scoreboardLayoutProfiles, createDefaultScoreboardLayoutProfile(undefined, action.payload.name)] } };
       toastMessage = { title: "Perfil de Diseño Creado", description: `Perfil "${action.payload.name.trim()}" añadido.` };
       break;
-    case 'UPDATE_SCOREBOARD_LAYOUT_PROFILE_NAME': 
-      newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: state.config.scoreboardLayoutProfiles.map(p => p.id === action.payload.profileId ? {...p, name: action.payload.newName} : p) }}; 
+    case 'UPDATE_SCOREBOARD_LAYOUT_PROFILE_NAME':
+      newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: state.config.scoreboardLayoutProfiles.map(p => p.id === action.payload.profileId ? { ...p, name: action.payload.newName } : p) } };
       toastMessage = { title: "Nombre de Perfil de Diseño Actualizado" };
       break;
     case 'DELETE_SCOREBOARD_LAYOUT_PROFILE': {
-        let newProfiles = state.config.scoreboardLayoutProfiles.filter(p => p.id !== action.payload.profileId);
-        if (newProfiles.length === 0) newProfiles = [createDefaultScoreboardLayoutProfile()];
-        const newSelectedId = action.payload.profileId === state.config.selectedScoreboardLayoutProfileId ? newProfiles[0].id : state.config.selectedScoreboardLayoutProfileId;
-        newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: newProfiles, selectedScoreboardLayoutProfileId: newSelectedId }};
-        newState = applyScoreboardLayoutProfileToState(newState, newSelectedId);
-        toastMessage = { title: "Perfil de Diseño Eliminado", variant: "destructive" };
-        break;
+      let newProfiles = state.config.scoreboardLayoutProfiles.filter(p => p.id !== action.payload.profileId);
+      if (newProfiles.length === 0) newProfiles = [createDefaultScoreboardLayoutProfile()];
+      const newSelectedId = action.payload.profileId === state.config.selectedScoreboardLayoutProfileId ? newProfiles[0].id : state.config.selectedScoreboardLayoutProfileId;
+      newState = { ...state, config: { ...state.config, scoreboardLayoutProfiles: newProfiles, selectedScoreboardLayoutProfileId: newSelectedId } };
+      newState = applyScoreboardLayoutProfileToState(newState, newSelectedId);
+      toastMessage = { title: "Perfil de Diseño Eliminado", variant: "destructive" };
+      break;
     }
     case 'SELECT_SCOREBOARD_LAYOUT_PROFILE': {
-        newState = applyScoreboardLayoutProfileToState(state, action.payload.profileId);
-        break;
+      newState = applyScoreboardLayoutProfileToState(state, action.payload.profileId);
+      break;
     }
     case 'LOAD_SOUND_AND_DISPLAY_CONFIG': {
-        const { scoreboardLayoutProfiles, ...otherSettings } = action.payload;
-        const newProfiles = scoreboardLayoutProfiles && scoreboardLayoutProfiles.length > 0 ? scoreboardLayoutProfiles : [createDefaultScoreboardLayoutProfile()];
-        newState = { ...state, config: { ...state.config, ...otherSettings, scoreboardLayoutProfiles: newProfiles, selectedScoreboardLayoutProfileId: newProfiles[0].id }};
-        newState = applyScoreboardLayoutProfileToState(newState, newProfiles[0].id);
-        break;
+      const { scoreboardLayoutProfiles, ...otherSettings } = action.payload;
+      const newProfiles = scoreboardLayoutProfiles && scoreboardLayoutProfiles.length > 0 ? scoreboardLayoutProfiles : [createDefaultScoreboardLayoutProfile()];
+      newState = { ...state, config: { ...state.config, ...otherSettings, scoreboardLayoutProfiles: newProfiles, selectedScoreboardLayoutProfileId: newProfiles[0].id } };
+      newState = applyScoreboardLayoutProfileToState(newState, newProfiles[0].id);
+      break;
     }
     case 'SET_CATEGORIES_FOR_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === action.payload.tournamentId ? { ...t, categories: action.payload.categories } : t) } };
-        break;
+      newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === action.payload.tournamentId ? { ...t, categories: action.payload.categories } : t) } };
+      break;
     }
     case 'ADD_CATEGORIES_TO_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === action.payload.tournamentId ? { ...t, categories: [...(t.categories || []), ...action.payload.categories] } : t) } };
-        break;
+      newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === action.payload.tournamentId ? { ...t, categories: [...(t.categories || []), ...action.payload.categories] } : t) } };
+      break;
     }
     case 'SET_SELECTED_MATCH_CATEGORY': newState = { ...state, config: { ...state.config, selectedMatchCategory: action.payload } }; toastMessage = { title: "Categoría del Partido Actualizada" }; break;
-    case 'UPDATE_TUNNEL_STATE': newState = { ...state, config: { ...state.config, tunnel: { ...state.config.tunnel, ...action.payload } }}; break;
+    case 'UPDATE_TUNNEL_STATE': newState = { ...state, config: { ...state.config, tunnel: { ...state.config.tunnel, ...action.payload } } }; break;
     case 'ADD_TOURNAMENT': {
-        const newTournament: Tournament = {
-            id: safeUUID(),
-            name: action.payload.name,
-            status: action.payload.status,
-            teams: [],
-            categories: [],
-            matches: [],
-        };
-        newState = { ...state, config: { ...state.config, tournaments: [...(state.config.tournaments || []), newTournament] } };
-        break;
+      const newTournament: Tournament = {
+        id: safeUUID(),
+        name: action.payload.name,
+        status: action.payload.status,
+        teams: [],
+        categories: [],
+        matches: [],
+      };
+      newState = { ...state, config: { ...state.config, tournaments: [...(state.config.tournaments || []), newTournament] } };
+      break;
     }
     case 'UPDATE_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === action.payload.id ? {...t, ...action.payload} : t) } };
-        break;
+      newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).map(t => t.id === action.payload.id ? { ...t, ...action.payload } : t) } };
+      break;
     }
     case 'DELETE_TOURNAMENT': {
-        newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).filter(t => t.id !== action.payload.id) } };
-        break;
+      newState = { ...state, config: { ...state.config, tournaments: (state.config.tournaments || []).filter(t => t.id !== action.payload.id) } };
+      break;
     }
     case 'SET_ACTIVE_TOURNAMENT': {
-        const selectedTournament = (state.config.tournaments || []).find(t => t.id === action.payload.tournamentId);
-        const selectedCategory = (selectedTournament?.categories || [])[0]?.id || '';
-        newState = { ...state, config: { ...state.config, selectedTournamentId: action.payload.tournamentId, selectedMatchCategory: selectedCategory } };
-        break;
+      const selectedTournament = (state.config.tournaments || []).find(t => t.id === action.payload.tournamentId);
+      const selectedCategory = (selectedTournament?.categories || [])[0]?.id || '';
+      newState = { ...state, config: { ...state.config, selectedTournamentId: action.payload.tournamentId, selectedMatchCategory: selectedCategory } };
+      break;
     }
     case 'ADD_MATCH_TO_TOURNAMENT': {
-        const { tournamentId, match } = action.payload;
-        // Correct way: create a new tournaments array, then map over it.
-        const newTournaments = state.config.tournaments.map(t => {
-            if (t.id === tournamentId) {
-                // Create a new tournament object with a new matches array, ensuring the new match has an ID.
-                return { ...t, matches: [...(t.matches || []), { ...match, id: match.id || safeUUID() }] };
-            }
-            return t;
-        });
-        newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
-        break;
+      const { tournamentId, match } = action.payload;
+      // Correct way: create a new tournaments array, then map over it.
+      const newTournaments = state.config.tournaments.map(t => {
+        if (t.id === tournamentId) {
+          // Create a new tournament object with a new matches array, ensuring the new match has an ID.
+          return { ...t, matches: [...(t.matches || []), { ...match, id: match.id || safeUUID() }] };
+        }
+        return t;
+      });
+      newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
+      break;
     }
     case 'UPDATE_MATCH_IN_TOURNAMENT': {
-        const { tournamentId, match } = action.payload;
-        const newTournaments = state.config.tournaments.map(t => {
-            if (t.id === tournamentId) {
-                // Create a new tournament object with a new matches array
-                const newMatches = (t.matches || []).map(m => m.id === match.id ? match : m);
-                return { ...t, matches: newMatches };
-            }
-            return t;
-        });
-        newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
-        break;
+      const { tournamentId, match } = action.payload;
+      const newTournaments = state.config.tournaments.map(t => {
+        if (t.id === tournamentId) {
+          // Create a new tournament object with a new matches array
+          const newMatches = (t.matches || []).map(m => m.id === match.id ? match : m);
+          return { ...t, matches: newMatches };
+        }
+        return t;
+      });
+      newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
+      break;
     }
     case 'DELETE_MATCH_FROM_TOURNAMENT': {
-        const { tournamentId, matchId } = action.payload;
+      const { tournamentId, matchId } = action.payload;
 
-        const newTournaments = state.config.tournaments.map(t => {
-             if (t.id === tournamentId) {
-                const newMatches = (t.matches || []).filter(m => m.id !== matchId);
-                return { ...t, matches: newMatches };
-             }
-             return t;
-        });
-        newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
-        toastMessage = { title: "Partido Eliminado", description: "El partido y su resumen han sido movidos a la carpeta de eliminados." };
-        break;
+      const newTournaments = state.config.tournaments.map(t => {
+        if (t.id === tournamentId) {
+          const newMatches = (t.matches || []).filter(m => m.id !== matchId);
+          return { ...t, matches: newMatches };
+        }
+        return t;
+      });
+      newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
+      toastMessage = { title: "Partido Eliminado", description: "El partido y su resumen han sido movidos a la carpeta de eliminados." };
+      break;
     }
     case 'CLEAN_MATCH_SUMMARY': {
-        const { tournamentId, matchId } = action.payload;
+      const { tournamentId, matchId } = action.payload;
 
-        // Remove summary from match in state
-        const newTournaments = state.config.tournaments.map(t => {
-             if (t.id === tournamentId) {
-                const newMatches = (t.matches || []).map(m => {
-                    if (m.id === matchId) {
-                        const { summary, ...matchWithoutSummary } = m;
-                        return matchWithoutSummary;
-                    }
-                    return m;
-                });
-                return { ...t, matches: newMatches };
-             }
-             return t;
-        });
-        newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
-        toastMessage = { title: "Partido Limpiado", description: "El resumen del partido ha sido movido a la carpeta de eliminados." };
-        break;
+      // Remove summary from match in state
+      const newTournaments = state.config.tournaments.map(t => {
+        if (t.id === tournamentId) {
+          const newMatches = (t.matches || []).map(m => {
+            if (m.id === matchId) {
+              const { summary, ...matchWithoutSummary } = m;
+              return matchWithoutSummary;
+            }
+            return m;
+          });
+          return { ...t, matches: newMatches };
+        }
+        return t;
+      });
+      newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
+      toastMessage = { title: "Partido Limpiado", description: "El resumen del partido ha sido movido a la carpeta de eliminados." };
+      break;
     }
     case 'TRIGGER_SUMMARY_GENERATION': {
       // Just mark that we need to generate a summary
@@ -1490,7 +1575,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         if (t.id === tournamentId) {
           let newMatches = (t.matches || []).map(m => {
             if (m.id === matchId) {
-                return { ...m, summary };
+              return { ...m, summary };
             }
             return m;
           });
@@ -1523,66 +1608,66 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
                 return { ...t, matches: newMatches };
               }
 
-            // Actualizar partidos de la misma categoría
-            console.log('[GameState] Looking for playoff matches to update in category:', finishedMatch.categoryId);
-            newMatches = newMatches.map(m => {
-              // Solo actualizar partidos de la misma categoría
-              if (m.categoryId !== finishedMatch.categoryId || m.phase !== 'playoffs') {
+              // Actualizar partidos de la misma categoría
+              console.log('[GameState] Looking for playoff matches to update in category:', finishedMatch.categoryId);
+              newMatches = newMatches.map(m => {
+                // Solo actualizar partidos de la misma categoría
+                if (m.categoryId !== finishedMatch.categoryId || m.phase !== 'playoffs') {
+                  return m;
+                }
+
+                // Actualizar Final con el ganador
+                if (m.playoffType === 'final') {
+                  console.log('[GameState] Found final match:', m.id, 'homeTeamId:', m.homeTeamId, 'awayTeamId:', m.awayTeamId, 'winnerId:', winnerId);
+
+                  const hasHomeTeam = !!(m.homeTeamId && m.homeTeamId.trim() !== '');
+                  const hasAwayTeam = !!(m.awayTeamId && m.awayTeamId.trim() !== '');
+                  const homeIsWinner = m.homeTeamId === winnerId;
+                  const awayIsWinner = m.awayTeamId === winnerId;
+
+                  console.log('[GameState] hasHomeTeam:', hasHomeTeam, 'hasAwayTeam:', hasAwayTeam, 'homeIsWinner:', homeIsWinner, 'awayIsWinner:', awayIsWinner);
+
+                  // Solo agregar si no está ya presente el ganador
+                  if (!hasHomeTeam && !awayIsWinner) {
+                    console.log('[GameState] ✅ Assigning winner to final homeTeamId');
+                    playoffMatchesUpdated = true;
+                    return { ...m, homeTeamId: winnerId };
+                  } else if (!hasAwayTeam && !homeIsWinner) {
+                    console.log('[GameState] ✅ Assigning winner to final awayTeamId');
+                    playoffMatchesUpdated = true;
+                    return { ...m, awayTeamId: winnerId };
+                  }
+                  console.log('[GameState] ❌ Final already has both teams or winner already assigned');
+                  return m; // Si ambos están llenos o el ganador ya está, no cambiar
+                }
+
+                // Actualizar 3er Puesto con el perdedor
+                if (m.playoffType === '3er-puesto') {
+                  console.log('[GameState] Found 3rd place match:', m.id, 'homeTeamId:', m.homeTeamId, 'awayTeamId:', m.awayTeamId, 'loserId:', loserId);
+
+                  const hasHomeTeam = !!(m.homeTeamId && m.homeTeamId.trim() !== '');
+                  const hasAwayTeam = !!(m.awayTeamId && m.awayTeamId.trim() !== '');
+                  const homeIsLoser = m.homeTeamId === loserId;
+                  const awayIsLoser = m.awayTeamId === loserId;
+
+                  console.log('[GameState] hasHomeTeam:', hasHomeTeam, 'hasAwayTeam:', hasAwayTeam, 'homeIsLoser:', homeIsLoser, 'awayIsLoser:', awayIsLoser);
+
+                  // Solo agregar si no está ya presente el perdedor
+                  if (!hasHomeTeam && !awayIsLoser) {
+                    console.log('[GameState] ✅ Assigning loser to 3rd place homeTeamId');
+                    playoffMatchesUpdated = true;
+                    return { ...m, homeTeamId: loserId };
+                  } else if (!hasAwayTeam && !homeIsLoser) {
+                    console.log('[GameState] ✅ Assigning loser to 3rd place awayTeamId');
+                    playoffMatchesUpdated = true;
+                    return { ...m, awayTeamId: loserId };
+                  }
+                  console.log('[GameState] ❌ 3rd place already has both teams or loser already assigned');
+                  return m; // Si ambos están llenos o el perdedor ya está, no cambiar
+                }
+
                 return m;
-              }
-
-              // Actualizar Final con el ganador
-              if (m.playoffType === 'final') {
-                console.log('[GameState] Found final match:', m.id, 'homeTeamId:', m.homeTeamId, 'awayTeamId:', m.awayTeamId, 'winnerId:', winnerId);
-
-                const hasHomeTeam = !!(m.homeTeamId && m.homeTeamId.trim() !== '');
-                const hasAwayTeam = !!(m.awayTeamId && m.awayTeamId.trim() !== '');
-                const homeIsWinner = m.homeTeamId === winnerId;
-                const awayIsWinner = m.awayTeamId === winnerId;
-
-                console.log('[GameState] hasHomeTeam:', hasHomeTeam, 'hasAwayTeam:', hasAwayTeam, 'homeIsWinner:', homeIsWinner, 'awayIsWinner:', awayIsWinner);
-
-                // Solo agregar si no está ya presente el ganador
-                if (!hasHomeTeam && !awayIsWinner) {
-                  console.log('[GameState] ✅ Assigning winner to final homeTeamId');
-                  playoffMatchesUpdated = true;
-                  return { ...m, homeTeamId: winnerId };
-                } else if (!hasAwayTeam && !homeIsWinner) {
-                  console.log('[GameState] ✅ Assigning winner to final awayTeamId');
-                  playoffMatchesUpdated = true;
-                  return { ...m, awayTeamId: winnerId };
-                }
-                console.log('[GameState] ❌ Final already has both teams or winner already assigned');
-                return m; // Si ambos están llenos o el ganador ya está, no cambiar
-              }
-
-              // Actualizar 3er Puesto con el perdedor
-              if (m.playoffType === '3er-puesto') {
-                console.log('[GameState] Found 3rd place match:', m.id, 'homeTeamId:', m.homeTeamId, 'awayTeamId:', m.awayTeamId, 'loserId:', loserId);
-
-                const hasHomeTeam = !!(m.homeTeamId && m.homeTeamId.trim() !== '');
-                const hasAwayTeam = !!(m.awayTeamId && m.awayTeamId.trim() !== '');
-                const homeIsLoser = m.homeTeamId === loserId;
-                const awayIsLoser = m.awayTeamId === loserId;
-
-                console.log('[GameState] hasHomeTeam:', hasHomeTeam, 'hasAwayTeam:', hasAwayTeam, 'homeIsLoser:', homeIsLoser, 'awayIsLoser:', awayIsLoser);
-
-                // Solo agregar si no está ya presente el perdedor
-                if (!hasHomeTeam && !awayIsLoser) {
-                  console.log('[GameState] ✅ Assigning loser to 3rd place homeTeamId');
-                  playoffMatchesUpdated = true;
-                  return { ...m, homeTeamId: loserId };
-                } else if (!hasAwayTeam && !homeIsLoser) {
-                  console.log('[GameState] ✅ Assigning loser to 3rd place awayTeamId');
-                  playoffMatchesUpdated = true;
-                  return { ...m, awayTeamId: loserId };
-                }
-                console.log('[GameState] ❌ 3rd place already has both teams or loser already assigned');
-                return m; // Si ambos están llenos o el perdedor ya está, no cambiar
-              }
-
-              return m;
-            });
+              });
             } catch (error) {
               console.error('[GameState] Error updating playoff matches after semifinal:', error);
               // Si hay error, simplemente no actualizamos los partidos
@@ -1594,7 +1679,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         return t;
       });
 
-      newState = { ...state, config: { ...state.config, tournaments: newTournaments }};
+      newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
 
       // Si se actualizaron partidos de playoffs, guardar el torneo inmediatamente
       console.log('[GameState] playoffMatchesUpdated:', playoffMatchesUpdated);
@@ -1621,22 +1706,22 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tournamentId, matchId, summary })
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          console.log(`[GameState] Summary saved for match ${matchId} (only this file was modified)`);
-        } else {
-          console.error('[GameState] Failed to save summary:', data.error);
-        }
-      })
-      .catch(err => console.error('[GameState] Error saving summary:', err));
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            console.log(`[GameState] Summary saved for match ${matchId} (only this file was modified)`);
+          } else {
+            console.error('[GameState] Failed to save summary:', data.error);
+          }
+        })
+        .catch(err => console.error('[GameState] Error saving summary:', err));
 
       const newTournaments = state.config.tournaments.map(t => {
         if (t.id === tournamentId) {
           const newMatches = (t.matches || []).map(m => {
             if (m.id === matchId) {
-                // Just save the summary - score and OT/SO info will be calculated from it when needed
-                return { ...m, summary };
+              // Just save the summary - score and OT/SO info will be calculated from it when needed
+              return { ...m, summary };
             }
             return m;
           });
@@ -1644,30 +1729,38 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         }
         return t;
       });
-      newState = { ...state, config: { ...state.config, tournaments: newTournaments }};
+      newState = { ...state, config: { ...state.config, tournaments: newTournaments } };
       break;
     }
     case 'ADD_TEAM_TO_TOURNAMENT': {
-        const { tournamentId, team } = action.payload;
-        newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => {
+      const { tournamentId, team } = action.payload;
+      newState = {
+        ...state, config: {
+          ...state.config, tournaments: state.config.tournaments.map(t => {
             if (t.id === tournamentId) {
-                const newTeams = [...(t.teams || []), { ...team, id: team.id || safeUUID() }];
-                return { ...t, teams: newTeams };
+              const newTeams = [...(t.teams || []), { ...team, id: team.id || safeUUID() }];
+              return { ...t, teams: newTeams };
             }
             return t;
-        }) } };
-        break;
+          })
+        }
+      };
+      break;
     }
     case 'DELETE_TEAMS_FROM_TOURNAMENT': {
-        const { tournamentId, teamIds } = action.payload;
-         newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => {
+      const { tournamentId, teamIds } = action.payload;
+      newState = {
+        ...state, config: {
+          ...state.config, tournaments: state.config.tournaments.map(t => {
             if (t.id === tournamentId) {
-                if (!t.teams) return t;
-                return { ...t, teams: t.teams.filter(team => !teamIds.includes(team.id)) };
+              if (!t.teams) return t;
+              return { ...t, teams: t.teams.filter(team => !teamIds.includes(team.id)) };
             }
             return t;
-         })}};
-        break;
+          })
+        }
+      };
+      break;
     }
     case 'UPDATE_TEAM_DETAILS': {
       const { teamId, ...updates } = action.payload;
@@ -1691,17 +1784,21 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PLAYER_TO_TEAM': {
       const { teamId, player } = action.payload;
-      newState = { ...state, config: { ...state.config, tournaments: state.config.tournaments.map(t => {
-        if (!t.teams) return t;
-        return {
-          ...t,
-          teams: t.teams.map(team =>
-            team.id === teamId
-              ? { ...team, players: [...(team.players || []), { ...player, id: safeUUID() }] }
-              : team
-          )
-        };
-      })}};
+      newState = {
+        ...state, config: {
+          ...state.config, tournaments: state.config.tournaments.map(t => {
+            if (!t.teams) return t;
+            return {
+              ...t,
+              teams: t.teams.map(team =>
+                team.id === teamId
+                  ? { ...team, players: [...(team.players || []), { ...player, id: safeUUID() }] }
+                  : team
+              )
+            };
+          })
+        }
+      };
       toastMessage = { title: "Jugador Añadido", description: `Jugador ${player.number ? `#${player.number} ` : ''}${player.name} añadido.` };
       break;
     }
@@ -1718,11 +1815,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
               teams: t.teams.map(team =>
                 team.id === teamId
                   ? {
-                      ...team,
-                      players: team.players.map(p =>
-                        p.id === playerId ? { ...p, ...updates } : p
-                      ),
-                    }
+                    ...team,
+                    players: team.players.map(p =>
+                      p.id === playerId ? { ...p, ...updates } : p
+                    ),
+                  }
                   : team
               ),
             };
@@ -1744,9 +1841,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
               teams: t.teams.map(team =>
                 team.id === teamId
                   ? {
-                      ...team,
-                      players: team.players.filter(p => p.id !== playerId),
-                    }
+                    ...team,
+                    players: team.players.filter(p => p.id !== playerId),
+                  }
                   : team
               ),
             };
@@ -1843,9 +1940,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
       break;
     }
-     case 'UPDATE_LIVE_STATE':
-        newState = { ...state, live: { ...state.live, ...action.payload } };
-        break;
+    case 'UPDATE_LIVE_STATE':
+      newState = { ...state, live: { ...state.live, ...action.payload } };
+      break;
     case 'RESET_CONFIG_TO_DEFAULTS': {
       const defaultFormatProfile = createDefaultFormatAndTimingsProfile();
       const defaultLayoutParams = createDefaultScoreboardLayoutProfile();
@@ -1870,8 +1967,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           showAliasInScoreboardPenalties: IN_CODE_INITIAL_SHOW_ALIAS_IN_SCOREBOARD_PENALTIES,
           enableDebugMode: IN_CODE_INITIAL_ENABLE_DEBUG_MODE,
           showStandingsInWarmup: IN_CODE_INITIAL_SHOW_STANDINGS_IN_WARMUP,
+          playoffBracketHighlightStyle: IN_CODE_INITIAL_PLAYOFF_BRACKET_HIGHLIGHT_STYLE,
           showShotsData: IN_CODE_INITIAL_SHOW_SHOTS_DATA,
           enableOlympiaTransition: IN_CODE_INITIAL_ENABLE_OLYMPIA_TRANSITION,
+          enableLiveSync: IN_CODE_INITIAL_ENABLE_LIVE_SYNC,
           selectedMatchCategory: '', // Resets match category
           tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
           replays: IN_CODE_INITIAL_REPLAYS_SETTINGS,
@@ -1882,7 +1981,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'RESET_GAME_STATE': {
       const { defaultWarmUpDuration, autoStartWarmUp } = state.config;
-      
+
       const resetLiveState: LiveState = {
         ...INITIAL_LIVE_DATA,
         clock: {
@@ -1908,18 +2007,18 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 };
 
 const GameStateObserver = () => {
-    const { state, dispatch } = useGameState();
-    const { toast } = showToast();
-    const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
-    
-    useEffect(() => {
-        if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
-            toast(state._lastToastMessage);
-            lastToastRef.current = state._lastToastMessage;
-        }
-    }, [state._lastToastMessage, toast]);
-    
-    return null;
+  const { state, dispatch } = useGameState();
+  const { toast } = showToast();
+  const lastToastRef = useRef<GameState['_lastToastMessage']>(null);
+
+  useEffect(() => {
+    if (state._lastToastMessage && state._lastToastMessage !== lastToastRef.current) {
+      toast(state._lastToastMessage);
+      lastToastRef.current = state._lastToastMessage;
+    }
+  }, [state._lastToastMessage, toast]);
+
+  return null;
 }
 
 
@@ -1952,39 +2051,39 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const fetchInitialData = useCallback(async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch('/api/db');
-        if (!res.ok) throw new Error('Failed to fetch initial data');
-        const data = await res.json();
-        
-        dispatch({ type: 'HYDRATE_FROM_SERVER', payload: data });
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/db');
+      if (!res.ok) throw new Error('Failed to fetch initial data');
+      const data = await res.json();
 
-      } catch (error) {
-        console.error("Failed to fetch initial state from server:", error);
-        dispatch({ type: 'HYDRATE_FROM_SERVER', payload: getInitialState() });
-      } finally {
-        setIsLoading(false);
-      }
+      dispatch({ type: 'HYDRATE_FROM_SERVER', payload: data });
+
+    } catch (error) {
+      console.error("Failed to fetch initial state from server:", error);
+      dispatch({ type: 'HYDRATE_FROM_SERVER', payload: getInitialState() });
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const fetchTournamentDetails = useCallback(async (tournamentId: string) => {
     try {
-        const res = await fetch(`/api/tournaments/${tournamentId}`);
-        if (!res.ok) {
-            console.warn(`[GameState] Tournament ${tournamentId} not found, clearing selectedTournamentId`);
-            // If tournament not found, clear the selectedTournamentId
-            dispatch({ type: 'UPDATE_CONFIG_FIELDS', payload: { selectedTournamentId: null } });
-            return;
-        }
-        const data = await res.json();
-        if (data.tournament) {
-            dispatch({ type: 'HYDRATE_TOURNAMENT_DETAILS', payload: { tournamentData: data.tournament }});
-        }
-    } catch (error) {
-        console.error("Error fetching tournament details:", error);
-        // On error, also clear the selectedTournamentId to prevent repeated errors
+      const res = await fetch(`/api/tournaments/${tournamentId}`);
+      if (!res.ok) {
+        console.warn(`[GameState] Tournament ${tournamentId} not found, clearing selectedTournamentId`);
+        // If tournament not found, clear the selectedTournamentId
         dispatch({ type: 'UPDATE_CONFIG_FIELDS', payload: { selectedTournamentId: null } });
+        return;
+      }
+      const data = await res.json();
+      if (data.tournament) {
+        dispatch({ type: 'HYDRATE_TOURNAMENT_DETAILS', payload: { tournamentData: data.tournament } });
+      }
+    } catch (error) {
+      console.error("Error fetching tournament details:", error);
+      // On error, also clear the selectedTournamentId to prevent repeated errors
+      dispatch({ type: 'UPDATE_CONFIG_FIELDS', payload: { selectedTournamentId: null } });
     }
   }, [dispatch]);
 
@@ -1995,10 +2094,10 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
       if (!channelRef.current) {
         channelRef.current = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
       }
-      
+
       const handleMessage = (event: MessageEvent) => {
         if (event.data?.type || !event.data?._lastUpdatedTimestamp) {
-            return;
+          return;
         }
 
         if (event.data._lastActionOriginator !== TAB_ID) {
@@ -2018,21 +2117,21 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const { selectedTournamentId, tournaments } = state.config;
     if (selectedTournamentId) {
-        const tournament = tournaments.find(t => t.id === selectedTournamentId);
+      const tournament = tournaments.find(t => t.id === selectedTournamentId);
 
-        // If tournament not found in the array, clear the selectedTournamentId
-        if (!tournament) {
-            console.warn('[GameState] Selected tournament not found in tournaments array, clearing selectedTournamentId');
-            dispatch({ type: 'UPDATE_CONFIG_FIELDS', payload: { selectedTournamentId: null } });
-            return;
-        }
+      // If tournament not found in the array, clear the selectedTournamentId
+      if (!tournament) {
+        console.warn('[GameState] Selected tournament not found in tournaments array, clearing selectedTournamentId');
+        dispatch({ type: 'UPDATE_CONFIG_FIELDS', payload: { selectedTournamentId: null } });
+        return;
+      }
 
-        console.log('[GameState] Selected tournament:', selectedTournamentId, 'Has teams?', !!tournament?.teams);
-        // Fetch details only if we don't have them (i.e., no teams or matches array)
-        if (!tournament.teams) {
-            console.log('[GameState] Fetching tournament details for', selectedTournamentId);
-            fetchTournamentDetails(selectedTournamentId);
-        }
+      console.log('[GameState] Selected tournament:', selectedTournamentId, 'Has teams?', !!tournament?.teams);
+      // Fetch details only if we don't have them (i.e., no teams or matches array)
+      if (!tournament.teams) {
+        console.log('[GameState] Fetching tournament details for', selectedTournamentId);
+        fetchTournamentDetails(selectedTournamentId);
+      }
     }
     // Only trigger when selectedTournamentId changes, NOT when tournaments array changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2041,59 +2140,59 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
 
   const prevStateRef = useRef<GameState>(state);
   useEffect(() => {
-      const oldState = prevStateRef.current;
-      prevStateRef.current = state;
-      
-      if (isLoading || typeof window === 'undefined' || !state._lastActionOriginator) return;
-  
-      if (state._lastActionOriginator === TAB_ID) {
-          try {
-              channelRef.current?.postMessage(state);
-              
-              const hasLiveChanged = !isEqual(state.live, oldState.live);
-              if (hasLiveChanged) {
-                  console.log('[DEBUG] 🎯 Live state changed, persisting to server...', {
-                    homeShots: state.live.shotsLog.home.length,
-                    awayShots: state.live.shotsLog.away.length
-                  });
-                  updateGameStateOnServer(state.live);
-              }
-              const hasConfigChanged = !isEqual(state.config, oldState.config);
-              if(hasConfigChanged) {
-                  const { tournaments, ...baseConfig } = state.config;
-                  const tournamentsMeta = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
-                  updateConfigOnServer({ ...baseConfig, tournaments: tournamentsMeta });
-              }
-              // Logic to save individual tournament if it changes
-              // BUT skip if the last action was SAVE_MATCH_SUMMARY or TRIGGER_SUMMARY_GENERATION
-              // (they handle saving themselves)
-              if (state._lastActionType !== 'SAVE_MATCH_SUMMARY' &&
-                  state._lastActionType !== 'TRIGGER_SUMMARY_GENERATION' &&
-                  state._lastActionType !== 'UPDATE_MATCH_SUMMARY_IN_STATE') {
-                const changedTournament = state.config.tournaments.find((newTournament, index) => {
-                  const oldTournament = oldState.config.tournaments.find(t => t.id === newTournament.id);
-                  return oldTournament && !isEqual(newTournament, oldTournament);
-                });
+    const oldState = prevStateRef.current;
+    prevStateRef.current = state;
 
-                if(changedTournament) {
-                  console.log('[GameState] Tournament changed, saving entire tournament...', changedTournament.id);
-                  saveTournamentOnServer(changedTournament);
-                }
-              } else {
-                console.log(`[GameState] Skipping saveTournamentOnServer because last action was ${state._lastActionType}`);
-              }
+    if (isLoading || typeof window === 'undefined' || !state._lastActionOriginator) return;
 
-          } catch (error) {
-              console.error("Error broadcasting or saving state:", error);
+    if (state._lastActionOriginator === TAB_ID) {
+      try {
+        channelRef.current?.postMessage(state);
+
+        const hasLiveChanged = !isEqual(state.live, oldState.live);
+        if (hasLiveChanged) {
+          console.log('[DEBUG] 🎯 Live state changed, persisting to server...', {
+            homeShots: state.live.shotsLog.home.length,
+            awayShots: state.live.shotsLog.away.length
+          });
+          updateGameStateOnServer(state.live);
+        }
+        const hasConfigChanged = !isEqual(state.config, oldState.config);
+        if (hasConfigChanged) {
+          const { tournaments, ...baseConfig } = state.config;
+          const tournamentsMeta = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
+          updateConfigOnServer({ ...baseConfig, tournaments: tournamentsMeta });
+        }
+        // Logic to save individual tournament if it changes
+        // BUT skip if the last action was SAVE_MATCH_SUMMARY or TRIGGER_SUMMARY_GENERATION
+        // (they handle saving themselves)
+        if (state._lastActionType !== 'SAVE_MATCH_SUMMARY' &&
+          state._lastActionType !== 'TRIGGER_SUMMARY_GENERATION' &&
+          state._lastActionType !== 'UPDATE_MATCH_SUMMARY_IN_STATE') {
+          const changedTournament = state.config.tournaments.find((newTournament, index) => {
+            const oldTournament = oldState.config.tournaments.find(t => t.id === newTournament.id);
+            return oldTournament && !isEqual(newTournament, oldTournament);
+          });
+
+          if (changedTournament) {
+            console.log('[GameState] Tournament changed, saving entire tournament...', changedTournament.id);
+            saveTournamentOnServer(changedTournament);
           }
+        } else {
+          console.log(`[GameState] Skipping saveTournamentOnServer because last action was ${state._lastActionType}`);
+        }
+
+      } catch (error) {
+        console.error("Error broadcasting or saving state:", error);
       }
+    }
   }, [state, isLoading]);
-  
+
   useEffect(() => {
     let timerId: NodeJS.Timeout | undefined;
     const tickInterval = state.config.tickIntervalMs || 200;
     if (state.live?.clock && (state.live.clock.isClockRunning || state.live.clock.isFlashingZero) && isPageVisible && !isLoading) {
-        timerId = setInterval(() => dispatch({ type: 'TICK' }), tickInterval);
+      timerId = setInterval(() => dispatch({ type: 'TICK' }), tickInterval);
     }
     return () => clearInterval(timerId);
   }, [state.live?.clock, isPageVisible, isLoading, state.config.tickIntervalMs]);
@@ -2113,21 +2212,21 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ matchId })
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          console.log(`[GameState] Summary generated on server for match ${matchId} with ${data.voiceEventsCount} voice events`);
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            console.log(`[GameState] Summary generated on server for match ${matchId} with ${data.voiceEventsCount} voice events`);
 
-          // Update state with the generated summary
-          dispatch({
-            type: 'UPDATE_MATCH_SUMMARY_IN_STATE',
-            payload: { matchId, summary: data.summary }
-          });
-        } else {
-          console.error('[GameState] Failed to generate summary:', data.error);
-        }
-      })
-      .catch(err => console.error('[GameState] Error generating summary:', err));
+            // Update state with the generated summary
+            dispatch({
+              type: 'UPDATE_MATCH_SUMMARY_IN_STATE',
+              payload: { matchId, summary: data.summary }
+            });
+          } else {
+            console.error('[GameState] Failed to generate summary:', data.error);
+          }
+        })
+        .catch(err => console.error('[GameState] Error generating summary:', err));
 
       // Clear the pending flag
       dispatch({ type: 'CLEAR_PENDING_SUMMARY_GENERATION' });
@@ -2155,9 +2254,9 @@ export const useGameState = () => {
 
 
 
-    
 
-    
+
+
 
 
 

@@ -124,7 +124,7 @@ export function StandingsDisplay() {
   return (
     <Card className="bg-card/60 backdrop-blur-md shadow-lg flex flex-col" style={{ maxHeight: '80vh' }}>
       <CardHeader>
-        <CardTitle 
+        <CardTitle
           className="flex items-center gap-3"
           style={{ fontSize: `${titleSize}rem` }}
         >

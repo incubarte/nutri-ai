@@ -21,6 +21,7 @@ import Image from 'next/image';
 import { TournamentLogo } from '../tournaments/tournament-logo';
 import { PreWarmupIntro } from './pre-warmup-intro';
 import { useTournamentLogo } from '@/hooks/use-tournament-logo';
+import { PlayoffBracketPreview } from './playoff-bracket-preview';
 
 const ValentinoCaffeAd = () => {
     return (
@@ -365,10 +366,19 @@ export function FullScoreboard({ className }: { className?: string }) {
     .find(m => m.id === matchId);
   const isPlayoffMatch = matchData?.phase === 'playoffs';
 
+  // Obtener tournament y teams para PlayoffBracketPreview
+  const currentTournament = config.tournaments?.find(t =>
+    t.id === config.selectedTournamentId
+  );
+  const homeTeam = currentTournament?.teams?.find(t => t.id === matchData?.homeTeamId);
+  const awayTeam = currentTournament?.teams?.find(t => t.id === matchData?.awayTeamId);
+
   // Mostrar tabla si estamos en warmup, es partido de fixture, la opción está activada Y el estado indica mostrar
   // PERO NO si es un partido de playoffs
   const shouldShowStandings = config.showStandingsInWarmup && isWarmup && isFixtureMatch && showStandingsInWarmup && !isPlayoffMatch;
-  const shouldShowWarmupDisplay = isWarmup && isFixtureMatch && !shouldShowStandings;
+  // Mostrar bracket de playoff si estamos en warmup, es partido de playoff, la opción está activada Y el estado indica mostrar
+  const shouldShowPlayoffBracket = config.showStandingsInWarmup && isWarmup && isFixtureMatch && showStandingsInWarmup && isPlayoffMatch;
+  const shouldShowWarmupDisplay = isWarmup && isFixtureMatch && !shouldShowStandings && !shouldShowPlayoffBracket;
 
   const handleTransitionComplete = () => {
     setIsOlympiaTransitioning(false);
@@ -534,6 +544,21 @@ export function FullScoreboard({ className }: { className?: string }) {
                                 <div style={{ transform: 'scale(1.1)', transformOrigin: 'center center' }}>
                                     <StandingsDisplay />
                                 </div>
+                            </WarmupDisplay>
+                        ) : shouldShowPlayoffBracket && matchData && currentTournament ? (
+                            <WarmupDisplay
+                                homeLogoDataUrl={homeLogoDataUrl}
+                                awayLogoDataUrl={awayLogoDataUrl}
+                                clockPosition="top"
+                                tournamentLogoId={config.selectedTournamentId}
+                            >
+                                <PlayoffBracketPreview
+                                    tournament={currentTournament}
+                                    currentMatch={matchData}
+                                    homeTeam={homeTeam}
+                                    awayTeam={awayTeam}
+                                    highlightStyle={config.playoffBracketHighlightStyle}
+                                />
                             </WarmupDisplay>
                         ) : clock.periodDisplayOverride !== 'Shootout' ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
