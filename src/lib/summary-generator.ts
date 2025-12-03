@@ -150,7 +150,7 @@ export const generateSummaryData = (state: GameState, voiceEvents?: VoiceGameEve
         return periodText;
     };
 
-    const statsByPeriodArray: PeriodSummary[] = allPlayedPeriods.map(periodText => {
+    const statsByPeriodArray: PeriodSummary[] = allPlayedPeriods.map((periodText, periodIndex) => {
         const periodData: PeriodStats = {
             goals: { home: [], away: [] },
             penalties: { home: [], away: [] },
@@ -246,14 +246,42 @@ export const generateSummaryData = (state: GameState, voiceEvents?: VoiceGameEve
             awayPlayers: awayPlayersWithShots.map(p => `#${p.number}:${p.shots}shots`)
         });
 
+        // Get period duration (from config, defaulting to standard period length)
+        const periodDuration = config.defaultPeriodDuration || 120000; // 20 minutes default
+
         // Add goalkeeper changes log for this period
-        const goalkeeperChangesLog = {
+        let goalkeeperChangesLog = {
             home: (live.goalkeeperChangesLog?.home || []).filter(gc => normalizePeriodText(gc.periodText || '') === periodText),
             away: (live.goalkeeperChangesLog?.away || []).filter(gc => normalizePeriodText(gc.periodText || '') === periodText)
         };
 
-        // Get period duration (from config, defaulting to standard period length)
-        const periodDuration = config.defaultPeriodDuration || 120000; // 20 minutes default
+        // For the first actual game period, also include goalkeeper changes from pre-game periods
+        // (Pre Warm-up, Warm-up, Break) so that goalkeepers set before the game starts are tracked
+        const isFirstGamePeriod = periodIndex === 0;
+        if (isFirstGamePeriod) {
+            const preGamePeriods = ['Pre Warm-up', 'Warm-up', 'Break'];
+            const preGameGKChangesHome = (live.goalkeeperChangesLog?.home || [])
+                .filter(gc => preGamePeriods.includes(gc.periodText || ''))
+                .map(gc => ({
+                    ...gc,
+                    // Adjust gameTime to period start (periodDuration) since they start from beginning of actual period
+                    gameTime: periodDuration
+                }));
+            const preGameGKChangesAway = (live.goalkeeperChangesLog?.away || [])
+                .filter(gc => preGamePeriods.includes(gc.periodText || ''))
+                .map(gc => ({
+                    ...gc,
+                    // Adjust gameTime to period start (periodDuration) since they start from beginning of actual period
+                    gameTime: periodDuration
+                }));
+
+            // Merge pre-game changes with current period changes
+            // Pre-game changes should come first (they happened earlier)
+            goalkeeperChangesLog = {
+                home: [...preGameGKChangesHome, ...goalkeeperChangesLog.home],
+                away: [...preGameGKChangesAway, ...goalkeeperChangesLog.away]
+            };
+        }
 
         return { period: periodText, stats: periodData, goalkeeperChangesLog, periodDuration };
     });

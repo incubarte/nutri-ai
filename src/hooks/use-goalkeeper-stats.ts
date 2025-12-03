@@ -261,14 +261,23 @@ function processGoalkeepersForTeam(
       }
     });
 
-    // Count total shots against (sum of all opponent player shots)
-    const totalShotsAgainst = opponentPlayerStats.reduce((sum, ps) => sum + (ps.shots || 0), 0);
-    // Distribute shots proportionally based on time on ice
-    const totalGKTime = gkTimeRanges.reduce((sum, r) => {
-      return sum + (r.startTime - r.endTime); // endTime=0 means played until end
-    }, 0);
-    const shotsProportion = totalGKTime > 0 ? timeOnIce / totalGKTime : 0;
-    const shotsAgainstCount = Math.round(totalShotsAgainst * shotsProportion);
+    // Count shots against during this goalkeeper's time
+    // Shots are recorded in opponent player stats with gameTime
+    let shotsAgainstCount = 0;
+    opponentPlayerStats.forEach(playerStat => {
+      if (playerStat.shotTimes && Array.isArray(playerStat.shotTimes)) {
+        // Count shots that happened during this goalkeeper's time
+        playerStat.shotTimes.forEach((shotTime: number) => {
+          // Find which goalkeeper was active at this time
+          const activeRange = gkTimeRanges.find(r =>
+            (r.endTime === 0 ? shotTime <= r.startTime : shotTime <= r.startTime && shotTime > r.endTime)
+          );
+          if (activeRange && activeRange.playerId === gkId) {
+            shotsAgainstCount++;
+          }
+        });
+      }
+    });
 
     // Calculate saves (atajados) = shots against - goals against
     const savesCount = Math.max(0, shotsAgainstCount - goalsAgainstCount);

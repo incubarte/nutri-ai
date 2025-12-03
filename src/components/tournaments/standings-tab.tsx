@@ -275,10 +275,27 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
     const semi1 = semis[0]; // Primera semifinal encontrada
     const semi2 = semis[1]; // Segunda semifinal encontrada
     const final = playoffMatches.find(m => m.playoffType === 'final');
+    const thirdPlace = playoffMatches.find(m => m.playoffType === '3er-puesto');
 
     const semi1Winner = semi1 ? getWinnerTeam(semi1, tournament, standings) : null;
     const semi2Winner = semi2 ? getWinnerTeam(semi2, tournament, standings) : null;
     const finalWinner = final ? getWinnerTeam(final, tournament, standings) : null;
+
+    // Helper para obtener perdedor de una semi
+    const getLoserTeam = (match: MatchData | undefined): string | null => {
+        if (!match?.summary) return null;
+        const { home, away } = calculateScoreFromSummary(match.summary);
+        if (home > away) {
+            return getTeamName(match.awayTeamId, tournament, standings);
+        } else if (away > home) {
+            return getTeamName(match.homeTeamId, tournament, standings);
+        }
+        return null;
+    };
+
+    const semi1Loser = semi1 ? getLoserTeam(semi1) : null;
+    const semi2Loser = semi2 ? getLoserTeam(semi2) : null;
+    const thirdPlaceWinner = thirdPlace ? getWinnerTeam(thirdPlace, tournament, standings) : null;
 
     // Obtener los nombres de los equipos para cada semifinal
     // Si tienen equipos definidos, mostrarlos. Si no, usar el matchup para derivarlos de standings
@@ -427,8 +444,63 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
                         <div className="h-20 w-px bg-border"></div>
                     </div>
 
-                    {/* Final */}
+                    {/* Columna derecha: 3er Puesto y Final */}
                     <div className="space-y-6">
+                        {/* Partido por el 3er Puesto */}
+                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide text-center">
+                            3er Puesto
+                        </h3>
+                        <div className={cn(
+                            "border-2 rounded-lg p-4 space-y-2",
+                            thirdPlaceWinner ? "border-orange-500" : "border-border"
+                        )}>
+                            <div className="text-xs font-semibold text-orange-600 dark:text-orange-400">3er Puesto</div>
+                            <div className="flex items-center justify-between">
+                                <span className="font-medium">
+                                    {thirdPlace?.homeTeamId
+                                        ? getTeamName(thirdPlace.homeTeamId, tournament, standings)
+                                        : (semi1Loser || 'Perdedor Semi 1')}
+                                </span>
+                                {thirdPlace?.summary && (
+                                    <span className="font-bold">
+                                        {calculateScoreFromSummary(thirdPlace.summary).home}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center justify-between border-t pt-2">
+                                <span className="font-medium">
+                                    {thirdPlace?.awayTeamId
+                                        ? getTeamName(thirdPlace.awayTeamId, tournament, standings)
+                                        : (semi2Loser || 'Perdedor Semi 2')}
+                                </span>
+                                {thirdPlace?.summary && (
+                                    <span className="font-bold">
+                                        {calculateScoreFromSummary(thirdPlace.summary).away}
+                                    </span>
+                                )}
+                            </div>
+                            {thirdPlace && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground pt-2 border-t">
+                                    <Calendar className="h-3 w-3" />
+                                    {format(new Date(thirdPlace.date), "dd/MM/yy HH:mm", { locale: es })}
+                                </div>
+                            )}
+                            {!thirdPlace && (
+                                <div className="text-xs text-muted-foreground pt-2 border-t">
+                                    Partido no programado
+                                </div>
+                            )}
+                            {thirdPlaceWinner && (
+                                <div className="mt-4 pt-4 border-t">
+                                    <div className="flex items-center justify-center gap-2 text-orange-600 dark:text-orange-400 font-bold">
+                                        <Trophy className="h-5 w-5" />
+                                        <span>3er Lugar: {thirdPlaceWinner}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Final */}
                         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide text-center">
                             Final
                         </h3>

@@ -4,11 +4,12 @@ import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 're
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Mic, MicOff, ChevronDown, Settings, Check, Trash2 } from 'lucide-react';
+import { Mic, MicOff, ChevronDown, Settings, Check, Trash2, Target, Info } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useGoals } from '@/hooks/use-goals';
-import { useGameState, getActualPeriodText } from '@/contexts/game-state-context';
+import { useGameState, getActualPeriodText, type Team } from '@/contexts/game-state-context';
 import { usePenalties } from '@/hooks/use-penalties';
+import { useToast } from '@/hooks/use-toast';
 
 interface Message {
   id: string;
@@ -50,6 +51,7 @@ export const VoiceControls = forwardRef<VoiceControlsHandle, VoiceControlsProps>
   const { addGoal } = useGoals();
   const { state, dispatch } = useGameState();
   const { addPenalty } = usePenalties();
+  const { toast } = useToast();
 
   const [isRecording, setIsRecording] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -433,6 +435,44 @@ export const VoiceControls = forwardRef<VoiceControlsHandle, VoiceControlsProps>
     }
   };
 
+  const handlePlayerClick = (team: Team, playerNumber: string) => {
+    // Register a shot for this player
+    dispatch({ type: 'ADD_PLAYER_SHOT', payload: { team, playerNumber } });
+
+    // Get team name
+    const teamName = team === 'home' ? (homeTeam?.name || 'Local') : (awayTeam?.name || 'Visitante');
+
+    // Get player name
+    const teamData = team === 'home' ? homeTeam : awayTeam;
+    const player = teamData?.players.find(p => p.number === playerNumber);
+    const playerName = player?.name || `Jugador #${playerNumber}`;
+
+    // Add message to log (same format as voice events)
+    const shotMessage: Message = {
+      id: `shot-${Date.now()}-${Math.random()}`,
+      type: 'system',
+      text: `Tiro registrado: ${teamName} - Jugador #${playerNumber}`,
+      timestamp: new Date(),
+      event: {
+        action: 'shot',
+        data: {
+          team,
+          teamName,
+          playerNumber,
+          playerName
+        }
+      }
+    };
+
+    setMessages(prev => [...prev, shotMessage]);
+
+    toast({
+      title: "Tiro Registrado",
+      description: `Tiro para el jugador #${playerNumber}`,
+      duration: 1500,
+    });
+  };
+
   const confirmGoal = (messageId: string) => {
     const message = messages.find(m => m.id === messageId);
     if (!message || !message.event || message.event.action !== 'goal') return;
@@ -573,16 +613,6 @@ export const VoiceControls = forwardRef<VoiceControlsHandle, VoiceControlsProps>
         const response = await fetch('/api/voice/teams');
         const data = await response.json();
         if (data.success) {
-          console.log('[VoiceControls] Home team loaded:', data.homeTeam.name);
-          console.log('[VoiceControls] Home players:', data.homeTeam.players.length);
-          console.log('[VoiceControls] Home present:', data.homeTeam.players.filter((p: any) => p.isPresent).length);
-          console.log('[VoiceControls] Home absent:', data.homeTeam.players.filter((p: any) => !p.isPresent).length);
-
-          console.log('[VoiceControls] Away team loaded:', data.awayTeam.name);
-          console.log('[VoiceControls] Away players:', data.awayTeam.players.length);
-          console.log('[VoiceControls] Away present:', data.awayTeam.players.filter((p: any) => p.isPresent).length);
-          console.log('[VoiceControls] Away absent:', data.awayTeam.players.filter((p: any) => !p.isPresent).length);
-
           setHomeTeam(data.homeTeam);
           setAwayTeam(data.awayTeam);
         }
@@ -594,9 +624,32 @@ export const VoiceControls = forwardRef<VoiceControlsHandle, VoiceControlsProps>
   }, []);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[250px_1fr_250px] gap-4">
-      {/* Left: Home Team Players */}
-      <Card className="p-4 max-h-[500px] overflow-y-auto">
+    <div className="space-y-4">
+      {/* Info Banner */}
+      <Card className="bg-primary/5 border-primary/20">
+        <div className="p-4">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm">Registrar Eventos</h3>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li className="flex items-start gap-2">
+                  <Target className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <span><strong>Tiros:</strong> Click en el jugador en los listados laterales</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Mic className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <span><strong>Goles y Tiros:</strong> Usa el control de voz (botón rojo o tecla Ctrl)</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-[250px_1fr_250px] gap-4">
+        {/* Left: Home Team Players */}
+        <Card className="p-4 max-h-[500px] overflow-y-auto">
         <h2 className="font-bold text-lg mb-3 text-center border-b pb-2">
           {homeTeam?.name || 'Equipo Local'}
         </h2>
@@ -609,8 +662,11 @@ export const VoiceControls = forwardRef<VoiceControlsHandle, VoiceControlsProps>
                 .map((player) => (
                   <div
                     key={player.id}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50"
+                    onClick={() => handlePlayerClick('home', player.number)}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-primary/20 cursor-pointer transition-colors group"
+                    title={`Click para registrar tiro de ${player.name}`}
                   >
+                    <Target className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
                     <span className="font-bold text-sm w-8">
                       {player.number || '-'}
                     </span>
@@ -623,13 +679,10 @@ export const VoiceControls = forwardRef<VoiceControlsHandle, VoiceControlsProps>
               {/* Absent Players - Collapsible - Always show if there are absent players */}
               {(() => {
                 const absentPlayers = homeTeam.players.filter(p => !p.isPresent);
-                console.log('[VoiceControls Render] Home absent players count:', absentPlayers.length);
                 if (absentPlayers.length === 0) {
-                  console.log('[VoiceControls Render] No home absent players - not rendering section');
                   return null;
                 }
 
-                console.log('[VoiceControls Render] Rendering home absent section with', absentPlayers.length, 'players');
                 return (
                   <div className="mt-3 pt-2 border-t border-border/50">
                     <Collapsible open={isHomeAbsentOpen} onOpenChange={setIsHomeAbsentOpen}>
@@ -1114,8 +1167,11 @@ export const VoiceControls = forwardRef<VoiceControlsHandle, VoiceControlsProps>
                 .map((player) => (
                   <div
                     key={player.id}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50"
+                    onClick={() => handlePlayerClick('away', player.number)}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-primary/20 cursor-pointer transition-colors group"
+                    title={`Click para registrar tiro de ${player.name}`}
                   >
+                    <Target className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
                     <span className="font-bold text-sm w-8">
                       {player.number || '-'}
                     </span>
@@ -1128,13 +1184,10 @@ export const VoiceControls = forwardRef<VoiceControlsHandle, VoiceControlsProps>
               {/* Absent Players - Collapsible - Always show if there are absent players */}
               {(() => {
                 const absentPlayers = awayTeam.players.filter(p => !p.isPresent);
-                console.log('[VoiceControls Render] Away absent players count:', absentPlayers.length);
                 if (absentPlayers.length === 0) {
-                  console.log('[VoiceControls Render] No away absent players - not rendering section');
                   return null;
                 }
 
-                console.log('[VoiceControls Render] Rendering away absent section with', absentPlayers.length, 'players');
                 return (
                   <div className="mt-3 pt-2 border-t border-border/50">
                     <Collapsible open={isAwayAbsentOpen} onOpenChange={setIsAwayAbsentOpen}>
@@ -1174,6 +1227,7 @@ export const VoiceControls = forwardRef<VoiceControlsHandle, VoiceControlsProps>
           )}
         </div>
       </Card>
+      </div>
     </div>
   );
 });

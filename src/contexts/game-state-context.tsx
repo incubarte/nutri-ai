@@ -11,6 +11,7 @@ import { updateConfigOnServer, updateGameStateOnServer, saveTournamentOnServer }
 import { safeUUID } from '@/lib/utils';
 import defaultSettings from '@/config/defaults.json';
 import { generateSummaryData } from '@/lib/summary-generator';
+import { calculateScoreFromSummary } from '@/lib/match-helpers';
 
 // Import constants and helpers
 import {
@@ -1480,21 +1481,133 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'UPDATE_MATCH_SUMMARY_IN_STATE': {
       const { matchId, summary } = action.payload;
       const tournamentId = state.config.selectedTournamentId;
+      console.log('[GameState] UPDATE_MATCH_SUMMARY_IN_STATE - matchId:', matchId, 'tournamentId:', tournamentId);
       if (!tournamentId) break;
+
+      let playoffMatchesUpdated = false;
 
       const newTournaments = state.config.tournaments.map(t => {
         if (t.id === tournamentId) {
-          const newMatches = (t.matches || []).map(m => {
+          let newMatches = (t.matches || []).map(m => {
             if (m.id === matchId) {
                 return { ...m, summary };
             }
             return m;
           });
+
+          // Si el partido que terminó es una semifinal, actualizar final y 3er puesto
+          const finishedMatch = newMatches.find(m => m.id === matchId);
+          console.log('[GameState] Finished match:', finishedMatch?.phase, finishedMatch?.playoffType);
+
+          if (finishedMatch?.phase === 'playoffs' && finishedMatch?.playoffType === 'semifinal' && summary) {
+            try {
+              // Calcular ganador y perdedor de la semifinal usando la función helper
+              const scores = calculateScoreFromSummary(summary);
+              console.log('[GameState] Semifinal scores:', scores);
+
+              // Solo proceder si hay un resultado definitivo
+              if (scores.home === scores.away) {
+                // En caso de empate, no actualizar (no debería pasar en playoffs pero por si acaso)
+                console.log('[GameState] Tied game, not updating playoff matches');
+                return { ...t, matches: newMatches };
+              }
+
+              const winnerId = scores.home > scores.away ? finishedMatch.homeTeamId : finishedMatch.awayTeamId;
+              const loserId = scores.home > scores.away ? finishedMatch.awayTeamId : finishedMatch.homeTeamId;
+
+              console.log('[GameState] Winner:', winnerId, 'Loser:', loserId);
+
+              // Validar que ambos IDs existan
+              if (!winnerId || !loserId) {
+                console.log('[GameState] Missing winner or loser ID, not updating');
+                return { ...t, matches: newMatches };
+              }
+
+            // Actualizar partidos de la misma categoría
+            console.log('[GameState] Looking for playoff matches to update in category:', finishedMatch.categoryId);
+            newMatches = newMatches.map(m => {
+              // Solo actualizar partidos de la misma categoría
+              if (m.categoryId !== finishedMatch.categoryId || m.phase !== 'playoffs') {
+                return m;
+              }
+
+              // Actualizar Final con el ganador
+              if (m.playoffType === 'final') {
+                console.log('[GameState] Found final match:', m.id, 'homeTeamId:', m.homeTeamId, 'awayTeamId:', m.awayTeamId, 'winnerId:', winnerId);
+
+                const hasHomeTeam = !!(m.homeTeamId && m.homeTeamId.trim() !== '');
+                const hasAwayTeam = !!(m.awayTeamId && m.awayTeamId.trim() !== '');
+                const homeIsWinner = m.homeTeamId === winnerId;
+                const awayIsWinner = m.awayTeamId === winnerId;
+
+                console.log('[GameState] hasHomeTeam:', hasHomeTeam, 'hasAwayTeam:', hasAwayTeam, 'homeIsWinner:', homeIsWinner, 'awayIsWinner:', awayIsWinner);
+
+                // Solo agregar si no está ya presente el ganador
+                if (!hasHomeTeam && !awayIsWinner) {
+                  console.log('[GameState] ✅ Assigning winner to final homeTeamId');
+                  playoffMatchesUpdated = true;
+                  return { ...m, homeTeamId: winnerId };
+                } else if (!hasAwayTeam && !homeIsWinner) {
+                  console.log('[GameState] ✅ Assigning winner to final awayTeamId');
+                  playoffMatchesUpdated = true;
+                  return { ...m, awayTeamId: winnerId };
+                }
+                console.log('[GameState] ❌ Final already has both teams or winner already assigned');
+                return m; // Si ambos están llenos o el ganador ya está, no cambiar
+              }
+
+              // Actualizar 3er Puesto con el perdedor
+              if (m.playoffType === '3er-puesto') {
+                console.log('[GameState] Found 3rd place match:', m.id, 'homeTeamId:', m.homeTeamId, 'awayTeamId:', m.awayTeamId, 'loserId:', loserId);
+
+                const hasHomeTeam = !!(m.homeTeamId && m.homeTeamId.trim() !== '');
+                const hasAwayTeam = !!(m.awayTeamId && m.awayTeamId.trim() !== '');
+                const homeIsLoser = m.homeTeamId === loserId;
+                const awayIsLoser = m.awayTeamId === loserId;
+
+                console.log('[GameState] hasHomeTeam:', hasHomeTeam, 'hasAwayTeam:', hasAwayTeam, 'homeIsLoser:', homeIsLoser, 'awayIsLoser:', awayIsLoser);
+
+                // Solo agregar si no está ya presente el perdedor
+                if (!hasHomeTeam && !awayIsLoser) {
+                  console.log('[GameState] ✅ Assigning loser to 3rd place homeTeamId');
+                  playoffMatchesUpdated = true;
+                  return { ...m, homeTeamId: loserId };
+                } else if (!hasAwayTeam && !homeIsLoser) {
+                  console.log('[GameState] ✅ Assigning loser to 3rd place awayTeamId');
+                  playoffMatchesUpdated = true;
+                  return { ...m, awayTeamId: loserId };
+                }
+                console.log('[GameState] ❌ 3rd place already has both teams or loser already assigned');
+                return m; // Si ambos están llenos o el perdedor ya está, no cambiar
+              }
+
+              return m;
+            });
+            } catch (error) {
+              console.error('[GameState] Error updating playoff matches after semifinal:', error);
+              // Si hay error, simplemente no actualizamos los partidos
+            }
+          }
+
           return { ...t, matches: newMatches };
         }
         return t;
       });
+
       newState = { ...state, config: { ...state.config, tournaments: newTournaments }};
+
+      // Si se actualizaron partidos de playoffs, guardar el torneo inmediatamente
+      console.log('[GameState] playoffMatchesUpdated:', playoffMatchesUpdated);
+      if (playoffMatchesUpdated && tournamentId) {
+        const updatedTournament = newTournaments.find(t => t.id === tournamentId);
+        if (updatedTournament) {
+          console.log('[GameState] Playoff matches updated, saving tournament immediately...');
+          saveTournamentOnServer(updatedTournament);
+        }
+      } else {
+        console.log('[GameState] Not saving - playoffMatchesUpdated:', playoffMatchesUpdated, 'tournamentId:', tournamentId);
+      }
+
       break;
     }
     case 'SAVE_MATCH_SUMMARY': {

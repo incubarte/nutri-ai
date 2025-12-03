@@ -14,9 +14,9 @@ export async function GET() {
     const homeTeamSubName = liveState.homeTeamSubName || undefined;
     const awayTeamSubName = liveState.awayTeamSubName || undefined;
 
-    // Extract players from attendance (these are the ones present)
-    const attendanceHomeIds = new Set((liveState.attendance?.home || []).map((p: any) => p.id));
-    const attendanceAwayIds = new Set((liveState.attendance?.away || []).map((p: any) => p.id));
+    // Extract attendance with isPresent flag
+    const attendanceHomeMap = new Map((liveState.attendance?.home || []).map((p: any) => [p.id, p.isPresent !== false]));
+    const attendanceAwayMap = new Map((liveState.attendance?.away || []).map((p: any) => [p.id, p.isPresent !== false]));
 
     // Get full team rosters from tournament
     const configPath = path.join(process.cwd(), 'tmp', 'new-storage', 'data', 'config.json');
@@ -50,21 +50,13 @@ export async function GET() {
             (t.subName || undefined) === awayTeamSubName
           );
 
-          console.log('[Voice Teams] Home team search:', homeTeamName, homeTeamSubName ? `(${homeTeamSubName})` : '(no subName)');
-          console.log('[Voice Teams] Home team found:', homeTeamData ? 'YES' : 'NO');
-          console.log('[Voice Teams] Away team search:', awayTeamName, awayTeamSubName ? `(${awayTeamSubName})` : '(no subName)');
-          console.log('[Voice Teams] Away team found:', awayTeamData ? 'YES' : 'NO');
-
           if (homeTeamData?.players) {
             allHomePlayers = homeTeamData.players.map((p: any) => ({
               id: p.id,
               number: p.number || '',
               name: p.name || 'Sin nombre',
-              isPresent: attendanceHomeIds.has(p.id)
+              isPresent: attendanceHomeMap.get(p.id) || false
             }));
-            console.log('[Voice Teams] Home players loaded:', allHomePlayers.length,
-                       'Present:', allHomePlayers.filter(p => p.isPresent).length,
-                       'Absent:', allHomePlayers.filter(p => !p.isPresent).length);
           }
 
           if (awayTeamData?.players) {
@@ -72,15 +64,12 @@ export async function GET() {
               id: p.id,
               number: p.number || '',
               name: p.name || 'Sin nombre',
-              isPresent: attendanceAwayIds.has(p.id)
+              isPresent: attendanceAwayMap.get(p.id) || false
             }));
-            console.log('[Voice Teams] Away players loaded:', allAwayPlayers.length,
-                       'Present:', allAwayPlayers.filter(p => p.isPresent).length,
-                       'Absent:', allAwayPlayers.filter(p => !p.isPresent).length);
           }
         }
       } catch (error) {
-        console.error('[Voice Teams] Could not load full roster:', error);
+        console.error('Could not load full roster:', error);
       }
     }
 

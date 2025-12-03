@@ -1357,7 +1357,7 @@ export default function ControlsPage() {
           <TabsList className="grid w-full max-w-2xl grid-cols-3 mb-6">
             <TabsTrigger value="penalties">Penalidades</TabsTrigger>
             <TabsTrigger value="goals">Goles</TabsTrigger>
-            <TabsTrigger value="voice">Voz</TabsTrigger>
+            <TabsTrigger value="voice">Eventos</TabsTrigger>
           </TabsList>
 
           <TabsContent value="penalties">

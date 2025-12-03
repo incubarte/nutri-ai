@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
+import { calculateScoreFromSummary } from '@/lib/match-helpers';
 
 // Helper para obtener el nombre del equipo o posición
 function getTeamOrPositionName(teamId: string | undefined, teams: TeamData[] | undefined): string {
@@ -40,33 +41,47 @@ function getTeamOrPositionName(teamId: string | undefined, teams: TeamData[] | u
 
 // Helper para obtener el matchup readable
 function getMatchupDisplay(match: MatchData, teams: TeamData[] | undefined): { home: string, away: string } {
-  // Si ambos equipos están definidos, usarlos
-  if (match.homeTeamId && match.awayTeamId) {
-    return {
-      home: getTeamOrPositionName(match.homeTeamId, teams),
-      away: getTeamOrPositionName(match.awayTeamId, teams)
-    };
+  // Para partidos de playoffs, manejar casos con equipos parcialmente definidos
+  if (match.phase === 'playoffs') {
+    // Semifinales
+    if (match.playoffType === 'semifinal' && match.playoffMatchup) {
+      // Si ambos equipos están definidos, usarlos
+      if (match.homeTeamId && match.awayTeamId) {
+        return {
+          home: getTeamOrPositionName(match.homeTeamId, teams),
+          away: getTeamOrPositionName(match.awayTeamId, teams)
+        };
+      }
+      // Si no hay equipos, mostrar matchup
+      const matchupMap: Record<string, { home: string, away: string }> = {
+        '1vs4': { home: '1ero', away: '4to' },
+        '2vs3': { home: '2do', away: '3ero' },
+        '1vs2': { home: '1ero', away: '2do' },
+        '1vs3': { home: '1ero', away: '3ero' },
+        '2vs4': { home: '2do', away: '4to' },
+        '3vs4': { home: '3ero', away: '4to' }
+      };
+      return matchupMap[match.playoffMatchup] || { home: '?', away: '?' };
+    }
+
+    // Final
+    if (match.playoffType === 'final') {
+      return {
+        home: match.homeTeamId ? getTeamOrPositionName(match.homeTeamId, teams) : 'Ganador Semi 1',
+        away: match.awayTeamId ? getTeamOrPositionName(match.awayTeamId, teams) : 'Ganador Semi 2'
+      };
+    }
+
+    // 3er Puesto
+    if (match.playoffType === '3er-puesto') {
+      return {
+        home: match.homeTeamId ? getTeamOrPositionName(match.homeTeamId, teams) : 'Perdedor Semi 1',
+        away: match.awayTeamId ? getTeamOrPositionName(match.awayTeamId, teams) : 'Perdedor Semi 2'
+      };
+    }
   }
 
-  // Si es un partido de playoffs con matchup definido pero sin equipos
-  if (match.phase === 'playoffs' && match.playoffType === 'semifinal' && match.playoffMatchup) {
-    const matchupMap: Record<string, { home: string, away: string }> = {
-      '1vs4': { home: '1ero', away: '4to' },
-      '2vs3': { home: '2do', away: '3ero' },
-      '1vs2': { home: '1ero', away: '2do' },
-      '1vs3': { home: '1ero', away: '3ero' },
-      '2vs4': { home: '2do', away: '4to' },
-      '3vs4': { home: '3ero', away: '4to' }
-    };
-    return matchupMap[match.playoffMatchup] || { home: '?', away: '?' };
-  }
-
-  // Si es final sin equipos
-  if (match.phase === 'playoffs' && match.playoffType === 'final') {
-    return { home: 'Ganador Semi 1', away: 'Ganador Semi 2' };
-  }
-
-  // Fallback
+  // Partidos normales o fallback
   return {
     home: getTeamOrPositionName(match.homeTeamId, teams),
     away: getTeamOrPositionName(match.awayTeamId, teams)
@@ -413,17 +428,20 @@ export function FixtureCalendarView() {
                 </div>
               </div>
 
-              {selectedMatch.summary && (
-                <div className="space-y-1">
-                  <div className="text-sm text-muted-foreground">Resultado</div>
-                  <div className="font-medium text-lg">
-                    {selectedMatch.homeScore} - {selectedMatch.awayScore}
-                    {selectedMatch.overTimeOrShootouts && (
-                      <span className="text-sm text-muted-foreground ml-2">({selectedMatch.overTimeOrShootouts})</span>
-                    )}
+              {selectedMatch.summary && (() => {
+                const scores = calculateScoreFromSummary(selectedMatch.summary);
+                return (
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">Resultado</div>
+                    <div className="font-medium text-lg">
+                      {scores.home} - {scores.away}
+                      {selectedMatch.overTimeOrShootouts && (
+                        <span className="text-sm text-muted-foreground ml-2">({selectedMatch.overTimeOrShootouts})</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               <div className="flex flex-col gap-2 pt-4">
                 {selectedMatch.summary && (

@@ -23,7 +23,7 @@ export function EndOfGameDisplay({
     return null;
   }
 
-  const { score, homeTeamName, awayTeamName } = state.live;
+  const { score, homeTeamName, awayTeamName, matchId } = state.live;
   const homeScore = score.home;
   const awayScore = score.away;
 
@@ -34,8 +34,21 @@ export function EndOfGameDisplay({
   const winnerTeamName = homeWon ? homeTeamName : awayTeamName;
   const winnerLogoDataUrl = homeWon ? homeLogoDataUrl : awayLogoDataUrl;
 
+  // Obtener datos del partido para verificar si es playoff
+  const matchData = state.config.tournaments
+    .flatMap(t => t.matches)
+    .find(m => m.id === matchId);
+  const isPlayoffMatch = matchData?.phase === 'playoffs';
+
   // Alternate standings: hide 10s, show 15s, hide 10s, show 15s...
+  // PERO NO mostrar standings si es un partido de playoffs
   useEffect(() => {
+    // Si es partido de playoffs, no mostrar tabla nunca
+    if (isPlayoffMatch) {
+      setShowStandings(false);
+      return;
+    }
+
     let currentTimer: NodeJS.Timeout;
 
     const scheduleToggle = (show: boolean, delay: number) => {
@@ -58,7 +71,7 @@ export function EndOfGameDisplay({
     return () => {
       clearTimeout(currentTimer);
     };
-  }, []);
+  }, [isPlayoffMatch]);
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-gradient-to-br from-background via-slate-900 to-background">

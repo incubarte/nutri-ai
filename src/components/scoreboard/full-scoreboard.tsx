@@ -359,8 +359,15 @@ export function FullScoreboard({ className }: { className?: string }) {
   const isPreWarmup = clock.periodDisplayOverride === 'Pre Warm-up';
   const isFixtureMatch = !!matchId;
 
+  // Obtener datos del partido para verificar si es playoff
+  const matchData = config.tournaments
+    ?.flatMap(t => t.matches || [])
+    .find(m => m.id === matchId);
+  const isPlayoffMatch = matchData?.phase === 'playoffs';
+
   // Mostrar tabla si estamos en warmup, es partido de fixture, la opción está activada Y el estado indica mostrar
-  const shouldShowStandings = config.showStandingsInWarmup && isWarmup && isFixtureMatch && showStandingsInWarmup;
+  // PERO NO si es un partido de playoffs
+  const shouldShowStandings = config.showStandingsInWarmup && isWarmup && isFixtureMatch && showStandingsInWarmup && !isPlayoffMatch;
   const shouldShowWarmupDisplay = isWarmup && isFixtureMatch && !shouldShowStandings;
 
   const handleTransitionComplete = () => {
