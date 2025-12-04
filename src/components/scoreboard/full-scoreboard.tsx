@@ -177,19 +177,47 @@ export function FullScoreboard({ className }: { className?: string }) {
       // Usar el estado guardado de lo que realmente se estaba mostrando
       console.log('Was showing standings before transition:', wasShowingStandingsBeforeTransition);
 
+      // Determinar si el partido actual es de playoffs
+      const currentMatchData = config.tournaments
+        ?.flatMap(t => t.matches || [])
+        .find(m => m.id === live.matchId);
+      const isCurrentPlayoffMatch = currentMatchData?.phase === 'playoffs';
+
       // Capturar el contenido COMPLETO de warmup ESTÁTICO (sin animaciones) para la transición
       const warmupContent = wasShowingStandingsBeforeTransition ? (
-        <div className="w-full h-screen" style={{ pointerEvents: 'none' }}>
-          <WarmupDisplayStatic
-            homeLogoDataUrl={homeLogoDataUrl}
-            awayLogoDataUrl={awayLogoDataUrl}
-            clockPosition="top"
-            showClock={true}
-            tournamentLogoId={config.selectedTournamentId}
-          >
-            <StandingsDisplay />
-          </WarmupDisplayStatic>
-        </div>
+        isCurrentPlayoffMatch ? (
+          // Partido de playoff - mostrar bracket
+          <div className="w-full h-screen" style={{ pointerEvents: 'none' }}>
+            <WarmupDisplayStatic
+              homeLogoDataUrl={homeLogoDataUrl}
+              awayLogoDataUrl={awayLogoDataUrl}
+              clockPosition="top"
+              showClock={true}
+              tournamentLogoId={config.selectedTournamentId}
+            >
+              <PlayoffBracketPreview
+                tournament={currentTournament}
+                currentMatch={currentMatchData}
+                homeTeam={homeTeam}
+                awayTeam={awayTeam}
+                highlightStyle={config.playoffBracketHighlightStyle}
+              />
+            </WarmupDisplayStatic>
+          </div>
+        ) : (
+          // Partido de clasificación - mostrar standings
+          <div className="w-full h-screen" style={{ pointerEvents: 'none' }}>
+            <WarmupDisplayStatic
+              homeLogoDataUrl={homeLogoDataUrl}
+              awayLogoDataUrl={awayLogoDataUrl}
+              clockPosition="top"
+              showClock={true}
+              tournamentLogoId={config.selectedTournamentId}
+            >
+              <StandingsDisplay />
+            </WarmupDisplayStatic>
+          </div>
+        )
       ) : (
         <div className="w-full h-screen" style={{ pointerEvents: 'none' }}>
           <WarmupDisplayStatic

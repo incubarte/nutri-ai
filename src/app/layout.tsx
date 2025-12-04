@@ -5,6 +5,7 @@ import { GameStateProvider } from '@/contexts/game-state-context';
 import { ConditionalToaster } from "@/components/ui/conditional-toaster";
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: 'IceVision - Hockey Scoreboard',
@@ -28,6 +29,7 @@ export default function RootLayout({
           <PageShell>{children}</PageShell>
           <ConditionalToaster />
         </GameStateProvider>
+        <Analytics />
       </body>
     </html>
   );
