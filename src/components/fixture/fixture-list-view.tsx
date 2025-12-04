@@ -6,7 +6,7 @@ import { useGameState, getCategoryNameById } from '@/contexts/game-state-context
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Edit, Trash2, FileText, Search, ListFilter, Calendar as CalendarIcon, X, Check as CheckIcon, Play, Eraser } from 'lucide-react';
+import { Edit, Trash2, FileText, Search, ListFilter, Calendar as CalendarIcon, X, Check as CheckIcon, Play, Eraser, Share2 } from 'lucide-react';
 import { format, parseISO, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AddEditMatchDialog } from './add-edit-match-dialog';
@@ -201,13 +201,79 @@ export function FixtureListView() {
     setTeamSearch('');
     setDateFilter(undefined);
   };
-  
+
   const isAnyFilterActive = categoryFilter.length > 0 || teamSearch.trim() !== '' || dateFilter;
+
+  const handleShareWhatsApp = () => {
+    if (sortedMatches.length === 0) {
+      toast({ title: 'No hay partidos', description: 'No hay partidos para compartir con los filtros aplicados.', variant: 'destructive' });
+      return;
+    }
+
+    // Generate text message
+    let message = `📋 *FIXTURE${selectedTournament?.name ? ` - ${selectedTournament.name}` : ''}*\n\n`;
+
+    sortedMatches.forEach((match, index) => {
+      const { home: homeName, away: awayName } = getMatchupDisplay(match, selectedTournament?.teams);
+      const categoryName = getCategoryNameById(match.categoryId, selectedTournament?.categories) || 'N/A';
+      const dateStr = format(new Date(match.date), "dd/MM/yy HH:mm", { locale: es });
+
+      // Add match info
+      message += `📅 ${dateStr}\n`;
+      message += `Categoría: ${categoryName}`;
+
+      // Add playoff type if applicable
+      if (match.phase === 'playoffs' && match.playoffType) {
+        const playoffLabel = match.playoffType === 'semifinal' ? 'Semifinal' : match.playoffType === 'final' ? 'FINAL' : '3er Puesto';
+        message += ` - ${playoffLabel}`;
+      }
+
+      message += `\n${homeName} vs ${awayName}\n`;
+
+      // Add score if available
+      if (match.summary) {
+        const { home, away } = calculateScoreFromSummary(match.summary);
+        message += `Resultado: ${home} - ${away}`;
+
+        // Check for OT/Shootout
+        if (hasOvertimeOrShootout(match.summary)) {
+          if (match.summary.shootout) {
+            message += ' (Penales)';
+          } else {
+            message += ' (OT)';
+          }
+        }
+        message += '\n';
+      } else {
+        message += `Resultado: Pendiente\n`;
+      }
+
+      // Add separator between matches (but not after the last one)
+      if (index < sortedMatches.length - 1) {
+        message += '\n';
+      }
+    });
+
+    message += `\n---\n_Total: ${sortedMatches.length} partido${sortedMatches.length !== 1 ? 's' : ''}_`;
+
+    // Encode message for URL
+    const encodedMessage = encodeURIComponent(message);
+
+    // Open WhatsApp Web
+    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+  };
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Lista de Partidos</h2>
-      
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Lista de Partidos</h2>
+        <Button variant="outline" onClick={handleShareWhatsApp} disabled={sortedMatches.length === 0} className="gap-2">
+          <Share2 className="h-4 w-4" />
+          <span className="hidden sm:inline">Compartir por WhatsApp</span>
+          <span className="sm:hidden">WhatsApp</span>
+        </Button>
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-2">
         <Popover>
             <PopoverTrigger asChild>

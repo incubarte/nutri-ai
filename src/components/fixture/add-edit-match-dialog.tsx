@@ -201,11 +201,7 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
                 return;
             }
 
-            // Validar que si se definen equipos, ambos estén definidos y sean diferentes
-            if ((homeTeamId && !awayTeamId) || (!homeTeamId && awayTeamId)) {
-                toast({ title: 'Error', description: 'Si defines un equipo, debes definir ambos.', variant: 'destructive' });
-                return;
-            }
+            // Validar que si se definen ambos equipos, sean diferentes
             if (homeTeamId && awayTeamId && homeTeamId === awayTeamId) {
                 toast({ title: 'Error', description: 'Los equipos no pueden ser el mismo.', variant: 'destructive' });
                 return;

@@ -7,6 +7,7 @@ import path from 'path';
 import os from 'os';
 import localtunnel, { type Tunnel } from 'localtunnel';
 import { readConfig, readLiveState, readTournaments, readShotsMetrics } from './data-access';
+import { isReadOnlyMode } from './storage';
 
 let accessRequests: Map<string, AccessRequest> = new Map();
 
@@ -81,7 +82,9 @@ let storedShotsMetrics: ShotsMetrics | null = null;
 
 // Function to load/reload all data from disk into the cache
 export async function reloadCacheFromDisk() {
-    console.log('[Cache] Reloading data from disk...');
+    console.log('========================================');
+    console.log('[Cache] Reloading data from storage...');
+    console.log('========================================');
     try {
         const [config, liveState, tournaments, shotsMetrics] = await Promise.all([
             readConfig(),
@@ -93,9 +96,13 @@ export async function reloadCacheFromDisk() {
         storedGameState = liveState as LiveGameState;
         storedTournaments = tournaments as TournamentsData;
         storedShotsMetrics = shotsMetrics as ShotsMetrics;
-        console.log('[Cache] Reload complete. Tournaments count:', storedTournaments?.tournaments?.length || 0);
+        console.log('[Cache] ✅ Reload complete');
+        console.log('[Cache] - Tournaments count:', storedTournaments?.tournaments?.length || 0);
+        console.log('[Cache] - Live state matchId:', storedGameState?.matchId || 'none');
+        console.log('[Cache] - Live state score:', storedGameState?.score || 'none');
+        console.log('========================================');
     } catch (error) {
-        console.error('[Cache] Failed to reload cache from disk:', error);
+        console.error('[Cache] ❌ Failed to reload cache from storage:', error);
     }
 }
 
@@ -146,6 +153,16 @@ export async function updateTunnelState(updates: Partial<TunnelState>) {
 }
 
 export async function getGameState(): Promise<LiveGameState | null> {
+  // In read-only mode (supabase_ro), always fetch fresh data from Supabase
+  // to ensure we get the latest live.json updates
+  if (isReadOnlyMode()) {
+    console.log('[Cache] Read-only mode detected - fetching fresh live state from Supabase');
+    const liveState = await readLiveState();
+    storedGameState = liveState as LiveGameState;
+    return storedGameState;
+  }
+
+  // In local or RW mode, use cache
   if (!storedGameState) {
     await reloadCacheFromDisk();
   }
@@ -158,6 +175,15 @@ export function setGameState(newGameState: LiveGameState): void {
 }
 
 export async function getShotsMetrics(): Promise<ShotsMetrics | null> {
+  // In read-only mode (supabase_ro), always fetch fresh data from Supabase
+  if (isReadOnlyMode()) {
+    console.log('[Cache] Read-only mode detected - fetching fresh shots metrics from Supabase');
+    const metrics = await readShotsMetrics();
+    storedShotsMetrics = metrics as ShotsMetrics;
+    return storedShotsMetrics;
+  }
+
+  // In local or RW mode, use cache
   if (!storedShotsMetrics) {
     await reloadCacheFromDisk();
   }

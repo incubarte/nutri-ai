@@ -72,8 +72,15 @@ export class LocalFileStorageProvider implements StorageProvider {
 
     async writeFile(filePath: string, content: string): Promise<void> {
         const resolvedPath = this.resolvePath(filePath);
+
+        console.log(`[LOCAL-PROVIDER] Writing file: ${filePath}`);
+        console.log(`[LOCAL-PROVIDER] Resolved path: ${resolvedPath}`);
+        console.log(`[LOCAL-PROVIDER] Content length: ${content.length} bytes`);
+
         await fs.mkdir(path.dirname(resolvedPath), { recursive: true });
         await fs.writeFile(resolvedPath, content, 'utf-8');
+
+        console.log(`[LOCAL-PROVIDER] ✅ Successfully wrote ${filePath}`);
 
         // Update manifest for tournament files only (not config/live/sync files)
         if (filePath === 'tournaments.json' || filePath.startsWith('tournaments/')) {
@@ -134,9 +141,15 @@ export class SupabaseStorageProvider implements StorageProvider {
     }
 
     async readFile(filePath: string): Promise<string> {
+        console.log(`[SUPABASE-PROVIDER] Reading file: ${filePath}`);
+        console.log(`[SUPABASE-PROVIDER] Bucket: ${this.bucket}`);
+        console.log(`[SUPABASE-PROVIDER] Mode: ${this.mode}`);
+
         const { data, error } = await this.supabase.storage.from(this.bucket).download(filePath);
+
         if (error) {
             if ('status' in error && error.status === 404) {
+                console.log(`[SUPABASE-PROVIDER] ⚠️  File not found: ${filePath}`);
                 throw new FileNotFoundError(`File not found in Supabase: ${filePath}`);
             }
             // Check for the existence of originalError for more detailed logging
@@ -145,28 +158,45 @@ export class SupabaseStorageProvider implements StorageProvider {
                     try {
                         return await (error.originalError as Response).json();
                     } catch (e) {
-                        console.error('Failed to parse Supabase error body.');
+                        console.error('[SUPABASE-PROVIDER] Failed to parse Supabase error body.');
                         return null;
                     }
                 })();
 
                 if (errorBody && errorBody.statusCode === '404') {
+                    console.log(`[SUPABASE-PROVIDER] ⚠️  File not found (from error body): ${filePath}`);
                     throw new FileNotFoundError(`File not found in Supabase: ${filePath}`);
                 }
                 // If it's not a 404, log the detailed error for debugging
                 if (errorBody) {
-                    console.error('Detailed Supabase error:', JSON.stringify(errorBody, null, 2));
+                    console.error('[SUPABASE-PROVIDER] Detailed Supabase error:', JSON.stringify(errorBody, null, 2));
                 }
             }
+            console.error(`[SUPABASE-PROVIDER] ❌ Error reading ${filePath}:`, error);
             throw error;
         }
-        return data.text();
+
+        const content = await data.text();
+        console.log(`[SUPABASE-PROVIDER] ✅ Successfully read ${filePath} (${content.length} bytes)`);
+        return content;
     }
 
     async writeFile(filePath: string, content: string): Promise<void> {
         if (this.mode === 'ro') throw new Error('Cannot write in read-only mode.');
+
+        console.log(`[SUPABASE-PROVIDER] Writing file: ${filePath}`);
+        console.log(`[SUPABASE-PROVIDER] Bucket: ${this.bucket}`);
+        console.log(`[SUPABASE-PROVIDER] Mode: ${this.mode}`);
+        console.log(`[SUPABASE-PROVIDER] Content length: ${content.length} bytes`);
+
         const { error } = await this.supabase.storage.from(this.bucket).upload(filePath, content, { upsert: true, contentType: 'application/json' });
-        if (error) throw error;
+
+        if (error) {
+            console.error(`[SUPABASE-PROVIDER] ❌ Error uploading ${filePath}:`, error);
+            throw error;
+        }
+
+        console.log(`[SUPABASE-PROVIDER] ✅ Successfully uploaded ${filePath}`);
     }
 
     async deleteFile(filePath: string): Promise<void> {
