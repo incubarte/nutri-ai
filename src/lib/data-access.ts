@@ -44,38 +44,11 @@ export async function writeTournaments(tournamentsData: TournamentsData): Promis
 }
 
 export async function readLiveState(): Promise<Partial<LiveState>> {
-    console.log('[DATA-ACCESS] readLiveState called');
-    console.log('[DATA-ACCESS] Storage provider type:', storageProvider.constructor.name);
-
-    try {
-        const liveState = await readJsonFile<LiveState>('live.json');
-        if (liveState) {
-            console.log('[DATA-ACCESS] ✅ Successfully read live.json');
-            console.log('[DATA-ACCESS] Live state matchId:', liveState.matchId);
-            console.log('[DATA-ACCESS] Live state score:', liveState.score);
-        } else {
-            console.log('[DATA-ACCESS] ⚠️  live.json not found or empty');
-        }
-        return liveState || {};
-    } catch (error) {
-        console.error('[DATA-ACCESS] ❌ Error reading live.json:', error);
-        return {};
-    }
+    return (await readJsonFile<LiveState>('live.json')) || {};
 }
 
 export async function writeLiveState(liveState: LiveState): Promise<void> {
-    console.log('[DATA-ACCESS] writeLiveState called');
-    console.log('[DATA-ACCESS] Storage provider type:', storageProvider.constructor.name);
-    console.log('[DATA-ACCESS] Live state matchId:', liveState.matchId);
-    console.log('[DATA-ACCESS] Live state score:', liveState.score);
-
-    try {
-        await storageProvider.writeFile('live.json', JSON.stringify(liveState, null, 2));
-        console.log('[DATA-ACCESS] ✅ Successfully wrote live.json');
-    } catch (error) {
-        console.error('[DATA-ACCESS] ❌ Error writing live.json:', error);
-        throw error;
-    }
+    await storageProvider.writeFile('live.json', JSON.stringify(liveState, null, 2));
 }
 
 export async function readShotsMetrics(): Promise<Partial<ShotsMetrics>> {
