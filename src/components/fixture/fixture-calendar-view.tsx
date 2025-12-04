@@ -330,7 +330,7 @@ export function FixtureCalendarView() {
                         key={match.id}
                         onClick={() => setSelectedMatch(match)}
                         className={cn(
-                          "text-xs p-1.5 rounded-md bg-background/50 transition-all duration-300 cursor-pointer hover:bg-accent/50 hover:border-accent",
+                          "relative text-xs p-1.5 rounded-md bg-background/50 transition-all duration-300 cursor-pointer hover:bg-accent/50 hover:border-accent",
                           !isHighlighted && "opacity-30",
                           // Border base
                           isFinal ? "border-2 border-amber-400 dark:border-amber-500 shadow-sm" :
@@ -340,6 +340,11 @@ export function FixtureCalendarView() {
                           hasSummary && "!border-l-2 !border-l-blue-400"
                         )}
                       >
+                        {/* Category badge - top right corner */}
+                        <div className="absolute top-0.5 right-0.5 bg-muted px-1 py-0.5 rounded text-[8px] font-semibold text-foreground leading-none">
+                          {getCategoryNameById(match.categoryId, selectedTournament?.categories)?.substring(0, 8) || 'N/A'}
+                        </div>
+
                         {isSemifinal && (
                           <div className="text-[9px] font-semibold text-blue-600 dark:text-blue-400 mb-0.5 uppercase tracking-wide">
                             Semifinal
