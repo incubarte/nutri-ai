@@ -44,9 +44,10 @@ type EditingSegment = 'minutes' | 'seconds' | 'tenths';
 
 interface MiniScoreboardProps {
   onScoreClick: (team: Team) => void;
+  onAttendanceDialogChange?: (isOpen: boolean) => void;
 }
 
-export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
+export function MiniScoreboard({ onScoreClick, onAttendanceDialogChange }: MiniScoreboardProps) {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
 
@@ -84,6 +85,12 @@ export function MiniScoreboard({ onScoreClick }: MiniScoreboardProps) {
   const [isHomePlayersDialogOpen, setIsHomePlayersDialogOpen] = useState(false);
   const [isAwayPlayersDialogOpen, setIsAwayPlayersDialogOpen] = useState(false);
   const [isTimeoutConfirmOpen, setIsTimeoutConfirmOpen] = useState(false);
+
+  // Notify parent when any attendance dialog opens/closes
+  useEffect(() => {
+    const isAnyDialogOpen = isHomePlayersDialogOpen || isAwayPlayersDialogOpen;
+    onAttendanceDialogChange?.(isAnyDialogOpen);
+  }, [isHomePlayersDialogOpen, isAwayPlayersDialogOpen, onAttendanceDialogChange]);
 
   useEffect(() => {
     setLocalHomeTeamName(state.live.homeTeamName);
