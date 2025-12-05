@@ -199,18 +199,29 @@ export function FixtureCalendarView() {
     setCategoryFilter([]);
     setTeamSearch('');
   };
-  
+
   const isAnyFilterActive = categoryFilter.length > 0 || teamSearch.trim() !== '';
+
+  // Check if we're in the current week (for mobile view)
+  const isInCurrentWeek = useMemo(() => {
+    const today = startOfDay(new Date());
+    const weekEnd = addDays(currentCenterDate, 6);
+    return today >= currentCenterDate && today <= weekEnd;
+  }, [currentCenterDate]);
+
+  const goToCurrentWeek = () => {
+    setCurrentCenterDate(startOfDay(new Date()));
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-2">
         {isMobile ? (
-          <>
+          <div className="w-full flex flex-col gap-2">
             <h3 className="text-base font-semibold text-center">
               {format(currentCenterDate, "d", { locale: es })} - {format(addDays(currentCenterDate, 6), "d 'de' MMMM yyyy", { locale: es })}
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2">
               <Button variant="outline" size="sm" onClick={prevWeek}>
                 <ChevronLeft className="h-4 w-4" />
                 <span className="ml-1">Semana</span>
@@ -220,7 +231,14 @@ export function FixtureCalendarView() {
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-          </>
+            {!isInCurrentWeek && (
+              <div className="flex justify-center">
+                <Button variant="default" size="sm" onClick={goToCurrentWeek} className="bg-blue-500 hover:bg-blue-600">
+                  Semana Actual
+                </Button>
+              </div>
+            )}
+          </div>
         ) : (
           <>
             <h3 className="text-xl font-semibold">{format(currentMonth, "MMMM yyyy", { locale: es })}</h3>
@@ -299,18 +317,27 @@ export function FixtureCalendarView() {
               )}
             >
               <div
-                className={cn("font-medium", !isReadOnly && "cursor-pointer hover:text-blue-500", isSameDay(day, new Date()) && "text-blue-500 font-bold")}
+                className={cn("font-medium", !isReadOnly && "cursor-pointer hover:text-blue-500")}
                 onClick={() => handleDayClick(day)}
               >
                 {isMobile ? (
                   // Mobile: mostrar día de semana + número
                   <div className="text-center">
                     <div className="text-[10px] text-muted-foreground uppercase">{format(day, "EEE", { locale: es })}</div>
-                    <div className="text-sm font-bold">{format(day, "d")}</div>
+                    <div className={cn(
+                      "text-sm font-bold",
+                      isSameDay(day, new Date()) && "text-blue-500 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center mx-auto"
+                    )}>
+                      {format(day, "d")}
+                    </div>
                   </div>
                 ) : (
                   // Desktop: solo número
-                  format(day, "d")
+                  <div className={cn(
+                    isSameDay(day, new Date()) && "text-blue-500 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold"
+                  )}>
+                    {format(day, "d")}
+                  </div>
                 )}
               </div>
               <ScrollArea className="flex-grow mt-1">

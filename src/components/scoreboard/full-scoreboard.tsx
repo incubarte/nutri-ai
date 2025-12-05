@@ -403,9 +403,11 @@ export function FullScoreboard({ className }: { className?: string }) {
 
   // Mostrar tabla si estamos en warmup, es partido de fixture, la opción está activada Y el estado indica mostrar
   // PERO NO si es un partido de playoffs
-  const shouldShowStandings = config.showStandingsInWarmup && isWarmup && isFixtureMatch && showStandingsInWarmup && !isPlayoffMatch;
+  // Si forceStandingsInWarmup está activado, siempre mostrar (para testing)
+  const shouldShowStandings = config.showStandingsInWarmup && isWarmup && isFixtureMatch && (config.forceStandingsInWarmup || showStandingsInWarmup) && !isPlayoffMatch;
   // Mostrar bracket de playoff si estamos en warmup, es partido de playoff, la opción está activada Y el estado indica mostrar
-  const shouldShowPlayoffBracket = config.showStandingsInWarmup && isWarmup && isFixtureMatch && showStandingsInWarmup && isPlayoffMatch;
+  // Si forceStandingsInWarmup está activado, siempre mostrar (para testing)
+  const shouldShowPlayoffBracket = config.showStandingsInWarmup && isWarmup && isFixtureMatch && (config.forceStandingsInWarmup || showStandingsInWarmup) && isPlayoffMatch;
   const shouldShowWarmupDisplay = isWarmup && isFixtureMatch && !shouldShowStandings && !shouldShowPlayoffBracket;
 
   const handleTransitionComplete = () => {

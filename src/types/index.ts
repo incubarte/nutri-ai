@@ -272,6 +272,7 @@ export interface ConfigFields { // Interface for easier picking of fields
   tunnel: TunnelState;
   replays: ReplaySettings;
   showStandingsInWarmup: boolean;
+  forceStandingsInWarmup: boolean; // For testing: always show standings/bracket in warmup
   playoffBracketHighlightStyle: PlayoffBracketHighlightStyle;
   showShotsData: boolean;
   enableOlympiaTransition: boolean;

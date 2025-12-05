@@ -38,6 +38,7 @@ export const IN_CODE_INITIAL_CUSTOM_PENALTY_BEEP_SOUND_DATA_URL = null;
 export const IN_CODE_INITIAL_ENABLE_DEBUG_MODE = false;
 export const IN_CODE_INITIAL_CHROME_BINARY_PATH = "/opt/google/chrome/google-chrome";
 export const IN_CODE_INITIAL_SHOW_STANDINGS_IN_WARMUP = true;
+export const IN_CODE_INITIAL_FORCE_STANDINGS_IN_WARMUP = false; // For testing: always show standings/bracket
 export const IN_CODE_INITIAL_PLAYOFF_BRACKET_HIGHLIGHT_STYLE = 'pulse' as const;
 export const IN_CODE_INITIAL_SHOW_SHOTS_DATA = process.env.NEXT_PUBLIC_SHOW_PLAYER_STATS === 'false' ? false : true;
 export const IN_CODE_INITIAL_ENABLE_OLYMPIA_TRANSITION = process.env.NEXT_PUBLIC_ENABLE_OLYMPIA_TRANSITION === 'false' ? false : true;

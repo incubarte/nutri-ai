@@ -32,6 +32,7 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
   const [localShowAliasInControlsList, setLocalShowAliasInControlsList] = useState(state.config.showAliasInControlsPenaltyList);
   const [localShowAliasInScoreboard, setLocalShowAliasInScoreboard] = useState(state.config.showAliasInScoreboardPenalties);
   const [localShowStandingsInWarmup, setLocalShowStandingsInWarmup] = useState(state.config.showStandingsInWarmup);
+  const [localForceStandingsInWarmup, setLocalForceStandingsInWarmup] = useState(state.config.forceStandingsInWarmup);
   const [localShowShotsData, setLocalShowShotsData] = useState(state.config.showShotsData);
   const [isDirtyLocal, setIsDirtyLocal] = useState(false);
 
@@ -47,6 +48,7 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
       setLocalShowAliasInControlsList(state.config.showAliasInControlsPenaltyList);
       setLocalShowAliasInScoreboard(state.config.showAliasInScoreboardPenalties);
       setLocalShowStandingsInWarmup(state.config.showStandingsInWarmup);
+      setLocalForceStandingsInWarmup(state.config.forceStandingsInWarmup);
       setLocalShowShotsData(state.config.showShotsData);
     }
   }, [
@@ -56,6 +58,7 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
     state.config.showAliasInControlsPenaltyList,
     state.config.showAliasInScoreboardPenalties,
     state.config.showStandingsInWarmup,
+    state.config.forceStandingsInWarmup,
     state.config.showShotsData,
     isDirtyLocal,
   ]);
@@ -88,6 +91,7 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
       }
 
       updates.showStandingsInWarmup = localShowStandingsInWarmup;
+      updates.forceStandingsInWarmup = localForceStandingsInWarmup;
       updates.showShotsData = localShowShotsData;
 
       dispatch({ type: "UPDATE_CONFIG_FIELDS", payload: updates });
@@ -101,6 +105,7 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
       setLocalShowAliasInControlsList(state.config.showAliasInControlsPenaltyList);
       setLocalShowAliasInScoreboard(state.config.showAliasInScoreboardPenalties);
       setLocalShowStandingsInWarmup(state.config.showStandingsInWarmup);
+      setLocalForceStandingsInWarmup(state.config.forceStandingsInWarmup);
       setLocalShowShotsData(state.config.showShotsData);
       setIsDirtyLocal(false);
     },
@@ -111,6 +116,7 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
       if (localShowAliasInControlsList !== state.config.showAliasInControlsPenaltyList) return true;
       if (localShowAliasInScoreboard !== state.config.showAliasInScoreboardPenalties) return true;
       if (localShowStandingsInWarmup !== state.config.showStandingsInWarmup) return true;
+      if (localForceStandingsInWarmup !== state.config.forceStandingsInWarmup) return true;
       if (localShowShotsData !== state.config.showShotsData) return true;
       return false;
     },
@@ -236,6 +242,21 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
             id="showStandingsInWarmupSwitch"
             checked={localShowStandingsInWarmup}
             onCheckedChange={(checked) => { setLocalShowStandingsInWarmup(checked); markDirty(); }}
+          />
+        </div>
+
+        <div className="flex items-center justify-between p-4 border rounded-md bg-card shadow-sm">
+          <Label htmlFor="forceStandingsInWarmupSwitch" className="flex flex-col space-y-1">
+            <span className="font-semibold text-base">Forzar tabla siempre visible (Testing)</span>
+            <span className="font-normal leading-snug text-muted-foreground text-xs">
+              Para pruebas: muestra siempre la tabla/bracket en warmup sin esperar tiempos. Útil para ajustes visuales.
+            </span>
+          </Label>
+          <Switch
+            id="forceStandingsInWarmupSwitch"
+            checked={localForceStandingsInWarmup}
+            onCheckedChange={(checked) => { setLocalForceStandingsInWarmup(checked); markDirty(); }}
+            disabled={!localShowStandingsInWarmup}
           />
         </div>
 
