@@ -163,20 +163,32 @@ export function Header() {
       return;
     }
 
-    const handleMouseMove = (event: MouseEvent) => {
-      if (event.clientY < 80) { 
-        setIsVisible(true);
-        if (hideTimeoutRef.current) {
-          clearTimeout(hideTimeoutRef.current);
-          hideTimeoutRef.current = null;
-        }
+    const handleClick = (event: MouseEvent) => {
+      // Ignore clicks on fullscreen trigger (clock or logo)
+      const target = event.target as HTMLElement;
+      if (target.closest('[data-fullscreen-trigger="true"]')) {
+        return;
       }
+
+      // Show header on any screen click
+      setIsVisible(true);
+
+      // Clear existing timeout
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+
+      // Auto-hide after 3 seconds
+      hideTimeoutRef.current = setTimeout(() => {
+        setIsVisible(false);
+      }, 3000);
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('click', handleClick);
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('click', handleClick);
       if (hideTimeoutRef.current) {
         clearTimeout(hideTimeoutRef.current);
       }
@@ -185,7 +197,7 @@ export function Header() {
 
   const handleHeaderMouseEnter = () => {
     if (isScoreboardPage) {
-      setIsVisible(true);
+      // Clear auto-hide timeout when hovering over header
       if (hideTimeoutRef.current) {
         clearTimeout(hideTimeoutRef.current);
         hideTimeoutRef.current = null;
@@ -194,13 +206,14 @@ export function Header() {
   };
 
   const handleHeaderMouseLeave = () => {
-    if (isScoreboardPage) {
+    if (isScoreboardPage && isVisible) {
+      // Resume auto-hide when leaving header
       if (hideTimeoutRef.current) {
         clearTimeout(hideTimeoutRef.current);
       }
       hideTimeoutRef.current = setTimeout(() => {
         setIsVisible(false);
-      }, 300); 
+      }, 3000);
     }
   };
 

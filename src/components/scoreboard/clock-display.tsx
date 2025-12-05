@@ -12,6 +12,19 @@ interface ClockDisplayProps {
 export function ClockDisplay({ className }: ClockDisplayProps) {
   const { state } = useGameState();
 
+  const handleToggleFullscreen = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the header toggle
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
   // Guard against rendering with incomplete state during hydration
   if (!state.config || !state.live || !state.live.clock) {
     return null; 
@@ -47,7 +60,7 @@ export function ClockDisplay({ className }: ClockDisplayProps) {
   const [mainTime, tenths] = timeHasTenths ? formattedTime.split('.') : [formattedTime, null];
 
   return (
-    <div className={cn("text-center", className)}>
+    <div className={cn("text-center cursor-pointer", className)} onClick={handleToggleFullscreen} data-fullscreen-trigger="true">
       <div
         className={cn(
           "font-bold font-headline tabular-nums tracking-tighter transition-opacity duration-300 flex items-center justify-center opacity-100",

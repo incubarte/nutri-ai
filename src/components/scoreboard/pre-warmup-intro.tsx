@@ -41,6 +41,19 @@ export function PreWarmupIntro({ logo, onComplete, mode = 'explosion' }: PreWarm
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
+  const handleToggleFullscreen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
   useEffect(() => {
     if (!logo) {
       onCompleteRef.current();
@@ -79,7 +92,12 @@ export function PreWarmupIntro({ logo, onComplete, mode = 'explosion' }: PreWarm
   }
 
   return (
-    <div className="relative w-full h-screen bg-black" style={{ overflow: phase === 'pulsing' ? 'hidden' : 'visible' }}>
+    <div
+      className="relative w-full h-screen bg-black cursor-pointer"
+      style={{ overflow: phase === 'pulsing' ? 'hidden' : 'visible' }}
+      onClick={handleToggleFullscreen}
+      data-fullscreen-trigger="true"
+    >
       {/* Líneas diagonales animadas estilo warmup */}
       <svg
         className="absolute inset-0 w-full h-full"
@@ -282,8 +300,8 @@ export function PreWarmupIntro({ logo, onComplete, mode = 'explosion' }: PreWarm
             style={{
               willChange: 'transform, opacity',
               overflow: 'visible',
-              width: '300px',
-              height: '300px',
+              width: '410px',
+              height: '410px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -296,8 +314,8 @@ export function PreWarmupIntro({ logo, onComplete, mode = 'explosion' }: PreWarm
               src={logo}
               alt="Tournament logo"
               style={{
-                width: '300px',
-                height: '300px',
+                width: '410px',
+                height: '410px',
                 objectFit: 'contain',
                 filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.5))'
               }}
@@ -324,8 +342,8 @@ export function PreWarmupIntro({ logo, onComplete, mode = 'explosion' }: PreWarm
             style={{
               willChange: 'transform, opacity',
               overflow: 'visible',
-              width: '300px',
-              height: '300px',
+              width: '410px',
+              height: '410px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -338,8 +356,8 @@ export function PreWarmupIntro({ logo, onComplete, mode = 'explosion' }: PreWarm
               src={logo}
               alt="Tournament logo"
               style={{
-                width: '300px',
-                height: '300px',
+                width: '410px',
+                height: '410px',
                 objectFit: 'contain',
                 filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.5))'
               }}

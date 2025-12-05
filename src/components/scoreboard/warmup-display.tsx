@@ -209,8 +209,8 @@ export function WarmupDisplay({
       {/* Warmup clock - Position depends on prop */}
       {showClock && (
         <div className={clockPosition === 'top'
-          ? "absolute left-1/2 top-8 -translate-x-1/2 z-20"
-          : "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
+          ? "absolute left-1/2 top-8 -translate-x-1/2 z-40"
+          : "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40"
         }>
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
