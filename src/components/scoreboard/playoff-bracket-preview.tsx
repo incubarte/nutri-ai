@@ -209,26 +209,54 @@ export function PlayoffBracketPreview({
   if (!homeTeam || !awayTeam) return null;
 
   return (
-    <div className="w-full h-full flex flex-col gap-8 p-8">
-      {/* Top section: Table (left) + Previous Matchups (right) */}
-      <div className="grid grid-cols-2 gap-8 flex-1">
+    <div className="w-[150%] h-full flex flex-col gap-6 px-1 py-2 -mx-[25%]">
+      {/* Semifinal Title with Glow */}
+      <div className="text-center mb-4">
+        <h1
+          className="text-9xl font-black tracking-widest text-orange-400"
+          style={{
+            textShadow: `
+              0 0 8px rgba(251, 146, 60, 0.7),
+              0 0 15px rgba(251, 146, 60, 0.5),
+              0 0 25px rgba(251, 146, 60, 0.3),
+              4px 4px 0 rgba(0, 0, 0, 1),
+              -4px -4px 0 rgba(0, 0, 0, 1),
+              4px -4px 0 rgba(0, 0, 0, 1),
+              -4px 4px 0 rgba(0, 0, 0, 1),
+              5px 5px 0 rgba(0, 0, 0, 0.9),
+              -5px -5px 0 rgba(0, 0, 0, 0.9),
+              5px -5px 0 rgba(0, 0, 0, 0.9),
+              -5px 5px 0 rgba(0, 0, 0, 0.9),
+              6px 6px 0 rgba(0, 0, 0, 0.7),
+              -6px -6px 0 rgba(0, 0, 0, 0.7),
+              6px -6px 0 rgba(0, 0, 0, 0.7),
+              -6px 6px 0 rgba(0, 0, 0, 0.7)
+            `
+          }}
+        >
+          SEMIFINAL
+        </h1>
+      </div>
+
+      {/* Main section: Table (left) + Previous Matchups (right) */}
+      <div className="grid grid-cols-2 gap-2 flex-1">
         {/* Left: Simplified Standings Table */}
-        <div className="bg-card/95 border-2 border-border rounded-lg p-8 flex flex-col">
+        <div className="bg-card/70 border-2 border-border rounded-lg p-8 flex flex-col">
           <h3 className="text-4xl font-bold mb-6 text-center border-b border-border pb-4 text-foreground/90">
-            Tabla de Posiciones
+            Fase de Clasificación
           </h3>
             {teamStandings && (
               <div className="flex-1 flex items-center justify-center">
                 <table className="w-full text-3xl">
                   <thead>
                     <tr className="text-left border-b-2 border-border text-foreground/80">
-                      <th className="py-5 px-4 text-2xl">Pos</th>
-                      <th className="py-5 px-4 text-2xl">Equipo</th>
-                      <th className="text-center py-5 px-4 text-2xl">Dif</th>
-                      <th className="text-center py-5 px-4 text-2xl">Pts</th>
+                      <th className="py-5 px-4 text-3xl">Pos</th>
+                      <th className="py-5 px-4 text-3xl">Equipo</th>
+                      <th className="text-center py-5 px-4 text-3xl">Dif</th>
+                      <th className="text-center py-5 px-4 text-3xl">Pts</th>
                     </tr>
                   </thead>
-                  <tbody className="text-2xl">
+                  <tbody className="text-3xl">
                     {[teamStandings.home, teamStandings.away]
                       .filter(Boolean)
                       .sort((a, b) => ((a as any)?.position || 0) - ((b as any)?.position || 0))
@@ -257,16 +285,16 @@ export function PlayoffBracketPreview({
 
                         return (
                           <tr key={standing.teamId} className="border-b border-border/30 hover:bg-accent/20">
-                            <td className="py-5 px-4 font-bold text-4xl">{(standing as any).position}°</td>
-                            <td className="py-5 px-4 font-semibold truncate max-w-[450px] text-2xl" title={standing.teamName}>
+                            <td className="py-5 px-4 font-bold text-6xl">{(standing as any).position}°</td>
+                            <td className="py-5 px-4 font-semibold truncate max-w-[450px] text-4xl" title={standing.teamName}>
                               {standing.teamName}
                             </td>
-                            <td className="text-center py-5 px-4 font-medium text-2xl">
+                            <td className="text-center py-5 px-4 font-medium text-4xl">
                               <span className={goalDiff > 0 ? 'text-green-500' : goalDiff < 0 ? 'text-red-500' : ''}>
                                 {goalDiff > 0 ? '+' : ''}{goalDiff}
                               </span>
                             </td>
-                            <td className="text-center py-5 px-4 font-bold text-4xl text-primary">{standing.points}</td>
+                            <td className="text-center py-5 px-4 font-bold text-5xl text-white">{standing.points}</td>
                           </tr>
                         );
                       })}
@@ -277,7 +305,7 @@ export function PlayoffBracketPreview({
           </div>
 
           {/* Right: Previous Matchups */}
-          <div className="bg-card/95 border-2 border-border rounded-lg p-8 flex flex-col">
+          <div className="bg-card/70 border-2 border-border rounded-lg p-8 flex flex-col">
             <h3 className="text-4xl font-bold mb-6 text-center border-b border-border pb-4 text-foreground/90">
               Enfrentamientos Previos
             </h3>
@@ -288,25 +316,29 @@ export function PlayoffBracketPreview({
                   const awayWon = matchup.awayScore > matchup.homeScore;
 
                   return (
-                    <div key={idx} className="rounded-lg p-4 text-xl border border-border/30">
-                      <div className="flex items-center justify-between font-bold">
-                        <div className="flex items-center gap-3">
-                          {homeWon && <Trophy className="h-7 w-7 text-yellow-500" />}
-                          <span className="truncate max-w-[200px] text-xl" title={homeTeam.name}>
+                    <div key={idx} className="rounded-lg p-6 text-xl border border-border/30">
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-6 font-bold">
+                        <div className="flex items-center justify-end gap-3">
+                          <div className="w-10 flex-shrink-0">
+                            {homeWon && <Trophy className="h-10 w-10 text-yellow-500" />}
+                          </div>
+                          <span className="truncate text-4xl text-right" title={homeTeam.name}>
                             {homeTeam.name}
                           </span>
                         </div>
-                        <span className="mx-4 text-3xl text-white font-bold">
+                        <span className="text-6xl text-white font-bold whitespace-nowrap flex-shrink-0">
                           {matchup.homeScore} - {matchup.awayScore}
                         </span>
-                        <div className="flex items-center gap-3">
-                          <span className="truncate max-w-[200px] text-xl" title={awayTeam.name}>
+                        <div className="flex items-center justify-start gap-3">
+                          <span className="truncate text-4xl text-left" title={awayTeam.name}>
                             {awayTeam.name}
                           </span>
-                          {awayWon && <Trophy className="h-7 w-7 text-yellow-500" />}
+                          <div className="w-10 flex-shrink-0">
+                            {awayWon && <Trophy className="h-10 w-10 text-yellow-500" />}
+                          </div>
                         </div>
                       </div>
-                      <div className="text-base text-foreground/70 text-center mt-2">
+                      <div className="text-2xl text-foreground/70 text-center mt-2">
                         {matchup.date} · {matchup.phase}
                       </div>
                     </div>
@@ -314,57 +346,12 @@ export function PlayoffBracketPreview({
                 })}
               </div>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-foreground/70 text-xl text-center px-6">
+              <div className="flex-1 flex items-center justify-center text-foreground/70 text-2xl text-center px-6">
                 No hay enfrentamientos previos entre estos equipos en la fase regular
               </div>
             )}
           </div>
         </div>
-
-      {/* Bottom section: Playoff Bracket */}
-      <div className="bg-card/95 border-2 border-border rounded-lg p-8">
-        <h3 className="text-4xl font-bold mb-6 text-center border-b border-border pb-4 text-foreground/90">
-          Llave de Playoff
-        </h3>
-        <div className="flex flex-col items-center gap-6">
-          {/* Final Box */}
-          <div className="bg-gradient-to-br from-primary/20 to-primary/5 border-2 border-primary rounded-lg px-12 py-8 text-center min-w-[600px]">
-            {highlightStyle === 'trophy' && (
-              <Trophy className="mx-auto mb-4 h-16 w-16 text-yellow-500" />
-            )}
-            <div className="text-5xl font-bold text-primary mb-6">FINAL</div>
-
-            <div className="space-y-4">
-              {/* Team already in final (if exists) */}
-              {otherSemifinal?.winner ? (
-                <div className="bg-background/80 border border-border rounded-lg px-6 py-4">
-                  <div className="text-lg text-foreground/70 mb-2">Ya clasificado</div>
-                  <div className="font-bold text-2xl">{otherSemifinal.winner}</div>
-                </div>
-              ) : otherSemifinal?.isFinished ? (
-                <div className="bg-background/80 border border-border rounded-lg px-6 py-4">
-                  <div className="text-lg text-foreground/70">Por definir (empate)</div>
-                </div>
-              ) : null}
-
-              {/* Slot being disputed - HIGHLIGHTED AND MUCH BIGGER */}
-              <div className={`bg-gradient-to-br from-yellow-500/40 to-yellow-600/25 border-3 border-yellow-500 rounded-lg px-10 py-8 ${getHighlightClass()}`}>
-                <div className="text-2xl text-yellow-600 dark:text-yellow-400 mb-4 font-bold">SLOT EN DISPUTA</div>
-                <div className="font-bold text-4xl">{homeTeam.name}</div>
-                <div className="text-2xl text-foreground/70 my-3">VS</div>
-                <div className="font-bold text-4xl">{awayTeam.name}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Other semifinal info - small and unfocused */}
-          {otherSemifinal && !otherSemifinal.isFinished && !otherSemifinal.winner && (
-            <div className="text-base text-foreground/60 text-center">
-              Otra semifinal: {otherSemifinal.homeTeamName} vs {otherSemifinal.awayTeamName}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

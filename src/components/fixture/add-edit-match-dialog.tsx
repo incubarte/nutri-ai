@@ -238,7 +238,19 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
         };
 
         if (isEditing && matchToEdit) {
-            dispatch({ type: 'UPDATE_MATCH_IN_TOURNAMENT', payload: { tournamentId: tournament.id, match: { ...matchToEdit, ...matchData } } });
+            // Al editar, combinar datos y luego eliminar equipos si fueron deseleccionados
+            const updatedMatch = { ...matchToEdit, ...matchData };
+
+            // Si el usuario deseleccionó un equipo (homeTeamId o awayTeamId están vacíos),
+            // eliminar la propiedad del objeto final
+            if (!homeTeamId && matchToEdit.homeTeamId) {
+                delete updatedMatch.homeTeamId;
+            }
+            if (!awayTeamId && matchToEdit.awayTeamId) {
+                delete updatedMatch.awayTeamId;
+            }
+
+            dispatch({ type: 'UPDATE_MATCH_IN_TOURNAMENT', payload: { tournamentId: tournament.id, match: updatedMatch } });
             toast({ title: 'Partido Actualizado', description: 'El partido ha sido actualizado correctamente.' });
         } else {
             dispatch({ type: 'ADD_MATCH_TO_TOURNAMENT', payload: { tournamentId: tournament.id, match: { ...matchData, id: generateMatchId(finalDate) } } });
@@ -353,11 +365,12 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
                         <Label htmlFor="homeTeam" className="text-right">
                             Local {phase === 'playoffs' && <span className="text-xs text-muted-foreground">(opcional)</span>}
                         </Label>
-                        <Select value={homeTeamId} onValueChange={setHomeTeamId} disabled={!categoryId}>
+                        <Select value={homeTeamId} onValueChange={(val) => setHomeTeamId(val === 'none' ? '' : val)} disabled={!categoryId}>
                             <SelectTrigger id="homeTeam" className="col-span-3">
                                 <SelectValue placeholder={phase === 'playoffs' ? 'Equipo no definido...' : 'Seleccionar equipo local...'} />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="none">Equipo no seleccionado</SelectItem>
                                 {teamsInCategory.map(team => (
                                     <SelectItem key={team.id} value={team.id} disabled={team.id === awayTeamId}>{team.name}</SelectItem>
                                 ))}
@@ -368,11 +381,12 @@ export function AddEditMatchDialog({ isOpen, onOpenChange, tournament, matchToEd
                         <Label htmlFor="awayTeam" className="text-right">
                             Visitante {phase === 'playoffs' && <span className="text-xs text-muted-foreground">(opcional)</span>}
                         </Label>
-                        <Select value={awayTeamId} onValueChange={setAwayTeamId} disabled={!categoryId}>
+                        <Select value={awayTeamId} onValueChange={(val) => setAwayTeamId(val === 'none' ? '' : val)} disabled={!categoryId}>
                             <SelectTrigger id="awayTeam" className="col-span-3">
                                 <SelectValue placeholder={phase === 'playoffs' ? 'Equipo no definido...' : 'Seleccionar equipo visitante...'} />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="none">Equipo no seleccionado</SelectItem>
                                 {teamsInCategory.map(team => (
                                     <SelectItem key={team.id} value={team.id} disabled={team.id === homeTeamId}>{team.name}</SelectItem>
                                 ))}

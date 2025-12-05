@@ -31,20 +31,65 @@ export function EndOfGameDisplay({
   const homeWon = homeScore > awayScore;
   const awayWon = awayScore > homeScore;
 
-  const winnerTeamName = homeWon ? homeTeamName : awayTeamName;
-  const winnerLogoDataUrl = homeWon ? homeLogoDataUrl : awayLogoDataUrl;
-
   // Obtener datos del partido para verificar si es playoff
   const matchData = state.config.tournaments
-    .flatMap(t => t.matches)
-    .find(m => m.id === matchId);
+    ?.flatMap(t => t.matches || [])
+    .find(m => m?.id === matchId);
   const isPlayoffMatch = matchData?.phase === 'playoffs';
+  const isSemifinal = matchData?.playoffType === 'semifinal';
+
+  const winnerTeamName = homeWon ? homeTeamName : awayTeamName;
+  const winnerLogoDataUrl = homeWon ? homeLogoDataUrl : awayLogoDataUrl;
+  const winnerTeamId = homeWon ? matchData?.homeTeamId : matchData?.awayTeamId;
+
+  // Si es semifinal, obtener datos del partido final
+  const tournament = state.config.tournaments?.find(t =>
+    t.matches?.some(m => m?.id === matchId)
+  );
+
+  const finalMatch = isSemifinal && tournament
+    ? tournament.matches?.find(m =>
+        m?.categoryId === matchData?.categoryId &&
+        m?.phase === 'playoffs' &&
+        m?.playoffType === 'final'
+      )
+    : null;
+
+  const otherSemifinal = isSemifinal && tournament
+    ? tournament.matches?.find(m =>
+        m?.categoryId === matchData?.categoryId &&
+        m?.phase === 'playoffs' &&
+        m?.playoffType === 'semifinal' &&
+        m?.id !== matchId
+      )
+    : null;
+
+  // Determinar el otro equipo de la final
+  let otherFinalist: { name: string; id: string } | null = null;
+  if (isSemifinal && otherSemifinal && tournament) {
+    // Verificar si la otra semifinal ya terminó
+    if (otherSemifinal.summary) {
+      const otherHomeGoals = otherSemifinal.summary.statsByPeriod?.reduce((sum, p) => sum + (p?.stats?.goals?.home?.length || 0), 0) || 0;
+      const otherAwayGoals = otherSemifinal.summary.statsByPeriod?.reduce((sum, p) => sum + (p?.stats?.goals?.away?.length || 0), 0) || 0;
+
+      if (otherHomeGoals > otherAwayGoals && otherSemifinal.homeTeamId) {
+        const team = tournament.teams?.find(t => t?.id === otherSemifinal.homeTeamId);
+        if (team) otherFinalist = { name: team.name, id: team.id };
+      } else if (otherAwayGoals > otherHomeGoals && otherSemifinal.awayTeamId) {
+        const team = tournament.teams?.find(t => t?.id === otherSemifinal.awayTeamId);
+        if (team) otherFinalist = { name: team.name, id: team.id };
+      }
+    }
+  }
 
   // Alternate standings: hide 10s, show 15s, hide 10s, show 15s...
-  // PERO NO mostrar standings si es un partido de playoffs
+  // Para semifinales: mostrar cartel de FINAL
+  // Para otros playoffs: no mostrar nada
   useEffect(() => {
-    // Si es partido de playoffs, no mostrar tabla nunca
-    if (isPlayoffMatch) {
+    console.log('[EndOfGame] isPlayoffMatch:', isPlayoffMatch, 'isSemifinal:', isSemifinal, 'finalMatch:', finalMatch);
+
+    // Si es partido de playoffs que NO es semifinal, no mostrar tabla nunca
+    if (isPlayoffMatch && !isSemifinal) {
       setShowStandings(false);
       return;
     }
@@ -71,7 +116,7 @@ export function EndOfGameDisplay({
     return () => {
       clearTimeout(currentTimer);
     };
-  }, [isPlayoffMatch]);
+  }, [isPlayoffMatch, isSemifinal]);
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-gradient-to-br from-background via-slate-900 to-background">
@@ -521,7 +566,7 @@ export function EndOfGameDisplay({
         </div>
       </motion.div>
 
-      {/* Standings overlay - alternates every 10 seconds */}
+      {/* Standings/Final overlay - alternates every 10 seconds */}
       <AnimatePresence>
         {showStandings && (
           <motion.div
@@ -539,7 +584,86 @@ export function EndOfGameDisplay({
               exit={{ scale: 0.9, y: 50 }}
               transition={{ duration: 0.6, delay: 0.2, type: "spring", bounce: 0.3 }}
             >
-              <StandingsDisplayWithChanges />
+              {isSemifinal ? (
+                // Cartel de FINAL para semifinales
+                <div className="relative flex flex-col items-center justify-center gap-12 bg-card/70 border-2 border-border rounded-lg p-12">
+                  {/* Fecha en esquina superior derecha */}
+                  {finalMatch && (
+                    <div className="absolute top-6 right-6 bg-background/90 border-2 border-border rounded-lg px-6 py-3">
+                      <p className="text-3xl font-bold text-white">
+                        {new Date(finalMatch.date).toLocaleDateString('es-AR', {
+                          day: '2-digit',
+                          month: '2-digit'
+                        })}
+                        {' '}
+                        {new Date(finalMatch.date).getHours()}hs
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Título FINAL centrado */}
+                  <div className="text-center">
+                    <h1
+                      className="text-8xl font-black tracking-widest text-amber-400"
+                      style={{
+                        textShadow: `
+                          0 0 10px rgba(255, 215, 0, 0.8),
+                          0 0 20px rgba(255, 215, 0, 0.6),
+                          0 0 30px rgba(255, 215, 0, 0.4),
+                          4px 4px 0 rgba(0, 0, 0, 1),
+                          -4px -4px 0 rgba(0, 0, 0, 1),
+                          4px -4px 0 rgba(0, 0, 0, 1),
+                          -4px 4px 0 rgba(0, 0, 0, 1)
+                        `
+                      }}
+                    >
+                      FINAL
+                    </h1>
+                  </div>
+
+                  {/* Equipos */}
+                  <div className="flex flex-col items-center gap-8 w-full max-w-4xl">
+                    {/* Equipo ganador con GLOW */}
+                    <motion.div
+                      className="text-center"
+                      animate={{
+                        textShadow: [
+                          '0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.6)',
+                          '0 0 30px rgba(255, 215, 0, 1), 0 0 60px rgba(255, 215, 0, 0.8)',
+                          '0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.6)',
+                        ]
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    >
+                      <h2
+                        className="text-7xl font-bold text-amber-400"
+                        style={{
+                          textShadow: '0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.6), 4px 4px 0 rgba(0, 0, 0, 0.8)'
+                        }}
+                      >
+                        {winnerTeamName}
+                      </h2>
+                    </motion.div>
+
+                    {/* VS */}
+                    <div className="text-5xl font-bold text-foreground/60">VS</div>
+
+                    {/* Otro equipo o ? */}
+                    <div className="text-center">
+                      <h2 className="text-7xl font-bold text-foreground">
+                        {otherFinalist ? otherFinalist.name : '?'}
+                      </h2>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Tabla de posiciones normal para partidos de clasificación
+                <StandingsDisplayWithChanges />
+              )}
             </motion.div>
           </motion.div>
         )}

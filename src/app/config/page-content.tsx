@@ -52,7 +52,6 @@ import type { PenaltyCountdownSoundCardRef } from "@/components/config/penalty-c
 import type { TeamSettingsCardRef } from "@/components/config/team-settings-card";
 import type { LayoutSettingsCardRef } from "@/components/config/layout-settings-card";
 import type { DebugSettingsCardRef } from "@/components/config/debug-settings-card";
-import type { PlayoffBracketSettingsCardRef } from "@/components/config/playoff-bracket-settings-card";
 import { ExternalWindowSettingsCard } from '@/components/config/external-window-settings-card';
 import { useAuth } from '@/hooks/use-auth';
 import type { ReplaySettingsCardRef } from '@/components/config/replay-settings-card';
@@ -70,7 +69,6 @@ const PenaltyCountdownSoundCard = dynamic(() => import('@/components/config/pena
 const TeamSettingsCard = dynamic(() => import('@/components/config/team-settings-card').then(mod => mod.TeamSettingsCard), { loading: loadingComponent });
 const LayoutSettingsCard = dynamic(() => import('@/components/config/layout-settings-card').then(mod => mod.LayoutSettingsCard), { loading: loadingComponent });
 const DebugSettingsCard = dynamic(() => import('@/components/config/debug-settings-card').then(mod => mod.DebugSettingsCard), { loading: loadingComponent });
-const PlayoffBracketSettingsCard = dynamic(() => import('@/components/config/playoff-bracket-settings-card').then(mod => mod.PlayoffBracketSettingsCard), { loading: loadingComponent });
 const ReplaySettingsCard = dynamic(() => import('@/components/config/replay-settings-card').then(mod => mod.ReplaySettingsCard), { loading: loadingComponent });
 
 
@@ -101,7 +99,6 @@ export default function ConfigPage() {
   const teamSettingsRef = useRef<TeamSettingsCardRef>(null);
   const layoutSettingsRef = useRef<LayoutSettingsCardRef>(null);
   const debugSettingsRef = useRef<DebugSettingsCardRef>(null);
-  const playoffBracketSettingsRef = useRef<PlayoffBracketSettingsCardRef>(null);
   const replaySettingsRef = useRef<ReplaySettingsCardRef>(null);
   
   const fileInputFormatAndTimingsRef = useRef<HTMLInputElement>(null);
@@ -115,7 +112,6 @@ export default function ConfigPage() {
   const [isPenaltyCountdownSoundDirty, setIsPenaltyCountdownSoundDirty] = useState(false);
   const [isTeamSettingsDirty, setIsTeamSettingsDirty] = useState(false);
   const [isDebugDirty, setIsDebugDirty] = useState(false);
-  const [isPlayoffBracketDirty, setIsPlayoffBracketDirty] = useState(false);
   const [isReplayDirty, setIsReplayDirty] = useState(false);
   
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -186,7 +182,7 @@ export default function ConfigPage() {
   }, [selectedFTProfile.id]); 
 
   const isFormatAndTimingsSectionDirty = isDurationDirty || isPenaltyDirty || isStoppedTimeAlertDirty || isPenaltyTypesDirty;
-  const isSoundAndDisplaySectionDirty = isSoundDirty || isPenaltyCountdownSoundDirty || isTeamSettingsDirty || isLayoutDirty || isDebugDirty || isPlayoffBracketDirty;
+  const isSoundAndDisplaySectionDirty = isSoundDirty || isPenaltyCountdownSoundDirty || isTeamSettingsDirty || isLayoutDirty || isDebugDirty;
   const isReplaysSectionDirty = isReplayDirty;
 
   const handleSaveChanges_FormatAndTimings = () => {
@@ -236,7 +232,6 @@ export default function ConfigPage() {
     if (teamSettingsRef.current && isTeamSettingsDirty) teamSettingsRef.current.handleSave();
     if (layoutSettingsRef.current && isLayoutDirty) layoutSettingsRef.current.handleSave();
     if (debugSettingsRef.current && isDebugDirty) debugSettingsRef.current.handleSave();
-    if (playoffBracketSettingsRef.current && isPlayoffBracketDirty) playoffBracketSettingsRef.current.handleSave();
 
     setIsSoundDirty(false);
     setIsPenaltyCountdownSoundDirty(false);
@@ -254,7 +249,6 @@ export default function ConfigPage() {
     if (teamSettingsRef.current && isTeamSettingsDirty) { teamSettingsRef.current.handleDiscard(); setIsTeamSettingsDirty(false); }
     if (layoutSettingsRef.current && isLayoutDirty) { layoutSettingsRef.current.handleDiscard(); }
     if (debugSettingsRef.current && isDebugDirty) { debugSettingsRef.current.handleDiscard(); setIsDebugDirty(false); }
-    if (playoffBracketSettingsRef.current && isPlayoffBracketDirty) { playoffBracketSettingsRef.current.handleDiscard(); setIsPlayoffBracketDirty(false); }
 
     toast({ title: "Cambios Descartados", description: "Los cambios no guardados en Sonido y Display han sido revertidos." });
   };
@@ -793,8 +787,6 @@ export default function ConfigPage() {
             <LayoutSettingsCard ref={layoutSettingsRef} initialValues={selectedLayoutProfile} />
             <Separator />
             <DebugSettingsCard ref={debugSettingsRef} onDirtyChange={setIsDebugDirty} />
-            <Separator />
-            <PlayoffBracketSettingsCard ref={playoffBracketSettingsRef} onDirtyChange={setIsPlayoffBracketDirty} />
             <Separator />
             <ExternalWindowSettingsCard />
             
