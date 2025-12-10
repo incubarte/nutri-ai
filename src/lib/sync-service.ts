@@ -430,6 +430,7 @@ export type ConflictStrategy = 'local-wins' | 'remote-wins';
 
 export interface SyncOptions {
     trigger?: 'manual' | 'auto-interval' | 'after-match' | 'after-summary-edit'; // What triggered this sync
+    plan?: SyncPlan; // Optional: use this plan instead of reading from file
 }
 
 /**
@@ -819,18 +820,26 @@ export async function executeSyncPlan(options: SyncOptions = {}): Promise<SyncRe
     };
 
     try {
-        // 1. Read the plan
-        const plan = await readPlan();
+        // 1. Get the plan (use provided plan or read from file)
+        let plan = options.plan;
+
         if (!plan) {
-            throw new Error('No sync plan found. Run analysis first.');
+            plan = await readPlan();
+            if (!plan) {
+                throw new Error('No sync plan found. Run analysis first.');
+            }
         }
 
         if (plan.status !== 'ready') {
             throw new Error(`Plan is not ready (status: ${plan.status}). Resolve conflicts first.`);
         }
 
-        console.log('[Sync] Executing plan...');
-        await updatePlanStatus('executing');
+        console.log('[Sync] Executing plan...', options.plan ? '(filtered by user selection)' : '(full plan)');
+
+        // Only update plan status if we're using the saved plan (not a filtered one)
+        if (!options.plan) {
+            await updatePlanStatus('executing');
+        }
 
         // 2. Setup Supabase client
         const supabaseUrl = process.env.SUPABASE_URL;
@@ -1081,8 +1090,10 @@ export async function executeSyncPlan(options: SyncOptions = {}): Promise<SyncRe
             message: `Synced ${totalOperations} files (${result.filesUploaded} up, ${result.filesDownloaded} down, ${plan.toDeleteLocally.length} del local, ${plan.toDeleteRemotely.length} del remote, ${result.conflictsResolved} conflicts)`
         });
 
-        // 10. Delete the plan
-        await deletePlan();
+        // 10. Delete the plan (only if using saved plan, not filtered)
+        if (!options.plan) {
+            await deletePlan();
+        }
 
         // 11. Reload cache from disk and emit sync-complete event
         console.log('[Sync] Reloading cache from disk...');

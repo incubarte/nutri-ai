@@ -9,11 +9,11 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { trigger } = body;
+        const { trigger, plan } = body;
 
-        console.log('[Sync Execute API] Executing saved plan...');
+        console.log('[Sync Execute API] Executing plan...', plan ? '(filtered)' : '(saved)');
 
-        const result = await executeSyncPlan({ trigger });
+        const result = await executeSyncPlan({ trigger, plan });
 
         console.log('[Sync Execute API] Execution complete:', {
             success: result.success,

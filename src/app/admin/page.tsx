@@ -23,6 +23,7 @@ import { useGameState } from "@/contexts/game-state-context";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useEffect } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { sendRemoteCommand } from '@/app/actions';
@@ -68,11 +69,37 @@ function extractMatchInfoFromPath(filePath: string, tournaments: Tournament[]) {
     }
 
     // If still no tournament or tournament doesn't have matches loaded, return null
-    if (!tournament || !tournament.matches || tournament.matches.length === 0) return null;
+    if (!tournament || !tournament.matches || tournament.matches.length === 0) {
+        // Tournament exists but match not found in fixture = outside fixture
+        const tournamentExists = tournaments.find(t => t.id === tournamentId);
+        if (tournamentExists) {
+            return {
+                homeTeam: '?',
+                awayTeam: '?',
+                category: '?',
+                date: '?',
+                isOutsideFixture: true,
+                tournamentId,
+                matchId
+            };
+        }
+        return null;
+    }
 
     // Find the match
     const match = tournament.matches.find(m => m.id === matchId);
-    if (!match) return null;
+    if (!match) {
+        // Match not found in fixture = outside fixture
+        return {
+            homeTeam: '?',
+            awayTeam: '?',
+            category: '?',
+            date: '?',
+            isOutsideFixture: true,
+            tournamentId,
+            matchId
+        };
+    }
 
     // If tournament doesn't have teams/categories loaded, return null
     if (!tournament.teams || !tournament.categories) return null;
@@ -91,7 +118,10 @@ function extractMatchInfoFromPath(filePath: string, tournaments: Tournament[]) {
         homeTeam: homeTeam?.name || '?',
         awayTeam: awayTeam?.name || '?',
         category: category?.name || '?',
-        date: dateStr
+        date: dateStr,
+        isOutsideFixture: false,
+        tournamentId,
+        matchId
     };
 }
 
@@ -247,6 +277,9 @@ function SyncAnalysisCard() {
     const [skipSyncDuringMatch, setSkipSyncDuringMatch] = useState(state.config.autoSyncSkipDuringMatch ?? true);
     const [syncAfterSummaryEdit, setSyncAfterSummaryEdit] = useState(state.config.autoSyncAfterSummaryEdit || false);
 
+    // File selection states (for checkboxes)
+    const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+
     // Handlers for auto-sync config changes
     const handleAutoAnalysisEnabledChange = (checked: boolean) => {
         setAutoAnalysisEnabled(checked);
@@ -313,6 +346,108 @@ function SyncAnalysisCard() {
 
         loadExistingPlan();
     }, []);
+
+    // Initialize selected files when plan changes (all selected by default)
+    useEffect(() => {
+        if (plan) {
+            const allFiles = new Set<string>();
+
+            // Add all files from toUpload
+            plan.toUpload?.forEach((item: any) => allFiles.add(item.filePath));
+
+            // Add all files from toDownload
+            plan.toDownload?.forEach((item: any) => allFiles.add(item.filePath));
+
+            // Add all files from toDeleteLocally
+            plan.toDeleteLocally?.forEach((item: any) => allFiles.add(item.filePath));
+
+            // Add all files from toDeleteRemotely
+            plan.toDeleteRemotely?.forEach((item: any) => allFiles.add(item.filePath));
+
+            // Add all files from conflicts
+            plan.conflicts?.forEach((item: any) => allFiles.add(item.filePath));
+
+            setSelectedFiles(allFiles);
+        } else {
+            setSelectedFiles(new Set());
+        }
+    }, [plan]);
+
+    // Helper to check if there are any outside-fixture files in the plan
+    const hasOutsideFixtureFiles = () => {
+        if (!plan) return false;
+
+        const allItems = [
+            ...(plan.toUpload || []),
+            ...(plan.toDownload || []),
+            ...(plan.toDeleteLocally || []),
+            ...(plan.toDeleteRemotely || []),
+            ...(plan.conflicts || [])
+        ];
+
+        return allItems.some((item: any) => {
+            const matchInfo = extractMatchInfoFromPath(item.filePath, state?.config?.tournaments || []);
+            return matchInfo?.isOutsideFixture;
+        });
+    };
+
+    // Toggle file selection
+    const toggleFileSelection = (filePath: string) => {
+        setSelectedFiles(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(filePath)) {
+                newSet.delete(filePath);
+            } else {
+                newSet.add(filePath);
+            }
+            return newSet;
+        });
+    };
+
+    // Uncheck all outside-fixture summaries
+    const uncheckOutsideFixtureFiles = () => {
+        setSelectedFiles(prev => {
+            const newSet = new Set(prev);
+
+            const allItems = [
+                ...(plan.toUpload || []),
+                ...(plan.toDownload || []),
+                ...(plan.toDeleteLocally || []),
+                ...(plan.toDeleteRemotely || []),
+                ...(plan.conflicts || [])
+            ];
+
+            allItems.forEach((item: any) => {
+                const matchInfo = extractMatchInfoFromPath(item.filePath, state?.config?.tournaments || []);
+                if (matchInfo?.isOutsideFixture) {
+                    newSet.delete(item.filePath);
+                }
+            });
+
+            return newSet;
+        });
+
+        toast({
+            title: "✅ Archivos Desmarcados",
+            description: "Se desmarcaron todos los summaries fuera de fixture",
+            className: "bg-blue-600 text-white border-blue-700",
+        });
+    };
+
+    // Calculate selected counts
+    const getSelectedCounts = () => {
+        if (!plan) return { upload: 0, download: 0, deleteLocal: 0, deleteRemote: 0, conflicts: 0 };
+
+        return {
+            upload: plan.toUpload?.filter((item: any) => selectedFiles.has(item.filePath)).length || 0,
+            download: plan.toDownload?.filter((item: any) => selectedFiles.has(item.filePath)).length || 0,
+            deleteLocal: plan.toDeleteLocally?.filter((item: any) => selectedFiles.has(item.filePath)).length || 0,
+            deleteRemote: plan.toDeleteRemotely?.filter((item: any) => selectedFiles.has(item.filePath)).length || 0,
+            conflicts: plan.conflicts?.filter((item: any) => selectedFiles.has(item.filePath)).length || 0,
+        };
+    };
+
+    const selectedCounts = getSelectedCounts();
 
     const handleAnalyze = async () => {
         setIsAnalyzing(true);
@@ -496,12 +631,32 @@ function SyncAnalysisCard() {
             return;
         }
 
+        // Filter plan to only include selected files
+        const filteredPlan = {
+            ...plan,
+            toUpload: plan.toUpload?.filter((item: any) => selectedFiles.has(item.filePath)) || [],
+            toDownload: plan.toDownload?.filter((item: any) => selectedFiles.has(item.filePath)) || [],
+            toDeleteLocally: plan.toDeleteLocally?.filter((item: any) => selectedFiles.has(item.filePath)) || [],
+            toDeleteRemotely: plan.toDeleteRemotely?.filter((item: any) => selectedFiles.has(item.filePath)) || [],
+            conflicts: plan.conflicts?.filter((item: any) => selectedFiles.has(item.filePath)) || [],
+        };
+
+        // Update summary counts for filtered plan
+        filteredPlan.summary = {
+            ...plan.summary,
+            uploadCount: filteredPlan.toUpload.length,
+            downloadCount: filteredPlan.toDownload.length,
+            deleteLocalCount: filteredPlan.toDeleteLocally.length,
+            deleteRemoteCount: filteredPlan.toDeleteRemotely.length,
+            conflictCount: filteredPlan.conflicts.length,
+        };
+
         setIsSyncing(true);
         try {
             const response = await fetch('/api/sync/execute-plan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trigger: 'manual' })
+                body: JSON.stringify({ trigger: 'manual', plan: filteredPlan })
             });
             const data = await response.json();
 
@@ -764,23 +919,23 @@ function SyncAnalysisCard() {
                                             <div>
                                                 <p>Esta acción realizará los siguientes cambios:</p>
                                                 <ul className="mt-2 space-y-1 text-sm list-disc list-inside">
-                                                    {plan.summary.uploadCount > 0 && (
-                                                        <li>Subir {plan.summary.uploadCount} archivo(s) a Supabase</li>
+                                                    {selectedCounts.upload > 0 && (
+                                                        <li>Subir {selectedCounts.upload} archivo(s) a Supabase</li>
                                                     )}
-                                                    {plan.summary.downloadCount > 0 && (
-                                                        <li>Descargar {plan.summary.downloadCount} archivo(s) desde Supabase</li>
+                                                    {selectedCounts.download > 0 && (
+                                                        <li>Descargar {selectedCounts.download} archivo(s) desde Supabase</li>
                                                     )}
-                                                    {plan.summary.deleteLocalCount > 0 && (
-                                                        <li className="text-red-600">Eliminar {plan.summary.deleteLocalCount} archivo(s) localmente (fueron eliminados en Supabase)</li>
+                                                    {selectedCounts.deleteLocal > 0 && (
+                                                        <li className="text-red-600">Eliminar {selectedCounts.deleteLocal} archivo(s) localmente (fueron eliminados en Supabase)</li>
                                                     )}
-                                                    {plan.summary.deleteRemoteCount > 0 && (
-                                                        <li className="text-red-600">Eliminar {plan.summary.deleteRemoteCount} archivo(s) en Supabase (fueron eliminados localmente)</li>
+                                                    {selectedCounts.deleteRemote > 0 && (
+                                                        <li className="text-red-600">Eliminar {selectedCounts.deleteRemote} archivo(s) en Supabase (fueron eliminados localmente)</li>
                                                     )}
-                                                    {plan.summary.conflictCount > 0 && (
+                                                    {selectedCounts.conflicts > 0 && (
                                                         <li>
-                                                            Resolver {plan.summary.conflictCount} conflicto(s):
+                                                            Resolver {selectedCounts.conflicts} conflicto(s):
                                                             <ul className="ml-4 mt-1 space-y-0.5">
-                                                                {plan.conflicts.map((conflict: any) => {
+                                                                {plan.conflicts.filter((conflict: any) => selectedFiles.has(conflict.filePath)).map((conflict: any) => {
                                                                     const decision = conflict.decision;
                                                                     if (!decision || decision === 'skip') return null;
 
@@ -819,37 +974,65 @@ function SyncAnalysisCard() {
                 {plan && (
                     <div className="mt-4 space-y-3 text-sm">
                         <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-                            <h4 className="font-semibold mb-2 text-blue-900 dark:text-blue-100">Resumen:</h4>
+                            <h4 className="font-semibold mb-2 text-blue-900 dark:text-blue-100">Resumen (Archivos Seleccionados):</h4>
                             <ul className="space-y-1 text-blue-800 dark:text-blue-200">
-                                <li>📤 <strong>Subir:</strong> {plan.summary.uploadCount} archivos</li>
-                                <li>📥 <strong>Descargar:</strong> {plan.summary.downloadCount} archivos</li>
-                                {plan.summary.deleteLocalCount > 0 && (
-                                    <li className="text-red-600 dark:text-red-400">🗑️ <strong>Eliminar Local:</strong> {plan.summary.deleteLocalCount} archivos</li>
+                                <li>📤 <strong>Subir:</strong> {selectedCounts.upload} archivos {selectedCounts.upload !== plan.summary.uploadCount && <span className="text-xs text-muted-foreground">(de {plan.summary.uploadCount})</span>}</li>
+                                <li>📥 <strong>Descargar:</strong> {selectedCounts.download} archivos {selectedCounts.download !== plan.summary.downloadCount && <span className="text-xs text-muted-foreground">(de {plan.summary.downloadCount})</span>}</li>
+                                {selectedCounts.deleteLocal > 0 && (
+                                    <li className="text-red-600 dark:text-red-400">🗑️ <strong>Eliminar Local:</strong> {selectedCounts.deleteLocal} archivos {selectedCounts.deleteLocal !== plan.summary.deleteLocalCount && <span className="text-xs text-muted-foreground">(de {plan.summary.deleteLocalCount})</span>}</li>
                                 )}
-                                {plan.summary.deleteRemoteCount > 0 && (
-                                    <li className="text-red-600 dark:text-red-400">🗑️ <strong>Eliminar Remoto:</strong> {plan.summary.deleteRemoteCount} archivos</li>
+                                {selectedCounts.deleteRemote > 0 && (
+                                    <li className="text-red-600 dark:text-red-400">🗑️ <strong>Eliminar Remoto:</strong> {selectedCounts.deleteRemote} archivos {selectedCounts.deleteRemote !== plan.summary.deleteRemoteCount && <span className="text-xs text-muted-foreground">(de {plan.summary.deleteRemoteCount})</span>}</li>
                                 )}
-                                <li>⚠️ <strong>Conflictos:</strong> {plan.summary.conflictCount} archivos</li>
+                                {selectedCounts.conflicts > 0 && (
+                                    <li>⚠️ <strong>Conflictos:</strong> {selectedCounts.conflicts} archivos {selectedCounts.conflicts !== plan.summary.conflictCount && <span className="text-xs text-muted-foreground">(de {plan.summary.conflictCount})</span>}</li>
+                                )}
                                 <li>✅ <strong>Sin cambios:</strong> {plan.summary.unchangedCount} archivos</li>
                             </ul>
                         </div>
 
+                        {/* Button to uncheck outside-fixture files (only if they exist) */}
+                        {hasOutsideFixtureFiles() && (
+                            <Button
+                                onClick={uncheckOutsideFixtureFiles}
+                                variant="outline"
+                                size="sm"
+                                className="w-full border-purple-500 text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950"
+                            >
+                                🔵 Desmarcar Summaries Fuera de Fixture
+                            </Button>
+                        )}
+
                         {plan.toUpload.length > 0 && (
                             <details className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
                                 <summary className="cursor-pointer font-semibold text-green-800 dark:text-green-200">
-                                    📤 Para Subir ({plan.toUpload.length})
+                                    📤 Para Subir ({selectedCounts.upload} de {plan.toUpload.length})
                                 </summary>
                                 <ul className="mt-2 space-y-1 text-xs max-h-40 overflow-y-auto text-green-700 dark:text-green-300">
                                     {plan.toUpload.map((item: any) => {
                                         const matchInfo = extractMatchInfoFromPath(item.filePath, state?.config?.tournaments || []);
+                                        const isChecked = selectedFiles.has(item.filePath);
                                         return (
-                                            <li key={item.filePath} title={item.reason}>
-                                                <span className="font-mono">{item.filePath}</span>
-                                                {matchInfo && (
-                                                    <span className="ml-2 text-orange-600 dark:text-orange-400 font-semibold">
-                                                        ({matchInfo.homeTeam} vs {matchInfo.awayTeam}, {matchInfo.category}, {matchInfo.date})
-                                                    </span>
-                                                )}
+                                            <li key={item.filePath} title={item.reason} className="flex items-start gap-2">
+                                                <Checkbox
+                                                    id={`upload-${item.filePath}`}
+                                                    checked={isChecked}
+                                                    onCheckedChange={() => toggleFileSelection(item.filePath)}
+                                                    className="mt-0.5"
+                                                />
+                                                <label htmlFor={`upload-${item.filePath}`} className="flex-1 cursor-pointer">
+                                                    <span className="font-mono">{item.filePath}</span>
+                                                    {matchInfo && (
+                                                        <span className={`ml-2 font-semibold ${
+                                                            matchInfo.isOutsideFixture
+                                                                ? 'text-purple-600 dark:text-purple-400'
+                                                                : 'text-orange-600 dark:text-orange-400'
+                                                        }`}>
+                                                            ({matchInfo.homeTeam} vs {matchInfo.awayTeam}, {matchInfo.category}, {matchInfo.date})
+                                                            {matchInfo.isOutsideFixture && <span className="ml-1">🔵 FUERA DE FIXTURE</span>}
+                                                        </span>
+                                                    )}
+                                                </label>
                                             </li>
                                         );
                                     })}
@@ -860,19 +1043,33 @@ function SyncAnalysisCard() {
                         {plan.toDownload.length > 0 && (
                             <details className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
                                 <summary className="cursor-pointer font-semibold text-blue-800 dark:text-blue-200">
-                                    📥 Para Descargar ({plan.toDownload.length})
+                                    📥 Para Descargar ({selectedCounts.download} de {plan.toDownload.length})
                                 </summary>
                                 <ul className="mt-2 space-y-1 text-xs max-h-40 overflow-y-auto text-blue-700 dark:text-blue-300">
                                     {plan.toDownload.map((item: any) => {
                                         const matchInfo = extractMatchInfoFromPath(item.filePath, state?.config?.tournaments || []);
+                                        const isChecked = selectedFiles.has(item.filePath);
                                         return (
-                                            <li key={item.filePath} title={item.reason}>
-                                                <span className="font-mono">{item.filePath}</span>
-                                                {matchInfo && (
-                                                    <span className="ml-2 text-orange-600 dark:text-orange-400 font-semibold">
-                                                        ({matchInfo.homeTeam} vs {matchInfo.awayTeam}, {matchInfo.category}, {matchInfo.date})
-                                                    </span>
-                                                )}
+                                            <li key={item.filePath} title={item.reason} className="flex items-start gap-2">
+                                                <Checkbox
+                                                    id={`download-${item.filePath}`}
+                                                    checked={isChecked}
+                                                    onCheckedChange={() => toggleFileSelection(item.filePath)}
+                                                    className="mt-0.5"
+                                                />
+                                                <label htmlFor={`download-${item.filePath}`} className="flex-1 cursor-pointer">
+                                                    <span className="font-mono">{item.filePath}</span>
+                                                    {matchInfo && (
+                                                        <span className={`ml-2 font-semibold ${
+                                                            matchInfo.isOutsideFixture
+                                                                ? 'text-purple-600 dark:text-purple-400'
+                                                                : 'text-orange-600 dark:text-orange-400'
+                                                        }`}>
+                                                            ({matchInfo.homeTeam} vs {matchInfo.awayTeam}, {matchInfo.category}, {matchInfo.date})
+                                                            {matchInfo.isOutsideFixture && <span className="ml-1">🔵 FUERA DE FIXTURE</span>}
+                                                        </span>
+                                                    )}
+                                                </label>
                                             </li>
                                         );
                                     })}
@@ -883,20 +1080,34 @@ function SyncAnalysisCard() {
                         {plan.toDeleteLocally && plan.toDeleteLocally.length > 0 && (
                             <details className="bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-200 dark:border-red-800">
                                 <summary className="cursor-pointer font-semibold text-red-800 dark:text-red-200">
-                                    🗑️ Para Eliminar Localmente ({plan.toDeleteLocally.length})
+                                    🗑️ Para Eliminar Localmente ({selectedCounts.deleteLocal} de {plan.toDeleteLocally.length})
                                 </summary>
                                 <ul className="mt-2 space-y-1 text-xs font-mono max-h-40 overflow-y-auto text-red-700 dark:text-red-300">
                                     {plan.toDeleteLocally.map((item: any) => {
                                         const matchInfo = extractMatchInfoFromPath(item.filePath, state?.config?.tournaments || []);
+                                        const isChecked = selectedFiles.has(item.filePath);
                                         return (
-                                            <li key={item.filePath} title={item.reason}>
-                                                <span className="font-mono">{item.filePath}</span>
-                                                {matchInfo && (
-                                                    <span className="ml-2 text-orange-600 dark:text-orange-400 font-semibold">
-                                                        ({matchInfo.homeTeam} vs {matchInfo.awayTeam}, {matchInfo.category}, {matchInfo.date})
-                                                    </span>
-                                                )}
-                                                {' '}<span className="text-red-500">({item.reason})</span>
+                                            <li key={item.filePath} title={item.reason} className="flex items-start gap-2">
+                                                <Checkbox
+                                                    id={`delete-local-${item.filePath}`}
+                                                    checked={isChecked}
+                                                    onCheckedChange={() => toggleFileSelection(item.filePath)}
+                                                    className="mt-0.5"
+                                                />
+                                                <label htmlFor={`delete-local-${item.filePath}`} className="flex-1 cursor-pointer">
+                                                    <span className="font-mono">{item.filePath}</span>
+                                                    {matchInfo && (
+                                                        <span className={`ml-2 font-semibold ${
+                                                            matchInfo.isOutsideFixture
+                                                                ? 'text-purple-600 dark:text-purple-400'
+                                                                : 'text-orange-600 dark:text-orange-400'
+                                                        }`}>
+                                                            ({matchInfo.homeTeam} vs {matchInfo.awayTeam}, {matchInfo.category}, {matchInfo.date})
+                                                            {matchInfo.isOutsideFixture && <span className="ml-1">🔵 FUERA DE FIXTURE</span>}
+                                                        </span>
+                                                    )}
+                                                    {' '}<span className="text-red-500">({item.reason})</span>
+                                                </label>
                                             </li>
                                         );
                                     })}
@@ -907,20 +1118,34 @@ function SyncAnalysisCard() {
                         {plan.toDeleteRemotely && plan.toDeleteRemotely.length > 0 && (
                             <details className="bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-200 dark:border-red-800">
                                 <summary className="cursor-pointer font-semibold text-red-800 dark:text-red-200">
-                                    🗑️ Para Eliminar Remotamente ({plan.toDeleteRemotely.length})
+                                    🗑️ Para Eliminar Remotamente ({selectedCounts.deleteRemote} de {plan.toDeleteRemotely.length})
                                 </summary>
                                 <ul className="mt-2 space-y-1 text-xs font-mono max-h-40 overflow-y-auto text-red-700 dark:text-red-300">
                                     {plan.toDeleteRemotely.map((item: any) => {
                                         const matchInfo = extractMatchInfoFromPath(item.filePath, state?.config?.tournaments || []);
+                                        const isChecked = selectedFiles.has(item.filePath);
                                         return (
-                                            <li key={item.filePath} title={item.reason}>
-                                                <span className="font-mono">{item.filePath}</span>
-                                                {matchInfo && (
-                                                    <span className="ml-2 text-orange-600 dark:text-orange-400 font-semibold">
-                                                        ({matchInfo.homeTeam} vs {matchInfo.awayTeam}, {matchInfo.category}, {matchInfo.date})
-                                                    </span>
-                                                )}
-                                                {' '}<span className="text-red-500">({item.reason})</span>
+                                            <li key={item.filePath} title={item.reason} className="flex items-start gap-2">
+                                                <Checkbox
+                                                    id={`delete-remote-${item.filePath}`}
+                                                    checked={isChecked}
+                                                    onCheckedChange={() => toggleFileSelection(item.filePath)}
+                                                    className="mt-0.5"
+                                                />
+                                                <label htmlFor={`delete-remote-${item.filePath}`} className="flex-1 cursor-pointer">
+                                                    <span className="font-mono">{item.filePath}</span>
+                                                    {matchInfo && (
+                                                        <span className={`ml-2 font-semibold ${
+                                                            matchInfo.isOutsideFixture
+                                                                ? 'text-purple-600 dark:text-purple-400'
+                                                                : 'text-orange-600 dark:text-orange-400'
+                                                        }`}>
+                                                            ({matchInfo.homeTeam} vs {matchInfo.awayTeam}, {matchInfo.category}, {matchInfo.date})
+                                                            {matchInfo.isOutsideFixture && <span className="ml-1">🔵 FUERA DE FIXTURE</span>}
+                                                        </span>
+                                                    )}
+                                                    {' '}<span className="text-red-500">({item.reason})</span>
+                                                </label>
                                             </li>
                                         );
                                     })}
@@ -931,30 +1156,43 @@ function SyncAnalysisCard() {
                         {plan.conflicts.length > 0 && (
                             <details className="bg-yellow-50 dark:bg-yellow-950/30 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
                                 <summary className="cursor-pointer font-semibold text-yellow-800 dark:text-yellow-200">
-                                    ⚠️ Conflictos ({plan.conflicts.length})
+                                    ⚠️ Conflictos ({selectedCounts.conflicts} de {plan.conflicts.length})
                                 </summary>
                                 <ul className="mt-2 space-y-1 text-xs font-mono max-h-40 overflow-y-auto text-yellow-700 dark:text-yellow-300">
                                     {plan.conflicts.map((item: any) => {
                                         const matchInfo = extractMatchInfoFromPath(item.filePath, state?.config?.tournaments || []);
+                                        const isChecked = selectedFiles.has(item.filePath);
                                         return (
-                                            <li
-                                                key={item.filePath}
-                                                title="Click para ver detalles y resolver"
-                                                className="cursor-pointer hover:underline hover:text-yellow-600 dark:hover:text-yellow-400"
-                                                onClick={() => handleConflictClick(item)}
-                                            >
-                                                <span className="font-mono">{item.filePath}</span>
-                                                {matchInfo && (
-                                                    <span className="ml-2 text-orange-600 dark:text-orange-400 font-semibold">
-                                                        ({matchInfo.homeTeam} vs {matchInfo.awayTeam}, {matchInfo.category}, {matchInfo.date})
-                                                    </span>
-                                                )}
-                                                {' '}- {
-                                                    item.decision === 'local-wins' ? '💻 Local gana' :
-                                                    item.decision === 'remote-wins' ? '☁️ Remoto gana' :
-                                                    item.decision === 'skip' ? '🚫 Omitir' :
-                                                    '❓ Sin resolver'
-                                                }
+                                            <li key={item.filePath} className="flex items-start gap-2">
+                                                <Checkbox
+                                                    id={`conflict-${item.filePath}`}
+                                                    checked={isChecked}
+                                                    onCheckedChange={() => toggleFileSelection(item.filePath)}
+                                                    className="mt-0.5"
+                                                />
+                                                <div
+                                                    title="Click para ver detalles y resolver"
+                                                    className="flex-1 cursor-pointer hover:underline hover:text-yellow-600 dark:hover:text-yellow-400"
+                                                    onClick={() => handleConflictClick(item)}
+                                                >
+                                                    <span className="font-mono">{item.filePath}</span>
+                                                    {matchInfo && (
+                                                        <span className={`ml-2 font-semibold ${
+                                                            matchInfo.isOutsideFixture
+                                                                ? 'text-purple-600 dark:text-purple-400'
+                                                                : 'text-orange-600 dark:text-orange-400'
+                                                        }`}>
+                                                            ({matchInfo.homeTeam} vs {matchInfo.awayTeam}, {matchInfo.category}, {matchInfo.date})
+                                                            {matchInfo.isOutsideFixture && <span className="ml-1">🔵 FUERA DE FIXTURE</span>}
+                                                        </span>
+                                                    )}
+                                                    {' '}- {
+                                                        item.decision === 'local-wins' ? '💻 Local gana' :
+                                                        item.decision === 'remote-wins' ? '☁️ Remoto gana' :
+                                                        item.decision === 'skip' ? '🚫 Omitir' :
+                                                        '❓ Sin resolver'
+                                                    }
+                                                </div>
                                             </li>
                                         );
                                     })}
@@ -1404,8 +1642,13 @@ function SyncHistoryCard({ tournaments }: { tournaments: Tournament[] }) {
                                                             {file.filePath}
                                                         </span>
                                                         {matchInfo && (
-                                                            <span className="ml-2 text-orange-600 dark:text-orange-400 font-semibold">
+                                                            <span className={`ml-2 font-semibold ${
+                                                                matchInfo.isOutsideFixture
+                                                                    ? 'text-purple-600 dark:text-purple-400'
+                                                                    : 'text-orange-600 dark:text-orange-400'
+                                                            }`}>
                                                                 ({matchInfo.homeTeam} vs {matchInfo.awayTeam}, {matchInfo.category}, {matchInfo.date})
+                                                                {matchInfo.isOutsideFixture && <span className="ml-1">🔵 FUERA DE FIXTURE</span>}
                                                             </span>
                                                         )}
                                                     </div>
