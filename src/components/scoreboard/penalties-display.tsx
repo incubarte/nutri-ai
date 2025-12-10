@@ -23,12 +23,28 @@ export function PenaltiesDisplay({ teamDisplayType, teamName, penalties, mode = 
     return null; // or a loading component
   }
   
-  const penaltiesToDisplay = penalties.filter(p => (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride) || !p.reducesPlayerCount);
-  
+  // Ordenar penalidades: primero las que reducen jugador, luego las que no
+  // Dentro de cada grupo, mantener orden cronológico (las más recientes al final)
+  const penaltiesToDisplay = penalties
+    .map((penalty, index) => ({ penalty, originalIndex: index }))
+    .sort((a, b) => {
+      const aReduces = a.penalty.reducesPlayerCount && !a.penalty._doesNotReducePlayerCountOverride;
+      const bReduces = b.penalty.reducesPlayerCount && !b.penalty._doesNotReducePlayerCountOverride;
+
+      // Si a reduce y b no, a va primero (retorna -1)
+      // Si b reduce y a no, b va primero (retorna 1)
+      if (aReduces && !bReduces) return -1;
+      if (!aReduces && bReduces) return 1;
+
+      // Si ambos tienen el mismo estado, mantener orden original (cronológico)
+      return a.originalIndex - b.originalIndex;
+    })
+    .map(item => item.penalty);
+
   const titleStyle = isMobile ? { fontSize: '1.125rem' } : { fontSize: `${state.config.scoreboardLayout.penaltiesTitleSize}rem` };
   const noPenaltiesStyle = isMobile ? { fontSize: '0.875rem' } : { fontSize: `${state.config.scoreboardLayout.penaltyPlayerNumberSize * 0.5}rem` };
   const morePenaltiesStyle = isMobile ? {} : { fontSize: `${state.config.scoreboardLayout.penaltyPlayerNumberSize * 0.4}rem` };
-  
+
   const penaltiesToShow = isMobile ? penaltiesToDisplay : penaltiesToDisplay.slice(0, 3);
 
   return (

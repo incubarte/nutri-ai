@@ -186,6 +186,114 @@ export function PlayoffBracketPreview({
     };
   }, [tournament, currentMatch]);
 
+  // Get semifinal paths for finals
+  const finalistPaths = useMemo(() => {
+    if (currentMatch.playoffType !== 'final') return null;
+    if (!currentMatch.homeTeamId || !currentMatch.awayTeamId) return null;
+
+    // Find the semifinals for this category
+    const semifinals = tournament.matches?.filter(m =>
+      m.categoryId === currentMatch.categoryId &&
+      m.phase === 'playoffs' &&
+      m.playoffType === 'semifinal'
+    ) || [];
+
+    console.log('[FINAL DEBUG] Semifinals found:', semifinals.length);
+    console.log('[FINAL DEBUG] Home team ID:', currentMatch.homeTeamId);
+    console.log('[FINAL DEBUG] Away team ID:', currentMatch.awayTeamId);
+
+    // Find which semifinal each team won
+    const getTeamPath = (teamId: string, teamLabel: string) => {
+      console.log(`[FINAL DEBUG] Looking for ${teamLabel} team (${teamId}) in semifinals...`);
+
+      const semifinal = semifinals.find(sf =>
+        sf.homeTeamId === teamId || sf.awayTeamId === teamId
+      );
+
+      console.log(`[FINAL DEBUG] ${teamLabel} semifinal found:`, semifinal ? 'YES' : 'NO');
+      console.log(`[FINAL DEBUG] ${teamLabel} semifinal has summary:`, semifinal?.summary ? 'YES' : 'NO');
+
+      if (!semifinal) return null;
+
+      // If no summary yet, show placeholder
+      if (!semifinal.summary) {
+        const wasHome = semifinal.homeTeamId === teamId;
+        const opponentId = wasHome ? semifinal.awayTeamId : semifinal.homeTeamId;
+        const opponent = tournament.teams.find(t => t.id === opponentId);
+
+        return {
+          score: '- - -',
+          opponent: opponent?.name || 'Equipo',
+          won: false
+        };
+      }
+
+      const homeGoals = semifinal.summary.statsByPeriod?.reduce((sum, p) => sum + (p.stats.goals.home?.length || 0), 0) || 0;
+      const awayGoals = semifinal.summary.statsByPeriod?.reduce((sum, p) => sum + (p.stats.goals.away?.length || 0), 0) || 0;
+
+      const wasHome = semifinal.homeTeamId === teamId;
+      const opponentId = wasHome ? semifinal.awayTeamId : semifinal.homeTeamId;
+      const opponent = tournament.teams.find(t => t.id === opponentId);
+
+      return {
+        score: wasHome ? `${homeGoals} - ${awayGoals}` : `${awayGoals} - ${homeGoals}`,
+        opponent: opponent?.name || 'Equipo',
+        won: wasHome ? homeGoals > awayGoals : awayGoals > homeGoals
+      };
+    };
+
+    const homePath = getTeamPath(currentMatch.homeTeamId, 'HOME');
+    const awayPath = getTeamPath(currentMatch.awayTeamId, 'AWAY');
+
+    console.log('[FINAL DEBUG] Home path:', homePath);
+    console.log('[FINAL DEBUG] Away path:', awayPath);
+
+    return {
+      home: homePath,
+      away: awayPath
+    };
+  }, [tournament, currentMatch]);
+
+  // Get all semifinal results for third place match
+  const semifinalResults = useMemo(() => {
+    if (currentMatch.playoffType !== '3er-puesto') return null;
+
+    const semifinals = tournament.matches?.filter(m =>
+      m.categoryId === currentMatch.categoryId &&
+      m.phase === 'playoffs' &&
+      m.playoffType === 'semifinal'
+    ) || [];
+
+    return semifinals.map(sf => {
+      const homeTeam = tournament.teams.find(t => t.id === sf.homeTeamId);
+      const awayTeam = tournament.teams.find(t => t.id === sf.awayTeamId);
+
+      let homeGoals = 0;
+      let awayGoals = 0;
+      let winner: 'home' | 'away' | null = null;
+
+      if (sf.summary) {
+        homeGoals = sf.summary.statsByPeriod?.reduce((sum, p) => sum + (p.stats.goals.home?.length || 0), 0) || 0;
+        awayGoals = sf.summary.statsByPeriod?.reduce((sum, p) => sum + (p.stats.goals.away?.length || 0), 0) || 0;
+
+        if (homeGoals > awayGoals) winner = 'home';
+        else if (awayGoals > homeGoals) winner = 'away';
+      }
+
+      return {
+        homeTeam,
+        awayTeam,
+        homeGoals,
+        awayGoals,
+        winner,
+        hasSummary: !!sf.summary,
+        // Check if these teams are playing in current match (losers)
+        homeIsPlaying: sf.homeTeamId === currentMatch.homeTeamId || sf.homeTeamId === currentMatch.awayTeamId,
+        awayIsPlaying: sf.awayTeamId === currentMatch.homeTeamId || sf.awayTeamId === currentMatch.awayTeamId
+      };
+    });
+  }, [tournament, currentMatch]);
+
   // Determine matchup labels
   const currentMatchupLabel = currentMatch.playoffMatchup || 'Semifinal 1';
   const otherMatchupLabel = otherSemifinal ? 'Semifinal 2' : '';
@@ -208,33 +316,57 @@ export function PlayoffBracketPreview({
 
   if (!homeTeam || !awayTeam) return null;
 
+  console.log('[PLAYOFF DEBUG] playoffType:', currentMatch.playoffType);
+
+  const isFinal = currentMatch.playoffType === 'final';
+  const isThirdPlace = currentMatch.playoffType === '3er-puesto';
+
   return (
     <div className="w-[150%] h-full flex flex-col gap-6 px-1 py-2 -mx-[25%]">
-      {/* Semifinal Title with Glow */}
+      {/* Title with Glow */}
       <div className="text-center mb-4">
         <h1
-          className="text-9xl font-black tracking-widest text-orange-400"
+          className={`text-9xl font-black tracking-widest ${isFinal ? 'text-amber-400' : 'text-orange-400'}`}
           style={{
-            textShadow: `
-              0 0 8px rgba(251, 146, 60, 0.7),
-              0 0 15px rgba(251, 146, 60, 0.5),
-              0 0 25px rgba(251, 146, 60, 0.3),
-              4px 4px 0 rgba(0, 0, 0, 1),
-              -4px -4px 0 rgba(0, 0, 0, 1),
-              4px -4px 0 rgba(0, 0, 0, 1),
-              -4px 4px 0 rgba(0, 0, 0, 1),
-              5px 5px 0 rgba(0, 0, 0, 0.9),
-              -5px -5px 0 rgba(0, 0, 0, 0.9),
-              5px -5px 0 rgba(0, 0, 0, 0.9),
-              -5px 5px 0 rgba(0, 0, 0, 0.9),
-              6px 6px 0 rgba(0, 0, 0, 0.7),
-              -6px -6px 0 rgba(0, 0, 0, 0.7),
-              6px -6px 0 rgba(0, 0, 0, 0.7),
-              -6px 6px 0 rgba(0, 0, 0, 0.7)
-            `
+            textShadow: isFinal
+              ? `
+                0 0 15px rgba(251, 191, 36, 1),
+                0 0 30px rgba(251, 191, 36, 0.8),
+                0 0 45px rgba(251, 191, 36, 0.6),
+                0 0 60px rgba(251, 191, 36, 0.4),
+                4px 4px 0 rgba(0, 0, 0, 1),
+                -4px -4px 0 rgba(0, 0, 0, 1),
+                4px -4px 0 rgba(0, 0, 0, 1),
+                -4px 4px 0 rgba(0, 0, 0, 1),
+                5px 5px 0 rgba(0, 0, 0, 0.9),
+                -5px -5px 0 rgba(0, 0, 0, 0.9),
+                5px -5px 0 rgba(0, 0, 0, 0.9),
+                -5px 5px 0 rgba(0, 0, 0, 0.9),
+                6px 6px 0 rgba(0, 0, 0, 0.7),
+                -6px -6px 0 rgba(0, 0, 0, 0.7),
+                6px -6px 0 rgba(0, 0, 0, 0.7),
+                -6px 6px 0 rgba(0, 0, 0, 0.7)
+              `
+              : `
+                0 0 8px rgba(251, 146, 60, 0.7),
+                0 0 15px rgba(251, 146, 60, 0.5),
+                0 0 25px rgba(251, 146, 60, 0.3),
+                4px 4px 0 rgba(0, 0, 0, 1),
+                -4px -4px 0 rgba(0, 0, 0, 1),
+                4px -4px 0 rgba(0, 0, 0, 1),
+                -4px 4px 0 rgba(0, 0, 0, 1),
+                5px 5px 0 rgba(0, 0, 0, 0.9),
+                -5px -5px 0 rgba(0, 0, 0, 0.9),
+                5px -5px 0 rgba(0, 0, 0, 0.9),
+                -5px 5px 0 rgba(0, 0, 0, 0.9),
+                6px 6px 0 rgba(0, 0, 0, 0.7),
+                -6px -6px 0 rgba(0, 0, 0, 0.7),
+                6px -6px 0 rgba(0, 0, 0, 0.7),
+                -6px 6px 0 rgba(0, 0, 0, 0.7)
+              `
           }}
         >
-          SEMIFINAL
+          {isFinal ? 'FINAL' : isThirdPlace ? '3er PUESTO' : 'SEMIFINAL'}
         </h1>
       </div>
 
@@ -304,51 +436,140 @@ export function PlayoffBracketPreview({
             )}
           </div>
 
-          {/* Right: Previous Matchups */}
+          {/* Right: Previous Matchups or Path to Final or Semifinal Results */}
           <div className="bg-card/70 border-2 border-border rounded-lg p-8 flex flex-col">
-            <h3 className="text-4xl font-bold mb-6 text-center border-b border-border pb-4 text-foreground/90">
-              Enfrentamientos Previos
+            <h3 className={`text-4xl font-bold mb-6 text-center border-b pb-4 ${isFinal ? 'border-amber-500/50 text-amber-400' : 'border-border text-foreground/90'}`}>
+              {isFinal ? 'Camino a la Final' : isThirdPlace ? 'Semifinales' : 'Enfrentamientos Previos'}
             </h3>
-            {previousMatchups.length > 0 ? (
-              <div className="flex-1 flex flex-col justify-center space-y-4">
-                {previousMatchups.map((matchup, idx) => {
-                  const homeWon = matchup.homeScore > matchup.awayScore;
-                  const awayWon = matchup.awayScore > matchup.homeScore;
 
-                  return (
-                    <div key={idx} className="rounded-lg p-6 text-xl border border-border/30">
-                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-6 font-bold">
-                        <div className="flex items-center justify-end gap-3">
-                          <div className="w-10 flex-shrink-0">
-                            {homeWon && <Trophy className="h-10 w-10 text-yellow-500" />}
+            {isThirdPlace ? (
+              /* Semifinal Results for Third Place Match */
+              <div className="flex-1 flex flex-col justify-center space-y-6">
+                {semifinalResults && semifinalResults.length > 0 ? (
+                  semifinalResults.map((sf, idx) => (
+                    <div key={idx} className="rounded-lg p-6 border-2 border-orange-500/30 bg-gradient-to-br from-orange-500/10 to-transparent">
+                      <h4 className="text-2xl font-bold text-orange-400 mb-4 text-center">Semifinal {idx + 1}</h4>
+                      {sf.homeTeam && sf.awayTeam ? (
+                        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-6 font-bold">
+                          <div className="flex items-center justify-end gap-3">
+                            <span
+                              className={`truncate text-3xl text-right ${sf.homeIsPlaying ? 'text-orange-400' : ''}`}
+                              title={sf.homeTeam.name}
+                            >
+                              {sf.homeTeam.name}
+                            </span>
+                            <div className="w-10 flex-shrink-0">
+                              {sf.winner === 'home' && <Trophy className="h-10 w-10 text-yellow-500" />}
+                            </div>
                           </div>
-                          <span className="truncate text-4xl text-right" title={homeTeam.name}>
-                            {homeTeam.name}
+                          <span className="text-5xl text-white font-bold whitespace-nowrap flex-shrink-0">
+                            {sf.hasSummary ? `${sf.homeGoals} - ${sf.awayGoals}` : '- - -'}
                           </span>
-                        </div>
-                        <span className="text-6xl text-white font-bold whitespace-nowrap flex-shrink-0">
-                          {matchup.homeScore} - {matchup.awayScore}
-                        </span>
-                        <div className="flex items-center justify-start gap-3">
-                          <span className="truncate text-4xl text-left" title={awayTeam.name}>
-                            {awayTeam.name}
-                          </span>
-                          <div className="w-10 flex-shrink-0">
-                            {awayWon && <Trophy className="h-10 w-10 text-yellow-500" />}
+                          <div className="flex items-center justify-start gap-3">
+                            <div className="w-10 flex-shrink-0">
+                              {sf.winner === 'away' && <Trophy className="h-10 w-10 text-yellow-500" />}
+                            </div>
+                            <span
+                              className={`truncate text-3xl text-left ${sf.awayIsPlaying ? 'text-orange-400' : ''}`}
+                              title={sf.awayTeam.name}
+                            >
+                              {sf.awayTeam.name}
+                            </span>
                           </div>
                         </div>
+                      ) : (
+                        <div className="text-center text-foreground/70">Equipos no definidos</div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-foreground/70 text-2xl text-center px-6">
+                    No se encontraron semifinales
+                  </div>
+                )}
+              </div>
+            ) : isFinal ? (
+              /* Path to Final for each team */
+              <div className="flex-1 flex flex-col justify-center space-y-8">
+                {/* Home Team Path */}
+                {finalistPaths?.home && (
+                  <div className="rounded-lg p-6 border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-transparent">
+                    <h4 className="text-3xl font-bold text-amber-400 mb-4 text-center">{homeTeam.name}</h4>
+                    {/* Semifinal Result */}
+                    <div className="flex items-center justify-between bg-card/50 rounded px-4 py-3">
+                      <div className="flex flex-col">
+                        <span className="text-xl text-foreground/80">Semifinal vs</span>
+                        <span className="text-2xl font-semibold text-amber-300">{finalistPaths.home.opponent}</span>
                       </div>
-                      <div className="text-2xl text-foreground/70 text-center mt-2">
-                        {matchup.date} · {matchup.phase}
+                      <div className="flex items-center gap-3">
+                        <span className="text-4xl font-bold text-white">{finalistPaths.home.score}</span>
+                        {finalistPaths.home.won && <Trophy className="h-10 w-10 text-amber-400" />}
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                )}
+
+                {/* Away Team Path */}
+                {finalistPaths?.away && (
+                  <div className="rounded-lg p-6 border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-transparent">
+                    <h4 className="text-3xl font-bold text-amber-400 mb-4 text-center">{awayTeam.name}</h4>
+                    {/* Semifinal Result */}
+                    <div className="flex items-center justify-between bg-card/50 rounded px-4 py-3">
+                      <div className="flex flex-col">
+                        <span className="text-xl text-foreground/80">Semifinal vs</span>
+                        <span className="text-2xl font-semibold text-amber-300">{finalistPaths.away.opponent}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-4xl font-bold text-white">{finalistPaths.away.score}</span>
+                        {finalistPaths.away.won && <Trophy className="h-10 w-10 text-amber-400" />}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-foreground/70 text-2xl text-center px-6">
-                No hay enfrentamientos previos entre estos equipos en la fase regular
-              </div>
+              /* Previous Matchups for Semifinals */
+              previousMatchups.length > 0 ? (
+                <div className="flex-1 flex flex-col justify-center space-y-4">
+                  {previousMatchups.map((matchup, idx) => {
+                    const homeWon = matchup.homeScore > matchup.awayScore;
+                    const awayWon = matchup.awayScore > matchup.homeScore;
+
+                    return (
+                      <div key={idx} className="rounded-lg p-6 text-xl border border-border/30">
+                        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-6 font-bold">
+                          <div className="flex items-center justify-end gap-3">
+                            <div className="w-10 flex-shrink-0">
+                              {homeWon && <Trophy className="h-10 w-10 text-yellow-500" />}
+                            </div>
+                            <span className="truncate text-4xl text-right" title={homeTeam.name}>
+                              {homeTeam.name}
+                            </span>
+                          </div>
+                          <span className="text-6xl text-white font-bold whitespace-nowrap flex-shrink-0">
+                            {matchup.homeScore} - {matchup.awayScore}
+                          </span>
+                          <div className="flex items-center justify-start gap-3">
+                            <span className="truncate text-4xl text-left" title={awayTeam.name}>
+                              {awayTeam.name}
+                            </span>
+                            <div className="w-10 flex-shrink-0">
+                              {awayWon && <Trophy className="h-10 w-10 text-yellow-500" />}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-2xl text-foreground/70 text-center mt-2">
+                          {matchup.date} · {matchup.phase}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-foreground/70 text-2xl text-center px-6">
+                  No hay enfrentamientos previos entre estos equipos en la fase regular
+                </div>
+              )
             )}
           </div>
         </div>

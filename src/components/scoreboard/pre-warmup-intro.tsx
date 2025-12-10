@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import { useGameState } from '@/contexts/game-state-context';
 
 interface PreWarmupIntroProps {
   logo: string | null;
@@ -35,6 +36,15 @@ const PARTICLE_POSITIONS = Array.from({ length: 30 }, () => {
 export function PreWarmupIntro({ logo, onComplete, mode = 'explosion' }: PreWarmupIntroProps) {
   const [phase, setPhase] = useState<'pulsing' | 'explosion'>('pulsing');
   const onCompleteRef = useRef(onComplete);
+  const { state } = useGameState();
+
+  // Detect if this is a final match
+  const isFinal = state?.live?.matchId && state?.config?.tournaments?.some(t =>
+    t.matches?.some(m =>
+      m.id === state.live.matchId &&
+      m.playoffType === 'final'
+    )
+  );
 
   // Keep ref updated
   useEffect(() => {
@@ -106,12 +116,21 @@ export function PreWarmupIntro({ logo, onComplete, mode = 'explosion' }: PreWarm
         style={{ zIndex: 1 }}
       >
         <defs>
-          {/* Gradiente blanco-hielo para las líneas */}
-          <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="rgba(255, 255, 255, 0.6)" stopOpacity="0.6" />
-            <stop offset="50%" stopColor="rgba(200, 230, 255, 0.9)" stopOpacity="1" />
-            <stop offset="100%" stopColor="rgba(255, 255, 255, 0.6)" stopOpacity="0.6" />
-          </linearGradient>
+          {/* Golden gradient for final matches */}
+          {isFinal ? (
+            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(251, 191, 36, 0.6)" stopOpacity="0.6" />
+              <stop offset="50%" stopColor="rgba(252, 211, 77, 0.9)" stopOpacity="1" />
+              <stop offset="100%" stopColor="rgba(251, 191, 36, 0.6)" stopOpacity="0.6" />
+            </linearGradient>
+          ) : (
+            /* Gradiente blanco-hielo para las líneas */
+            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(255, 255, 255, 0.6)" stopOpacity="0.6" />
+              <stop offset="50%" stopColor="rgba(200, 230, 255, 0.9)" stopOpacity="1" />
+              <stop offset="100%" stopColor="rgba(255, 255, 255, 0.6)" stopOpacity="0.6" />
+            </linearGradient>
+          )}
 
           {/* Filtro de glow */}
           <filter id="glow">

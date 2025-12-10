@@ -921,15 +921,25 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 
         let stillRunning = runningPenalties.filter(p => !expiredPenalties.find(exp => exp.id === p.id));
         let availableSlots = config.maxConcurrentPenalties - stillRunning.filter(p => (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).length;
-        const playersServing = new Set(stillRunning.filter(p => (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride)).map(p => p.playerNumber));
+        // Set de todos los jugadores con penalidades activas (reducen o no)
+        const playersServing = new Set(stillRunning.map(p => p.playerNumber));
 
         let pendingConcurrent = teamPenalties.filter(p => p._status === 'pending_concurrent');
         for (const p of pendingConcurrent) {
-          if (availableSlots > 0 && !playersServing.has(p.playerNumber)) {
+          const doesNotReducePlayer = !p.reducesPlayerCount || p._doesNotReducePlayerCountOverride;
+
+          // Condiciones para activar:
+          // 1. El jugador no debe estar sirviendo otra penalidad
+          // 2. Si la penalidad reduce jugador, debe haber slots disponibles
+          // 3. Si no reduce jugador, no necesita slot (siempre puede activarse si el jugador no está sirviendo)
+          const canActivate = !playersServing.has(p.playerNumber) && (doesNotReducePlayer || availableSlots > 0);
+
+          if (canActivate) {
             significantChangeOccurred = true;
             stillRunning.push({ ...p, _status: 'running', startTime: liveAbsoluteElapsedTimeCs, expirationTime: liveAbsoluteElapsedTimeCs + (p.initialDuration * CENTISECONDS_PER_SECOND) });
-            if (p.reducesPlayerCount && !p._doesNotReducePlayerCountOverride) {
-              playersServing.add(p.playerNumber);
+            playersServing.add(p.playerNumber);
+            // Solo decrementar slots si la penalidad reduce jugador
+            if (!doesNotReducePlayer) {
               availableSlots--;
             }
           }

@@ -49,25 +49,30 @@ interface PenaltyControlCardProps {
   teamName: string;
 }
 
-const CagedUserIcon = ({ size, className, isReducing, ...props }: { size: number; className?: string; isReducing: boolean; [key: string]: any }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={cn(className)}
-    style={{ width: `${size}rem`, height: `${size}rem` }}
-    {...props}
-  >
-    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" strokeWidth="2" stroke={isReducing ? "hsl(var(--destructive))" : "hsl(var(--muted-foreground))"} />
-    <circle cx="12" cy="7" r="4" strokeWidth="2" stroke={isReducing ? "hsl(var(--destructive))" : "hsl(var(--muted-foreground))"} />
-    <line x1="6" y1="2" x2="6" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" opacity="0.5" />
-    <line x1="10" y1="2" x2="10" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" opacity="0.5" />
-    <line x1="14" y1="2" x2="14" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" opacity="0.5" />
-    <line x1="18" y1="2" x2="18" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" opacity="0.5" />
-  </svg>
-);
+const CagedUserIcon = ({ size, className, isReducing, ...props }: { size: number; className?: string; isReducing: boolean; [key: string]: any }) => {
+  // Si reduce: rojo, si no reduce: azul
+  const strokeColor = isReducing ? "hsl(var(--destructive))" : "rgb(59, 130, 246)";
+
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn(className)}
+      style={{ width: `${size}rem`, height: `${size}rem` }}
+      {...props}
+    >
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" strokeWidth="2" stroke={strokeColor} />
+      <circle cx="12" cy="7" r="4" strokeWidth="2" stroke={strokeColor} />
+      <line x1="6" y1="2" x2="6" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" opacity="0.5" />
+      <line x1="10" y1="2" x2="10" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" opacity="0.5" />
+      <line x1="14" y1="2" x2="14" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" opacity="0.5" />
+      <line x1="18" y1="2" x2="18" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" opacity="0.5" />
+    </svg>
+  );
+};
 
 
 const statusTextMap: Record<NonNullable<Penalty['_status']>, string> = {
@@ -182,8 +187,9 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                 isWaitingSlot && "opacity-60 bg-muted/10",
                 isPendingPuck && "opacity-40 bg-yellow-500/5 border-yellow-500/30",
                 penalty._limitReached && "bg-amber-500/10 border-amber-500/40",
-                isEndingSoon && "animate-flashing-border border-2",
-                !isEffectivelyReducingPlayerCount && "border-blue-500/30"
+                isEndingSoon && !isEffectivelyReducingPlayerCount && "animate-flashing-border-blue border-2",
+                isEndingSoon && isEffectivelyReducingPlayerCount && "animate-flashing-border border-2",
+                !isEffectivelyReducingPlayerCount && !isEndingSoon && "border-blue-500/30"
             )}
         >
             <div className="flex justify-between items-center w-full gap-2">
@@ -328,6 +334,12 @@ const PenaltyItem = ({ penalty, team, isEditing, onEditStart, onEditConfirm, onE
                     {statusText}
                 </div>
             )}
+            {isEndingSoon && !isEffectivelyReducingPlayerCount && (
+                <div className="text-xs font-semibold mt-1 flex items-center text-blue-400 bg-blue-500/10 px-2 py-1 rounded">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Entra con Puck Frenado - No suma jugadores
+                </div>
+            )}
         </Card>
     );
 };
@@ -395,7 +407,24 @@ export function PenaltyControlCard({ team, teamName }: PenaltyControlCardProps) 
     );
   }
 
-  const penalties = state.live.penalties[team];
+  // Ordenar penalidades: primero las que reducen jugador, luego las que no
+  // Dentro de cada grupo, mantener orden cronológico (las más recientes al final)
+  const penalties = state.live.penalties[team]
+    .map((penalty, index) => ({ penalty, originalIndex: index }))
+    .sort((a, b) => {
+      const aReduces = a.penalty.reducesPlayerCount && !a.penalty._doesNotReducePlayerCountOverride;
+      const bReduces = b.penalty.reducesPlayerCount && !b.penalty._doesNotReducePlayerCountOverride;
+
+      // Si a reduce y b no, a va primero (retorna -1)
+      // Si b reduce y a no, b va primero (retorna 1)
+      if (aReduces && !bReduces) return -1;
+      if (!aReduces && bReduces) return 1;
+
+      // Si ambos tienen el mismo estado, mantener orden original (cronológico)
+      return a.originalIndex - b.originalIndex;
+    })
+    .map(item => item.penalty);
+
   const teamSubName = team === 'home' ? state.live.homeTeamSubName : state.live.awayTeamSubName;
 
   const matchedTeam = useMemo(() => {

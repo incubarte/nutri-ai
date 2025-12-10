@@ -74,13 +74,16 @@ export function PenaltyNotifications() {
       {expiringPenalties.map(({ penalty, team, teamName, remainingTime }) => {
         const shouldBlink = remainingTime <= 10 * 100; // Less than 10 seconds
         const timeFormatted = formatTime(remainingTime);
+        const doesNotReducePlayer = !penalty.reducesPlayerCount || penalty._doesNotReducePlayerCountOverride;
 
         return (
           <div
             key={penalty.id}
             className={cn(
               "flex items-center justify-between px-6 py-3 rounded-lg",
-              "bg-amber-500/20 border-2 border-amber-500/50",
+              doesNotReducePlayer
+                ? "bg-blue-500/20 border-2 border-blue-500/50"
+                : "bg-amber-500/20 border-2 border-amber-500/50",
               "backdrop-blur-sm shadow-lg",
               "transition-all duration-300",
               shouldBlink && "animate-pulse"
@@ -90,23 +93,35 @@ export function PenaltyNotifications() {
             }}
           >
             <div className="flex items-center gap-4">
-              <span className="font-bold text-2xl text-amber-400">
+              <span className={cn(
+                "font-bold text-2xl",
+                doesNotReducePlayer ? "text-blue-400" : "text-amber-400"
+              )}>
                 #{penalty.playerNumber}
               </span>
               <span className="text-base text-foreground/90 font-medium">
                 {teamName}
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground uppercase tracking-wide">
-                Finaliza en
-              </span>
-              <span className={cn(
-                "font-mono font-bold text-2xl",
-                shouldBlink ? "text-red-400" : "text-amber-400"
-              )}>
-                {timeFormatted}
-              </span>
+            <div className="flex items-center gap-4">
+              {doesNotReducePlayer && (
+                <span className="text-sm font-semibold text-blue-400 uppercase tracking-wide">
+                  Entra con Puck Frenado - No suma jugadores
+                </span>
+              )}
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground uppercase tracking-wide">
+                  Finaliza en
+                </span>
+                <span className={cn(
+                  "font-mono font-bold text-2xl",
+                  doesNotReducePlayer
+                    ? (shouldBlink ? "text-blue-300" : "text-blue-400")
+                    : (shouldBlink ? "text-red-400" : "text-amber-400")
+                )}>
+                  {timeFormatted}
+                </span>
+              </div>
             </div>
           </div>
         );

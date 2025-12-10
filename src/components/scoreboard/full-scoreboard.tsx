@@ -381,12 +381,17 @@ export function FullScoreboard({ className }: { className?: string }) {
     ? Math.max(homeAttempts.length, awayAttempts.length) + (homeAttempts.length === awayAttempts.length ? 1 : 0)
     : 1;
 
-  const showMainScoreboard = clock.periodDisplayOverride !== 'Shootout' && clock.periodDisplayOverride !== 'Warm-up' && clock.periodDisplayOverride !== 'Pre Warm-up';
-
   // Determinar qué vista mostrar durante warm-up y pre warm-up
   const isWarmup = clock.periodDisplayOverride === 'Warm-up';
   const isPreWarmup = clock.periodDisplayOverride === 'Pre Warm-up';
   const isFixtureMatch = !!matchId;
+
+  // Para partidos de fixture: ocultar scoreboard en Shootout, Warm-up y Pre Warm-up
+  // Para partidos standalone: ocultar scoreboard solo en Shootout
+  const showMainScoreboard = clock.periodDisplayOverride !== 'Shootout' &&
+                            (isFixtureMatch
+                              ? (clock.periodDisplayOverride !== 'Warm-up' && clock.periodDisplayOverride !== 'Pre Warm-up')
+                              : true); // En partidos standalone, siempre mostrar excepto en Shootout
 
   // Obtener datos del partido para verificar si es playoff
   const matchData = config.tournaments
@@ -464,14 +469,14 @@ export function FullScoreboard({ className }: { className?: string }) {
           }
         />
       ) : isPreWarmup && isFixtureMatch && tournamentLogo ? (
-        // Show Pre Warm-up LOOP mode - infinite pulsing until operator starts the match
+        // Show Pre Warm-up LOOP mode - infinite pulsing until operator starts the match (SOLO para partidos de fixture)
         <PreWarmupIntro
           logo={tournamentLogo}
           onComplete={() => {}} // No hace nada, loop infinito
           mode="loop"
         />
-      ) : showPreWarmupIntro ? (
-        // Show Pre-Warmup Intro EXPLOSION animation (transición a Warm-up)
+      ) : showPreWarmupIntro && isFixtureMatch ? (
+        // Show Pre-Warmup Intro EXPLOSION animation (transición a Warm-up) (SOLO para partidos de fixture)
         <PreWarmupIntro
           logo={tournamentLogo}
           onComplete={() => setShowPreWarmupIntro(false)}

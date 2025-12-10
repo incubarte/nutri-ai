@@ -61,31 +61,52 @@ export function EditTeamPlayersDialog({
     return selectedTournament.teams.find(t => t.id === teamId);
   }, [state.config.tournaments, state.config.selectedTournamentId, teamId]);
 
+  // Track if dialog was just opened to prevent reloading data while editing
+  const dialogOpenedRef = useRef(false);
+
   useEffect(() => {
-    if (isOpen && teamDetails) {
-      const sortedPlayers = [...teamDetails.players].sort((a, b) => {
-        // Rule 1: Goalkeepers come before players.
-        if (a.type === 'goalkeeper' && b.type !== 'goalkeeper') return -1;
-        if (a.type !== 'goalkeeper' && b.type === 'goalkeeper') return 1;
-
-        // Rule 2: Within the same type (goalkeeper or player), sort by name alphabetically.
-        return a.name.localeCompare(b.name);
-      });
-
-      setEditablePlayers(
-        sortedPlayers.map(p => ({ ...p, localNumber: p.number, isModified: false }))
-      );
-
-      const attendedInfo = state.live?.attendance?.[teamType] || [];
-      setAttendedPlayerIds(new Set(attendedInfo.filter(p => p.isPresent !== false).map(p => p.id)));
-
-      // Load active goalkeeper from global state
-      const activeGoalkeeperId = teamType === 'home'
-        ? state.live.homeActiveGoalkeeperId
-        : state.live.awayActiveGoalkeeperId;
-      setActiveGoalkeeperId(activeGoalkeeperId);
+    if (isOpen && !dialogOpenedRef.current) {
+      dialogOpenedRef.current = true;
+    } else if (!isOpen) {
+      dialogOpenedRef.current = false;
     }
-  }, [isOpen, teamDetails, state.live.attendance, state.live.homeActiveGoalkeeperId, state.live.awayActiveGoalkeeperId, teamType]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    // Only reload data when dialog first opens, NOT on every teamDetails change
+    // This prevents losing unsaved edits when other tabs broadcast state updates
+    if (isOpen && teamDetails && dialogOpenedRef.current) {
+      // Check if there are unsaved changes
+      const hasUnsavedChanges = editablePlayers.some(p => p.isModified);
+
+      // Only reload if there are no unsaved changes
+      if (!hasUnsavedChanges) {
+        const sortedPlayers = [...teamDetails.players].sort((a, b) => {
+          // Rule 1: Goalkeepers come before players.
+          if (a.type === 'goalkeeper' && b.type !== 'goalkeeper') return -1;
+          if (a.type !== 'goalkeeper' && b.type === 'goalkeeper') return 1;
+
+          // Rule 2: Within the same type (goalkeeper or player), sort by name alphabetically.
+          return a.name.localeCompare(b.name);
+        });
+
+        setEditablePlayers(
+          sortedPlayers.map(p => ({ ...p, localNumber: p.number, isModified: false }))
+        );
+
+        const attendedInfo = state.live?.attendance?.[teamType] || [];
+        setAttendedPlayerIds(new Set(attendedInfo.filter(p => p.isPresent !== false).map(p => p.id)));
+
+        // Load active goalkeeper from global state
+        const activeGoalkeeperId = teamType === 'home'
+          ? state.live.homeActiveGoalkeeperId
+          : state.live.awayActiveGoalkeeperId;
+        setActiveGoalkeeperId(activeGoalkeeperId);
+
+        dialogOpenedRef.current = false; // Reset flag after initial load
+      }
+    }
+  }, [isOpen, teamDetails, state.live.attendance, state.live.homeActiveGoalkeeperId, state.live.awayActiveGoalkeeperId, teamType, editablePlayers]);
 
   const handlePlayerNumberChange = (playerId: string, newNumber: string) => {
     if (/^\d*$/.test(newNumber)) {

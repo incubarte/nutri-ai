@@ -15,24 +15,28 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-const CagedUserIcon = ({ size, className }: { size: number; className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-    style={{ width: `${size}rem`, height: `${size}rem` }}
-  >
-    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" strokeWidth="2" stroke="hsl(var(--destructive))" />
-    <circle cx="12" cy="7" r="4" strokeWidth="2" stroke="hsl(var(--destructive))" />
-    <line x1="6" y1="2" x2="6" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
-    <line x1="10" y1="2" x2="10" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
-    <line x1="14" y1="2" x2="14" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
-    <line x1="18" y1="2" x2="18" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
-  </svg>
-);
+const CagedUserIcon = ({ size, className, isBlue }: { size: number; className?: string; isBlue?: boolean }) => {
+  const strokeColor = isBlue ? "rgb(59, 130, 246)" : "hsl(var(--destructive))";
+
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      style={{ width: `${size}rem`, height: `${size}rem` }}
+    >
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" strokeWidth="2" stroke={strokeColor} />
+      <circle cx="12" cy="7" r="4" strokeWidth="2" stroke={strokeColor} />
+      <line x1="6" y1="2" x2="6" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
+      <line x1="10" y1="2" x2="10" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
+      <line x1="14" y1="2" x2="14" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
+      <line x1="18" y1="2" x2="18" y2="22" strokeWidth="1" stroke="hsl(var(--muted-foreground))" />
+    </svg>
+  );
+};
 
 interface PenaltyWithVisualTimer extends Penalty {
   _visualRemainingTimeCs?: number;
@@ -76,10 +80,13 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
   const isWaitingSlot = penalty._status === 'pending_concurrent';
   const isPendingPuck = penalty._status === 'pending_puck';
 
+  // Una penalidad NO reduce jugador si: reducesPlayerCount es false O _doesNotReducePlayerCountOverride es true
+  const doesNotReducePlayer = !penalty.reducesPlayerCount || penalty._doesNotReducePlayerCountOverride;
+
   const cardClasses = cn(
     "bg-muted/50 border-primary/30 transition-opacity",
-    (isWaitingSlot || isPendingPuck) && "opacity-50", 
-    isPendingPuck && "border-yellow-500/40" 
+    (isWaitingSlot || isPendingPuck) && "opacity-50",
+    isPendingPuck && "border-yellow-500/40"
   );
 
   const renderPlayerAlias = () => {
@@ -147,8 +154,8 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
       <CardContent className="p-2 md:p-3 lg:p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 md:gap-3">
-            <CagedUserIcon size={styles.playerIconSize} className="text-primary-foreground" />
-            <span 
+            <CagedUserIcon size={styles.playerIconSize} className="text-primary-foreground" isBlue={doesNotReducePlayer} />
+            <span
               className="font-semibold"
               style={{ fontSize: styles.playerNumberSize, lineHeight: 1 }}
             >
@@ -171,12 +178,12 @@ export function PenaltyCard({ penalty, teamName, mode = 'desktop', clock: mobile
           </div>
         </div>
         <div className="flex justify-between items-center">
-          <div 
+          <div
             className="text-muted-foreground mt-1"
             style={{ fontSize: styles.totalDurationSize }}
           >
             ({formatTime(penalty.initialDuration * 100, { showTenths: false })})
-             {!penalty.reducesPlayerCount && <span className="text-blue-400 font-semibold"> (No reduce)</span>}
+             {doesNotReducePlayer && <span className="text-blue-400 font-semibold"> (No reduce)</span>}
           </div>
           {statusText && (
             <div className={cn(
