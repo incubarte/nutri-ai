@@ -4,6 +4,7 @@ import { readManifest, writeManifest, hashContent, getGMTTimestamp } from '@/lib
 import type { FileMetadata, SyncManifest } from '@/types';
 import path from 'path';
 import fs from 'fs/promises';
+import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,10 +22,14 @@ async function listFilesRecursively(dirPath: string, baseDir: string): Promise<s
                 // Recurse into subdirectories
                 const subFiles = await listFilesRecursively(fullPath, baseDir);
                 files.push(...subFiles);
-            } else if (item.isFile() && item.name.endsWith('.json')) {
-                // Get relative path from base directory
-                const relativePath = path.relative(baseDir, fullPath);
-                files.push(relativePath);
+            } else if (item.isFile()) {
+                // Include JSON files and image files
+                const ext = path.extname(item.name).toLowerCase();
+                if (ext === '.json' || ['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext)) {
+                    // Get relative path from base directory
+                    const relativePath = path.relative(baseDir, fullPath);
+                    files.push(relativePath);
+                }
             }
         }
     } catch (error) {
@@ -60,7 +65,7 @@ export async function POST() {
             );
         }
 
-        // List all JSON files
+        // List all JSON and image files
         const allFiles = await listFilesRecursively(dataDir, dataDir);
 
         // Filter: Include tournaments.json and files inside tournaments/ directory
@@ -82,21 +87,31 @@ export async function POST() {
 
         for (const filePath of files) {
             try {
-                // Read file content using storage provider
-                const content = await storageProvider.readFile(filePath);
-
-                // Get file stats
                 const fullPath = path.join(dataDir, filePath);
                 const stats = await fs.stat(fullPath);
+                const ext = path.extname(filePath).toLowerCase();
 
-                // Calculate hash
-                const hash = hashContent(content);
+                let hash: string;
+                let size: number;
+
+                // Handle binary files (images) differently from text files (JSON)
+                if (['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext)) {
+                    // Read as binary
+                    const buffer = await fs.readFile(fullPath);
+                    hash = crypto.createHash('md5').update(buffer).digest('hex');
+                    size = buffer.length;
+                } else {
+                    // Read as text (JSON)
+                    const content = await storageProvider.readFile(filePath);
+                    hash = hashContent(content);
+                    size = Buffer.byteLength(content, 'utf-8');
+                }
 
                 // Create metadata
                 const metadata: FileMetadata = {
                     lastModified: stats.mtime.toISOString(),
                     hash: hash,
-                    size: Buffer.byteLength(content, 'utf-8')
+                    size: size
                     // Don't set previousVersion - this is a fresh manifest
                 };
 

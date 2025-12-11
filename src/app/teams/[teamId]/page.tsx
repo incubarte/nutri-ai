@@ -6,11 +6,12 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useGameState, getCategoryNameById } from "@/contexts/game-state-context";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit, Trash2, Users, Info, ListFilter } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Users, Info, ListFilter, LayoutGrid, LayoutList, Shield, User } from "lucide-react";
 import { AddPlayerForm } from "@/components/teams/add-player-form";
 import { PlayerListItem } from "@/components/teams/player-list-item";
 import { DefaultTeamLogo } from "@/components/teams/default-team-logo";
 import { CreateEditTeamDialog } from "@/components/teams/create-edit-team-dialog";
+import { EditPlayerDialog } from "@/components/teams/edit-player-dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -26,6 +27,8 @@ import { Separator } from "@/components/ui/separator";
 import type { PlayerData, Tournament } from "@/types";
 import { Badge } from "@/components/ui/badge";
 
+type ViewMode = 'list' | 'grid';
+
 export default function ManageTeamPage() {
   const params = useParams();
   const router = useRouter();
@@ -33,12 +36,14 @@ export default function ManageTeamPage() {
   const { toast } = useToast();
 
   const teamId = typeof params.teamId === 'string' ? params.teamId : undefined;
-  
+
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [team, setTeam] = useState(teamId ? tournament?.teams.find(t => t.id === teamId) : undefined);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [editingPlayer, setEditingPlayer] = useState<PlayerData | null>(null);
 
   useEffect(() => {
     if (teamId) {
@@ -63,9 +68,9 @@ export default function ManageTeamPage() {
 
       const numA = parseInt(a.number, 10);
       const numB = parseInt(b.number, 10);
-      if (isNaN(numA) && isNaN(numB)) return 0; 
-      if (isNaN(numA)) return 1; 
-      if (!isNaN(numA) && isNaN(numB)) return -1; 
+      if (isNaN(numA) && isNaN(numB)) return 0;
+      if (isNaN(numA)) return 1;
+      if (!isNaN(numA) && isNaN(numB)) return -1;
       return numA - numB;
     });
   }, [team?.players]);
@@ -106,7 +111,7 @@ export default function ManageTeamPage() {
     });
     router.push(`/tournaments/${tournament.id}`);
   };
-  
+
   const categoryName = getCategoryNameById(team.category, tournament.categories);
 
   return (
@@ -135,7 +140,7 @@ export default function ManageTeamPage() {
           )}
           {categoryName && (
             <Badge variant="outline" className="mt-1.5 mb-1 text-sm">
-                <ListFilter className="mr-1.5 h-3.5 w-3.5" /> {categoryName}
+              <ListFilter className="mr-1.5 h-3.5 w-3.5" /> {categoryName}
             </Badge>
           )}
           <div className="flex items-center justify-center sm:justify-start gap-2 mt-2 text-muted-foreground">
@@ -147,7 +152,7 @@ export default function ManageTeamPage() {
           <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
             <Edit className="mr-2 h-4 w-4" /> Editar Equipo
           </Button>
-           <Button variant="destructive" onClick={() => setIsDeleteConfirmOpen(true)}>
+          <Button variant="destructive" onClick={() => setIsDeleteConfirmOpen(true)}>
             <Trash2 className="mr-2 h-4 w-4" /> Eliminar Equipo
           </Button>
         </div>
@@ -158,15 +163,99 @@ export default function ManageTeamPage() {
       <AddPlayerForm teamId={team.id} />
 
       <Separator />
-      
+
       <div>
-        <h2 className="text-2xl font-semibold text-primary-foreground mb-4">Lista de Jugadores</h2>
-        {sortedPlayers.length > 0 ? (
-          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-            {sortedPlayers.map(player => (
-              <PlayerListItem key={player.id} player={player} teamId={team.id} onRemovePlayer={handleRemovePlayer} allPlayers={team.players} />
-            ))}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-semibold text-primary-foreground">Lista de Jugadores</h2>
+          <div className="flex gap-1 border rounded-md p-1">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="h-8 px-3"
+            >
+              <LayoutList className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className="h-8 px-3"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
           </div>
+        </div>
+
+        {sortedPlayers.length > 0 ? (
+          viewMode === 'list' ? (
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+              {sortedPlayers.map(player => (
+                <PlayerListItem key={player.id} player={player} teamId={team.id} onRemovePlayer={handleRemovePlayer} allPlayers={team.players} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-[600px] overflow-y-auto pr-2">
+              {sortedPlayers.map(player => {
+                const currentPhotoUrl = player.photoFileName && tournament
+                  ? `/api/storage/read?path=${encodeURIComponent(`tournaments/${tournament.id}/players/${team.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')}/${player.photoFileName}`)}`
+                  : null;
+
+                return (
+                  <div key={player.id} className="relative group">
+                    <div className="relative aspect-[3/4] rounded-lg overflow-hidden border-2 border-primary/20 hover:border-primary transition-colors bg-muted">
+                      {currentPhotoUrl ? (
+                        <Image
+                          src={currentPhotoUrl}
+                          alt={player.name}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
+                          {player.type === 'goalkeeper' ? (
+                            <Shield className="h-20 w-20 text-primary/30" />
+                          ) : (
+                            <User className="h-20 w-20 text-primary/30" />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Gradient overlay with player info */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3">
+                        <p className="text-white font-bold text-lg">
+                          #{player.number || 'S/N'}
+                        </p>
+                        <p className="text-white/90 text-sm font-semibold truncate">
+                          {player.name}
+                        </p>
+                      </div>
+
+                      {/* Edit/Delete buttons on hover */}
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-7 w-7 bg-background/90 hover:bg-background"
+                          onClick={() => setEditingPlayer(player)}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="h-7 w-7 bg-destructive/90 hover:bg-destructive"
+                          onClick={() => handleRemovePlayer(player.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
         ) : (
           <div className="text-center py-8 px-4 border border-dashed rounded-md bg-card">
             <Info className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
@@ -200,6 +289,17 @@ export default function ManageTeamPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      )}
+
+      {editingPlayer && tournament && (
+        <EditPlayerDialog
+          player={editingPlayer}
+          teamId={team.id}
+          tournamentId={tournament.id}
+          teamName={team.name}
+          isOpen={!!editingPlayer}
+          onOpenChange={(open) => !open && setEditingPlayer(null)}
+        />
       )}
     </div>
   );

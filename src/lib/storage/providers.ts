@@ -35,6 +35,13 @@ export interface StorageProvider {
      * @throws {FileNotFoundError} If the file does not exist.
      */
     readFile(filePath: string): Promise<string>;
+    /**
+     * Reads a binary file from the storage provider.
+     * @param filePath The path to the file.
+     * @returns A promise that resolves with the file content as a Buffer.
+     * @throws {FileNotFoundError} If the file does not exist.
+     */
+    readBinaryFile(filePath: string): Promise<Buffer>;
     writeFile(filePath: string, content: string): Promise<void>;
     deleteFile(filePath: string): Promise<void>;
     listFiles(directoryPath: string): Promise<string[]>;
@@ -62,6 +69,17 @@ export class LocalFileStorageProvider implements StorageProvider {
     async readFile(filePath: string): Promise<string> {
         try {
             return await fs.readFile(this.resolvePath(filePath), 'utf-8');
+        } catch (error) {
+            if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+                throw new FileNotFoundError(`File not found on local disk: ${filePath}`);
+            }
+            throw error;
+        }
+    }
+
+    async readBinaryFile(filePath: string): Promise<Buffer> {
+        try {
+            return await fs.readFile(this.resolvePath(filePath));
         } catch (error) {
             if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
                 throw new FileNotFoundError(`File not found on local disk: ${filePath}`);
@@ -163,6 +181,21 @@ export class SupabaseStorageProvider implements StorageProvider {
         }
 
         return data.text();
+    }
+
+    async readBinaryFile(filePath: string): Promise<Buffer> {
+        const { data, error } = await this.supabase.storage.from(this.bucket).download(filePath);
+
+        if (error) {
+            if ('status' in error && error.status === 404) {
+                throw new FileNotFoundError(`File not found in Supabase: ${filePath}`);
+            }
+            throw error;
+        }
+
+        // Convert Blob to Buffer
+        const arrayBuffer = await data.arrayBuffer();
+        return Buffer.from(arrayBuffer);
     }
 
     async writeFile(filePath: string, content: string): Promise<void> {

@@ -33,6 +33,7 @@ export interface PlayerData {
   number: string;
   type: PlayerType;
   name: string;
+  photoFileName?: string; // Optional filename for player photo (e.g., "john_doe_a3f2.png")
 }
 
 export type MatchPhase = 'clasificacion' | 'playoffs';
@@ -655,7 +656,7 @@ export type GameAction =
   | { type: 'DELETE_TEAMS_FROM_TOURNAMENT'; payload: { tournamentId: string, teamIds: string[] } }
   | { type: 'UPDATE_TEAM_DETAILS'; payload: { teamId: string; name: string; subName?: string; category: string; logoDataUrl?: string | null } }
   | { type: 'ADD_PLAYER_TO_TEAM'; payload: { teamId: string; player: Omit<PlayerData, 'id'> } }
-  | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number'>> } }
+  | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number' | 'photoFileName'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } }
   | { type: 'SET_PLAYER_SHOTS'; payload: { team: Team; playerId: string; periodText: string; shotCount: number } };

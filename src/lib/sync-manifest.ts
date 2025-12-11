@@ -204,3 +204,36 @@ export async function updateLastSyncTime(): Promise<void> {
     manifest.lastSync = getGMTTimestamp();
     await writeManifest(manifest);
 }
+
+/**
+ * Update manifest entry for a binary file (like images)
+ * Similar to updateManifestEntry but works with Buffer instead of string
+ */
+export async function updateManifestEntryBinary(
+    filePath: string,
+    buffer: Buffer
+): Promise<void> {
+    return withManifestLock(async () => {
+        const manifest = await readManifest();
+
+        const currentMetadata = manifest.files[filePath];
+
+        const newMetadata: FileMetadata = {
+            lastModified: getGMTTimestamp(),
+            hash: createHash('md5').update(buffer).digest('hex'),
+            size: buffer.length
+        };
+
+        // PRESERVE previousVersion from current metadata
+        if (currentMetadata?.previousVersion) {
+            newMetadata.previousVersion = currentMetadata.previousVersion;
+        }
+
+        manifest.files[filePath] = newMetadata;
+
+        // Write directly without calling writeManifest to avoid double-locking
+        const manifestPath = getManifestPath();
+        await fs.mkdir(path.dirname(manifestPath), { recursive: true });
+        await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+    });
+}

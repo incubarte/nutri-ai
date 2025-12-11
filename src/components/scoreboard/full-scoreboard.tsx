@@ -11,6 +11,7 @@ import { WarmupDisplay } from './warmup-display';
 import { WarmupDisplayStatic } from './warmup-display-static';
 import { EndOfGameDisplay } from './end-of-game-display';
 import { GoalCelebrationOverlay } from './goal-celebration-overlay';
+import { PlayerPhotoDisplay } from './player-photo-display';
 import { ReplayOverlay } from './replay-overlay';
 import { OlympiaTransition } from './olympia-transition';
 import { cn } from '@/lib/utils';
@@ -406,6 +407,9 @@ export function FullScoreboard({ className }: { className?: string }) {
   const homeTeam = currentTournament?.teams?.find(t => t.id === matchData?.homeTeamId);
   const awayTeam = currentTournament?.teams?.find(t => t.id === matchData?.awayTeamId);
 
+  // Debug log for goal celebration
+  console.log('[FullScoreboard] goalCelebration:', goalCelebration);
+
   // Mostrar tabla si estamos en warmup, es partido de fixture, la opción está activada Y el estado indica mostrar
   // PERO NO si es un partido de playoffs
   // Si forceStandingsInWarmup está activado, siempre mostrar (para testing)
@@ -553,6 +557,11 @@ export function FullScoreboard({ className }: { className?: string }) {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Player Photo Display - shown on the left side during goal celebration */}
+            {goalCelebration && (
+                <PlayerPhotoDisplay celebration={goalCelebration} />
+            )}
 
             <AnimatePresence>
                 {!goalCelebration && (
