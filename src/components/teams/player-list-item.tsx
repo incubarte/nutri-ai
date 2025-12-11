@@ -21,6 +21,7 @@ interface PlayerListItemProps {
 export function PlayerListItem({ player, teamId, onRemovePlayer, allPlayers = [] }: PlayerListItemProps) {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
+  const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
 
   const [isEditing, setIsEditing] = useState(false);
   const [editableNumber, setEditableNumber] = useState(player.number);
@@ -514,30 +515,32 @@ export function PlayerListItem({ player, teamId, onRemovePlayer, allPlayers = []
         </div>
 
         <div className="flex gap-1 shrink-0">
-          {isEditing ? (
-            <>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500 hover:text-green-600" onClick={handleSave} aria-label="Guardar cambios">
-                <CheckCircle className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={handleCancel} aria-label="Cancelar edición">
-                <XCircle className="h-4 w-4" />
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 h-8 w-8" onClick={handleEdit} aria-label={`Editar jugador ${player.name}`}>
-                <Edit3 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-destructive hover:text-destructive h-8 w-8"
-                onClick={() => onRemovePlayer(player.id)}
-                aria-label={`Eliminar jugador ${player.name}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </>
+          {!isReadOnly && (
+            isEditing ? (
+              <>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500 hover:text-green-600" onClick={handleSave} aria-label="Guardar cambios">
+                  <CheckCircle className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={handleCancel} aria-label="Cancelar edición">
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 h-8 w-8" onClick={handleEdit} aria-label={`Editar jugador ${player.name}`}>
+                  <Edit3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive hover:text-destructive h-8 w-8"
+                  onClick={() => onRemovePlayer(player.id)}
+                  aria-label={`Eliminar jugador ${player.name}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </>
+            )
           )}
         </div>
       </CardContent>

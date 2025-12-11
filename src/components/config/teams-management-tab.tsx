@@ -36,10 +36,12 @@ const ALL_CATEGORIES_FILTER_KEY = "__ALL_CATEGORIES_FILTER_KEY__";
 const NO_CATEGORIES_PLACEHOLDER_VALUE_TAB = "__NO_CATEGORIES_DEFINED_TAB__";
 
 export function TeamsManagementTab() {
-  const { state, dispatch } = useGameState();
+  const { state, dispatch, isLoading } = useGameState();
   const { tournaments, selectedTournamentId } = state.config;
   const router = useRouter();
   const { toast } = useToast();
+
+  const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
 
   const selectedTournament = useMemo(() => {
     return tournaments.find(t => t.id === selectedTournamentId);
@@ -88,15 +90,15 @@ export function TeamsManagementTab() {
 
   const performExport = (filename: string) => {
     if (!filename.trim().endsWith('.json')) {
-        filename = filename.trim() + '.json';
+      filename = filename.trim() + '.json';
     }
-    if (filename.trim() === '.json'){
-        toast({
-            title: "Nombre de Archivo Inválido",
-            description: "El nombre del archivo no puede estar vacío.",
-            variant: "destructive",
-        });
-        return;
+    if (filename.trim() === '.json') {
+      toast({
+        title: "Nombre de Archivo Inválido",
+        description: "El nombre del archivo no puede estar vacío.",
+        variant: "destructive",
+      });
+      return;
     }
 
     const jsonString = JSON.stringify(teams, null, 2);
@@ -125,7 +127,7 @@ export function TeamsManagementTab() {
 
   const handleConfirmMassDelete = () => {
     if (selectedTeamIdsForDeletion.length === 0 || !selectedTournamentId) return;
-    
+
     dispatch({ type: "DELETE_TEAMS_FROM_TOURNAMENT", payload: { tournamentId: selectedTournamentId, teamIds: selectedTeamIdsForDeletion } });
 
     toast({
@@ -160,7 +162,7 @@ export function TeamsManagementTab() {
           <Users className="h-8 w-8 text-primary" />
           <h1 className="text-2xl font-bold text-primary-foreground">Gestión de Equipos</h1>
         </div>
-        {!isDeleteSelectionMode && (
+        {!isDeleteSelectionMode && !isReadOnly && (
           <Button onClick={() => setIsCreateDialogOpen(true)}>
             <PlusCircle className="mr-2 h-5 w-5" /> Crear Nuevo Equipo
           </Button>
@@ -169,49 +171,49 @@ export function TeamsManagementTab() {
 
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-                type="search"
-                placeholder="Buscar por nombre o sub-nombre..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 text-base"
-                disabled={isDeleteSelectionMode}
-            />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Buscar por nombre o sub-nombre..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 text-base"
+            disabled={isDeleteSelectionMode}
+          />
         </div>
         <div className="sm:w-auto min-w-[200px]">
-            <Select value={categoryFilter} onValueChange={setCategoryFilter} disabled={isDeleteSelectionMode}>
-                <SelectTrigger className="w-full text-base h-10">
-                    <ListFilter className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <SelectValue placeholder="Filtrar por categoría..." />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value={ALL_CATEGORIES_FILTER_KEY}>Todas las Categorías</SelectItem>
-                    {availableCategories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id} className="text-sm">
-                            {cat.name}
-                        </SelectItem>
-                    ))}
-                     {availableCategories.length === 0 && (
-                        <SelectItem value={NO_CATEGORIES_PLACEHOLDER_VALUE_TAB} disabled>No hay categorías definidas</SelectItem>
-                    )}
-                </SelectContent>
-            </Select>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter} disabled={isDeleteSelectionMode}>
+            <SelectTrigger className="w-full text-base h-10">
+              <ListFilter className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue placeholder="Filtrar por categoría..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_CATEGORIES_FILTER_KEY}>Todas las Categorías</SelectItem>
+              {availableCategories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id} className="text-sm">
+                  {cat.name}
+                </SelectItem>
+              ))}
+              {availableCategories.length === 0 && (
+                <SelectItem value={NO_CATEGORIES_PLACEHOLDER_VALUE_TAB} disabled>No hay categorías definidas</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
 
-      {state.isLoading ? (
+      {isLoading ? (
         <p className="text-center text-muted-foreground">Cargando equipos...</p>
       ) : filteredTeams.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTeams.map((team) => (
             <TeamListItem
-                key={team.id}
-                team={team}
-                isSelectionMode={isDeleteSelectionMode}
-                isSelected={selectedTeamIdsForDeletion.includes(team.id)}
-                onToggleSelection={handleToggleTeamSelectionForDeletion}
+              key={team.id}
+              team={team}
+              isSelectionMode={isDeleteSelectionMode}
+              isSelected={selectedTeamIdsForDeletion.includes(team.id)}
+              onToggleSelection={handleToggleTeamSelectionForDeletion}
             />
           ))}
         </div>
@@ -230,73 +232,77 @@ export function TeamsManagementTab() {
               ? "Comienza creando tu primer equipo."
               : "Intenta con otros filtros o crea un nuevo equipo."}
           </p>
-          {(searchTerm || (categoryFilter && categoryFilter !== ALL_CATEGORIES_FILTER_KEY)) && teams.length > 0 && !isDeleteSelectionMode && (
-             <Button variant="outline" onClick={() => { setSearchTerm(""); setCategoryFilter(ALL_CATEGORIES_FILTER_KEY); }}>Limpiar filtros</Button>
+          {(searchTerm || (categoryFilter && categoryFilter !== ALL_CATEGORIES_FILTER_KEY)) && teams.length > 0 && !isDeleteSelectionMode && !isReadOnly && (
+            <Button variant="outline" onClick={() => { setSearchTerm(""); setCategoryFilter(ALL_CATEGORIES_FILTER_KEY); }}>Limpiar filtros</Button>
           )}
         </div>
       )}
 
-      <Separator className="my-10" />
+      {!isReadOnly && (
+        <>
+          <Separator className="my-10" />
 
-      <div className="space-y-6 p-6 border rounded-md bg-card">
-        <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-primary-foreground">Acciones de Datos de Equipos</h2>
-            {isDeleteSelectionMode ? (
+          <div className="space-y-6 p-6 border rounded-md bg-card">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-primary-foreground">Acciones de Datos de Equipos</h2>
+              {isDeleteSelectionMode ? (
                 <div className="flex gap-2">
-                    <Button
-                        variant="destructive"
-                        onClick={() => setIsConfirmMassDeleteOpen(true)}
-                        disabled={selectedTeamIdsForDeletion.length === 0}
-                    >
-                        <Trash2 className="mr-2 h-4 w-4" /> Confirmar Eliminación ({selectedTeamIdsForDeletion.length})
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={() => {
-                        setIsDeleteSelectionMode(false);
-                        setSelectedTeamIdsForDeletion([]);
-                        }}
-                    >
-                        <X className="mr-2 h-4 w-4" /> Cancelar Selección
-                    </Button>
-                </div>
-            ) : (
-                <Button
+                  <Button
+                    variant="destructive"
+                    onClick={() => setIsConfirmMassDeleteOpen(true)}
+                    disabled={selectedTeamIdsForDeletion.length === 0}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Confirmar Eliminación ({selectedTeamIdsForDeletion.length})
+                  </Button>
+                  <Button
                     variant="outline"
-                    onClick={() => setIsDeleteSelectionMode(true)}
-                    disabled={teams.length === 0}
+                    onClick={() => {
+                      setIsDeleteSelectionMode(false);
+                      setSelectedTeamIdsForDeletion([]);
+                    }}
+                  >
+                    <X className="mr-2 h-4 w-4" /> Cancelar Selección
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDeleteSelectionMode(true)}
+                  disabled={teams.length === 0}
                 >
-                    <Trash2 className="mr-2 h-4 w-4" /> Seleccionar para Eliminar
+                  <Trash2 className="mr-2 h-4 w-4" /> Seleccionar para Eliminar
                 </Button>
-            )}
-        </div>
-        {!isDeleteSelectionMode && (
-          <>
-            <p className="text-sm text-muted-foreground">
-              Importa o exporta los equipos del torneo actual.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Button onClick={prepareExportTeams} variant="outline" className="flex-1" disabled={teams.length === 0}>
-                <Download className="mr-2 h-4 w-4" /> Exportar Equipos (JSON)
-              </Button>
-              <Button onClick={() => setIsImportDialogOpen(true)} variant="outline" className="flex-1">
-                <Upload className="mr-2 h-4 w-4" /> Importar Equipos (CSV/JSON)
-              </Button>
+              )}
             </div>
-          </>
-        )}
-         {isDeleteSelectionMode && (
-             <p className="text-sm text-muted-foreground">
+            {!isDeleteSelectionMode && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Importa o exporta los equipos del torneo actual.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Button onClick={prepareExportTeams} variant="outline" className="flex-1" disabled={teams.length === 0}>
+                    <Download className="mr-2 h-4 w-4" /> Exportar Equipos (JSON)
+                  </Button>
+                  <Button onClick={() => setIsImportDialogOpen(true)} variant="outline" className="flex-1">
+                    <Upload className="mr-2 h-4 w-4" /> Importar Equipos (CSV/JSON)
+                  </Button>
+                </div>
+              </>
+            )}
+            {isDeleteSelectionMode && (
+              <p className="text-sm text-muted-foreground">
                 Selecciona los equipos que deseas eliminar de la lista de arriba. Luego confirma la eliminación o cancela.
-            </p>
-         )}
-      </div>
+              </p>
+            )}
+          </div>
+        </>
+      )}
 
 
       <CreateEditTeamDialog
         isOpen={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
-        onTeamSaved={() => {}}
+        onTeamSaved={() => { }}
       />
 
       {isExportDialogOpen && (
@@ -324,7 +330,7 @@ export function TeamsManagementTab() {
         </AlertDialog>
       )}
 
-       <ImportTeamsDialog 
+      <ImportTeamsDialog
         isOpen={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
         tournament={selectedTournament}
@@ -332,20 +338,20 @@ export function TeamsManagementTab() {
 
       {isConfirmMassDeleteOpen && (
         <AlertDialog open={isConfirmMassDeleteOpen} onOpenChange={setIsConfirmMassDeleteOpen}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Confirmar Eliminación Múltiple</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        ¿Estás seguro de que quieres eliminar los {selectedTeamIdsForDeletion.length} equipos seleccionados? Esta acción no se puede deshacer.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setIsConfirmMassDeleteOpen(false)}>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmMassDelete} className="bg-destructive hover:bg-destructive/90">
-                        Eliminar Equipos
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Eliminación Múltiple</AlertDialogTitle>
+              <AlertDialogDescription>
+                ¿Estás seguro de que quieres eliminar los {selectedTeamIdsForDeletion.length} equipos seleccionados? Esta acción no se puede deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setIsConfirmMassDeleteOpen(false)}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmMassDelete} className="bg-destructive hover:bg-destructive/90">
+                Eliminar Equipos
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
         </AlertDialog>
       )}
     </div>

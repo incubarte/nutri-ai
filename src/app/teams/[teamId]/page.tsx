@@ -34,6 +34,7 @@ export default function ManageTeamPage() {
   const router = useRouter();
   const { state, dispatch, isLoading } = useGameState();
   const { toast } = useToast();
+  const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
 
   const teamId = typeof params.teamId === 'string' ? params.teamId : undefined;
 
@@ -148,21 +149,25 @@ export default function ManageTeamPage() {
             <span>{team.players.length} Jugador{team.players.length !== 1 ? 'es' : ''}</span>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0 self-center sm:self-start">
-          <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
-            <Edit className="mr-2 h-4 w-4" /> Editar Equipo
-          </Button>
-          <Button variant="destructive" onClick={() => setIsDeleteConfirmOpen(true)}>
-            <Trash2 className="mr-2 h-4 w-4" /> Eliminar Equipo
-          </Button>
-        </div>
+        {!isReadOnly && (
+          <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0 self-center sm:self-start">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
+              <Edit className="mr-2 h-4 w-4" /> Editar Equipo
+            </Button>
+            <Button variant="destructive" onClick={() => setIsDeleteConfirmOpen(true)}>
+              <Trash2 className="mr-2 h-4 w-4" /> Eliminar Equipo
+            </Button>
+          </div>
+        )}
       </div>
 
-      <Separator />
-
-      <AddPlayerForm teamId={team.id} />
-
-      <Separator />
+      {!isReadOnly && (
+        <>
+          <Separator />
+          <AddPlayerForm teamId={team.id} />
+          <Separator />
+        </>
+      )}
 
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -232,24 +237,26 @@ export default function ManageTeamPage() {
                       </div>
 
                       {/* Edit/Delete buttons on hover */}
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="h-7 w-7 bg-background/90 hover:bg-background"
-                          onClick={() => setEditingPlayer(player)}
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="h-7 w-7 bg-destructive/90 hover:bg-destructive"
-                          onClick={() => handleRemovePlayer(player.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-7 w-7 bg-background/90 hover:bg-background"
+                            onClick={() => setEditingPlayer(player)}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="h-7 w-7 bg-destructive/90 hover:bg-destructive"
+                            onClick={() => handleRemovePlayer(player.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -260,7 +267,7 @@ export default function ManageTeamPage() {
           <div className="text-center py-8 px-4 border border-dashed rounded-md bg-card">
             <Info className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
             <p className="text-muted-foreground">Este equipo aún no tiene jugadores.</p>
-            <p className="text-sm text-muted-foreground">Usa el formulario de arriba para añadir el primero.</p>
+            {!isReadOnly && <p className="text-sm text-muted-foreground">Usa el formulario de arriba para añadir el primero.</p>}
           </div>
         )}
       </div>
