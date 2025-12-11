@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // Check if the read-only mode is enabled via environment variable
   if (process.env.NEXT_PUBLIC_READ_ONLY === 'true') {
     const { pathname } = request.nextUrl;
