@@ -75,6 +75,7 @@ export const INITIAL_LAYOUT_SETTINGS: ScoreboardLayoutSettings = {
   backgroundColor: '223 70% 11%',
   mainContentGap: 3,
   scoreLabelGap: -2,
+  goalCelebrationPhotoSize: 40,
 };
 
 export const IN_CODE_INITIAL_REPLAYS_SETTINGS: ReplaySettings = {

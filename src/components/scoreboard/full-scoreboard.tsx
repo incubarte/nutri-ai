@@ -25,28 +25,28 @@ import { useTournamentLogo } from '@/hooks/use-tournament-logo';
 import { PlayoffBracketPreview } from './playoff-bracket-preview';
 
 const ValentinoCaffeAd = () => {
-    return (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-8 overflow-hidden">
-            <h1 
-                className="text-4xl md:text-5xl font-semibold text-foreground animate-slide-in-pulse-out"
-                style={{ animationDelay: '0s' }}
-            >
-                Este partido esta muy frio?
-            </h1>
-            <h2 
-                className="text-3xl md:text-4xl font-medium text-muted-foreground animate-slide-in-pulse-out"
-                style={{ animationDelay: '1.5s' }}
-            >
-                Mejor tomate un cafe
-            </h2>
-            <h3 
-                className="text-6xl md:text-7xl font-bold text-accent animate-slide-in-pulse-out"
-                style={{ animationDelay: '3s' }}
-            >
-                Valentino Caffe!
-            </h3>
-        </div>
-    );
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center gap-8 overflow-hidden">
+      <h1
+        className="text-4xl md:text-5xl font-semibold text-foreground animate-slide-in-pulse-out"
+        style={{ animationDelay: '0s' }}
+      >
+        Este partido esta muy frio?
+      </h1>
+      <h2
+        className="text-3xl md:text-4xl font-medium text-muted-foreground animate-slide-in-pulse-out"
+        style={{ animationDelay: '1.5s' }}
+      >
+        Mejor tomate un cafe
+      </h2>
+      <h3
+        className="text-6xl md:text-7xl font-bold text-accent animate-slide-in-pulse-out"
+        style={{ animationDelay: '3s' }}
+      >
+        Valentino Caffe!
+      </h3>
+    </div>
+  );
 };
 
 
@@ -71,7 +71,7 @@ export function FullScoreboard({ className }: { className?: string }) {
   const { logo: tournamentLogo } = useTournamentLogo(config.selectedTournamentId);
 
   const videoPreloaderRef = useRef<HTMLVideoElement>(null);
-  
+
   // Listen for remote commands specifically for this scoreboard component
   useEffect(() => {
     const eventSource = new EventSource('/api/remote-commands/events');
@@ -80,20 +80,20 @@ export function FullScoreboard({ className }: { className?: string }) {
       try {
         if (!event.data) return;
         const command: RemoteCommand = JSON.parse(event.data);
-        
+
         if (command.type === 'START_LOADING_REPLAY') {
-             dispatch({ type: 'START_LOADING_REPLAY', payload: command.payload });
+          dispatch({ type: 'START_LOADING_REPLAY', payload: command.payload });
         }
         else if (command.type === 'SHOW_OVERLAY_MESSAGE') {
-             dispatch({ type: 'SHOW_OVERLAY_MESSAGE', payload: command.payload });
+          dispatch({ type: 'SHOW_OVERLAY_MESSAGE', payload: command.payload });
         }
       } catch (e) {
         console.error("Failed to parse remote command in scoreboard:", e);
       }
     };
-    
+
     eventSource.onerror = (e) => {
-        console.warn("Scoreboard SSE connection error.", e);
+      console.warn("Scoreboard SSE connection error.", e);
     };
 
     return () => {
@@ -106,30 +106,30 @@ export function FullScoreboard({ className }: { className?: string }) {
   useEffect(() => {
     const videoElement = videoPreloaderRef.current;
     if (videoElement && live.replayLoadRequest?.url) {
-        const canPlayHandler = () => {
-            if(videoElement.src) {
-                dispatch({
-                    type: 'SHOW_REPLAY_OVERLAY',
-                    payload: {
-                        url: videoElement.src,
-                        startTimeSeconds: live.replayLoadRequest.startTimeSeconds
-                    }
-                });
+      const canPlayHandler = () => {
+        if (videoElement.src) {
+          dispatch({
+            type: 'SHOW_REPLAY_OVERLAY',
+            payload: {
+              url: videoElement.src,
+              startTimeSeconds: live.replayLoadRequest.startTimeSeconds
             }
-        };
-
-        videoElement.addEventListener('canplaythrough', canPlayHandler);
-
-        videoElement.src = live.replayLoadRequest.url;
-        videoElement.load();
-
-        return () => {
-            videoElement.removeEventListener('canplaythrough', canPlayHandler);
+          });
         }
+      };
+
+      videoElement.addEventListener('canplaythrough', canPlayHandler);
+
+      videoElement.src = live.replayLoadRequest.url;
+      videoElement.load();
+
+      return () => {
+        videoElement.removeEventListener('canplaythrough', canPlayHandler);
+      }
     }
   }, [live.replayLoadRequest, dispatch]);
 
-  
+
   useEffect(() => {
     if (live?.overlayMessage && live.overlayMessage.id) {
       setOverlayText(live.overlayMessage.text);
@@ -148,9 +148,9 @@ export function FullScoreboard({ className }: { className?: string }) {
   useEffect(() => {
     let timer: NodeJS.Timeout | undefined;
     if (live?.goalCelebration) {
-        timer = setTimeout(() => {
-            dispatch({ type: 'HIDE_GOAL_CELEBRATION' });
-        }, 5000); // Overlay lasts for 5 seconds
+      timer = setTimeout(() => {
+        dispatch({ type: 'HIDE_GOAL_CELEBRATION' });
+      }, 5000); // Overlay lasts for 5 seconds
     }
     return () => clearTimeout(timer);
   }, [live?.goalCelebration, dispatch]);
@@ -390,9 +390,9 @@ export function FullScoreboard({ className }: { className?: string }) {
   // Para partidos de fixture: ocultar scoreboard en Shootout, Warm-up y Pre Warm-up
   // Para partidos standalone: ocultar scoreboard solo en Shootout
   const showMainScoreboard = clock.periodDisplayOverride !== 'Shootout' &&
-                            (isFixtureMatch
-                              ? (clock.periodDisplayOverride !== 'Warm-up' && clock.periodDisplayOverride !== 'Pre Warm-up')
-                              : true); // En partidos standalone, siempre mostrar excepto en Shootout
+    (isFixtureMatch
+      ? (clock.periodDisplayOverride !== 'Warm-up' && clock.periodDisplayOverride !== 'Pre Warm-up')
+      : true); // En partidos standalone, siempre mostrar excepto en Shootout
 
   // Obtener datos del partido para verificar si es playoff
   const matchData = config.tournaments
@@ -432,16 +432,16 @@ export function FullScoreboard({ className }: { className?: string }) {
         transform: `translateX(${scoreboardLayout.scoreboardHorizontalPosition}rem)`
       }}
     >
-       <video ref={videoPreloaderRef} style={{ display: 'none' }} muted playsInline />
+      <video ref={videoPreloaderRef} style={{ display: 'none' }} muted playsInline />
 
-       {/* --- TEMPORARY LOADING INDICATOR --- */}
-       {replayLoadRequest && !replayOverlay && (
-           <div className="absolute top-4 left-4 z-50 flex items-center gap-2 p-2 bg-blue-900/50 text-white rounded-lg backdrop-blur-sm">
-                <HockeyPuckSpinner className="h-6 w-6" />
-                <span className="text-sm font-medium">Cargando replay...</span>
-           </div>
-       )}
-       {/* --- END TEMPORARY --- */}
+      {/* --- TEMPORARY LOADING INDICATOR --- */}
+      {replayLoadRequest && !replayOverlay && (
+        <div className="absolute top-4 left-4 z-50 flex items-center gap-2 p-2 bg-blue-900/50 text-white rounded-lg backdrop-blur-sm">
+          <HockeyPuckSpinner className="h-6 w-6" />
+          <span className="text-sm font-medium">Cargando replay...</span>
+        </div>
+      )}
+      {/* --- END TEMPORARY --- */}
 
       {isOlympiaTransitioning ? (
         <OlympiaTransition
@@ -476,7 +476,7 @@ export function FullScoreboard({ className }: { className?: string }) {
         // Show Pre Warm-up LOOP mode - infinite pulsing until operator starts the match (SOLO para partidos de fixture)
         <PreWarmupIntro
           logo={tournamentLogo}
-          onComplete={() => {}} // No hace nada, loop infinito
+          onComplete={() => { }} // No hace nada, loop infinito
           mode="loop"
         />
       ) : showPreWarmupIntro && isFixtureMatch ? (
@@ -499,7 +499,7 @@ export function FullScoreboard({ className }: { className?: string }) {
           <div
             className="relative z-10" // Header container
             style={{
-                paddingTop: `${scoreboardLayout.scoreboardVerticalPosition}rem`,
+              paddingTop: `${scoreboardLayout.scoreboardVerticalPosition}rem`,
             }}
           >
             {showMainScoreboard && <CompactHeaderScoreboard />}
@@ -509,130 +509,132 @@ export function FullScoreboard({ className }: { className?: string }) {
           <div
             className="relative" // Content container
             style={{
-                marginTop: `${scoreboardLayout.mainContentGap}rem`,
+              marginTop: `${scoreboardLayout.mainContentGap}rem`,
             }}
           >
-        <AnimatePresence>
-          {replayOverlay && (
-            <motion.div
-              key={replayOverlay.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 z-30"
-            >
-              <ReplayOverlay
-                url={replayOverlay.url}
-                startTimeSeconds={replayOverlay.startTimeSeconds}
-                onFinish={() => dispatch({ type: 'HIDE_REPLAY_OVERLAY' })}
-              />
-            </motion.div>
-          )}
-          {showOverlay && !replayOverlay && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5 }}
-              className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm"
-            >
-              {overlayText === "Valentino Caffe" ? <ValentinoCaffeAd /> : <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>}
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        {/* Penalties/Shootout/Standings/Goal Celebration content positioned within the transparent container */}
-        <div className="relative z-0 h-full">
             <AnimatePresence>
+              {replayOverlay && (
+                <motion.div
+                  key={replayOverlay.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-30"
+                >
+                  <ReplayOverlay
+                    url={replayOverlay.url}
+                    startTimeSeconds={replayOverlay.startTimeSeconds}
+                    onFinish={() => dispatch({ type: 'HIDE_REPLAY_OVERLAY' })}
+                  />
+                </motion.div>
+              )}
+              {showOverlay && !replayOverlay && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+                >
+                  {overlayText === "Valentino Caffe" ? <ValentinoCaffeAd /> : <p className="text-6xl font-bold text-accent animate-pulse-text">{overlayText}</p>}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Penalties/Shootout/Standings/Goal Celebration content positioned within the transparent container */}
+            <div className="relative z-0 h-full">
+              <AnimatePresence>
                 {goalCelebration && (
-                    <motion.div
-                        key={goalCelebration.id}
-                        initial={{ opacity: 0, y: 50 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -50 }}
-                        transition={{ duration: 0.5, ease: "easeInOut" }}
-                        className="absolute inset-0 z-10"
-                    >
-                        <GoalCelebrationOverlay celebration={goalCelebration} />
-                    </motion.div>
+                  <motion.div
+                    key={goalCelebration.id}
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -50 }}
+                    transition={{ duration: 0.5, ease: "easeInOut" }}
+                    className="absolute inset-0 z-10"
+                  >
+                    <GoalCelebrationOverlay celebration={goalCelebration} />
+                  </motion.div>
                 )}
-            </AnimatePresence>
+              </AnimatePresence>
 
-            {/* Player Photo Display - shown on the left side during goal celebration */}
-            {goalCelebration && (
+
+
+              {/* Player Photo Display - shown on the left side during goal celebration */}
+              {goalCelebration && config.showPlayerPhotosInGoalCelebration === true && (
                 <PlayerPhotoDisplay celebration={goalCelebration} />
-            )}
+              )}
 
-            <AnimatePresence>
+              <AnimatePresence>
                 {!goalCelebration && (
-                     <motion.div
-                        key="main-content"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.5, delay: 0.3 }}
-                        className="h-full"
-                    >
-                        {shouldShowWarmupDisplay ? (
-                            <WarmupDisplay
-                                homeLogoDataUrl={homeLogoDataUrl}
-                                awayLogoDataUrl={awayLogoDataUrl}
-                                tournamentLogoId={config.selectedTournamentId}
-                            />
-                        ) : shouldShowStandings ? (
-                            <WarmupDisplay
-                                homeLogoDataUrl={homeLogoDataUrl}
-                                awayLogoDataUrl={awayLogoDataUrl}
-                                clockPosition="top"
-                                tournamentLogoId={config.selectedTournamentId}
-                            >
-                                <div style={{ transform: 'scale(1.1)', transformOrigin: 'center center' }}>
-                                    <StandingsDisplay />
-                                </div>
-                            </WarmupDisplay>
-                        ) : shouldShowPlayoffBracket && matchData && currentTournament ? (
-                            <WarmupDisplay
-                                homeLogoDataUrl={homeLogoDataUrl}
-                                awayLogoDataUrl={awayLogoDataUrl}
-                                clockPosition="top"
-                                tournamentLogoId={config.selectedTournamentId}
-                            >
-                                <PlayoffBracketPreview
-                                    tournament={currentTournament}
-                                    currentMatch={matchData}
-                                    homeTeam={homeTeam}
-                                    awayTeam={awayTeam}
-                                    highlightStyle={config.playoffBracketHighlightStyle}
-                                />
-                            </WarmupDisplay>
-                        ) : clock.periodDisplayOverride !== 'Shootout' ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
-                                <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
-                                <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
-                            </div>
-                        ) : clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
-                            <div className="flex flex-col items-center gap-4">
-                            <h1
-                                className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
-                                style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
-                            >
-                                <span>Penales</span>
-                                <span
-                                    className="text-foreground/80 font-normal"
-                                    style={{ fontSize: `${scoreboardLayout.periodSize * 1.5 * 0.5}rem` }}
-                                >
-                                    (Ronda {currentRound})
-                                </span>
-                            </h1>
-                            <div className="w-full max-w-4xl space-y-4">
-                                <ShootoutDisplay team="home" teamName={homeTeamName} attempts={homeAttempts} totalRounds={totalRounds} startIdx={startIdx} />
-                                <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
-                            </div>
-                            </div>
-                        ) : null}
-                    </motion.div>
+                  <motion.div
+                    key="main-content"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                    className="h-full"
+                  >
+                    {shouldShowWarmupDisplay ? (
+                      <WarmupDisplay
+                        homeLogoDataUrl={homeLogoDataUrl}
+                        awayLogoDataUrl={awayLogoDataUrl}
+                        tournamentLogoId={config.selectedTournamentId}
+                      />
+                    ) : shouldShowStandings ? (
+                      <WarmupDisplay
+                        homeLogoDataUrl={homeLogoDataUrl}
+                        awayLogoDataUrl={awayLogoDataUrl}
+                        clockPosition="top"
+                        tournamentLogoId={config.selectedTournamentId}
+                      >
+                        <div style={{ transform: 'scale(1.1)', transformOrigin: 'center center' }}>
+                          <StandingsDisplay />
+                        </div>
+                      </WarmupDisplay>
+                    ) : shouldShowPlayoffBracket && matchData && currentTournament ? (
+                      <WarmupDisplay
+                        homeLogoDataUrl={homeLogoDataUrl}
+                        awayLogoDataUrl={awayLogoDataUrl}
+                        clockPosition="top"
+                        tournamentLogoId={config.selectedTournamentId}
+                      >
+                        <PlayoffBracketPreview
+                          tournament={currentTournament}
+                          currentMatch={matchData}
+                          homeTeam={homeTeam}
+                          awayTeam={awayTeam}
+                          highlightStyle={config.playoffBracketHighlightStyle}
+                        />
+                      </WarmupDisplay>
+                    ) : clock.periodDisplayOverride !== 'Shootout' ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 xl:gap-12 h-full">
+                        <PenaltiesDisplay teamDisplayType="Local" teamName={homeTeamName} penalties={penalties.home} />
+                        <PenaltiesDisplay teamDisplayType="Visitante" teamName={awayTeamName} penalties={penalties.away} />
+                      </div>
+                    ) : clock.periodDisplayOverride === 'Shootout' && shootout?.isActive ? (
+                      <div className="flex flex-col items-center gap-4">
+                        <h1
+                          className="text-accent font-bold uppercase tracking-widest flex items-baseline gap-x-3"
+                          style={{ fontSize: `${scoreboardLayout.periodSize * 1.5}rem` }}
+                        >
+                          <span>Penales</span>
+                          <span
+                            className="text-foreground/80 font-normal"
+                            style={{ fontSize: `${scoreboardLayout.periodSize * 1.5 * 0.5}rem` }}
+                          >
+                            (Ronda {currentRound})
+                          </span>
+                        </h1>
+                        <div className="w-full max-w-4xl space-y-4">
+                          <ShootoutDisplay team="home" teamName={homeTeamName} attempts={homeAttempts} totalRounds={totalRounds} startIdx={startIdx} />
+                          <ShootoutDisplay team="away" teamName={awayTeamName} attempts={awayAttempts} totalRounds={totalRounds} startIdx={startIdx} />
+                        </div>
+                      </div>
+                    ) : null}
+                  </motion.div>
                 )}
-            </AnimatePresence>
-        </div>
+              </AnimatePresence>
+            </div>
           </div>
 
           {/* Tournament Logo Watermark - Only show when NOT in warmup */}

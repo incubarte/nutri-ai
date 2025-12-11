@@ -16,7 +16,10 @@ export function PlayerPhotoDisplay({ celebration }: PlayerPhotoDisplayProps) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  console.log('[PlayerPhoto] Component rendered!', { celebration, goal });
+  const { scoreboardLayout } = state.config;
+  const photoSize = scoreboardLayout.goalCelebrationPhotoSize ?? 40;
+
+  console.log('[PlayerPhoto] Component rendered!', { celebration, goal, photoSize });
 
   useEffect(() => {
     let currentUrl: string | null = null;
@@ -158,7 +161,11 @@ export function PlayerPhotoDisplay({ celebration }: PlayerPhotoDisplayProps) {
             alt={goal.scorer?.playerName || 'Jugador'}
             width={780}
             height={1040}
-            className="w-[41.6rem] h-[52rem] object-cover"
+            className="object-cover"
+            style={{
+              width: `${photoSize}rem`,
+              height: `${photoSize * 1.25}rem`
+            }}
             priority
           />
 

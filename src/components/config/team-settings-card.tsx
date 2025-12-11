@@ -34,12 +34,13 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
   const [localShowStandingsInWarmup, setLocalShowStandingsInWarmup] = useState(state.config.showStandingsInWarmup);
   const [localForceStandingsInWarmup, setLocalForceStandingsInWarmup] = useState(state.config.forceStandingsInWarmup);
   const [localShowShotsData, setLocalShowShotsData] = useState(state.config.showShotsData);
+  const [localShowPlayerPhotosInGoalCelebration, setLocalShowPlayerPhotosInGoalCelebration] = useState(state.config.showPlayerPhotosInGoalCelebration ?? false);
   const [isDirtyLocal, setIsDirtyLocal] = useState(false);
 
   useEffect(() => {
     onDirtyChange(isDirtyLocal);
   }, [isDirtyLocal, onDirtyChange]);
-  
+
   useEffect(() => {
     if (!isDirtyLocal) {
       setLocalEnableTeamUsage(state.config.enableTeamSelectionInMiniScoreboard);
@@ -50,6 +51,7 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
       setLocalShowStandingsInWarmup(state.config.showStandingsInWarmup);
       setLocalForceStandingsInWarmup(state.config.forceStandingsInWarmup);
       setLocalShowShotsData(state.config.showShotsData);
+      setLocalShowPlayerPhotosInGoalCelebration(state.config.showPlayerPhotosInGoalCelebration ?? false);
     }
   }, [
     state.config.enableTeamSelectionInMiniScoreboard,
@@ -60,6 +62,7 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
     state.config.showStandingsInWarmup,
     state.config.forceStandingsInWarmup,
     state.config.showShotsData,
+    state.config.showPlayerPhotosInGoalCelebration,
     isDirtyLocal,
   ]);
 
@@ -68,20 +71,20 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
   useImperativeHandle(ref, () => ({
     handleSave: () => {
       if (!isDirtyLocal) return true;
-      
+
       const updates: Partial<ConfigState> = {};
       updates.enableTeamSelectionInMiniScoreboard = localEnableTeamUsage;
 
       if (localEnableTeamUsage) {
         updates.enablePlayerSelectionForPenalties = localEnablePlayerSelection;
         if (localEnablePlayerSelection) {
-            updates.showAliasInPenaltyPlayerSelector = localShowAliasInSelector;
-            updates.showAliasInControlsPenaltyList = localShowAliasInControlsList;
-            updates.showAliasInScoreboardPenalties = localShowAliasInScoreboard;
+          updates.showAliasInPenaltyPlayerSelector = localShowAliasInSelector;
+          updates.showAliasInControlsPenaltyList = localShowAliasInControlsList;
+          updates.showAliasInScoreboardPenalties = localShowAliasInScoreboard;
         } else {
-            updates.showAliasInPenaltyPlayerSelector = false;
-            updates.showAliasInControlsPenaltyList = false;
-            updates.showAliasInScoreboardPenalties = false;
+          updates.showAliasInPenaltyPlayerSelector = false;
+          updates.showAliasInControlsPenaltyList = false;
+          updates.showAliasInScoreboardPenalties = false;
         }
       } else {
         updates.enablePlayerSelectionForPenalties = false;
@@ -93,10 +96,13 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
       updates.showStandingsInWarmup = localShowStandingsInWarmup;
       updates.forceStandingsInWarmup = localForceStandingsInWarmup;
       updates.showShotsData = localShowShotsData;
+      updates.showPlayerPhotosInGoalCelebration = localShowPlayerPhotosInGoalCelebration;
+
+      console.log('[TeamSettingsCard] Saving config. updates:', updates);
 
       dispatch({ type: "UPDATE_CONFIG_FIELDS", payload: updates });
       setIsDirtyLocal(false);
-      return true; 
+      return true;
     },
     handleDiscard: () => {
       setLocalEnableTeamUsage(state.config.enableTeamSelectionInMiniScoreboard);
@@ -107,6 +113,7 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
       setLocalShowStandingsInWarmup(state.config.showStandingsInWarmup);
       setLocalForceStandingsInWarmup(state.config.forceStandingsInWarmup);
       setLocalShowShotsData(state.config.showShotsData);
+      setLocalShowPlayerPhotosInGoalCelebration(state.config.showPlayerPhotosInGoalCelebration);
       setIsDirtyLocal(false);
     },
     getIsDirty: () => {
@@ -118,10 +125,11 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
       if (localShowStandingsInWarmup !== state.config.showStandingsInWarmup) return true;
       if (localForceStandingsInWarmup !== state.config.forceStandingsInWarmup) return true;
       if (localShowShotsData !== state.config.showShotsData) return true;
+      if (localShowPlayerPhotosInGoalCelebration !== state.config.showPlayerPhotosInGoalCelebration) return true;
       return false;
     },
   }));
-  
+
   const handleMasterToggleChange = (checked: boolean) => {
     setLocalEnableTeamUsage(checked);
     markDirty();
@@ -132,14 +140,14 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
       setLocalShowAliasInScoreboard(false);
     }
   };
-  
+
   const handlePlayerSelectionToggleChange = (checked: boolean) => {
     setLocalEnablePlayerSelection(checked);
     markDirty();
     if (!checked) {
-        setLocalShowAliasInSelector(false);
-        setLocalShowAliasInControlsList(false);
-        setLocalShowAliasInScoreboard(false);
+      setLocalShowAliasInSelector(false);
+      setLocalShowAliasInControlsList(false);
+      setLocalShowAliasInScoreboard(false);
     }
   };
 
@@ -164,70 +172,70 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
           "space-y-4 transition-opacity duration-300",
           !localEnableTeamUsage && "opacity-50 pointer-events-none"
         )}>
-            <div className="flex items-center justify-between p-4 border rounded-md bg-muted/20">
-              <Label htmlFor="enablePlayerSelectionSwitch" className="flex flex-col space-y-1">
-                <span>Habilitar selector de jugador para penalidades</span>
+          <div className="flex items-center justify-between p-4 border rounded-md bg-muted/20">
+            <Label htmlFor="enablePlayerSelectionSwitch" className="flex flex-col space-y-1">
+              <span>Habilitar selector de jugador para penalidades</span>
+              <span className="font-normal leading-snug text-muted-foreground text-xs">
+                Permite seleccionar jugadores de una lista al añadir penalidades si un equipo está cargado.
+              </span>
+            </Label>
+            <Switch
+              id="enablePlayerSelectionSwitch"
+              checked={localEnablePlayerSelection}
+              onCheckedChange={handlePlayerSelectionToggleChange}
+              disabled={!localEnableTeamUsage}
+            />
+          </div>
+
+          <div className={cn(
+            "space-y-4 transition-opacity duration-300 ml-0 sm:ml-4",
+            (!localEnableTeamUsage || !localEnablePlayerSelection) && "opacity-60 pointer-events-none"
+          )}>
+            <div className="flex items-center justify-between p-4 border rounded-md bg-muted/30">
+              <Label htmlFor="showAliasInSelectorSwitch" className="flex flex-col space-y-1">
+                <span>Mostrar alias en lista del selector de jugador</span>
                 <span className="font-normal leading-snug text-muted-foreground text-xs">
-                  Permite seleccionar jugadores de una lista al añadir penalidades si un equipo está cargado.
+                  Muestra el nombre/alias junto al número en el desplegable.
                 </span>
               </Label>
               <Switch
-                id="enablePlayerSelectionSwitch"
-                checked={localEnablePlayerSelection}
-                onCheckedChange={handlePlayerSelectionToggleChange}
-                disabled={!localEnableTeamUsage}
+                id="showAliasInSelectorSwitch"
+                checked={localShowAliasInSelector}
+                onCheckedChange={(checked) => { setLocalShowAliasInSelector(checked); markDirty(); }}
+                disabled={!localEnableTeamUsage || !localEnablePlayerSelection}
               />
             </div>
 
-            <div className={cn(
-                "space-y-4 transition-opacity duration-300 ml-0 sm:ml-4",
-                (!localEnableTeamUsage || !localEnablePlayerSelection) && "opacity-60 pointer-events-none"
-            )}>
-                <div className="flex items-center justify-between p-4 border rounded-md bg-muted/30">
-                  <Label htmlFor="showAliasInSelectorSwitch" className="flex flex-col space-y-1">
-                      <span>Mostrar alias en lista del selector de jugador</span>
-                      <span className="font-normal leading-snug text-muted-foreground text-xs">
-                      Muestra el nombre/alias junto al número en el desplegable.
-                      </span>
-                  </Label>
-                  <Switch
-                      id="showAliasInSelectorSwitch"
-                      checked={localShowAliasInSelector}
-                      onCheckedChange={(checked) => { setLocalShowAliasInSelector(checked); markDirty(); }}
-                      disabled={!localEnableTeamUsage || !localEnablePlayerSelection}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between p-4 border rounded-md bg-muted/30">
-                  <Label htmlFor="showAliasInControlsListSwitch" className="flex flex-col space-y-1">
-                      <span>Mostrar alias en lista de penalidades del tablero de Controles</span>
-                      <span className="font-normal leading-snug text-muted-foreground text-xs">
-                      Muestra el alias en la lista de penalidades activas en la página de Controles.
-                      </span>
-                  </Label>
-                  <Switch
-                      id="showAliasInControlsListSwitch"
-                      checked={localShowAliasInControlsList}
-                      onCheckedChange={(checked) => { setLocalShowAliasInControlsList(checked); markDirty(); }}
-                      disabled={!localEnableTeamUsage || !localEnablePlayerSelection}
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between p-4 border rounded-md bg-muted/30">
-                  <Label htmlFor="showAliasInScoreboardSwitch" className="flex flex-col space-y-1">
-                      <span>Mostrar alias en penalidades del Scoreboard</span>
-                      <span className="font-normal leading-snug text-muted-foreground text-xs">
-                      Muestra el alias del jugador en las tarjetas de penalidad del Scoreboard principal.
-                      </span>
-                  </Label>
-                  <Switch
-                      id="showAliasInScoreboardSwitch"
-                      checked={localShowAliasInScoreboard}
-                      onCheckedChange={(checked) => { setLocalShowAliasInScoreboard(checked); markDirty(); }}
-                      disabled={!localEnableTeamUsage || !localEnablePlayerSelection}
-                  />
-                </div>
+            <div className="flex items-center justify-between p-4 border rounded-md bg-muted/30">
+              <Label htmlFor="showAliasInControlsListSwitch" className="flex flex-col space-y-1">
+                <span>Mostrar alias en lista de penalidades del tablero de Controles</span>
+                <span className="font-normal leading-snug text-muted-foreground text-xs">
+                  Muestra el alias en la lista de penalidades activas en la página de Controles.
+                </span>
+              </Label>
+              <Switch
+                id="showAliasInControlsListSwitch"
+                checked={localShowAliasInControlsList}
+                onCheckedChange={(checked) => { setLocalShowAliasInControlsList(checked); markDirty(); }}
+                disabled={!localEnableTeamUsage || !localEnablePlayerSelection}
+              />
             </div>
+
+            <div className="flex items-center justify-between p-4 border rounded-md bg-muted/30">
+              <Label htmlFor="showAliasInScoreboardSwitch" className="flex flex-col space-y-1">
+                <span>Mostrar alias en penalidades del Scoreboard</span>
+                <span className="font-normal leading-snug text-muted-foreground text-xs">
+                  Muestra el alias del jugador en las tarjetas de penalidad del Scoreboard principal.
+                </span>
+              </Label>
+              <Switch
+                id="showAliasInScoreboardSwitch"
+                checked={localShowAliasInScoreboard}
+                onCheckedChange={(checked) => { setLocalShowAliasInScoreboard(checked); markDirty(); }}
+                disabled={!localEnableTeamUsage || !localEnablePlayerSelection}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Configuraciones Generales de Visualización */}
@@ -257,6 +265,20 @@ export const TeamSettingsCard = forwardRef<TeamSettingsCardRef, TeamSettingsCard
             checked={localForceStandingsInWarmup}
             onCheckedChange={(checked) => { setLocalForceStandingsInWarmup(checked); markDirty(); }}
             disabled={!localShowStandingsInWarmup}
+          />
+        </div>
+
+        <div className="flex items-center justify-between p-4 border rounded-md bg-card shadow-sm">
+          <Label htmlFor="showPlayerPhotosInGoalCelebrationSwitch" className="flex flex-col space-y-1">
+            <span className="font-semibold text-base">Mostrar fotos de jugadores en celebración de gol</span>
+            <span className="font-normal leading-snug text-muted-foreground text-xs">
+              Muestra la foto del jugador que anota el gol (si está disponible) durante la animación de celebración en el scoreboard.
+            </span>
+          </Label>
+          <Switch
+            id="showPlayerPhotosInGoalCelebrationSwitch"
+            checked={localShowPlayerPhotosInGoalCelebration}
+            onCheckedChange={(checked) => { setLocalShowPlayerPhotosInGoalCelebration(checked); markDirty(); }}
           />
         </div>
 

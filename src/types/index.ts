@@ -132,6 +132,7 @@ export interface ScoreboardLayoutSettings {
   backgroundColor: string;
   mainContentGap: number;
   scoreLabelGap: number;
+  goalCelebrationPhotoSize: number;
 }
 
 export interface ScoreboardLayoutProfile extends ScoreboardLayoutSettings {
@@ -284,6 +285,7 @@ export interface ConfigFields { // Interface for easier picking of fields
   autoSyncSkipDuringMatch: boolean;
   autoSyncAfterSummaryEdit: boolean; // Triggers after saving tournament (includes match finish + summary edits)
   enableLiveSync: boolean; // Backup: Upload live.json from local storage to Supabase when clock stops (only works in local mode)
+  showPlayerPhotosInGoalCelebration: boolean; // Show player photos during goal celebrations
 }
 
 // Separate type for tournaments data (stored in tournaments.json)

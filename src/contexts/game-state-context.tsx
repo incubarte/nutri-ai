@@ -166,6 +166,7 @@ const getInitialState = (): GameState => {
       showShotsData: IN_CODE_INITIAL_SHOW_SHOTS_DATA,
       enableOlympiaTransition: IN_CODE_INITIAL_ENABLE_OLYMPIA_TRANSITION,
       enableLiveSync: IN_CODE_INITIAL_ENABLE_LIVE_SYNC,
+      showPlayerPhotosInGoalCelebration: false,
       tickIntervalMs: 200,
       scoreboardLayout: INITIAL_LAYOUT_SETTINGS,
       scoreboardLayoutProfiles: [defaultInitialLayoutProfile],
@@ -1983,6 +1984,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           showShotsData: IN_CODE_INITIAL_SHOW_SHOTS_DATA,
           enableOlympiaTransition: IN_CODE_INITIAL_ENABLE_OLYMPIA_TRANSITION,
           enableLiveSync: IN_CODE_INITIAL_ENABLE_LIVE_SYNC,
+          showPlayerPhotosInGoalCelebration: false,
           selectedMatchCategory: '', // Resets match category
           tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
           replays: IN_CODE_INITIAL_REPLAYS_SETTINGS,
