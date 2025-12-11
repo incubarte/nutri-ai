@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
+    localPatterns: [
+      {
+        pathname: '/**',
+      },
+    ],
     remotePatterns: [
       {
         protocol: 'https',
