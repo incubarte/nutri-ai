@@ -184,7 +184,33 @@ export class SupabaseStorageProvider implements StorageProvider {
     }
 
     async readBinaryFile(filePath: string): Promise<Buffer> {
+        // Method 1: Try direct download (works for Private buckets with RLS)
         const { data, error } = await this.supabase.storage.from(this.bucket).download(filePath);
+
+        if (!error && data) {
+            // Convert Blob to Buffer
+            const arrayBuffer = await data.arrayBuffer();
+            return Buffer.from(arrayBuffer);
+        }
+
+        // Method 2: Fallback to Public URL (works for Public buckets where 'download' RLS might fail)
+        console.warn(`[SupabaseStorage] Download failed for ${filePath}, trying Public URL fallback...`, error);
+
+        const { data: publicUrlData } = this.supabase.storage.from(this.bucket).getPublicUrl(filePath);
+        if (publicUrlData && publicUrlData.publicUrl) {
+            try {
+                const res = await fetch(publicUrlData.publicUrl);
+                if (res.ok) {
+                    const arrayBuffer = await res.arrayBuffer();
+                    console.log(`[SupabaseStorage] Successfully retrieved ${filePath} via Public URL`);
+                    return Buffer.from(arrayBuffer);
+                } else {
+                    console.warn(`[SupabaseStorage] Public URL fetch failed with status: ${res.status}`);
+                }
+            } catch (fetchError) {
+                console.warn(`[SupabaseStorage] Public URL fetch failed`, fetchError);
+            }
+        }
 
         if (error) {
             if ('status' in error && error.status === 404) {
@@ -193,9 +219,7 @@ export class SupabaseStorageProvider implements StorageProvider {
             throw error;
         }
 
-        // Convert Blob to Buffer
-        const arrayBuffer = await data.arrayBuffer();
-        return Buffer.from(arrayBuffer);
+        throw new Error('Unknown error reading file');
     }
 
     async writeFile(filePath: string, content: string): Promise<void> {
