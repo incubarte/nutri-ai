@@ -13,6 +13,7 @@ import { PenaltiesSection } from "../summary/penalties-section";
 import { PlayerStatsSection } from "../summary/player-stats-section";
 import { ShootoutSection } from "../summary/shootout-section";
 import { GoalkeeperStatsSection } from "../summary/goalkeeper-stats-section";
+import { TimelineSection } from "../summary/timeline-section";
 import { useMatchGoalkeeperStats } from "@/hooks/use-match-goalkeeper-stats";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "../ui/separator";
@@ -323,14 +324,25 @@ export function FixtureMatchSummaryDialog({ isOpen, onOpenChange, match, tournam
             <h3 className="text-2xl font-bold text-primary">{awayTeam?.name} - <span className="text-accent">{finalAwayScore}</span></h3>
         </div>
 
-        <Tabs defaultValue="general" className="w-full flex-grow flex flex-col overflow-hidden">
-          <TabsList className={`grid w-full gap-1 ${state.config.showShotsData ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
+        <Tabs defaultValue="timeline" className="w-full flex-grow flex flex-col overflow-hidden">
+          <TabsList className={`grid w-full gap-1 ${state.config.showShotsData ? 'grid-cols-3 sm:grid-cols-5' : 'grid-cols-3 sm:grid-cols-4'}`}>
+            <TabsTrigger value="timeline" className="text-xs sm:text-sm">Cronología</TabsTrigger>
             <TabsTrigger value="general" className="text-xs sm:text-sm">General</TabsTrigger>
             <TabsTrigger value="goalsByPeriod" className="text-xs sm:text-sm">Goles</TabsTrigger>
             <TabsTrigger value="penaltiesByPeriod" className="text-xs sm:text-sm">Faltas</TabsTrigger>
             {state.config.showShotsData && <TabsTrigger value="statsByPeriod" className="text-xs sm:text-sm">Estadísticas</TabsTrigger>}
           </TabsList>
-          
+
+          <TabsContent value="timeline" className="flex-grow overflow-hidden mt-4 px-4">
+            <div className="h-full overflow-y-auto">
+              <TimelineSection
+                summary={localSummary}
+                homeTeam={homeTeam || undefined}
+                awayTeam={awayTeam || undefined}
+              />
+            </div>
+          </TabsContent>
+
           <TabsContent value="general" className="flex-grow overflow-hidden mt-4">
              <ScrollArea className="h-full pr-6 -mr-6">
                 {/* Desktop: lado a lado */}

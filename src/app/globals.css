@@ -88,3 +88,31 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Timeline scrollbar styles */
+.timeline-scrollbar::-webkit-scrollbar {
+  height: 20px;
+}
+
+.timeline-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 10px;
+  margin: 8px;
+  border: 1px solid hsl(var(--border));
+}
+
+.timeline-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--accent));
+  border-radius: 10px;
+  border: 3px solid hsl(var(--muted));
+  min-width: 50px;
+}
+
+.timeline-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--accent) / 0.8);
+  border-color: hsl(var(--muted) / 0.8);
+}
+
+.timeline-scrollbar::-webkit-scrollbar-thumb:active {
+  background: hsl(var(--accent) / 0.9);
+}
