@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { MiniScoreboard } from '@/components/controls/mini-scoreboard';
 import { PenaltyControlCard } from '@/components/controls/penalty-control-card';
+import { PlayersControlCard } from '@/components/controls/players-control-card';
 import { GoalManagementDialog } from '@/components/controls/goal-management-dialog';
 import { GoldenGoalDialog } from '@/components/controls/golden-goal-dialog';
 import { ShootoutControl } from '@/components/controls/shootout-control';
@@ -975,14 +976,15 @@ export default function ControlsPage() {
 
         const activeElement = document.activeElement as HTMLElement;
 
-        // Solo ignorar el espacio en TEXTAREA, SELECT y contentEditable
-        // Los INPUT numéricos ahora permitirán que el espacio controle el reloj
+        // Solo ignorar el espacio en TEXTAREA, SELECT, INPUT de texto y contentEditable
+        // Los INPUT numéricos permitirán que el espacio controle el reloj
         if (
           activeElement &&
           (activeElement.tagName === 'TEXTAREA' ||
             activeElement.tagName === 'SELECT' ||
             activeElement.isContentEditable ||
-            activeElement.getAttribute?.('role') === 'button')
+            activeElement.getAttribute?.('role') === 'button' ||
+            (activeElement.tagName === 'INPUT' && (activeElement as HTMLInputElement).type === 'text'))
         ) {
           return;
         }
@@ -1265,6 +1267,8 @@ export default function ControlsPage() {
   }
 
   const isShootoutActive = state.live.shootout.isActive;
+  const isMatchFromFixture = !!state.live.matchId;
+  const isWarmupOrPreWarmup = state.live.clock.periodDisplayOverride === 'Warm-up' || state.live.clock.periodDisplayOverride === 'Pre Warm-up';
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-8">
@@ -1354,9 +1358,15 @@ export default function ControlsPage() {
 
       {!isShootoutActive && (
         <Tabs defaultValue="penalties" className="w-full">
-          <TabsList className="grid w-full max-w-2xl grid-cols-3 mb-6">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4 mb-6">
             <TabsTrigger value="penalties">Penalidades</TabsTrigger>
             <TabsTrigger value="goals">Goles</TabsTrigger>
+            <TabsTrigger
+              value="players"
+              className={cn(isWarmupOrPreWarmup && isMatchFromFixture && "animate-pulse text-green-500 data-[state=active]:text-green-600")}
+            >
+              Jugadores
+            </TabsTrigger>
             <TabsTrigger value="voice">Eventos</TabsTrigger>
           </TabsList>
 
@@ -1382,6 +1392,13 @@ export default function ControlsPage() {
                 goals={state.live.goals.away || []}
                 onAddGoal={() => handleScoreClick('away')}
               />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="players">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <PlayersControlCard team="home" teamName={state.live.homeTeamName} />
+              <PlayersControlCard team="away" teamName={state.live.awayTeamName} />
             </div>
           </TabsContent>
 

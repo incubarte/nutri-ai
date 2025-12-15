@@ -3,7 +3,7 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, Goal, Siren, Coffee, Flag } from "lucide-react";
+import { Clock, Goal, Siren, Coffee, Flag, Play, Pause } from "lucide-react";
 import type { GameSummary, GoalLog, PenaltyLog, Team, TeamData } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -31,10 +31,21 @@ interface TimelineSectionProps {
 
 export const TimelineSection = ({ summary, homeTeam, awayTeam }: TimelineSectionProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const timelineContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(1); // 1 = normal, 2 = 2x zoom, etc.
+
+  // Draggable marker state
+  const [markerPosition, setMarkerPosition] = useState<number | null>(null); // Position in pixels from left
+  const [isMarkerDragging, setIsMarkerDragging] = useState(false);
+  const autoScrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Playback state
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1); // 1x, 2x, 3x
+  const playbackIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate total timeline width from played periods
   // Note: Game time is countdown within each period, but periods are ordered chronologically
@@ -279,11 +290,17 @@ export const TimelineSection = ({ summary, homeTeam, awayTeam }: TimelineSection
 
   // Zoom controls
   const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 0.5, 3)); // Max 3x zoom
+    setZoomLevel(prev => {
+      if (prev < 1) return prev + 0.15; // Smaller increments below 1x
+      return Math.min(prev + 0.5, 3); // Max 3x zoom
+    });
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 0.5, 0.5)); // Min 0.5x zoom
+    setZoomLevel(prev => {
+      if (prev <= 1) return Math.max(prev - 0.15, 0.1); // Min 0.1x (10%)
+      return Math.max(prev - 0.5, 1);
+    });
   };
 
   const handleResetZoom = () => {
@@ -327,6 +344,206 @@ export const TimelineSection = ({ summary, homeTeam, awayTeam }: TimelineSection
     return '0:00';
   };
 
+  // Get period name at a given time
+  const getPeriodAtTime = (timeFromStart: number): string => {
+    let cumulative = 0;
+    for (const period of summary.statsByPeriod || []) {
+      const periodDur = period.periodDuration || 0;
+      if (timeFromStart <= cumulative + periodDur) {
+        return period.period;
+      }
+      cumulative += periodDur;
+    }
+    return summary.statsByPeriod?.[summary.statsByPeriod.length - 1]?.period || '';
+  };
+
+  // Calculate score at a given time
+  const getScoreAtTime = (timeFromStart: number): { home: number; away: number } => {
+    let homeScore = 0;
+    let awayScore = 0;
+
+    // Count goals that happened before this time
+    events.forEach(event => {
+      if (event.type === 'goal' && event.time <= timeFromStart) {
+        if (event.team === 'home') homeScore++;
+        else if (event.team === 'away') awayScore++;
+      }
+    });
+
+    return { home: homeScore, away: awayScore };
+  };
+
+  // Handle marker dragging
+  const handleMarkerMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMarkerDragging(true);
+  };
+
+  const handleMarkerMouseMove = (e: React.MouseEvent) => {
+    if (!isMarkerDragging || !timelineContainerRef.current || !scrollContainerRef.current) return;
+
+    const scrollContainer = scrollContainerRef.current;
+    const scrollRect = scrollContainer.getBoundingClientRect();
+
+    // The mouse position relative to the scroll container viewport
+    const mouseXRelativeToContainer = e.clientX - scrollRect.left;
+
+    // Add the scroll offset to get the position within the full timeline
+    const positionInTimeline = mouseXRelativeToContainer + scrollContainer.scrollLeft;
+
+    // Clamp to timeline bounds
+    const timelineWidth = Math.max(1200, (totalDuration / 500) * 40 * zoomLevel);
+    const clampedX = Math.max(0, Math.min(positionInTimeline, timelineWidth));
+
+    setMarkerPosition(clampedX);
+
+    // Auto-scroll logic when near edges
+    const edgeThreshold = 100; // pixels from edge to trigger scroll
+    const scrollSpeed = 10;
+
+    const distanceFromLeftEdge = e.clientX - scrollRect.left;
+    const distanceFromRightEdge = scrollRect.right - e.clientX;
+
+    // Clear existing interval
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
+
+    // Scroll left if near left edge
+    if (distanceFromLeftEdge < edgeThreshold && scrollContainer.scrollLeft > 0) {
+      autoScrollIntervalRef.current = setInterval(() => {
+        scrollContainer.scrollLeft -= scrollSpeed;
+      }, 16);
+    }
+    // Scroll right if near right edge
+    else if (distanceFromRightEdge < edgeThreshold) {
+      autoScrollIntervalRef.current = setInterval(() => {
+        scrollContainer.scrollLeft += scrollSpeed;
+      }, 16);
+    }
+  };
+
+  const handleMarkerMouseUp = () => {
+    setIsMarkerDragging(false);
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
+  };
+
+  // Keep marker visible by scrolling at the same speed when near edges
+  const updateScrollPosition = (pixelsPerFrame: number) => {
+    if (!scrollContainerRef.current || markerPosition === null) return;
+
+    const scrollContainer = scrollContainerRef.current;
+    const containerWidth = scrollContainer.clientWidth;
+    const scrollLeft = scrollContainer.scrollLeft;
+
+    // Calculate where the marker is relative to the viewport
+    const markerViewportPosition = markerPosition - scrollLeft;
+
+    // Define safe zone (25% from left edge, 75% from left edge = 50% in the middle)
+    const leftThreshold = containerWidth * 0.25;
+    const rightThreshold = containerWidth * 0.75;
+
+    // Only scroll if marker is outside the safe zone
+    if (markerViewportPosition < leftThreshold) {
+      // Too close to left edge - shouldn't happen during forward playback
+      scrollContainer.scrollLeft = Math.max(0, scrollLeft - pixelsPerFrame);
+    } else if (markerViewportPosition > rightThreshold) {
+      // Too close to right edge - scroll forward at the same speed as the marker
+      scrollContainer.scrollLeft = scrollLeft + pixelsPerFrame;
+    }
+    // If marker is in the safe zone (between 25% and 75%), don't scroll
+  };
+
+  // Playback effect with requestAnimationFrame for smoother animation
+  useEffect(() => {
+    if (!isPlaying || markerPosition === null) {
+      return;
+    }
+
+    const timelineWidth = Math.max(1200, (totalDuration / 500) * 40 * zoomLevel);
+
+    // Base speed: 1.5 pixels per frame at 60fps
+    // Speed 1x = 1.5 pixels per frame
+    // Speed 3x = 4.5 pixels per frame (3 * 1.5)
+    // Speed 9x = 13.5 pixels per frame (9 * 1.5)
+    const baseSpeed = playbackSpeed * 1.5;
+
+    let animationFrameId: number;
+    let lastTimestamp = performance.now();
+    let currentPosition = markerPosition;
+
+    const animate = (timestamp: number) => {
+      const deltaTime = timestamp - lastTimestamp;
+      lastTimestamp = timestamp;
+
+      // Calculate pixels to move based on time elapsed (target 60fps = ~16.67ms per frame)
+      const pixelsToMove = baseSpeed * (deltaTime / 16.67);
+
+      currentPosition += pixelsToMove;
+
+      // Stop if we reach the end
+      if (currentPosition >= timelineWidth) {
+        setIsPlaying(false);
+        setMarkerPosition(timelineWidth);
+        return;
+      }
+
+      setMarkerPosition(currentPosition);
+
+      // Update scroll position smoothly to keep marker at a target position
+      if (scrollContainerRef.current) {
+        const scrollContainer = scrollContainerRef.current;
+        const containerWidth = scrollContainer.clientWidth;
+        const scrollLeft = scrollContainer.scrollLeft;
+        const markerViewportPosition = currentPosition - scrollLeft;
+
+        // Target position: 60% from left (comfortable viewing position)
+        const targetViewportPosition = containerWidth * 0.6;
+
+        // Calculate how far the marker is from the target position
+        const distanceFromTarget = markerViewportPosition - targetViewportPosition;
+
+        // If marker is drifting from target, scroll proportionally to correct
+        // The further it drifts, the faster we correct
+        if (Math.abs(distanceFromTarget) > 10) { // 10px tolerance
+          // Scroll a fraction of the distance to create smooth correction
+          // Also move at the base speed of the marker to keep up
+          const correctionSpeed = distanceFromTarget * 0.1; // 10% of the distance each frame
+          scrollContainer.scrollLeft = scrollLeft + pixelsToMove + correctionSpeed;
+        } else {
+          // Within tolerance, just follow the marker at its speed
+          scrollContainer.scrollLeft = scrollLeft + pixelsToMove;
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animationFrameId = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [isPlaying, playbackSpeed, totalDuration, zoomLevel]);
+
+  // Cleanup auto-scroll on unmount
+  useEffect(() => {
+    return () => {
+      if (autoScrollIntervalRef.current) {
+        clearInterval(autoScrollIntervalRef.current);
+      }
+      if (playbackIntervalRef.current) {
+        clearInterval(playbackIntervalRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div className="w-full space-y-4">
       {/* Zoom controls - Desktop only */}
@@ -335,39 +552,119 @@ export const TimelineSection = ({ summary, homeTeam, awayTeam }: TimelineSection
           <Clock className="h-5 w-5" />
           <span className="font-semibold">Cronología del Partido</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground mr-2">Zoom:</span>
+        <div className="flex items-center gap-4">
           <Button
-            variant="outline"
+            variant={markerPosition !== null ? "default" : "outline"}
             size="sm"
-            onClick={handleZoomOut}
-            disabled={zoomLevel <= 0.5}
-            className="h-8 w-8 p-0"
-          >
-            <span className="text-lg">−</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleResetZoom}
+            onClick={() => {
+              if (markerPosition === null) {
+                // Activate marker at the start (position 0)
+                setMarkerPosition(0);
+              } else {
+                // Deactivate marker
+                setMarkerPosition(null);
+              }
+            }}
             className="h-8 px-3 text-xs font-semibold"
           >
-            {Math.round(zoomLevel * 100)}%
+            {markerPosition !== null ? "Ocultar Marcador" : "Mostrar Marcador"}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleZoomIn}
-            disabled={zoomLevel >= 3}
-            className="h-8 w-8 p-0"
-          >
-            <span className="text-lg">+</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground mr-2">Zoom:</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleZoomOut}
+              disabled={zoomLevel <= 0.1}
+              className="h-8 w-8 p-0"
+            >
+              <span className="text-lg">−</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetZoom}
+              className="h-8 px-3 text-xs font-semibold"
+            >
+              {Math.round(zoomLevel * 100)}%
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleZoomIn}
+              disabled={zoomLevel >= 3}
+              className="h-8 w-8 p-0"
+            >
+              <span className="text-lg">+</span>
+            </Button>
+          </div>
         </div>
       </div>
 
       <Card className="w-full overflow-hidden">
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 relative">
+        {/* Marker info display - fixed in top right corner of card */}
+        {markerPosition !== null && (() => {
+          const timelineWidth = Math.max(1200, (totalDuration / 500) * 40 * zoomLevel);
+          const timeAtMarker = (markerPosition / timelineWidth) * totalDuration;
+          const scoreAtMarker = getScoreAtTime(timeAtMarker);
+          const periodAtMarker = getPeriodAtTime(timeAtMarker);
+          const timeText = formatTime(timeAtMarker);
+
+          return (
+            <div className="absolute top-4 right-4 z-40 flex flex-col gap-2">
+              {/* Playback controls */}
+              <div className="bg-background/95 backdrop-blur-sm p-2 rounded-lg border-2 border-accent shadow-xl pointer-events-auto">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={isPlaying ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="h-8 w-8 p-0"
+                  >
+                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </Button>
+                  <div className="flex gap-1">
+                    {[1, 3, 6].map(speed => (
+                      <Button
+                        key={speed}
+                        variant={playbackSpeed === speed ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPlaybackSpeed(speed)}
+                        className="h-8 px-2 text-xs font-semibold"
+                      >
+                        {speed}x
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Score display */}
+              <div className="bg-background/95 backdrop-blur-sm p-3 rounded-lg border-2 border-accent shadow-xl pointer-events-none">
+                <div className="text-xs font-semibold text-muted-foreground mb-2">
+                  {timeText} • {periodAtMarker}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    {homeTeam?.logoDataUrl && (
+                      <img src={homeTeam.logoDataUrl} alt={homeTeam.name} className="w-6 h-6 object-contain" />
+                    )}
+                    <span className="text-xl font-bold">{scoreAtMarker.home}</span>
+                  </div>
+                  <span className="text-lg text-muted-foreground">-</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold">{scoreAtMarker.away}</span>
+                    {awayTeam?.logoDataUrl && (
+                      <img src={awayTeam.logoDataUrl} alt={awayTeam.name} className="w-6 h-6 object-contain" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Desktop: Horizontal Timeline */}
         <div className="hidden md:block w-full">
           {/* Scrollable container with visible scrollbar */}
@@ -415,19 +712,62 @@ export const TimelineSection = ({ summary, homeTeam, awayTeam }: TimelineSection
             )}
             {/* Timeline content - draggable */}
             <div
+              ref={timelineContainerRef}
               className={cn(
                 "select-none inline-block min-w-full",
                 isDragging ? "cursor-grabbing" : "cursor-grab"
               )}
               onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseLeave}
+              onMouseMove={(e) => {
+                handleMouseMove(e);
+                handleMarkerMouseMove(e);
+              }}
+              onMouseUp={() => {
+                handleMouseUp();
+                handleMarkerMouseUp();
+              }}
+              onMouseLeave={() => {
+                handleMouseLeave();
+                handleMarkerMouseUp();
+              }}
             >
               {/* Each 5 seconds = ~40px * zoomLevel, so duration in centiseconds / 500 * 40 */}
               <div className="relative h-[500px] py-8" style={{ width: `${Math.max(1200, (totalDuration / 500) * 40 * zoomLevel)}px` }}>
               {/* Main timeline line */}
               <div className="absolute top-1/2 left-0 right-0 h-2 bg-primary/30 -translate-y-1/2" />
+
+              {/* Draggable time marker */}
+              {markerPosition !== null && (() => {
+                const timelineWidth = Math.max(1200, (totalDuration / 500) * 40 * zoomLevel);
+                const timeAtMarker = (markerPosition / timelineWidth) * totalDuration;
+                const scoreAtMarker = getScoreAtTime(timeAtMarker);
+                const periodAtMarker = getPeriodAtTime(timeAtMarker);
+                const timeText = formatTime(timeAtMarker);
+
+                return (
+                  <>
+                    {/* Vertical line */}
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-accent pointer-events-none"
+                      style={{
+                        left: `${markerPosition}px`,
+                        willChange: isPlaying ? 'left' : 'auto'
+                      }}
+                    />
+
+                    {/* Draggable marker circle */}
+                    <div
+                      className="absolute top-1/2 w-6 h-6 rounded-full bg-accent border-2 border-background shadow-lg cursor-grab active:cursor-grabbing z-30"
+                      style={{
+                        left: `${markerPosition}px`,
+                        transform: 'translate(-50%, -50%)',
+                        willChange: isPlaying ? 'left' : 'auto'
+                      }}
+                      onMouseDown={handleMarkerMouseDown}
+                    />
+                  </>
+                );
+              })()}
 
               {/* Start marker - shows first period start time */}
               <div className="absolute top-1/2 left-0 -translate-y-1/2">

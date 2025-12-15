@@ -300,13 +300,17 @@ export interface FileVersion {
 }
 
 export interface FileMetadata extends FileVersion {
-  size: number;
+  size?: number; // Optional because deleted files don't have size
   previousVersion?: FileVersion; // Track previous state for conflict detection
   // Sync status tracking
   syncAttempts?: number; // Number of failed sync attempts
   lastSyncError?: string; // Last error message when trying to sync
   hasConflict?: boolean; // True if this file has a detected conflict
   conflictDetectedAt?: string; // ISO 8601 timestamp when conflict was detected
+  // Deletion tracking
+  deleted?: boolean; // True if this file was deleted
+  deletedAt?: string; // ISO 8601 timestamp when file was deleted
+  deletedHash?: string; // Hash of the file at the time it was deleted (for validation)
 }
 
 export interface SyncManifest {

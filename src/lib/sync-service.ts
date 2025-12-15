@@ -93,6 +93,75 @@ export async function analyzeSync(): Promise<SyncPlan> {
             const local = localManifest.files[filePath];
             const remote = remoteManifest.files[filePath];
 
+            // Case 0: Handle deletions marked in remote manifest
+            if (remote?.deleted) {
+                const localFileExists = await checkFileExistsLocally(filePath);
+
+                // Only delete locally if the file exists AND has the same hash as when it was deleted remotely
+                if (localFileExists) {
+                    const localContent = await storageProvider.readFile(filePath);
+                    const localHash = hashContent(localContent);
+
+                    // Only delete if hash matches (same file) - if hash is different, it's a new file with same name
+                    if (localHash === remote.deletedHash) {
+                        plan.toDeleteLocally.push({
+                            filePath,
+                            reason: 'deleted-remotely',
+                            hash: remote.deletedHash
+                        });
+                        console.log(`[Sync] File marked for local deletion (matches deleted remote): ${filePath}`);
+                    } else {
+                        console.log(`[Sync] File ${filePath} was deleted remotely but local version is different (new file with same name) - keeping local`);
+                        // Upload the new local file
+                        plan.toUpload.push({
+                            filePath,
+                            hash: localHash,
+                            reason: 'new-file-same-name-as-deleted'
+                        });
+                    }
+                } else {
+                    // File already deleted locally, just clean up manifest entry
+                    console.log(`[Sync] File ${filePath} already deleted locally, cleaning up`);
+                }
+                continue;
+            }
+
+            // Case 0b: Handle deletions marked in local manifest
+            if (local?.deleted) {
+                const remoteFileExists = await checkFileExistsRemotely(filePath);
+
+                // Only delete remotely if the file exists AND has the same hash as when it was deleted locally
+                if (remoteFileExists) {
+                    // Download to check hash
+                    const remoteContent = await fetchRemoteFileContent(filePath);
+                    if (remoteContent) {
+                        const remoteHash = hashContent(remoteContent);
+
+                        // Only delete if hash matches (same file)
+                        if (remoteHash === local.deletedHash) {
+                            plan.toDeleteRemotely.push({
+                                filePath,
+                                reason: 'deleted-locally',
+                                hash: local.deletedHash
+                            });
+                            console.log(`[Sync] File marked for remote deletion (matches deleted local): ${filePath}`);
+                        } else {
+                            console.log(`[Sync] File ${filePath} was deleted locally but remote version is different (new file with same name) - keeping remote`);
+                            // Download the new remote file
+                            plan.toDownload.push({
+                                filePath,
+                                hash: remoteHash,
+                                reason: 'new-file-same-name-as-deleted'
+                            });
+                        }
+                    }
+                } else {
+                    // File already deleted remotely, just clean up manifest entry
+                    console.log(`[Sync] File ${filePath} already deleted remotely, cleaning up`);
+                }
+                continue;
+            }
+
             // Case 1: File only exists in local manifest
             if (local && !remote) {
                 // Check if file actually exists locally
@@ -106,8 +175,13 @@ export async function analyzeSync(): Promise<SyncPlan> {
                     });
                 } else {
                     // File in manifest but doesn't exist locally = was deleted locally
-                    // This is a stale manifest entry, just remove it (don't add to plan)
-                    console.log(`[Sync] Stale manifest entry detected for local file: ${filePath} (file doesn't exist)`);
+                    // Mark for remote deletion
+                    plan.toDeleteRemotely.push({
+                        filePath,
+                        reason: 'deleted-locally',
+                        hash: local.hash
+                    });
+                    console.log(`[Sync] File deleted locally, will delete from remote: ${filePath}`);
                 }
                 continue;
             }
@@ -325,6 +399,34 @@ async function downloadConflictRemoteFiles(conflicts: SyncPlanConflict[]): Promi
     } catch (error) {
         console.error('[Sync] Error downloading conflict remote files:', error);
         // Don't throw - this is not critical, just means comparison won't work
+    }
+}
+
+/**
+ * Fetch remote file content (helper for hash checking)
+ */
+async function fetchRemoteFileContent(filePath: string): Promise<string | null> {
+    try {
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+        const bucket = process.env.SUPABASE_BUCKET;
+
+        if (!supabaseUrl || !supabaseKey || !bucket) {
+            throw new Error('Supabase configuration missing');
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const { data, error } = await supabase.storage.from(bucket).download(filePath);
+
+        if (error || !data) {
+            console.error(`[Sync] Failed to fetch remote file: ${filePath}`, error);
+            return null;
+        }
+
+        return await data.text();
+    } catch (error) {
+        console.error(`[Sync] Error fetching remote file: ${filePath}`, error);
+        return null;
     }
 }
 
@@ -1060,15 +1162,23 @@ export async function executeSyncPlan(options: SyncOptions = {}): Promise<SyncRe
         // 8. Update manifests for successfully synced files
         // Build list of successfully synced files
         const successfulFiles = new Set<string>();
+        const deletedFiles = new Set<string>();
 
         // Add all files that were processed WITHOUT errors
         for (const file of logFiles) {
-            successfulFiles.add(file.filePath);
+            if (file.action === 'deleted-locally' || file.action === 'deleted-remotely') {
+                deletedFiles.add(file.filePath);
+            } else {
+                successfulFiles.add(file.filePath);
+            }
         }
 
-        if (successfulFiles.size > 0) {
-            await updateManifestsForSuccessfulFiles(Array.from(successfulFiles));
-            console.log(`[Sync] Manifest updated for ${successfulFiles.size} successfully synced files`);
+        if (successfulFiles.size > 0 || deletedFiles.size > 0) {
+            await updateManifestsForSuccessfulFiles(
+                Array.from(successfulFiles),
+                Array.from(deletedFiles)
+            );
+            console.log(`[Sync] Manifest updated for ${successfulFiles.size} synced files and ${deletedFiles.size} deleted files`);
         }
 
         if (result.errors.length > 0) {
@@ -1133,8 +1243,12 @@ export async function executeSyncPlan(options: SyncOptions = {}): Promise<SyncRe
  * 1. Files that synced successfully are marked as "synced baseline" (previousVersion = current)
  * 2. Files that failed to sync remain unchanged in manifest (will retry in next sync)
  * 3. Conflicts that were skipped remain unchanged (correct behavior)
+ * 4. Deleted files are removed from manifests completely
  */
-async function updateManifestsForSuccessfulFiles(successfulFilePaths: string[]): Promise<void> {
+async function updateManifestsForSuccessfulFiles(
+    successfulFilePaths: string[],
+    deletedFilePaths: string[] = []
+): Promise<void> {
     const syncTime = new Date().toISOString();
 
     // Read current local manifest (already updated by writeFile() calls during sync)
@@ -1164,14 +1278,19 @@ async function updateManifestsForSuccessfulFiles(successfulFilePaths: string[]):
         localManifest.files[filePath] = metadata;
     }
 
-    console.log(`[Sync] Updated manifest for ${successfulFilePaths.length} successfully synced files`);
+    // Remove deleted files from local manifest
+    for (const filePath of deletedFilePaths) {
+        delete localManifest.files[filePath];
+        console.log(`[Sync] Removed ${filePath} from local manifest (deleted)`);
+    }
+
+    console.log(`[Sync] Updated local manifest for ${successfulFilePaths.length} successfully synced files and removed ${deletedFilePaths.length} deleted files`);
 
     // Save updated local manifest
     await writeManifest(localManifest);
 
-    // Upload the SAME manifest to remote
-    // This ensures local and remote have identical state for successful files
-    // Failed files remain out of sync and will be detected in next analysis
+    // Now update REMOTE manifest - only update entries for files that were synced
+    // Download current remote manifest first
     const supabaseUrl = process.env.SUPABASE_URL!;
     const supabaseKey = process.env.SUPABASE_SERVICE_KEY!;
     const bucket = process.env.SUPABASE_BUCKET!;
@@ -1180,14 +1299,50 @@ async function updateManifestsForSuccessfulFiles(successfulFilePaths: string[]):
         auth: { persistSession: false, autoRefreshToken: false }
     });
 
+    // Fetch existing remote manifest
+    let remoteManifest: SyncManifest;
+    try {
+        const existingRemote = await fetchRemoteManifest();
+        remoteManifest = existingRemote || {
+            version: '1.0',
+            lastSync: syncTime,
+            files: {}
+        };
+    } catch (error) {
+        console.warn('[Sync] Could not fetch remote manifest, creating new one');
+        remoteManifest = {
+            version: '1.0',
+            lastSync: syncTime,
+            files: {}
+        };
+    }
+
+    // Update ONLY the successfully synced files in remote manifest
+    for (const filePath of successfulFilePaths) {
+        const metadata = localManifest.files[filePath];
+        if (metadata) {
+            remoteManifest.files[filePath] = metadata;
+        }
+    }
+
+    // Remove deleted files from remote manifest
+    for (const filePath of deletedFilePaths) {
+        delete remoteManifest.files[filePath];
+        console.log(`[Sync] Removed ${filePath} from remote manifest (deleted)`);
+    }
+
+    // Update lastSync time
+    remoteManifest.lastSync = syncTime;
+
+    // Upload updated remote manifest
     const { error } = await supabase.storage
         .from(bucket)
-        .upload('sync-manifest.json', JSON.stringify(localManifest, null, 2), { upsert: true });
+        .upload('sync-manifest.json', JSON.stringify(remoteManifest, null, 2), { upsert: true });
 
     if (error) {
         console.error('[Sync] Error uploading manifest:', error);
         throw error;
     }
 
-    console.log('[Sync] Manifest uploaded - successful files synchronized');
+    console.log('[Sync] Remote manifest updated - synced files modified and deleted files removed');
 }

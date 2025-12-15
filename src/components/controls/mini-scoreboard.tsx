@@ -57,7 +57,7 @@ export function MiniScoreboard({ onScoreClick, onAttendanceDialogChange }: MiniS
   }
 
   const isMatchFromFixture = !!state.live.matchId;
-  const isWarmup = state.live.clock.periodDisplayOverride === 'Warm-up';
+  const isWarmup = state.live.clock.periodDisplayOverride === 'Warm-up' || state.live.clock.periodDisplayOverride === 'Pre Warm-up';
 
   const [pendingConfirmation, setPendingConfirmation] = useState<{
     title: string;
@@ -343,6 +343,23 @@ export function MiniScoreboard({ onScoreClick, onAttendanceDialogChange }: MiniS
           insufficientTeams.push(`${state.live.awayTeamName} (${awayAttendance.length}/${minPlayers})`);
         }
         warnings.push(`⚠️ Jugadores insuficientes: ${insufficientTeams.join(', ')}`);
+      }
+
+      // Check for players without numbers (only present players)
+      const homePlayersWithoutNumber = homeAttendance.filter(p => p.isPresent !== false && (!p.number || p.number.trim() === ''));
+      const awayPlayersWithoutNumber = awayAttendance.filter(p => p.isPresent !== false && (!p.number || p.number.trim() === ''));
+
+      if (homePlayersWithoutNumber.length > 0 || awayPlayersWithoutNumber.length > 0) {
+        const teamsWithMissingNumbers: string[] = [];
+        if (homePlayersWithoutNumber.length > 0) {
+          const playerNames = homePlayersWithoutNumber.map(p => p.name).join(', ');
+          teamsWithMissingNumbers.push(`${state.live.homeTeamName}: ${playerNames}`);
+        }
+        if (awayPlayersWithoutNumber.length > 0) {
+          const playerNames = awayPlayersWithoutNumber.map(p => p.name).join(', ');
+          teamsWithMissingNumbers.push(`${state.live.awayTeamName}: ${playerNames}`);
+        }
+        warnings.push(`⚠️ Jugadores sin número asignado:\n${teamsWithMissingNumbers.join('\n')}`);
       }
     }
 

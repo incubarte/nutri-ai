@@ -53,6 +53,7 @@ export function EditTeamPlayersDialog({
   const [newPlayerName, setNewPlayerName] = useState('');
   const [newPlayerNumber, setNewPlayerNumber] = useState('');
   const [newPlayerType, setNewPlayerType] = useState<'player' | 'goalkeeper'>('player');
+  const [justAddedPlayerId, setJustAddedPlayerId] = useState<string | null>(null);
   
   const teamDetails = useMemo(() => {
     if (!state.config || !state.config.tournaments) return null;
@@ -60,6 +61,29 @@ export function EditTeamPlayersDialog({
     if (!selectedTournament || !selectedTournament.teams) return null;
     return selectedTournament.teams.find(t => t.id === teamId);
   }, [state.config.tournaments, state.config.selectedTournamentId, teamId]);
+
+  // Function to refresh local state from global state
+  const refreshFromGlobalState = () => {
+    if (!teamDetails) return;
+
+    const sortedPlayers = [...teamDetails.players].sort((a, b) => {
+      if (a.type === 'goalkeeper' && b.type !== 'goalkeeper') return -1;
+      if (a.type !== 'goalkeeper' && b.type === 'goalkeeper') return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    setEditablePlayers(
+      sortedPlayers.map(p => ({ ...p, localNumber: p.number, isModified: false }))
+    );
+
+    const attendedInfo = state.live?.attendance?.[teamType] || [];
+    setAttendedPlayerIds(new Set(attendedInfo.filter(p => p.isPresent !== false).map(p => p.id)));
+
+    const activeGoalkeeperId = teamType === 'home'
+      ? state.live.homeActiveGoalkeeperId
+      : state.live.awayActiveGoalkeeperId;
+    setActiveGoalkeeperId(activeGoalkeeperId);
+  };
 
   // Track if dialog was just opened to prevent reloading data while editing
   const dialogOpenedRef = useRef(false);
@@ -71,6 +95,29 @@ export function EditTeamPlayersDialog({
       dialogOpenedRef.current = false;
     }
   }, [isOpen]);
+
+  // Auto-refresh when a player is added
+  useEffect(() => {
+    if (justAddedPlayerId && teamDetails) {
+      // Check if the new player exists in teamDetails
+      const playerExists = teamDetails.players.some(p => p.id === justAddedPlayerId);
+
+      if (playerExists) {
+        // Player has been added to global state, refresh local state
+        refreshFromGlobalState();
+
+        // Automatically mark the new player as attended
+        setAttendedPlayerIds(prev => {
+          const newIds = new Set(prev);
+          newIds.add(justAddedPlayerId);
+          return newIds;
+        });
+
+        // Clear the flag
+        setJustAddedPlayerId(null);
+      }
+    }
+  }, [justAddedPlayerId, teamDetails, state.config.tournaments]);
 
   useEffect(() => {
     // Only reload data when dialog first opens, NOT on every teamDetails change
@@ -229,13 +276,6 @@ export function EditTeamPlayersDialog({
       });
     });
 
-    // Automatically mark as attended
-    setAttendedPlayerIds(prev => {
-      const newIds = new Set(prev);
-      newIds.add(newPlayerId);
-      return newIds;
-    });
-
     // Dispatch ADD_PLAYER_TO_TEAM action
     dispatch({
       type: 'ADD_PLAYER_TO_TEAM',
@@ -250,6 +290,9 @@ export function EditTeamPlayersDialog({
       }
     });
 
+    // Set flag to trigger auto-refresh via useEffect
+    setJustAddedPlayerId(newPlayerId);
+
     // Reset form
     setNewPlayerName('');
     setNewPlayerNumber('');
@@ -258,7 +301,7 @@ export function EditTeamPlayersDialog({
 
     toast({
       title: "Jugador Agregado",
-      description: `${trimmedName} ha sido agregado al equipo.`
+      description: `${trimmedName} ha sido agregado al equipo y marcado como presente.`
     });
   };
 

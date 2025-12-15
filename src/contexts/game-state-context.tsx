@@ -1900,10 +1900,30 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'SET_ACTIVE_GOALKEEPER': {
       const { team, playerId } = action.payload;
-      const { live, config } = state;
+      // Use newState if available (from previous action in batch), otherwise use state
+      const currentState = newState || state;
+      const { live, config } = currentState;
+
+      // Allow null to deactivate goalkeeper
+      if (playerId === null) {
+        newState = {
+          ...currentState,
+          live: {
+            ...live,
+            homeActiveGoalkeeperId: team === 'home' ? null : live.homeActiveGoalkeeperId,
+            awayActiveGoalkeeperId: team === 'away' ? null : live.awayActiveGoalkeeperId,
+          }
+        };
+
+        toastMessage = {
+          title: "Arquero Desactivado",
+          description: `No hay arquero activo para ${team === 'home' ? 'Local' : 'Visitante'}.`
+        };
+        break;
+      }
 
       // Find the player in attendance
-      const player = live.attendance[team].find(p => p.id === playerId);
+      const player = live.attendance[team]?.find(p => p.id === playerId);
       if (!player || player.type !== 'goalkeeper') {
         console.error(`Player ${playerId} is not a goalkeeper in ${team} attendance`);
         break;
@@ -1938,7 +1958,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
 
       newState = {
-        ...state,
+        ...currentState,
         live: {
           ...live,
           homeActiveGoalkeeperId: team === 'home' ? playerId : live.homeActiveGoalkeeperId,
