@@ -344,7 +344,8 @@ export interface SyncPlanConflict {
   remoteHash: string;
   localMetadata: FileMetadata;
   remoteMetadata: FileMetadata;
-  decision?: 'local-wins' | 'remote-wins' | 'skip';
+  decision?: 'local-wins' | 'remote-wins' | 'skip' | 'delete';
+  isUnreferenced?: boolean;
 }
 
 export interface SyncPlan {

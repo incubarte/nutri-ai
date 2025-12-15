@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronRight, ChevronDown, Folder, File } from "lucide-react";
+import { ChevronRight, ChevronDown, Folder, File, FolderOpen } from "lucide-react";
 
 interface FileItem {
   filePath: string;
@@ -11,8 +11,13 @@ interface FileItem {
   [key: string]: any;
 }
 
-interface FolderStructure {
-  [folderPath: string]: FileItem[];
+interface TreeNode {
+  name: string;
+  path: string;
+  type: 'folder' | 'file';
+  item?: FileItem;
+  children: TreeNode[];
+  filesCount: number;
 }
 
 interface FolderFileListProps {
@@ -21,6 +26,7 @@ interface FolderFileListProps {
   onToggleFile: (filePath: string) => void;
   onFileClick?: (item: FileItem) => void;
   extractMatchInfo?: (filePath: string, tournaments: any[]) => any;
+  extractPlayerPhotoInfo?: (filePath: string, tournaments: any[]) => any;
   tournaments?: any[];
   type: 'upload' | 'download' | 'deleteLocal' | 'deleteRemote' | 'conflict';
 }
@@ -31,71 +37,108 @@ export function FolderFileList({
   onToggleFile,
   onFileClick,
   extractMatchInfo,
+  extractPlayerPhotoInfo,
   tournaments = [],
   type
 }: FolderFileListProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
-  // Organize files by folder
-  const folderStructure = useMemo(() => {
-    const structure: FolderStructure = {};
+  // 1. Build the Tree
+  const tree = useMemo(() => {
+    const root: TreeNode[] = [];
 
-    files.forEach(file => {
-      const lastSlashIndex = file.filePath.lastIndexOf('/');
-      const folder = lastSlashIndex > 0 ? file.filePath.substring(0, lastSlashIndex) : '/';
+    // Sort files by path first to ensure consistent building
+    const sortedFiles = [...files].sort((a, b) => a.filePath.localeCompare(b.filePath));
 
-      if (!structure[folder]) {
-        structure[folder] = [];
-      }
-      structure[folder].push(file);
+    sortedFiles.forEach(file => {
+      const parts = file.filePath.split('/');
+      let currentLevel = root;
+      let currentPath = '';
+
+      parts.forEach((part, index) => {
+        currentPath = currentPath ? `${currentPath}/${part}` : part;
+        const isFile = index === parts.length - 1;
+
+        if (isFile) {
+          // Check if file already exists (shouldn't happen with unique paths but good safety)
+          if (!currentLevel.find(n => n.type === 'file' && n.name === part)) {
+            currentLevel.push({
+              name: part,
+              path: file.filePath,
+              type: 'file',
+              item: file,
+              children: [],
+              filesCount: 1
+            });
+          }
+        } else {
+          let folderNode = currentLevel.find(n => n.type === 'folder' && n.name === part);
+          if (!folderNode) {
+            folderNode = {
+              name: part,
+              path: currentPath,
+              type: 'folder',
+              children: [],
+              filesCount: 0
+            };
+            currentLevel.push(folderNode);
+          }
+          folderNode.filesCount++;
+          currentLevel = folderNode.children;
+        }
+      });
     });
 
-    return structure;
+    // Recursive sort: Folders first, then files
+    const sortNodes = (nodes: TreeNode[]) => {
+      nodes.sort((a, b) => {
+        if (a.type !== b.type) {
+          return a.type === 'folder' ? -1 : 1;
+        }
+        return a.name.localeCompare(b.name);
+      });
+      nodes.forEach(node => {
+        if (node.children.length > 0) {
+          sortNodes(node.children);
+        }
+      });
+    };
+
+    sortNodes(root);
+    return root;
   }, [files]);
 
-  // Get sorted folder paths
-  const sortedFolders = useMemo(() => {
-    return Object.keys(folderStructure).sort();
-  }, [folderStructure]);
-
-  // Check if all files in a folder are selected
-  const isFolderFullySelected = (folder: string) => {
-    const filesInFolder = folderStructure[folder];
-    return filesInFolder.every(file => selectedFiles.has(file.filePath));
-  };
-
-  // Check if some (but not all) files in a folder are selected
-  const isFolderPartiallySelected = (folder: string) => {
-    const filesInFolder = folderStructure[folder];
-    const selectedCount = filesInFolder.filter(file => selectedFiles.has(file.filePath)).length;
-    return selectedCount > 0 && selectedCount < filesInFolder.length;
-  };
+  // Collect all file paths in a subtree
+  const getSubtreeFiles = useCallback((node: TreeNode): string[] => {
+    if (node.type === 'file') return [node.path];
+    return node.children.flatMap(getSubtreeFiles);
+  }, []);
 
   // Toggle all files in a folder
-  const toggleFolder = (folder: string) => {
-    const filesInFolder = folderStructure[folder];
-    const shouldSelect = !isFolderFullySelected(folder);
+  const toggleFolder = useCallback((node: TreeNode) => {
+    const allFiles = getSubtreeFiles(node);
+    const selectedCount = allFiles.filter(p => selectedFiles.has(p)).length;
+    const isFullySelected = selectedCount === allFiles.length;
 
-    filesInFolder.forEach(file => {
-      const isCurrentlySelected = selectedFiles.has(file.filePath);
-      if (shouldSelect && !isCurrentlySelected) {
-        onToggleFile(file.filePath);
-      } else if (!shouldSelect && isCurrentlySelected) {
-        onToggleFile(file.filePath);
+    // If fully selected, deselect all. Otherwise, select all.
+    const shouldSelect = !isFullySelected;
+
+    allFiles.forEach(path => {
+      const isSelected = selectedFiles.has(path);
+      if (shouldSelect !== isSelected) {
+        onToggleFile(path);
       }
     });
-  };
+  }, [selectedFiles, onToggleFile, getSubtreeFiles]);
 
-  // Toggle folder expansion
-  const toggleExpanded = (folder: string) => {
-    const newExpanded = new Set(expandedFolders);
-    if (newExpanded.has(folder)) {
-      newExpanded.delete(folder);
-    } else {
-      newExpanded.add(folder);
-    }
-    setExpandedFolders(newExpanded);
-  };
+  const toggleExpanded = useCallback((path: string) => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }, []);
 
   const getColorClasses = () => {
     switch (type) {
@@ -129,105 +172,129 @@ export function FolderFileList({
 
   const colors = getColorClasses();
 
-  return (
-    <div className="space-y-1">
-      {sortedFolders.map(folder => {
-        const filesInFolder = folderStructure[folder];
-        const isExpanded = expandedFolders.has(folder);
-        const isFullySelected = isFolderFullySelected(folder);
-        const isPartiallySelected = isFolderPartiallySelected(folder);
-        const selectedCount = filesInFolder.filter(f => selectedFiles.has(f.filePath)).length;
+  // Recursive Node Renderer
+  const FileTreeNode = ({ node, level }: { node: TreeNode; level: number }) => {
+    const isExpanded = expandedFolders.has(node.path);
 
-        return (
-          <div key={folder} className="border-b border-border/40 last:border-0">
-            {/* Folder Header */}
-            <div className={`flex items-center gap-2 py-1.5 px-2 ${colors.hover} rounded`}>
-              <Checkbox
-                id={`folder-${folder}`}
-                checked={isFullySelected}
-                ref={(el) => {
-                  if (el && isPartiallySelected) {
-                    el.indeterminate = true;
-                  }
-                }}
-                onCheckedChange={() => toggleFolder(folder)}
-                className="mt-0.5"
-              />
-              <button
-                onClick={() => toggleExpanded(folder)}
-                className="flex items-center gap-1 flex-1 text-left"
-              >
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4 shrink-0" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 shrink-0" />
-                )}
+    // Calculate selection status
+    const subtreeFiles = useMemo(() => getSubtreeFiles(node), [node]);
+    const selectedCount = subtreeFiles.filter(p => selectedFiles.has(p)).length;
+    const totalCount = subtreeFiles.length;
+    const isFullySelected = totalCount > 0 && selectedCount === totalCount;
+    const isPartiallySelected = selectedCount > 0 && selectedCount < totalCount;
+
+    if (node.type === 'folder') {
+      return (
+        <div className="select-none">
+          <div
+            className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer ${colors.hover}`}
+            style={{ paddingLeft: `${Math.max(8, level * 16)}px` }}
+          >
+            <Checkbox
+              id={`folder-${node.path}`}
+              checked={isPartiallySelected ? 'indeterminate' : isFullySelected}
+              onCheckedChange={() => toggleFolder(node)}
+              className="mt-0.5"
+            />
+            <div
+              className="flex items-center gap-1 flex-1"
+              onClick={() => toggleExpanded(node.path)}
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              )}
+              {isExpanded ? (
+                <FolderOpen className={`h-4 w-4 shrink-0 ${colors.folder}`} />
+              ) : (
                 <Folder className={`h-4 w-4 shrink-0 ${colors.folder}`} />
-                <span className={`font-semibold text-sm ${colors.text}`}>
-                  {folder}
-                </span>
-                <span className="text-xs text-muted-foreground ml-auto">
-                  ({selectedCount}/{filesInFolder.length})
-                </span>
-              </button>
+              )}
+              <span className={`font-semibold text-sm ${colors.text}`}>
+                {node.name}
+              </span>
+              <span className="text-xs text-muted-foreground ml-auto">
+                ({selectedCount}/{totalCount})
+              </span>
             </div>
+          </div>
+          {isExpanded && (
+            <div>
+              {node.children.map(child => (
+                <FileTreeNode key={child.path} node={child} level={level + 1} />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
 
-            {/* Files in Folder */}
-            {isExpanded && (
-              <div className="ml-8 space-y-1 mt-1">
-                {filesInFolder.map(item => {
-                  const isChecked = selectedFiles.has(item.filePath);
-                  const matchInfo = extractMatchInfo ? extractMatchInfo(item.filePath, tournaments) : null;
-                  const fileName = item.filePath.substring(item.filePath.lastIndexOf('/') + 1);
+    // File Node
+    const item = node.item!;
+    const isChecked = selectedFiles.has(node.path);
+    const matchInfo = extractMatchInfo ? extractMatchInfo(item.filePath, tournaments) : null;
+    const photoInfo = extractPlayerPhotoInfo ? extractPlayerPhotoInfo(item.filePath, tournaments) : null;
 
-                  return (
-                    <div key={item.filePath} className={`flex items-start gap-2 py-1 px-2 rounded ${colors.hover}`}>
-                      <Checkbox
-                        id={`file-${item.filePath}`}
-                        checked={isChecked}
-                        onCheckedChange={() => onToggleFile(item.filePath)}
-                        className="mt-0.5"
-                      />
-                      <div
-                        className={`flex-1 cursor-pointer ${onFileClick ? 'hover:underline' : ''}`}
-                        onClick={() => onFileClick?.(item)}
-                      >
-                        <div className="flex items-center gap-1">
-                          <File className="h-3 w-3 shrink-0 opacity-50" />
-                          <span className={`font-mono text-xs ${colors.text}`}>{fileName}</span>
-                        </div>
-                        {matchInfo && (
-                          <span className={`text-xs ml-4 font-semibold ${
-                            matchInfo.isOutsideFixture
-                              ? 'text-purple-600 dark:text-purple-400'
-                              : 'text-orange-600 dark:text-orange-400'
-                          }`}>
-                            ({matchInfo.homeTeam} vs {matchInfo.awayTeam}, {matchInfo.category}, {matchInfo.date})
-                            {matchInfo.isOutsideFixture && <span className="ml-1">🔵 FUERA DE FIXTURE</span>}
-                          </span>
-                        )}
-                        {item.reason && type !== 'conflict' && (
-                          <span className={`text-xs ml-2 ${colors.text} opacity-70`}>
-                            ({item.reason})
-                          </span>
-                        )}
-                        {type === 'conflict' && (
-                          <span className="text-xs ml-2">
-                            {item.decision === 'local-wins' ? '💻 Local gana' :
-                             item.decision === 'remote-wins' ? '☁️ Remoto gana' :
-                             item.decision === 'skip' ? '🚫 Omitir' :
-                             '❓ Sin resolver'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+    return (
+      <div
+        className={`flex items-start gap-2 py-1 px-2 rounded ${colors.hover}`}
+        style={{ paddingLeft: `${Math.max(8, level * 16) + 20}px` }} // +20 for indentation alignment with file icon info
+      >
+        <Checkbox
+          id={`file-${item.filePath}`}
+          checked={isChecked}
+          onCheckedChange={() => onToggleFile(item.filePath)}
+          className="mt-0.5"
+        />
+        <div
+          className={`flex-1 cursor-pointer ${onFileClick ? 'hover:underline' : ''}`}
+          onClick={() => onFileClick?.(item)}
+        >
+          <div className="flex items-center gap-1 flex-wrap">
+            <File className="h-3 w-3 shrink-0 opacity-50" />
+            <span className={`font-mono text-xs ${colors.text}`}>{node.name}</span>
+
+            {photoInfo?.isUnreferenced && (
+              <span className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded">
+                🟠 NO REFERENCIADA
+              </span>
             )}
           </div>
-        );
-      })}
+
+          {matchInfo && (
+            <div className={`text-[10px] mt-0.5 font-semibold ${matchInfo.isOutsideFixture
+              ? 'text-purple-600 dark:text-purple-400'
+              : 'text-orange-600 dark:text-orange-400'
+              }`}>
+              ({matchInfo.homeTeam} vs {matchInfo.awayTeam}, {matchInfo.category})
+              {matchInfo.isOutsideFixture && <span className="ml-1">🔵 FUERA DE FIXTURE</span>}
+            </div>
+          )}
+
+          {item.reason && type !== 'conflict' && (
+            <span className={`text-[10px] block ${colors.text} opacity-70`}>
+              Reason: {item.reason}
+            </span>
+          )}
+
+          {type === 'conflict' && (
+            <span className="text-[10px] block mt-0.5">
+              {item.decision === 'local-wins' ? '💻 Local gana' :
+                item.decision === 'remote-wins' ? '☁️ Remoto gana' :
+                  item.decision === 'skip' ? '🚫 Omitir' :
+                    '❓ Sin resolver'}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-0.5 pb-2">
+      {tree.map(node => (
+        <FileTreeNode key={node.path} node={node} level={0} />
+      ))}
     </div>
   );
 }

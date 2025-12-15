@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, RefreshCw, ChevronRight, ChevronDown, Folder, File, AlertCircle } from "lucide-react";
+import { Loader2, Trash2, RefreshCw, ChevronRight, ChevronDown, Folder, File, AlertCircle, FolderOpen } from "lucide-react";
 import { useGameState } from "@/contexts/game-state-context";
 
 interface RemoteFile {
@@ -19,8 +19,13 @@ interface RemoteFile {
     };
 }
 
-interface FolderStructure {
-    [folderPath: string]: RemoteFile[];
+interface TreeNode {
+    name: string;
+    path: string;
+    type: 'folder' | 'file';
+    item?: RemoteFile;
+    children: TreeNode[];
+    filesCount: number;
 }
 
 export function RemoteFileManager() {
@@ -30,10 +35,11 @@ export function RemoteFileManager() {
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [remoteTournaments, setRemoteTournaments] = useState<any[]>([]);
     const { toast } = useToast();
 
     // Helper to extract match info from file path
-    const extractMatchInfo = (filePath: string) => {
+    const extractMatchInfo = useCallback((filePath: string) => {
         const summaryMatch = filePath.match(/tournaments\/([^/]+)\/summaries\/([^/]+)\.json/);
         if (!summaryMatch) return null;
 
@@ -69,7 +75,29 @@ export function RemoteFileManager() {
         }
 
         return { isOutsideFixture: false, tournamentId, matchId };
-    };
+    }, [state?.config?.tournaments]);
+
+    // Helper to extract player photo info from file path
+    const extractPlayerPhotoInfo = useCallback((filePath: string) => {
+        // Pattern: tournaments/{tournamentId}/players/{teamSlug}/{photoFileName}
+        const photoMatch = filePath.match(/tournaments\/([^/]+)\/players\/([^/]+)\/([^/]+\.(png|jpg|jpeg|webp))$/i);
+        if (!photoMatch) return null;
+
+        const [, tournamentId, teamSlug, photoFileName] = photoMatch;
+        const tournament = remoteTournaments.find(t => t.id === tournamentId);
+
+        if (!tournament || !tournament.teams) {
+            // Cannot determine if unreferenced without teams data
+            return null;
+        }
+
+        // Check if any team references this player photo by photoFileName
+        const isReferenced = tournament.teams.some(team =>
+            team.players?.some(player => player.photoFileName === photoFileName)
+        );
+
+        return { isUnreferenced: !isReferenced, tournamentId, teamSlug, photoFileName };
+    }, [remoteTournaments]);
 
     // Detect summaries outside fixture
     const summariesOutsideFixture = useMemo(() => {
@@ -77,7 +105,15 @@ export function RemoteFileManager() {
             const matchInfo = extractMatchInfo(file.name);
             return matchInfo?.isOutsideFixture === true;
         });
-    }, [files, state?.config?.tournaments]);
+    }, [files, extractMatchInfo]);
+
+    // Detect unreferenced player photos
+    const unreferencedPlayerPhotos = useMemo(() => {
+        return files.filter(file => {
+            const photoInfo = extractPlayerPhotoInfo(file.name);
+            return photoInfo?.isUnreferenced === true;
+        });
+    }, [files, extractPlayerPhotoInfo]);
 
     const loadFiles = async () => {
         setLoading(true);
@@ -90,6 +126,19 @@ export function RemoteFileManager() {
             }
 
             setFiles(data.files);
+
+            // Load tournaments from Supabase to check photo references
+            try {
+                const tournamentsResponse = await fetch('/api/sync/remote-tournaments');
+                const tournamentsData = await tournamentsResponse.json();
+
+                if (tournamentsData.success) {
+                    setRemoteTournaments(tournamentsData.tournaments || []);
+                }
+            } catch (error) {
+                console.error('Error loading remote tournaments:', error);
+            }
+
             toast({
                 title: "✅ Archivos cargados",
                 description: `${data.totalFiles} archivo(s) encontrados en Supabase`,
@@ -105,28 +154,75 @@ export function RemoteFileManager() {
         }
     };
 
-    // No auto-load on mount - user must click button
+    // 1. Build the Tree
+    const tree = useMemo(() => {
+        const root: TreeNode[] = [];
 
-    // Organize files by folder
-    const folderStructure = useMemo(() => {
-        const structure: FolderStructure = {};
+        // Sort files by path first
+        const sortedFiles = [...files].sort((a, b) => a.name.localeCompare(b.name));
 
-        files.forEach(file => {
-            const lastSlashIndex = file.name.lastIndexOf('/');
-            const folder = lastSlashIndex > 0 ? file.name.substring(0, lastSlashIndex) : '/';
+        sortedFiles.forEach(file => {
+            const parts = file.name.split('/');
+            let currentLevel = root;
+            let currentPath = '';
 
-            if (!structure[folder]) {
-                structure[folder] = [];
-            }
-            structure[folder].push(file);
+            parts.forEach((part, index) => {
+                currentPath = currentPath ? `${currentPath}/${part}` : part;
+                const isFile = index === parts.length - 1;
+
+                if (isFile) {
+                    if (!currentLevel.find(n => n.type === 'file' && n.name === part)) {
+                        currentLevel.push({
+                            name: part,
+                            path: file.name,
+                            type: 'file',
+                            item: file,
+                            children: [],
+                            filesCount: 1
+                        });
+                    }
+                } else {
+                    let folderNode = currentLevel.find(n => n.type === 'folder' && n.name === part);
+                    if (!folderNode) {
+                        folderNode = {
+                            name: part,
+                            path: currentPath,
+                            type: 'folder',
+                            children: [],
+                            filesCount: 0
+                        };
+                        currentLevel.push(folderNode);
+                    }
+                    folderNode.filesCount++;
+                    currentLevel = folderNode.children;
+                }
+            });
         });
 
-        return structure;
+        // Recursive sort
+        const sortNodes = (nodes: TreeNode[]) => {
+            nodes.sort((a, b) => {
+                if (a.type !== b.type) {
+                    return a.type === 'folder' ? -1 : 1;
+                }
+                return a.name.localeCompare(b.name);
+            });
+            nodes.forEach(node => {
+                if (node.children.length > 0) {
+                    sortNodes(node.children);
+                }
+            });
+        };
+
+        sortNodes(root);
+        return root;
     }, [files]);
 
-    const sortedFolders = useMemo(() => {
-        return Object.keys(folderStructure).sort();
-    }, [folderStructure]);
+    // Collect all file paths in a subtree
+    const getSubtreeFiles = useCallback((node: TreeNode): string[] => {
+        if (node.type === 'file') return [node.path];
+        return node.children.flatMap(getSubtreeFiles);
+    }, []);
 
     const toggleFileSelection = (filePath: string) => {
         const newSelected = new Set(selectedFiles);
@@ -138,40 +234,32 @@ export function RemoteFileManager() {
         setSelectedFiles(newSelected);
     };
 
-    const isFolderFullySelected = (folder: string) => {
-        const filesInFolder = folderStructure[folder];
-        return filesInFolder.every(file => selectedFiles.has(file.name));
-    };
+    // Toggle all files in a folder recursively
+    const toggleFolder = useCallback((node: TreeNode) => {
+        const allFiles = getSubtreeFiles(node);
+        const selectedCount = allFiles.filter(p => selectedFiles.has(p)).length;
+        const isFullySelected = selectedCount === allFiles.length;
 
-    const isFolderPartiallySelected = (folder: string) => {
-        const filesInFolder = folderStructure[folder];
-        const selectedCount = filesInFolder.filter(file => selectedFiles.has(file.name)).length;
-        return selectedCount > 0 && selectedCount < filesInFolder.length;
-    };
-
-    const toggleFolder = (folder: string) => {
-        const filesInFolder = folderStructure[folder];
-        const shouldSelect = !isFolderFullySelected(folder);
+        const shouldSelect = !isFullySelected;
 
         const newSelected = new Set(selectedFiles);
-        filesInFolder.forEach(file => {
+        allFiles.forEach(path => {
             if (shouldSelect) {
-                newSelected.add(file.name);
+                newSelected.add(path);
             } else {
-                newSelected.delete(file.name);
+                newSelected.delete(path);
             }
         });
         setSelectedFiles(newSelected);
-    };
+    }, [selectedFiles, getSubtreeFiles]);
 
-    const toggleExpanded = (folder: string) => {
-        const newExpanded = new Set(expandedFolders);
-        if (newExpanded.has(folder)) {
-            newExpanded.delete(folder);
-        } else {
-            newExpanded.add(folder);
-        }
-        setExpandedFolders(newExpanded);
+    const toggleExpanded = (path: string) => {
+        setExpandedFolders(prev => {
+            const next = new Set(prev);
+            if (next.has(path)) next.delete(path);
+            else next.add(path);
+            return next;
+        });
     };
 
     const handleSelectOutsideFixture = () => {
@@ -184,6 +272,19 @@ export function RemoteFileManager() {
         toast({
             title: "✅ Summaries seleccionados",
             description: `${summariesOutsideFixture.length} summaries fuera de fixture seleccionados`,
+        });
+    };
+
+    const handleSelectUnreferencedPhotos = () => {
+        const newSelected = new Set(selectedFiles);
+        unreferencedPlayerPhotos.forEach(file => {
+            newSelected.add(file.name);
+        });
+        setSelectedFiles(newSelected);
+
+        toast({
+            title: "✅ Fotos seleccionadas",
+            description: `${unreferencedPlayerPhotos.length} fotos no referenciadas seleccionadas`,
         });
     };
 
@@ -255,6 +356,107 @@ export function RemoteFileManager() {
         });
     };
 
+    // Recursive Node Renderer
+    const RemoteFileTreeNode = ({ node, level }: { node: TreeNode; level: number }) => {
+        const isExpanded = expandedFolders.has(node.path);
+
+        // Calculate selection status
+        const subtreeFiles = useMemo(() => getSubtreeFiles(node), [node]);
+        const selectedCount = subtreeFiles.filter(p => selectedFiles.has(p)).length;
+        const totalCount = subtreeFiles.length;
+        const isFullySelected = totalCount > 0 && selectedCount === totalCount;
+        const isPartiallySelected = selectedCount > 0 && selectedCount < totalCount;
+
+        if (node.type === 'folder') {
+            return (
+                <div className="select-none">
+                    <div
+                        className="flex items-center gap-2 py-1.5 px-2 hover:bg-muted/50 rounded cursor-pointer"
+                        style={{ paddingLeft: `${Math.max(8, level * 16)}px` }}
+                    >
+                        <Checkbox
+                            id={`folder-${node.path}`}
+                            checked={isPartiallySelected ? 'indeterminate' : isFullySelected}
+                            onCheckedChange={() => toggleFolder(node)}
+                            className="mt-0.5"
+                        />
+                        <div
+                            className="flex items-center gap-1 flex-1"
+                            onClick={() => toggleExpanded(node.path)}
+                        >
+                            {isExpanded ? (
+                                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            ) : (
+                                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            )}
+                            {isExpanded ? (
+                                <FolderOpen className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                            ) : (
+                                <Folder className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                            )}
+                            <span className="font-semibold text-sm">
+                                {node.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground ml-auto">
+                                ({selectedCount}/{totalCount})
+                            </span>
+                        </div>
+                    </div>
+                    {isExpanded && (
+                        <div>
+                            {node.children.map(child => (
+                                <RemoteFileTreeNode key={child.path} node={child} level={level + 1} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // File Node
+        const file = node.item!;
+        const isChecked = selectedFiles.has(node.path);
+        const matchInfo = extractMatchInfo(file.name);
+        const isOutsideFixture = matchInfo?.isOutsideFixture === true;
+        const photoInfo = extractPlayerPhotoInfo(file.name);
+        const isUnreferencedPhoto = photoInfo?.isUnreferenced === true;
+
+        return (
+            <div
+                className="flex items-start gap-2 py-1 px-2 rounded hover:bg-muted/50"
+                style={{ paddingLeft: `${Math.max(8, level * 16) + 20}px` }}
+            >
+                <Checkbox
+                    id={`file-${file.name}`}
+                    checked={isChecked}
+                    onCheckedChange={() => toggleFileSelection(file.name)}
+                    className="mt-0.5"
+                />
+                <div className="flex-1">
+                    <div className="flex items-center gap-1 flex-wrap">
+                        <File className="h-3 w-3 shrink-0 opacity-50" />
+                        <span className="font-mono text-xs">{node.name}</span>
+                        {isOutsideFixture && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
+                                <AlertCircle className="h-2.5 w-2.5" />
+                                Fuera de fixture
+                            </span>
+                        )}
+                        {isUnreferencedPhoto && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded">
+                                <AlertCircle className="h-2.5 w-2.5" />
+                                No referenciada
+                            </span>
+                        )}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground ml-4 mt-0.5">
+                        {formatSize(file.metadata.size)} • Modificado: {formatDate(file.updated_at)}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <Card>
             <CardHeader>
@@ -303,6 +505,17 @@ export function RemoteFileManager() {
                                 Seleccionar Fuera de Fixture
                             </Button>
                         )}
+                        {unreferencedPlayerPhotos.length > 0 && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleSelectUnreferencedPhotos}
+                                className="border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                            >
+                                <AlertCircle className="h-4 w-4 mr-2" />
+                                Seleccionar Fotos No Referenciadas
+                            </Button>
+                        )}
                         <Button
                             variant="destructive"
                             size="sm"
@@ -331,88 +544,10 @@ export function RemoteFileManager() {
                         <p className="text-xs">Los archivos se cargan bajo demanda para mejorar el rendimiento</p>
                     </div>
                 ) : (
-                    <div className="space-y-1 max-h-96 overflow-y-auto">
-                        {sortedFolders.map(folder => {
-                            const filesInFolder = folderStructure[folder];
-                            const isExpanded = expandedFolders.has(folder);
-                            const isFullySelected = isFolderFullySelected(folder);
-                            const isPartiallySelected = isFolderPartiallySelected(folder);
-                            const selectedCount = filesInFolder.filter(f => selectedFiles.has(f.name)).length;
-
-                            return (
-                                <div key={folder} className="border-b border-border/40 last:border-0">
-                                    {/* Folder Header */}
-                                    <div className="flex items-center gap-2 py-1.5 px-2 hover:bg-muted/50 rounded">
-                                        <Checkbox
-                                            id={`folder-${folder}`}
-                                            checked={isFullySelected}
-                                            ref={(el) => {
-                                                if (el && isPartiallySelected) {
-                                                    el.indeterminate = true;
-                                                }
-                                            }}
-                                            onCheckedChange={() => toggleFolder(folder)}
-                                            className="mt-0.5"
-                                        />
-                                        <button
-                                            onClick={() => toggleExpanded(folder)}
-                                            className="flex items-center gap-1 flex-1 text-left"
-                                        >
-                                            {isExpanded ? (
-                                                <ChevronDown className="h-4 w-4 shrink-0" />
-                                            ) : (
-                                                <ChevronRight className="h-4 w-4 shrink-0" />
-                                            )}
-                                            <Folder className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
-                                            <span className="font-semibold text-sm">
-                                                {folder}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground ml-auto">
-                                                ({selectedCount}/{filesInFolder.length})
-                                            </span>
-                                        </button>
-                                    </div>
-
-                                    {/* Files in Folder */}
-                                    {isExpanded && (
-                                        <div className="ml-8 space-y-1 mt-1">
-                                            {filesInFolder.map(file => {
-                                                const isChecked = selectedFiles.has(file.name);
-                                                const fileName = file.name.substring(file.name.lastIndexOf('/') + 1);
-                                                const matchInfo = extractMatchInfo(file.name);
-                                                const isOutsideFixture = matchInfo?.isOutsideFixture === true;
-
-                                                return (
-                                                    <div key={file.name} className="flex items-start gap-2 py-1 px-2 rounded hover:bg-muted/50">
-                                                        <Checkbox
-                                                            id={`file-${file.name}`}
-                                                            checked={isChecked}
-                                                            onCheckedChange={() => toggleFileSelection(file.name)}
-                                                            className="mt-0.5"
-                                                        />
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-1">
-                                                                <File className="h-3 w-3 shrink-0 opacity-50" />
-                                                                <span className="font-mono text-xs">{fileName}</span>
-                                                                {isOutsideFixture && (
-                                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
-                                                                        <AlertCircle className="h-2.5 w-2.5" />
-                                                                        Fuera de fixture
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <div className="text-xs text-muted-foreground ml-4">
-                                                                {formatSize(file.metadata.size)} • Modificado: {formatDate(file.updated_at)}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
+                    <div className="space-y-0.5 max-h-96 overflow-y-auto">
+                        {tree.map(node => (
+                            <RemoteFileTreeNode key={node.path} node={node} level={0} />
+                        ))}
                     </div>
                 )}
             </CardContent>

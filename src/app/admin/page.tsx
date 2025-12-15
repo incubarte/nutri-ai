@@ -55,7 +55,11 @@ function extractMatchInfoFromPath(filePath: string, tournaments: Tournament[]) {
     const [, tournamentId, matchId] = summaryMatch;
 
     // Early return if no tournaments
-    if (!tournaments || tournaments.length === 0) return null;
+    if (!tournaments || tournaments.length === 0) {
+        // When tournaments are not loaded, we cannot determine if it's outside fixture
+        // Return null to avoid false positives
+        return null;
+    }
 
     // Find the tournament
     let tournament = tournaments.find(t => t.id === tournamentId);
@@ -70,21 +74,14 @@ function extractMatchInfoFromPath(filePath: string, tournaments: Tournament[]) {
         }
     }
 
-    // If still no tournament or tournament doesn't have matches loaded, return null
-    if (!tournament || !tournament.matches || tournament.matches.length === 0) {
-        // Tournament exists but match not found in fixture = outside fixture
-        const tournamentExists = tournaments.find(t => t.id === tournamentId);
-        if (tournamentExists) {
-            return {
-                homeTeam: '?',
-                awayTeam: '?',
-                category: '?',
-                date: '?',
-                isOutsideFixture: true,
-                tournamentId,
-                matchId
-            };
-        }
+    // If tournament doesn't exist at all, cannot determine status
+    if (!tournament) {
+        return null;
+    }
+
+    // If tournament exists but doesn't have matches loaded, we cannot determine if it's outside fixture
+    // Return null to avoid false positives (matches might exist but just not loaded in this context)
+    if (!tournament.matches || tournament.matches.length === 0) {
         return null;
     }
 
@@ -125,6 +122,32 @@ function extractMatchInfoFromPath(filePath: string, tournaments: Tournament[]) {
         tournamentId,
         matchId
     };
+}
+
+function extractPlayerPhotoInfo(filePath: string, tournaments: Tournament[]) {
+    // Check if it's a player photo
+    // Pattern: tournaments/{tournamentId}/players/{teamSlug}/{photoFileName}
+    const photoMatch = filePath.match(/tournaments\/([^/]+)\/players\/([^/]+)\/([^/]+\.(png|jpg|jpeg|webp))$/i);
+    if (!photoMatch) return null;
+
+    const [, tournamentId, teamSlug, photoFileName] = photoMatch;
+
+    // Early return if no tournaments
+    if (!tournaments || tournaments.length === 0) return null;
+
+    // Find the tournament
+    const tournament = tournaments.find(t => t.id === tournamentId);
+    if (!tournament || !tournament.teams) {
+        // Cannot determine if unreferenced without teams data
+        return null;
+    }
+
+    // Check if any team references this player photo by photoFileName
+    const isReferenced = tournament.teams.some(team =>
+        team.players?.some(player => player.photoFileName === photoFileName)
+    );
+
+    return { isUnreferenced: !isReferenced, tournamentId, teamSlug, photoFileName };
 }
 
 function PerformanceSettingsCard() {
@@ -282,6 +305,14 @@ function SyncAnalysisCard() {
     // File selection states (for checkboxes)
     const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
 
+    // Junk files detection
+    const [isDetectingJunk, setIsDetectingJunk] = useState(false);
+    const [junkFiles, setJunkFiles] = useState<{
+        summariesOutsideFixture: string[];
+        unreferencedPhotos: string[];
+        total: number;
+    } | null>(null);
+
     // Handlers for auto-sync config changes
     const handleAutoAnalysisEnabledChange = (checked: boolean) => {
         setAutoAnalysisEnabled(checked);
@@ -433,6 +464,54 @@ function SyncAnalysisCard() {
             title: "✅ Archivos Desmarcados",
             description: "Se desmarcaron todos los summaries fuera de fixture",
             className: "bg-blue-600 text-white border-blue-700",
+        });
+    };
+
+    // Helper to check if there are any unreferenced photos in the plan
+    const hasUnreferencedPhotos = () => {
+        if (!plan) return false;
+
+        const allItems = [
+            ...(plan.toUpload || []),
+            ...(plan.toDownload || []),
+            ...(plan.toDeleteLocally || []),
+            ...(plan.toDeleteRemotely || []),
+            ...(plan.conflicts || [])
+        ];
+
+        return allItems.some((item: any) => {
+            const photoInfo = extractPlayerPhotoInfo(item.filePath, state?.config?.tournaments || []);
+            return photoInfo?.isUnreferenced;
+        });
+    };
+
+    // Uncheck all unreferenced photos
+    const uncheckUnreferencedPhotos = () => {
+        setSelectedFiles(prev => {
+            const newSet = new Set(prev);
+
+            const allItems = [
+                ...(plan.toUpload || []),
+                ...(plan.toDownload || []),
+                ...(plan.toDeleteLocally || []),
+                ...(plan.toDeleteRemotely || []),
+                ...(plan.conflicts || [])
+            ];
+
+            allItems.forEach((item: any) => {
+                const photoInfo = extractPlayerPhotoInfo(item.filePath, state?.config?.tournaments || []);
+                if (photoInfo?.isUnreferenced) {
+                    newSet.delete(item.filePath);
+                }
+            });
+
+            return newSet;
+        });
+
+        toast({
+            title: "✅ Fotos Desmarcadas",
+            description: "Se desmarcaron todas las fotos no referenciadas",
+            className: "bg-orange-600 text-white border-orange-700",
         });
     };
 
@@ -799,6 +878,84 @@ function SyncAnalysisCard() {
         }
     };
 
+    const handleDetectJunk = async () => {
+        setIsDetectingJunk(true);
+        setJunkFiles(null);
+        try {
+            const response = await fetch('/api/sync/detect-junk');
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to detect junk files');
+            }
+
+            setJunkFiles(data.junkFiles);
+
+            toast({
+                title: "🔍 Detección Completada",
+                description: `Encontrados ${data.junkFiles.total} archivos basura: ${data.junkFiles.summariesOutsideFixture.length} summaries fuera de fixture, ${data.junkFiles.unreferencedPhotos.length} fotos no referenciadas`,
+                className: "bg-orange-600 text-white border-orange-700",
+            });
+        } catch (error) {
+            toast({
+                title: "❌ Error al Detectar",
+                description: error instanceof Error ? error.message : "No se pudieron detectar archivos basura",
+                variant: "destructive",
+            });
+        } finally {
+            setIsDetectingJunk(false);
+        }
+    };
+
+    const handleDeleteJunk = async () => {
+        if (!junkFiles || junkFiles.total === 0) return;
+
+        const allJunkFiles = [
+            ...junkFiles.summariesOutsideFixture,
+            ...junkFiles.unreferencedPhotos
+        ];
+
+        if (!confirm(`¿Estás seguro de eliminar ${allJunkFiles.length} archivo(s) basura?\n\nEsto eliminará:\n- ${junkFiles.summariesOutsideFixture.length} summaries fuera de fixture\n- ${junkFiles.unreferencedPhotos.length} fotos no referenciadas\n\nEsta acción NO se puede deshacer.`)) {
+            return;
+        }
+
+        setIsSyncing(true);
+        try {
+            const response = await fetch('/api/sync/delete-junk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filePaths: allJunkFiles })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to delete junk files');
+            }
+
+            toast({
+                title: "✅ Archivos Eliminados",
+                description: `${data.deleted.length} archivo(s) eliminados${data.errors.length > 0 ? `, ${data.errors.length} fallaron` : ''}`,
+                className: "bg-green-600 text-white border-green-700",
+            });
+
+            // Clear junk files state
+            setJunkFiles(null);
+
+            // Reload context
+            await handleReloadContext();
+
+        } catch (error) {
+            toast({
+                title: "❌ Error al Eliminar",
+                description: error instanceof Error ? error.message : "No se pudieron eliminar los archivos",
+                variant: "destructive",
+            });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     return (
         <Card className="bg-blue-500/10 border-blue-500/30">
             <CardHeader>
@@ -964,7 +1121,92 @@ function SyncAnalysisCard() {
                             </>
                         )}
                     </Button>
+
+                    <Button
+                        onClick={handleDetectJunk}
+                        disabled={isDetectingJunk}
+                        variant="outline"
+                        className="w-full border-orange-500 text-orange-700 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950"
+                    >
+                        {isDetectingJunk ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Detectando...
+                            </>
+                        ) : (
+                            <>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Detectar Files a Borrar
+                            </>
+                        )}
+                    </Button>
                 </div>
+
+                {/* Show junk files results */}
+                {junkFiles && junkFiles.total > 0 && (
+                    <div className="bg-orange-50 dark:bg-orange-950/30 p-4 rounded-lg border border-orange-200 dark:border-orange-800 space-y-3">
+                        <div className="flex items-center gap-2">
+                            <Trash2 className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                            <h4 className="font-semibold text-orange-800 dark:text-orange-200">
+                                Archivos Basura Detectados ({junkFiles.total})
+                            </h4>
+                        </div>
+
+                        {junkFiles.summariesOutsideFixture.length > 0 && (
+                            <div className="space-y-1">
+                                <p className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                                    🔵 Summaries Fuera de Fixture ({junkFiles.summariesOutsideFixture.length}):
+                                </p>
+                                <div className="max-h-40 overflow-y-auto">
+                                    <ul className="text-xs font-mono space-y-0.5 ml-4">
+                                        {junkFiles.summariesOutsideFixture.map(file => (
+                                            <li key={file} className="text-muted-foreground">• {file}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+
+                        {junkFiles.unreferencedPhotos.length > 0 && (
+                            <div className="space-y-1">
+                                <p className="text-sm font-medium text-orange-700 dark:text-orange-300">
+                                    🟠 Fotos No Referenciadas ({junkFiles.unreferencedPhotos.length}):
+                                </p>
+                                <div className="max-h-40 overflow-y-auto">
+                                    <ul className="text-xs font-mono space-y-0.5 ml-4">
+                                        {junkFiles.unreferencedPhotos.map(file => (
+                                            <li key={file} className="text-muted-foreground">• {file}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+
+                        <p className="text-xs text-orange-700 dark:text-orange-300 italic mb-3">
+                            💡 Tip: Usa "Analizar Diferencias" para sincronizar, luego usa los botones "Desmarcar..." para excluir estos archivos del sync.
+                        </p>
+
+                        <Button
+                            onClick={handleDeleteJunk}
+                            disabled={isSyncing}
+                            variant="destructive"
+                            size="sm"
+                            className="w-full"
+                        >
+                            {isSyncing ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Eliminando...
+                                </>
+                            ) : (
+                                <>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Eliminar Todos los Archivos Basura ({junkFiles.total})
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                )}
 
                 {plan && (
                     <>
@@ -1082,6 +1324,18 @@ function SyncAnalysisCard() {
                             </Button>
                         )}
 
+                        {/* Button to uncheck unreferenced photos (only if they exist) */}
+                        {hasUnreferencedPhotos() && (
+                            <Button
+                                onClick={uncheckUnreferencedPhotos}
+                                variant="outline"
+                                size="sm"
+                                className="w-full border-orange-500 text-orange-700 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950"
+                            >
+                                🟠 Desmarcar Fotos No Referenciadas
+                            </Button>
+                        )}
+
                         {/* Button to revert selected upload files */}
                         {selectedCounts.upload > 0 && selectedCounts.download === 0 && selectedCounts.conflicts === 0 && selectedCounts.deleteLocal === 0 && selectedCounts.deleteRemote === 0 && (
                             <Button
@@ -1115,6 +1369,7 @@ function SyncAnalysisCard() {
                                         selectedFiles={selectedFiles}
                                         onToggleFile={toggleFileSelection}
                                         extractMatchInfo={extractMatchInfoFromPath}
+                                        extractPlayerPhotoInfo={extractPlayerPhotoInfo}
                                         tournaments={state?.config?.tournaments || []}
                                         type="upload"
                                     />
@@ -1133,6 +1388,7 @@ function SyncAnalysisCard() {
                                         selectedFiles={selectedFiles}
                                         onToggleFile={toggleFileSelection}
                                         extractMatchInfo={extractMatchInfoFromPath}
+                                        extractPlayerPhotoInfo={extractPlayerPhotoInfo}
                                         tournaments={state?.config?.tournaments || []}
                                         type="download"
                                     />
@@ -1151,6 +1407,7 @@ function SyncAnalysisCard() {
                                         selectedFiles={selectedFiles}
                                         onToggleFile={toggleFileSelection}
                                         extractMatchInfo={extractMatchInfoFromPath}
+                                        extractPlayerPhotoInfo={extractPlayerPhotoInfo}
                                         tournaments={state?.config?.tournaments || []}
                                         type="deleteLocal"
                                     />
@@ -1169,6 +1426,7 @@ function SyncAnalysisCard() {
                                         selectedFiles={selectedFiles}
                                         onToggleFile={toggleFileSelection}
                                         extractMatchInfo={extractMatchInfoFromPath}
+                                        extractPlayerPhotoInfo={extractPlayerPhotoInfo}
                                         tournaments={state?.config?.tournaments || []}
                                         type="deleteRemote"
                                     />
@@ -1188,6 +1446,7 @@ function SyncAnalysisCard() {
                                         onToggleFile={toggleFileSelection}
                                         onFileClick={handleConflictClick}
                                         extractMatchInfo={extractMatchInfoFromPath}
+                                        extractPlayerPhotoInfo={extractPlayerPhotoInfo}
                                         tournaments={state?.config?.tournaments || []}
                                         type="conflict"
                                     />

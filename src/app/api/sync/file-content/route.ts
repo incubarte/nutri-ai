@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!;
 
 // Helper function to get the storage directory from environment or default
 function getStorageDir(): string {
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
                 // If not in cache, download from Supabase
                 try {
                     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-                    const bucket = 'studio';
+                    const bucket = process.env.SUPABASE_BUCKET || 'studio';
 
                     const { data, error } = await supabase.storage
                         .from(bucket)
