@@ -18,6 +18,37 @@ function isBinaryFile(filePath: string): boolean {
 }
 
 /**
+ * Get content type for a file based on extension
+ */
+function getContentType(filePath: string): string {
+    const ext = path.extname(filePath).toLowerCase();
+    const contentTypeMap: Record<string, string> = {
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp',
+        '.svg': 'image/svg+xml',
+        '.ico': 'image/x-icon',
+        '.pdf': 'application/pdf',
+        '.json': 'application/json'
+    };
+    return contentTypeMap[ext] || 'application/octet-stream';
+}
+
+/**
+ * Prepare content for Supabase upload
+ * Converts Buffer to Blob with correct content type for binary files
+ */
+function prepareContentForUpload(content: string | Buffer, filePath: string): Blob | string {
+    if (content instanceof Buffer) {
+        const contentType = getContentType(filePath);
+        return new Blob([content], { type: contentType });
+    }
+    return content;
+}
+
+/**
  * Read local file with correct encoding (binary or utf-8)
  */
 async function readLocalFile(filePath: string): Promise<string | Buffer> {
@@ -88,6 +119,11 @@ export async function analyzeSync(): Promise<SyncPlan> {
         // 4. If no remote manifest exists, all local files should be uploaded
         if (!hasRemoteManifest) {
             for (const [filePath, metadata] of Object.entries(localManifest.files)) {
+                // Skip files marked as deleted
+                if (metadata.deleted) {
+                    continue;
+                }
+
                 plan.toUpload.push({
                     filePath,
                     hash: metadata.hash
@@ -426,6 +462,7 @@ async function checkFileExistsLocally(filePath: string): Promise<boolean> {
 
 /**
  * Check if a file exists remotely in Supabase
+ * Uses download with minimal data to check existence
  */
 async function checkFileExistsRemotely(filePath: string): Promise<boolean> {
     try {
@@ -438,21 +475,25 @@ async function checkFileExistsRemotely(filePath: string): Promise<boolean> {
         }
 
         const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Try to download just to check existence (will not actually download full file if we handle the error)
         const { data, error } = await supabase.storage.from(bucket).download(filePath);
 
         if (error) {
+            // 404 means file doesn't exist
             if ('status' in error && error.status === 404) {
                 return false;
             }
-            // For other errors, assume file exists (to be safe)
-            console.error(`[Sync] Error checking if file exists remotely: ${filePath}`, error);
+            // For other errors (like network issues), log as warning and assume exists to be safe
+            console.warn(`[Sync] Warning checking if file exists remotely: ${filePath} - assuming exists`);
             return true;
         }
 
         return !!data;
     } catch (error) {
-        console.error(`[Sync] Error checking if file exists remotely: ${filePath}`, error);
-        return true; // Assume exists on error to be safe
+        // On unexpected errors, assume file exists to avoid deleting it
+        console.warn(`[Sync] Exception checking if file exists remotely: ${filePath} - assuming exists`);
+        return true;
     }
 }
 
@@ -771,11 +812,12 @@ export async function executeSync(analysis: SyncAnalysis, options: SyncOptions =
                         console.log('[Sync] Attempting to backup to:', backupPath);
 
                         // Upload to backup location with contentType
+                        const preparedBackupContent = prepareContentForUpload(remoteContent, conflict.filePath);
                         const { error: backupError } = await supabase.storage
                             .from(bucket)
-                            .upload(backupPath, remoteContent, {
+                            .upload(backupPath, preparedBackupContent, {
                                 upsert: true,
-                                contentType: isBinaryFile(conflict.filePath) ? undefined : 'application/json'
+                                contentType: getContentType(conflict.filePath)
                             });
 
                         if (backupError) {
@@ -792,9 +834,13 @@ export async function executeSync(analysis: SyncAnalysis, options: SyncOptions =
 
                     // Now upload local version (local wins)
                     const localContent = await readLocalFile(conflict.filePath);
+                    const preparedLocalContent = prepareContentForUpload(localContent, conflict.filePath);
                     const { error: uploadError } = await supabase.storage
                         .from(bucket)
-                        .upload(conflict.filePath, localContent, { upsert: true });
+                        .upload(conflict.filePath, preparedLocalContent, {
+                            upsert: true,
+                            contentType: getContentType(conflict.filePath)
+                        });
 
                     if (uploadError) {
                         result.errors.push({
@@ -833,11 +879,12 @@ export async function executeSync(analysis: SyncAnalysis, options: SyncOptions =
                     continue;
                 }
 
+                const preparedContent = prepareContentForUpload(content, item.filePath);
                 const { error } = await supabase.storage
                     .from(bucket)
-                    .upload(item.filePath, content, {
+                    .upload(item.filePath, preparedContent, {
                         upsert: true,
-                        contentType: isBinaryFile(item.filePath) ? undefined : 'application/json'
+                        contentType: getContentType(item.filePath)
                     });
 
                 if (error) {
@@ -1095,17 +1142,26 @@ export async function executeSyncPlan(options: SyncOptions = {}): Promise<SyncRe
         // 3. Execute uploads
         for (const item of plan.toUpload) {
             try {
-                const content = await storageProvider.readFile(item.filePath);
+                const content = await readLocalFile(item.filePath);
+                const preparedContent = prepareContentForUpload(content, item.filePath);
                 const { error } = await supabase.storage
                     .from(bucket)
-                    .upload(item.filePath, content, { upsert: true });
+                    .upload(item.filePath, preparedContent, {
+                        upsert: true,
+                        contentType: getContentType(item.filePath)
+                    });
 
                 if (error) throw error;
 
                 // Update local manifest with the uploaded content
                 // This ensures manifest reflects what was actually uploaded
-                const { updateManifestEntry } = await import('./sync-manifest');
-                await updateManifestEntry(item.filePath, content);
+                if (content instanceof Buffer) {
+                    const { updateManifestEntryBinary } = await import('./sync-manifest');
+                    await updateManifestEntryBinary(item.filePath, content);
+                } else {
+                    const { updateManifestEntry } = await import('./sync-manifest');
+                    await updateManifestEntry(item.filePath, content);
+                }
 
                 result.filesUploaded++;
                 logFiles.push({
@@ -1288,16 +1344,25 @@ export async function executeSyncPlan(options: SyncOptions = {}): Promise<SyncRe
             try {
                 if (conflict.decision === 'local-wins') {
                     // Upload local version
-                    const content = await storageProvider.readFile(conflict.filePath);
+                    const content = await readLocalFile(conflict.filePath);
+                    const preparedContent = prepareContentForUpload(content, conflict.filePath);
                     const { error } = await supabase.storage
                         .from(bucket)
-                        .upload(conflict.filePath, content, { upsert: true });
+                        .upload(conflict.filePath, preparedContent, {
+                            upsert: true,
+                            contentType: getContentType(conflict.filePath)
+                        });
 
                     if (error) throw error;
 
                     // Update local manifest with the uploaded content
-                    const { updateManifestEntry } = await import('./sync-manifest');
-                    await updateManifestEntry(conflict.filePath, content);
+                    if (content instanceof Buffer) {
+                        const { updateManifestEntryBinary } = await import('./sync-manifest');
+                        await updateManifestEntryBinary(conflict.filePath, content);
+                    } else {
+                        const { updateManifestEntry } = await import('./sync-manifest');
+                        await updateManifestEntry(conflict.filePath, content);
+                    }
 
                     result.conflictsResolved++;
                     logFiles.push({

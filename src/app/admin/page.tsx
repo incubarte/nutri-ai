@@ -293,6 +293,7 @@ function SyncAnalysisCard() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [isReloadingContext, setIsReloadingContext] = useState(false);
+    const [isRegeneratingManifest, setIsRegeneratingManifest] = useState(false);
     const [plan, setPlan] = useState<any>(null);
     const [selectedConflict, setSelectedConflict] = useState<any>(null);
     const [localContent, setLocalContent] = useState<string>('');
@@ -616,6 +617,43 @@ function SyncAnalysisCard() {
             });
         } finally {
             setIsReloadingContext(false);
+        }
+    };
+
+    const handleRegenerateManifest = async () => {
+        setIsRegeneratingManifest(true);
+        try {
+            console.log('[Admin] Regenerating local manifest...');
+
+            const response = await fetch('/api/regenerate-manifest', {
+                method: 'POST',
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Failed to regenerate manifest');
+            }
+
+            console.log('[Admin] Manifest regenerated:', data);
+
+            toast({
+                title: "✅ Manifest Regenerado",
+                description: `Se procesaron ${data.totalFiles} archivos correctamente.`,
+            });
+
+            // Optionally re-analyze after regenerating
+            await handleAnalyze();
+
+        } catch (error) {
+            console.error('Error regenerating manifest:', error);
+            toast({
+                title: "❌ Error al Regenerar Manifest",
+                description: error instanceof Error ? error.message : "No se pudo regenerar el manifest local",
+                variant: "destructive",
+            });
+        } finally {
+            setIsRegeneratingManifest(false);
         }
     };
 
@@ -1095,7 +1133,7 @@ function SyncAnalysisCard() {
                     <div className="flex gap-2">
                         <Button
                             onClick={handleAnalyze}
-                            disabled={isAnalyzing || isSyncing || isReloadingContext}
+                            disabled={isAnalyzing || isSyncing || isReloadingContext || isRegeneratingManifest}
                             className="flex-1 bg-blue-600 hover:bg-blue-700"
                         >
                             {isAnalyzing ? (
@@ -1116,7 +1154,7 @@ function SyncAnalysisCard() {
                                 <Button
                                     variant="outline"
                                     size="icon"
-                                    disabled={isAnalyzing || isSyncing || isReloadingContext || isDetectingJunk}
+                                    disabled={isAnalyzing || isSyncing || isReloadingContext || isDetectingJunk || isRegeneratingManifest}
                                 >
                                     <MoreVertical className="h-4 w-4" />
                                 </Button>
@@ -1145,6 +1183,20 @@ function SyncAnalysisCard() {
                                         <>
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             Detectar Files a Borrar
+                                        </>
+                                    )}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={handleRegenerateManifest} disabled={isRegeneratingManifest}>
+                                    {isRegeneratingManifest ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Regenerando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FileSearch className="mr-2 h-4 w-4" />
+                                            Regenerar Manifest Local
                                         </>
                                     )}
                                 </DropdownMenuItem>

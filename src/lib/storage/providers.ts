@@ -43,6 +43,13 @@ export interface StorageProvider {
      */
     readBinaryFile(filePath: string): Promise<Buffer>;
     writeFile(filePath: string, content: string): Promise<void>;
+    /**
+     * Writes a binary file to the storage provider.
+     * @param filePath The path to the file.
+     * @param content The binary content as a Buffer.
+     * @param contentType Optional content type (e.g., 'image/png').
+     */
+    writeBinaryFile(filePath: string, content: Buffer, contentType?: string): Promise<void>;
     deleteFile(filePath: string): Promise<void>;
     listFiles(directoryPath: string): Promise<string[]>;
     deleteFolder(directoryPath: string): Promise<void>;
@@ -97,6 +104,18 @@ export class LocalFileStorageProvider implements StorageProvider {
         if (filePath === 'tournaments.json' || filePath.startsWith('tournaments/')) {
             const { updateManifestEntry } = await import('../sync-manifest');
             await updateManifestEntry(filePath, content);
+        }
+    }
+
+    async writeBinaryFile(filePath: string, content: Buffer, contentType?: string): Promise<void> {
+        const resolvedPath = this.resolvePath(filePath);
+        await fs.mkdir(path.dirname(resolvedPath), { recursive: true });
+        await fs.writeFile(resolvedPath, content);
+
+        // Update manifest for tournament files only (not config/live/sync files)
+        if (filePath === 'tournaments.json' || filePath.startsWith('tournaments/')) {
+            const { updateManifestEntryBinary } = await import('../sync-manifest');
+            await updateManifestEntryBinary(filePath, content);
         }
     }
 
@@ -225,6 +244,35 @@ export class SupabaseStorageProvider implements StorageProvider {
     async writeFile(filePath: string, content: string): Promise<void> {
         if (this.mode === 'ro') throw new Error('Cannot write in read-only mode.');
         const { error } = await this.supabase.storage.from(this.bucket).upload(filePath, content, { upsert: true, contentType: 'application/json' });
+        if (error) throw error;
+    }
+
+    async writeBinaryFile(filePath: string, content: Buffer, contentType?: string): Promise<void> {
+        if (this.mode === 'ro') throw new Error('Cannot write in read-only mode.');
+
+        // Determine content type if not provided
+        const ext = filePath.split('.').pop()?.toLowerCase();
+        const contentTypeMap: Record<string, string> = {
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'gif': 'image/gif',
+            'webp': 'image/webp',
+            'svg': 'image/svg+xml',
+        };
+        const finalContentType = contentType || contentTypeMap[ext || ''] || 'application/octet-stream';
+
+        // Convert Buffer to Blob with correct content type
+        // This is crucial for Supabase to store the file correctly
+        const blob = new Blob([content], { type: finalContentType });
+
+        const { error } = await this.supabase.storage
+            .from(this.bucket)
+            .upload(filePath, blob, {
+                upsert: true,
+                contentType: finalContentType
+            });
+
         if (error) throw error;
     }
 

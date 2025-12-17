@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { storageProvider } from '@/lib/storage';
-import { updateManifestEntryBinary, removeManifestEntry } from '@/lib/sync-manifest';
+import { removeManifestEntry } from '@/lib/sync-manifest';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -71,35 +71,13 @@ export async function POST(request: Request) {
 
         console.log('[API] File converted to buffer, size:', buffer.length);
 
-        // Save file using storage provider
-        // Note: storageProvider.writeFile expects a string, but we need to write binary
-        // We'll need to use a different approach or extend the storage provider
-        // For now, let's use the local file system directly
-        const fs = await import('fs/promises');
-        const path = await import('path');
-
-        const storagePath = process.env.STORAGE_PATH || 'storage';
-        const fullPath = path.join(process.cwd(), storagePath, 'data', filePath);
-
-        console.log('[API] Full file path:', fullPath);
-
-        // Create directory if it doesn't exist
-        await fs.mkdir(path.dirname(fullPath), { recursive: true });
-
-        console.log('[API] Directory created/verified');
-
-        // Write file
-        await fs.writeFile(fullPath, buffer);
-
-        console.log('[API] ✅ File written successfully');
-
-        // Update manifest for sync
+        // Save file using storage provider (works for both local and Supabase)
         try {
-            await updateManifestEntryBinary(filePath, buffer);
-            console.log('[API] ✅ Manifest updated for:', filePath);
-        } catch (manifestError) {
-            console.error('[API] ⚠️  Failed to update manifest (non-fatal):', manifestError);
-            // Don't fail the request if manifest update fails
+            await storageProvider.writeBinaryFile(filePath, buffer, file.type);
+            console.log('[API] ✅ File written successfully using storage provider');
+        } catch (writeError) {
+            console.error('[API] ❌ Failed to write file:', writeError);
+            throw writeError;
         }
 
         return NextResponse.json({
