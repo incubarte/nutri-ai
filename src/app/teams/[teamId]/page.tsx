@@ -300,32 +300,32 @@ export default function ManageTeamPage() {
                       </div>
 
                       {/* BACK - Stats */}
-                      <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg border-2 border-primary bg-gradient-to-br from-primary/5 to-primary/10 p-3 overflow-hidden">
+                      <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg border-2 border-primary bg-gradient-to-br from-primary/5 to-primary/10 p-2 overflow-hidden">
                         <div className="h-full flex flex-col justify-center">
                           {stats ? (
-                            <div className="space-y-2">
-                              <div className="grid grid-cols-2 gap-2">
-                                <div className="bg-background/50 rounded-lg p-2 text-center">
-                                  <p className="text-[10px] text-muted-foreground mb-1">Goles</p>
-                                  <p className="text-2xl font-bold">{stats.goals}</p>
+                            <div className="space-y-1.5">
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <div className="bg-background/50 rounded-lg p-1.5 text-center">
+                                  <p className="text-[8px] text-muted-foreground mb-0.5">Goles</p>
+                                  <p className="text-lg font-bold">{stats.goals}</p>
                                 </div>
-                                <div className="bg-background/50 rounded-lg p-2 text-center">
-                                  <p className="text-[10px] text-muted-foreground mb-1">Asist.</p>
-                                  <p className="text-2xl font-bold">{stats.assists}</p>
+                                <div className="bg-background/50 rounded-lg p-1.5 text-center">
+                                  <p className="text-[8px] text-muted-foreground mb-0.5">Asist.</p>
+                                  <p className="text-lg font-bold">{stats.assists}</p>
                                 </div>
                               </div>
-                              <div className="bg-primary/20 rounded-lg p-2.5 text-center">
-                                <p className="text-xs text-muted-foreground mb-1">Puntos Totales</p>
-                                <p className="text-3xl font-bold text-primary">{stats.points}</p>
+                              <div className="bg-primary/20 rounded-lg p-1.5 text-center">
+                                <p className="text-[9px] text-muted-foreground mb-0.5">Puntos Totales</p>
+                                <p className="text-2xl font-bold text-primary">{stats.points}</p>
                               </div>
-                              <div className="space-y-1.5 text-xs">
-                                <div className="flex justify-between px-2 py-1.5 bg-background/30 rounded">
+                              <div className="space-y-1 text-[9px]">
+                                <div className="flex justify-between px-1.5 py-1 bg-background/30 rounded">
                                   <span className="text-muted-foreground">Tiros</span>
                                   <span className="font-semibold">{stats.shots}</span>
                                 </div>
                                 {stats.penaltyCount > 0 && (
-                                  <div className="flex justify-between px-2 py-1.5 bg-orange-100 dark:bg-orange-950 rounded">
-                                    <span className="text-orange-700 dark:text-orange-300">Penalidades</span>
+                                  <div className="flex justify-between px-1.5 py-1 bg-orange-100 dark:bg-orange-950 rounded">
+                                    <span className="text-orange-700 dark:text-orange-300">Penalid.</span>
                                     <span className="font-semibold text-orange-700 dark:text-orange-300">{stats.penaltyCount} ({stats.penaltyMinutes}')</span>
                                   </div>
                                 )}
