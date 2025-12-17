@@ -6,12 +6,15 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useGameState, getCategoryNameById } from "@/contexts/game-state-context";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit, Trash2, Users, Info, ListFilter, LayoutGrid, LayoutList, Shield, User } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Users, Info, ListFilter, LayoutGrid, LayoutList, Shield, User, Calendar } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddPlayerForm } from "@/components/teams/add-player-form";
+import { usePlayerStats } from "@/hooks/use-player-stats";
 import { PlayerListItem } from "@/components/teams/player-list-item";
 import { DefaultTeamLogo } from "@/components/teams/default-team-logo";
 import { CreateEditTeamDialog } from "@/components/teams/create-edit-team-dialog";
 import { EditPlayerDialog } from "@/components/teams/edit-player-dialog";
+import { FixtureListView } from "@/components/fixture/fixture-list-view";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -43,7 +46,7 @@ export default function ManageTeamPage() {
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [editingPlayer, setEditingPlayer] = useState<PlayerData | null>(null);
 
   useEffect(() => {
@@ -75,6 +78,20 @@ export default function ManageTeamPage() {
       return numA - numB;
     });
   }, [team?.players]);
+
+  // Count team matches
+  const teamMatchesCount = useMemo(() => {
+    if (!tournament?.matches || !team) return 0;
+    return tournament.matches.filter(match => {
+      const isDirectlyPlaying = match.homeTeamId === team.id || match.awayTeamId === team.id;
+      const couldPlayInPlayoff = match.phase === 'playoffs' && !match.homeTeamId && !match.awayTeamId &&
+        (match.playoffType === 'semifinal' || match.playoffType === 'final' || match.playoffType === '3er-puesto');
+      return isDirectlyPlaying || couldPlayInPlayoff;
+    }).length;
+  }, [tournament?.matches, team]);
+
+  // Get player statistics
+  const playerStats = usePlayerStats(tournament, null);
 
   if (isLoading) {
     return <div className="text-center text-muted-foreground py-10">Cargando datos del equipo...</div>;
@@ -116,7 +133,7 @@ export default function ManageTeamPage() {
   const categoryName = getCategoryNameById(team.category, tournament.categories);
 
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-8">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 space-y-8">
       <Button variant="outline" onClick={() => router.push(`/tournaments/${tournament.id}`)} className="mb-6">
         <ArrowLeft className="mr-2 h-4 w-4" /> Volver a {tournament.name}
       </Button>
@@ -161,38 +178,51 @@ export default function ManageTeamPage() {
         )}
       </div>
 
-      {!isReadOnly && (
-        <>
-          <Separator />
-          <AddPlayerForm teamId={team.id} />
-          <Separator />
-        </>
-      )}
+      <Tabs defaultValue="players" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="players" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Jugadores ({sortedPlayers.length})
+          </TabsTrigger>
+          <TabsTrigger value="matches" className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Partidos ({teamMatchesCount})
+          </TabsTrigger>
+        </TabsList>
 
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold text-primary-foreground">Lista de Jugadores</h2>
-          <div className="flex gap-1 border rounded-md p-1">
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-              className="h-8 px-3"
-            >
-              <LayoutList className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('grid')}
-              className="h-8 px-3"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        <TabsContent value="players" className="space-y-6">
+          {!isReadOnly && (
+            <>
+              <Separator />
+              <AddPlayerForm teamId={team.id} />
+              <Separator />
+            </>
+          )}
 
-        {sortedPlayers.length > 0 ? (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold text-primary-foreground">Lista de Jugadores</h2>
+              <div className="flex gap-1 border rounded-md p-1">
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="h-8 px-3"
+                >
+                  <LayoutList className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className="h-8 px-3"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {sortedPlayers.length > 0 ? (
           viewMode === 'list' ? (
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
               {sortedPlayers.map(player => (
@@ -200,15 +230,20 @@ export default function ManageTeamPage() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-[600px] overflow-y-auto pr-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[600px] overflow-y-auto pr-2">
               {sortedPlayers.map(player => {
                 const currentPhotoUrl = player.photoFileName && tournament
                   ? `/api/storage/read?path=${encodeURIComponent(`tournaments/${tournament.id}/players/${team.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')}/${player.photoFileName}`)}`
                   : null;
 
+                // Get player stats
+                const stats = playerStats.find(s => s.playerId === player.id);
+
                 return (
-                  <div key={player.id} className="relative group">
-                    <div className="relative aspect-[3/4] rounded-lg overflow-hidden border-2 border-primary/20 hover:border-primary transition-colors bg-muted">
+                  <div key={player.id} className="relative group perspective-1000">
+                    <div className="relative aspect-[3/4] preserve-3d transition-transform duration-500 group-hover:rotate-y-180">
+                      {/* FRONT - Photo */}
+                      <div className="absolute inset-0 backface-hidden rounded-lg overflow-hidden border-2 border-primary/20 group-hover:border-primary transition-colors bg-muted">
                       {currentPhotoUrl ? (
                         <Image
                           src={currentPhotoUrl}
@@ -219,19 +254,19 @@ export default function ManageTeamPage() {
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
                           {player.type === 'goalkeeper' ? (
-                            <Shield className="h-20 w-20 text-primary/30" />
+                            <Shield className="h-15 w-15 text-primary/30" />
                           ) : (
-                            <User className="h-20 w-20 text-primary/30" />
+                            <User className="h-15 w-15 text-primary/30" />
                           )}
                         </div>
                       )}
 
                       {/* Gradient overlay with player info */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3">
-                        <p className="text-white font-bold text-lg">
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2">
+                        <p className="text-white font-bold text-base">
                           #{player.number || 'S/N'}
                         </p>
-                        <p className="text-white/90 text-sm font-semibold truncate">
+                        <p className="text-white/90 text-xs font-semibold truncate">
                           {player.name}
                         </p>
                       </div>
@@ -257,20 +292,71 @@ export default function ManageTeamPage() {
                           </Button>
                         </div>
                       )}
+                      </div>
+
+                      {/* BACK - Stats */}
+                      <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg border-2 border-primary bg-gradient-to-br from-primary/5 to-primary/10 p-3 overflow-hidden">
+                        <div className="h-full flex flex-col justify-center">
+                          {stats ? (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-background/50 rounded-lg p-2 text-center">
+                                  <p className="text-[10px] text-muted-foreground mb-1">Goles</p>
+                                  <p className="text-2xl font-bold">{stats.goals}</p>
+                                </div>
+                                <div className="bg-background/50 rounded-lg p-2 text-center">
+                                  <p className="text-[10px] text-muted-foreground mb-1">Asist.</p>
+                                  <p className="text-2xl font-bold">{stats.assists}</p>
+                                </div>
+                              </div>
+                              <div className="bg-primary/20 rounded-lg p-2.5 text-center">
+                                <p className="text-xs text-muted-foreground mb-1">Puntos Totales</p>
+                                <p className="text-3xl font-bold text-primary">{stats.points}</p>
+                              </div>
+                              <div className="space-y-1.5 text-xs">
+                                <div className="flex justify-between px-2 py-1.5 bg-background/30 rounded">
+                                  <span className="text-muted-foreground">Tiros</span>
+                                  <span className="font-semibold">{stats.shots}</span>
+                                </div>
+                                {stats.penaltyCount > 0 && (
+                                  <div className="flex justify-between px-2 py-1.5 bg-orange-100 dark:bg-orange-950 rounded">
+                                    <span className="text-orange-700 dark:text-orange-300">Penalidades</span>
+                                    <span className="font-semibold text-orange-700 dark:text-orange-300">{stats.penaltyCount} ({stats.penaltyMinutes}')</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-4 flex-1 flex items-center justify-center">
+                              <p className="text-[10px] text-muted-foreground">Sin estadísticas</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
           )
-        ) : (
-          <div className="text-center py-8 px-4 border border-dashed rounded-md bg-card">
-            <Info className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">Este equipo aún no tiene jugadores.</p>
-            {!isReadOnly && <p className="text-sm text-muted-foreground">Usa el formulario de arriba para añadir el primero.</p>}
+            ) : (
+              <div className="text-center py-8 px-4 border border-dashed rounded-md bg-card">
+                <Info className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">Este equipo aún no tiene jugadores.</p>
+                {!isReadOnly && <p className="text-sm text-muted-foreground">Usa el formulario de arriba para añadir el primero.</p>}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </TabsContent>
+
+        <TabsContent value="matches" className="space-y-6 mt-6">
+          <FixtureListView
+            teamFilter={team.id}
+            hideFilters={false}
+            hideTitle={true}
+          />
+        </TabsContent>
+      </Tabs>
 
       <CreateEditTeamDialog
         isOpen={isEditDialogOpen}

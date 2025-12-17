@@ -116,3 +116,25 @@ body {
 .timeline-scrollbar::-webkit-scrollbar-thumb:active {
   background: hsl(var(--accent) / 0.9);
 }
+
+/* 3D Flip Card Effect */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+.group:hover .group-hover\:rotate-y-180 {
+  transform: rotateY(180deg);
+}

@@ -5,7 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, RefreshCw, ChevronRight, ChevronDown, Folder, File, AlertCircle, FolderOpen } from "lucide-react";
+import { Loader2, Trash2, RefreshCw, ChevronRight, ChevronDown, Folder, File, AlertCircle, FolderOpen, Eye, RotateCcw } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { useGameState } from "@/contexts/game-state-context";
 
 interface RemoteFile {
@@ -36,6 +43,9 @@ export function RemoteFileManager() {
     const [loading, setLoading] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [remoteTournaments, setRemoteTournaments] = useState<any[]>([]);
+    const [viewingFile, setViewingFile] = useState<{ path: string; content: string } | null>(null);
+    const [loadingFileContent, setLoadingFileContent] = useState(false);
+    const [regeneratingManifest, setRegeneratingManifest] = useState(false);
     const { toast } = useToast();
 
     // Helper to extract match info from file path
@@ -205,6 +215,15 @@ export function RemoteFileManager() {
                 if (a.type !== b.type) {
                     return a.type === 'folder' ? -1 : 1;
                 }
+
+                // For files, sort by modification date (most recent first)
+                if (a.type === 'file' && b.type === 'file') {
+                    const dateA = new Date(a.item?.updated_at || 0).getTime();
+                    const dateB = new Date(b.item?.updated_at || 0).getTime();
+                    return dateB - dateA; // Descending order (most recent first)
+                }
+
+                // For folders, sort alphabetically
                 return a.name.localeCompare(b.name);
             });
             nodes.forEach(node => {
@@ -298,7 +317,16 @@ export function RemoteFileManager() {
             return;
         }
 
-        if (!confirm(`¿Estás seguro de borrar ${selectedFiles.size} archivo(s) de Supabase? Esta acción marcará los archivos como borrados en el manifest.`)) {
+        const isDeletingManifest = selectedFiles.has('sync-manifest.json');
+        let confirmMessage = `¿Estás seguro de borrar ${selectedFiles.size} archivo(s) de Supabase?`;
+
+        if (isDeletingManifest) {
+            confirmMessage += '\n\n⚠️ ADVERTENCIA: Estás borrando el manifest. Esto eliminará el registro de sincronización.';
+        } else {
+            confirmMessage += ' Esta acción marcará los archivos como borrados en el manifest.';
+        }
+
+        if (!confirm(confirmMessage)) {
             return;
         }
 
@@ -335,6 +363,61 @@ export function RemoteFileManager() {
             });
         } finally {
             setDeleting(false);
+        }
+    };
+
+    const handleViewFile = async (filePath: string) => {
+        setLoadingFileContent(true);
+        try {
+            const response = await fetch(`/api/sync/remote-file-content?filePath=${encodeURIComponent(filePath)}`);
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to load file content');
+            }
+
+            setViewingFile({ path: filePath, content: data.content });
+        } catch (error) {
+            toast({
+                title: "❌ Error",
+                description: error instanceof Error ? error.message : 'Error al cargar contenido',
+                variant: "destructive",
+            });
+        } finally {
+            setLoadingFileContent(false);
+        }
+    };
+
+    const handleRegenerateManifest = async () => {
+        if (!confirm('¿Estás seguro de regenerar el manifest de Supabase?\n\nEsto recreará el manifest basándose únicamente en los archivos que existen actualmente en Supabase.')) {
+            return;
+        }
+
+        setRegeneratingManifest(true);
+        try {
+            const response = await fetch('/api/sync/regenerate-remote-manifest', {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to regenerate manifest');
+            }
+
+            toast({
+                title: "✅ Manifest regenerado",
+                description: `Manifest recreado con ${data.fileCount} archivo(s)`,
+            });
+
+            await loadFiles();
+        } catch (error) {
+            toast({
+                title: "❌ Error",
+                description: error instanceof Error ? error.message : 'Error al regenerar manifest',
+                variant: "destructive",
+            });
+        } finally {
+            setRegeneratingManifest(false);
         }
     };
 
@@ -415,6 +498,7 @@ export function RemoteFileManager() {
 
         // File Node
         const file = node.item!;
+        const isManifest = file.name === 'sync-manifest.json';
         const isChecked = selectedFiles.has(node.path);
         const matchInfo = extractMatchInfo(file.name);
         const isOutsideFixture = matchInfo?.isOutsideFixture === true;
@@ -435,7 +519,17 @@ export function RemoteFileManager() {
                 <div className="flex-1">
                     <div className="flex items-center gap-1 flex-wrap">
                         <File className="h-3 w-3 shrink-0 opacity-50" />
-                        <span className="font-mono text-xs">{node.name}</span>
+                        <span
+                            className={`font-mono text-xs ${!isManifest ? 'cursor-pointer hover:underline' : 'cursor-pointer hover:underline text-blue-600 dark:text-blue-400'}`}
+                            onClick={() => handleViewFile(file.name)}
+                        >
+                            {node.name}
+                        </span>
+                        {isManifest && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                                Manifest
+                            </span>
+                        )}
                         {isOutsideFixture && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
                                 <AlertCircle className="h-2.5 w-2.5" />
@@ -517,6 +611,20 @@ export function RemoteFileManager() {
                             </Button>
                         )}
                         <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRegenerateManifest}
+                            disabled={regeneratingManifest}
+                            className="border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        >
+                            {regeneratingManifest ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                                <RotateCcw className="h-4 w-4 mr-2" />
+                            )}
+                            Regenerar Manifest
+                        </Button>
+                        <Button
                             variant="destructive"
                             size="sm"
                             onClick={handleDeleteSelected}
@@ -551,6 +659,23 @@ export function RemoteFileManager() {
                     </div>
                 )}
             </CardContent>
+
+            {/* File content viewer dialog */}
+            <Dialog open={viewingFile !== null} onOpenChange={(open) => !open && setViewingFile(null)}>
+                <DialogContent className="max-w-4xl max-h-[80vh]">
+                    <DialogHeader>
+                        <DialogTitle className="font-mono text-sm">{viewingFile?.path}</DialogTitle>
+                        <DialogDescription>
+                            Contenido del archivo desde Supabase
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="overflow-auto max-h-[60vh]">
+                        <pre className="text-xs bg-muted p-4 rounded-lg overflow-x-auto">
+                            <code>{viewingFile?.content}</code>
+                        </pre>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }

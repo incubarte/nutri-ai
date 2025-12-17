@@ -22,8 +22,8 @@ interface RemoteFile {
 export async function GET() {
     try {
         const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-        const bucket = process.env.SUPABASE_BUCKET;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+        const bucket = process.env.SUPABASE_BUCKET || 'scoreboard-data';
 
         if (!supabaseUrl || !supabaseKey || !bucket) {
             throw new Error('Supabase configuration missing');
@@ -51,8 +51,11 @@ export async function GET() {
             for (const item of data || []) {
                 const fullPath = path ? `${path}/${item.name}` : item.name;
 
-                // If it's a folder, recurse
-                if (item.id === null) {
+                // Check if it's a folder (id is null OR mimetype is directory)
+                const isFolder = item.id === null || item.id === undefined || item.metadata?.mimetype === 'application/x-directory';
+
+                if (isFolder) {
+                    // It's a folder - recurse
                     await listFilesRecursively(fullPath);
                 } else {
                     // It's a file
@@ -70,10 +73,35 @@ export async function GET() {
 
         await listFilesRecursively();
 
+        // Add sync-manifest.json to the list if it exists
+        const manifestExists = files.find(f => f.name === 'sync-manifest.json');
+        if (!manifestExists) {
+            // Try to get manifest info
+            try {
+                const { data: manifestData } = await supabase.storage
+                    .from(bucket)
+                    .list('', { limit: 1, search: 'sync-manifest.json' });
+
+                if (manifestData && manifestData.length > 0) {
+                    const manifest = manifestData[0];
+                    files.push({
+                        name: 'sync-manifest.json',
+                        id: manifest.id || 'manifest',
+                        updated_at: manifest.updated_at || '',
+                        created_at: manifest.created_at || '',
+                        last_accessed_at: manifest.last_accessed_at || '',
+                        metadata: manifest.metadata as any
+                    });
+                }
+            } catch (e) {
+                console.log('Could not add manifest to list');
+            }
+        }
+
         return NextResponse.json({
             success: true,
-            files: files.filter(f => f.name !== 'sync-manifest.json'), // Exclude manifest
-            totalFiles: files.length - 1 // -1 for manifest
+            files,
+            totalFiles: files.length
         });
 
     } catch (error) {
@@ -104,8 +132,8 @@ export async function DELETE(request: Request) {
         }
 
         const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-        const bucket = process.env.SUPABASE_BUCKET;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+        const bucket = process.env.SUPABASE_BUCKET || 'scoreboard-data';
 
         if (!supabaseUrl || !supabaseKey || !bucket) {
             throw new Error('Supabase configuration missing');
@@ -118,17 +146,29 @@ export async function DELETE(request: Request) {
             }
         });
 
-        // Download current remote manifest
-        const { data: manifestData, error: manifestError } = await supabase.storage
-            .from(bucket)
-            .download('sync-manifest.json');
+        // Check if we're deleting the manifest itself
+        const isDeletingManifest = filePaths.includes('sync-manifest.json');
+        console.log(`[Remote Files] isDeletingManifest: ${isDeletingManifest}, filePaths:`, filePaths);
 
-        if (manifestError) {
-            throw new Error(`Failed to download manifest: ${manifestError.message}`);
+        let manifest: any = null;
+
+        // Only download manifest if we're not deleting it
+        if (!isDeletingManifest) {
+            // Download current remote manifest
+            const { data: manifestData, error: manifestError } = await supabase.storage
+                .from(bucket)
+                .download('sync-manifest.json');
+
+            if (manifestError) {
+                throw new Error(`Failed to download manifest: ${manifestError.message}`);
+            }
+
+            const manifestText = await manifestData.text();
+            manifest = JSON.parse(manifestText);
+        } else {
+            // If deleting manifest, we don't need to update it
+            manifest = null;
         }
-
-        const manifestText = await manifestData.text();
-        const manifest = JSON.parse(manifestText);
 
         const results = {
             deleted: [] as string[],
@@ -138,8 +178,10 @@ export async function DELETE(request: Request) {
         // Delete each file and track deletion in manifest
         for (const filePath of filePaths) {
             try {
+                console.log(`[Remote Files] Attempting to delete: ${filePath}`);
+
                 // Get the file's hash before deleting (if it exists in manifest)
-                const fileMetadata = manifest.files[filePath];
+                const fileMetadata = manifest?.files?.[filePath];
                 const fileHash = fileMetadata?.hash;
 
                 // Delete from storage
@@ -148,26 +190,32 @@ export async function DELETE(request: Request) {
                     .remove([filePath]);
 
                 if (deleteError) {
+                    console.error(`[Remote Files] Delete error for ${filePath}:`, deleteError);
                     throw deleteError;
                 }
 
-                // Mark as deleted in manifest (keep the entry with deleted flag)
-                if (manifest.files[filePath]) {
-                    manifest.files[filePath] = {
-                        ...manifest.files[filePath],
-                        deleted: true,
-                        deletedAt: new Date().toISOString(),
-                        deletedHash: fileHash // Store hash at deletion time
-                    };
-                } else {
-                    // File wasn't in manifest, add deletion marker
-                    manifest.files[filePath] = {
-                        deleted: true,
-                        deletedAt: new Date().toISOString(),
-                        hash: 'unknown',
-                        deletedHash: 'unknown',
-                        lastModified: new Date().toISOString()
-                    };
+                console.log(`[Remote Files] Successfully deleted from storage: ${filePath}`);
+
+                // Only update manifest if we have one (i.e., we're not deleting the manifest itself)
+                if (manifest) {
+                    // Mark as deleted in manifest (keep the entry with deleted flag)
+                    if (manifest.files[filePath]) {
+                        manifest.files[filePath] = {
+                            ...manifest.files[filePath],
+                            deleted: true,
+                            deletedAt: new Date().toISOString(),
+                            deletedHash: fileHash // Store hash at deletion time
+                        };
+                    } else {
+                        // File wasn't in manifest, add deletion marker
+                        manifest.files[filePath] = {
+                            deleted: true,
+                            deletedAt: new Date().toISOString(),
+                            hash: 'unknown',
+                            deletedHash: 'unknown',
+                            lastModified: new Date().toISOString()
+                        };
+                    }
                 }
 
                 results.deleted.push(filePath);
@@ -183,20 +231,24 @@ export async function DELETE(request: Request) {
             }
         }
 
-        // Upload updated manifest
-        manifest.lastSync = new Date().toISOString();
-        const { error: uploadError } = await supabase.storage
-            .from(bucket)
-            .upload('sync-manifest.json', JSON.stringify(manifest, null, 2), {
-                upsert: true,
-                contentType: 'application/json'
-            });
+        // Upload updated manifest only if we're not deleting it
+        if (manifest) {
+            manifest.lastSync = new Date().toISOString();
+            const { error: uploadError } = await supabase.storage
+                .from(bucket)
+                .upload('sync-manifest.json', JSON.stringify(manifest, null, 2), {
+                    upsert: true,
+                    contentType: 'application/json'
+                });
 
-        if (uploadError) {
-            throw new Error(`Failed to upload updated manifest: ${uploadError.message}`);
+            if (uploadError) {
+                throw new Error(`Failed to upload updated manifest: ${uploadError.message}`);
+            }
+
+            console.log(`[Remote Files] Updated manifest with ${results.deleted.length} deletions`);
+        } else {
+            console.log(`[Remote Files] Manifest was deleted, skipping manifest update`);
         }
-
-        console.log(`[Remote Files] Updated manifest with ${results.deleted.length} deletions`);
 
         return NextResponse.json({
             success: results.errors.length === 0,

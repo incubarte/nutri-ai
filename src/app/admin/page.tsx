@@ -13,7 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ShieldAlert, LogIn, SlidersHorizontal, Info, MessageSquare, CalendarCheck, Clapperboard, Download, Cloud, Loader2, RefreshCw, FileSearch, Bug, RefreshCcw, AlertTriangle } from 'lucide-react';
+import { Trash2, ShieldAlert, LogIn, SlidersHorizontal, Info, MessageSquare, CalendarCheck, Clapperboard, Download, Cloud, Loader2, RefreshCw, FileSearch, Bug, RefreshCcw, AlertTriangle, MoreVertical, Undo2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from "@/hooks/use-auth";
@@ -36,6 +36,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown } from "lucide-react";
 import { FolderFileList } from "@/components/sync/folder-file-list";
 import { RemoteFileManager } from "@/components/sync/remote-file-manager";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 // Dynamically import react-diff-viewer to avoid SSR issues
 const ReactDiffViewer = dynamic(() => import('react-diff-viewer-continued'), {
@@ -1085,61 +1092,87 @@ function SyncAnalysisCard() {
                 </div>
 
                 <div className="space-y-2">
-                    <Button
-                        onClick={handleAnalyze}
-                        disabled={isAnalyzing || isSyncing || isReloadingContext}
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
-                        {isAnalyzing ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Analizando...
-                            </>
-                        ) : (
-                            <>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Analizar Diferencias
-                            </>
-                        )}
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={handleAnalyze}
+                            disabled={isAnalyzing || isSyncing || isReloadingContext}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700"
+                        >
+                            {isAnalyzing ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Analizando...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                    Analizar Diferencias
+                                </>
+                            )}
+                        </Button>
 
-                    <Button
-                        onClick={handleReloadContext}
-                        disabled={isAnalyzing || isSyncing || isReloadingContext}
-                        variant="outline"
-                        className="w-full"
-                    >
-                        {isReloadingContext ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Recargando...
-                            </>
-                        ) : (
-                            <>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Recargar Contexto Desde Disco
-                            </>
-                        )}
-                    </Button>
-
-                    <Button
-                        onClick={handleDetectJunk}
-                        disabled={isDetectingJunk}
-                        variant="outline"
-                        className="w-full border-orange-500 text-orange-700 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950"
-                    >
-                        {isDetectingJunk ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Detectando...
-                            </>
-                        ) : (
-                            <>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Detectar Files a Borrar
-                            </>
-                        )}
-                    </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    disabled={isAnalyzing || isSyncing || isReloadingContext || isDetectingJunk}
+                                >
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={handleReloadContext} disabled={isReloadingContext}>
+                                    {isReloadingContext ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Recargando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <RefreshCw className="mr-2 h-4 w-4" />
+                                            Recargar Contexto
+                                        </>
+                                    )}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleDetectJunk} disabled={isDetectingJunk}>
+                                    {isDetectingJunk ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Detectando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Detectar Files a Borrar
+                                        </>
+                                    )}
+                                </DropdownMenuItem>
+                                {selectedCounts.upload > 0 && selectedCounts.download === 0 && selectedCounts.conflicts === 0 && selectedCounts.deleteLocal === 0 && selectedCounts.deleteRemote === 0 && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            onClick={handleRevertChanges}
+                                            disabled={isSyncing || isAnalyzing}
+                                            className="text-orange-700 dark:text-orange-400"
+                                        >
+                                            {isSyncing ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Revirtiendo...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Undo2 className="mr-2 h-4 w-4" />
+                                                    Revertir Cambios ({selectedCounts.upload})
+                                                </>
+                                            )}
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
 
                 {/* Show junk files results */}
@@ -1336,27 +1369,6 @@ function SyncAnalysisCard() {
                             </Button>
                         )}
 
-                        {/* Button to revert selected upload files */}
-                        {selectedCounts.upload > 0 && selectedCounts.download === 0 && selectedCounts.conflicts === 0 && selectedCounts.deleteLocal === 0 && selectedCounts.deleteRemote === 0 && (
-                            <Button
-                                onClick={handleRevertChanges}
-                                disabled={isSyncing || isAnalyzing}
-                                variant="outline"
-                                size="sm"
-                                className="w-full border-orange-500 text-orange-700 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950"
-                            >
-                                {isSyncing ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Revirtiendo...
-                                    </>
-                                ) : (
-                                    <>
-                                        ↩️ Revertir Cambios ({selectedCounts.upload})
-                                    </>
-                                )}
-                            </Button>
-                        )}
 
                         {plan.toUpload.length > 0 && (
                             <details open className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
