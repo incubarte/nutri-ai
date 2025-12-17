@@ -138,3 +138,30 @@ body {
 .group:hover .group-hover\:rotate-y-180 {
   transform: rotateY(180deg);
 }
+
+/* Holographic/Shimmer Effect for Top Scorer */
+@keyframes holographic-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.holographic-bg {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 215, 0, 0.3) 0%,
+    rgba(255, 237, 78, 0.25) 20%,
+    rgba(255, 107, 107, 0.2) 40%,
+    rgba(168, 230, 207, 0.25) 60%,
+    rgba(61, 193, 211, 0.3) 80%,
+    rgba(255, 215, 0, 0.3) 100%
+  );
+  background-size: 300% 300%;
+  animation: holographic-shimmer 4s ease-in-out infinite;
+}

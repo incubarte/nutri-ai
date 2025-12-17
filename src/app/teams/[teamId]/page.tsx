@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useGameState, getCategoryNameById } from "@/contexts/game-state-context";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit, Trash2, Users, Info, ListFilter, LayoutGrid, LayoutList, Shield, User, Calendar } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Users, Info, ListFilter, LayoutGrid, LayoutList, Shield, User, Calendar, Trophy } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddPlayerForm } from "@/components/teams/add-player-form";
 import { usePlayerStats } from "@/hooks/use-player-stats";
@@ -92,6 +92,20 @@ export default function ManageTeamPage() {
 
   // Get player statistics
   const playerStats = usePlayerStats(tournament, null);
+
+  // Find top scorer within this team only
+  const topScorer = useMemo(() => {
+    if (!playerStats || playerStats.length === 0 || !team) return null;
+
+    // Filter only players from this team
+    const teamPlayerStats = playerStats.filter(p => p.teamId === team.id);
+
+    if (teamPlayerStats.length === 0) return null;
+
+    return teamPlayerStats.reduce((max, player) =>
+      player.points > max.points ? player : max
+    );
+  }, [playerStats, team]);
 
   if (isLoading) {
     return <div className="text-center text-muted-foreground py-10">Cargando datos del equipo...</div>;
@@ -238,12 +252,24 @@ export default function ManageTeamPage() {
 
                 // Get player stats
                 const stats = playerStats.find(s => s.playerId === player.id);
+                const isTopScorer = topScorer && stats && stats.playerId === topScorer.playerId && topScorer.points > 0;
 
                 return (
-                  <div key={player.id} className="relative group perspective-1000">
+                  <div
+                    key={player.id}
+                    className="relative group perspective-1000 cursor-pointer"
+                    onClick={() => !isReadOnly && setEditingPlayer(player)}
+                  >
                     <div className="relative aspect-[3/4] preserve-3d transition-transform duration-500 group-hover:rotate-y-180">
                       {/* FRONT - Photo */}
-                      <div className="absolute inset-0 backface-hidden rounded-lg overflow-hidden border-2 border-primary/20 group-hover:border-primary transition-colors bg-muted">
+                      <div className={`absolute inset-0 backface-hidden rounded-lg overflow-hidden border-2 transition-colors ${isTopScorer ? 'border-amber-400' : 'border-primary/20 group-hover:border-primary'}`}>
+                      {/* Holographic background - only for top scorer */}
+                      {isTopScorer && (
+                        <div className="absolute inset-0 holographic-bg" />
+                      )}
+
+                      {/* Photo content on top of holographic background */}
+                      <div className="relative w-full h-full">
                       {currentPhotoUrl ? (
                         <Image
                           src={currentPhotoUrl}
@@ -270,28 +296,7 @@ export default function ManageTeamPage() {
                           {player.name}
                         </p>
                       </div>
-
-                      {/* Edit/Delete buttons on hover */}
-                      {!isReadOnly && (
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="h-7 w-7 bg-background/90 hover:bg-background"
-                            onClick={() => setEditingPlayer(player)}
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="icon"
-                            className="h-7 w-7 bg-destructive/90 hover:bg-destructive"
-                            onClick={() => handleRemovePlayer(player.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      )}
+                      </div>
                       </div>
 
                       {/* BACK - Stats */}
