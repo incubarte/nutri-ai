@@ -483,6 +483,12 @@ export const VoiceControls = forwardRef<VoiceControlsHandle, VoiceControlsProps>
     const playerName = event.data.playerName;
     const assists = event.data.assists || []; // Array of assist player numbers
 
+    // Get team data to find player IDs
+    const teamData = team === 'home' ? homeTeam : awayTeam;
+    const scorerPlayer = teamData?.players.find(p => p.number === playerNumber);
+    const assistPlayer1 = assists.length > 0 ? teamData?.players.find(p => p.number === assists[0]) : undefined;
+    const assistPlayer2 = assists.length > 1 ? teamData?.players.find(p => p.number === assists[1]) : undefined;
+
     // Get current game time and period
     const gameTime = state.live.clock.currentTime;
     const currentPeriod = state.live.clock.currentPeriod;
@@ -500,6 +506,7 @@ export const VoiceControls = forwardRef<VoiceControlsHandle, VoiceControlsProps>
       gameTime,
       periodText,
       scorer: {
+        playerId: scorerPlayer?.id, // Guardar ID del jugador para evitar problemas con cambios de número
         playerNumber,
         playerName
       }
@@ -508,10 +515,12 @@ export const VoiceControls = forwardRef<VoiceControlsHandle, VoiceControlsProps>
     // Add assists if present
     if (assists.length > 0) {
       goalData.assist = {
+        playerId: assistPlayer1?.id, // Guardar ID del jugador para evitar problemas con cambios de número
         playerNumber: assists[0]
       };
       if (assists.length > 1) {
         goalData.assist2 = {
+          playerId: assistPlayer2?.id, // Guardar ID del jugador para evitar problemas con cambios de número
           playerNumber: assists[1]
         };
       }

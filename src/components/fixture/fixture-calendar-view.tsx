@@ -349,6 +349,7 @@ export function FixtureCalendarView() {
                     const isFinal = isPlayoff && match.playoffType === 'final';
                     const isSemifinal = isPlayoff && match.playoffType === 'semifinal';
                     const is3erPuesto = isPlayoff && match.playoffType === '3er-puesto';
+                    const scores = hasSummary ? calculateScoreFromSummary(match.summary) : null;
 
                     const isHighlighted = filteredMatchIds ? filteredMatchIds.has(match.id) : true;
 
@@ -362,15 +363,20 @@ export function FixtureCalendarView() {
                           // Border base
                           isFinal ? "border-2 border-amber-400 dark:border-amber-500 shadow-sm" :
                           is3erPuesto ? "border-2 border-orange-400 dark:border-orange-500 shadow-sm" :
-                          "border border-border/50",
-                          // Border izquierdo para partidos jugados (siempre se aplica al final)
-                          hasSummary && "!border-l-2 !border-l-blue-400"
+                          "border border-border/50"
                         )}
                       >
                         {/* Category badge - top right corner */}
                         <div className="absolute top-0.5 right-0.5 bg-muted px-1 py-0.5 rounded text-[8px] font-semibold text-foreground leading-none">
                           {getCategoryNameById(match.categoryId, selectedTournament?.categories)?.substring(0, 8) || 'N/A'}
                         </div>
+
+                        {/* Score badge - bottom right corner */}
+                        {scores && (
+                          <div className="absolute bottom-0.5 right-0.5 text-muted-foreground px-1 py-0.5 rounded text-[9px] font-bold leading-none">
+                            {scores.home}-{scores.away}
+                          </div>
+                        )}
 
                         {isSemifinal && (
                           <div className="text-[9px] font-semibold text-blue-600 dark:text-blue-400 mb-0.5 uppercase tracking-wide">

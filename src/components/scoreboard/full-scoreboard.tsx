@@ -23,6 +23,8 @@ import { TournamentLogo } from '../tournaments/tournament-logo';
 import { PreWarmupIntro } from './pre-warmup-intro';
 import { useTournamentLogo } from '@/hooks/use-tournament-logo';
 import { PlayoffBracketPreview } from './playoff-bracket-preview';
+import { RosterPresentation } from './roster-presentation';
+import { teamHasEnoughPhotos } from '@/lib/roster-utils';
 
 const ValentinoCaffeAd = () => {
   return (
@@ -410,14 +412,70 @@ export function FullScoreboard({ className }: { className?: string }) {
   // Debug log for goal celebration
   console.log('[FullScoreboard] goalCelebration:', goalCelebration);
 
+  // Determinar si mostrar roster presentation (últimos X segundos de warmup)
+  // currentTime está en centisegundos, convertir a segundos
+  const remainingWarmupSeconds = isWarmup ? Math.floor(clock.currentTime / 100) : 0;
+  const shouldShowRosterByTime =
+    config.showRosterPresentation &&
+    isWarmup &&
+    isFixtureMatch &&
+    remainingWarmupSeconds > 0 &&
+    remainingWarmupSeconds <= config.rosterPresentationDuration;
+
+  // Verificar si los equipos tienen suficientes fotos
+  // Obtener IDs de jugadores presentes desde attendance (filtrar solo los que tienen isPresent !== false)
+  const homePresentPlayerIds = live.attendance.home
+    .filter(p => p.isPresent !== false)
+    .map(p => p.id);
+  const awayPresentPlayerIds = live.attendance.away
+    .filter(p => p.isPresent !== false)
+    .map(p => p.id);
+
+  // Debug attendance data
+  console.log('[RosterDebug - Attendance]', {
+    homeAttendance: live.attendance.home,
+    awayAttendance: live.attendance.away,
+    homePresentPlayerIds,
+    awayPresentPlayerIds,
+    homeTeamPlayers: homeTeam?.players?.length,
+    awayTeamPlayers: awayTeam?.players?.length,
+  });
+
+  const homeTeamHasPhotos = homeTeam ? teamHasEnoughPhotos(homeTeam, homePresentPlayerIds, config.rosterPresentationMinPhotoPercentage) : false;
+  const awayTeamHasPhotos = awayTeam ? teamHasEnoughPhotos(awayTeam, awayPresentPlayerIds, config.rosterPresentationMinPhotoPercentage) : false;
+
+  // Debug roster presentation
+  console.log('[RosterDebug]', {
+    isWarmup,
+    isFixtureMatch,
+    remainingWarmupSeconds,
+    showRosterPresentation: config.showRosterPresentation,
+    duration: config.rosterPresentationDuration,
+    shouldShowRosterByTime,
+    homeAttendanceCount: live.attendance.home.length,
+    awayAttendanceCount: live.attendance.away.length,
+    homeTeamHasPhotos,
+    awayTeamHasPhotos,
+    homeTeamId: homeTeam?.id,
+    awayTeamId: awayTeam?.id,
+  });
+
+  // Decidir si mostrar roster (al menos un equipo debe tener fotos, o ambos si la config lo requiere)
+  const shouldShowRosterPresentation = shouldShowRosterByTime && (
+    config.rosterPresentationShowIfOnlyOneTeam
+      ? (homeTeamHasPhotos || awayTeamHasPhotos)
+      : (homeTeamHasPhotos && awayTeamHasPhotos)
+  );
+
   // Mostrar tabla si estamos en warmup, es partido de fixture, la opción está activada Y el estado indica mostrar
-  // PERO NO si es un partido de playoffs
+  // PERO NO si es un partido de playoffs O si debemos mostrar roster
   // Si forceStandingsInWarmup está activado, siempre mostrar (para testing)
-  const shouldShowStandings = config.showStandingsInWarmup && isWarmup && isFixtureMatch && (config.forceStandingsInWarmup || showStandingsInWarmup) && !isPlayoffMatch;
+  const shouldShowStandings = config.showStandingsInWarmup && isWarmup && isFixtureMatch && (config.forceStandingsInWarmup || showStandingsInWarmup) && !isPlayoffMatch && !shouldShowRosterPresentation;
   // Mostrar bracket de playoff si estamos en warmup, es partido de playoff, la opción está activada Y el estado indica mostrar
+  // PERO NO si debemos mostrar roster
   // Si forceStandingsInWarmup está activado, siempre mostrar (para testing)
-  const shouldShowPlayoffBracket = config.showStandingsInWarmup && isWarmup && isFixtureMatch && (config.forceStandingsInWarmup || showStandingsInWarmup) && isPlayoffMatch;
-  const shouldShowWarmupDisplay = isWarmup && isFixtureMatch && !shouldShowStandings && !shouldShowPlayoffBracket;
+  const shouldShowPlayoffBracket = config.showStandingsInWarmup && isWarmup && isFixtureMatch && (config.forceStandingsInWarmup || showStandingsInWarmup) && isPlayoffMatch && !shouldShowRosterPresentation;
+  const shouldShowWarmupDisplay = isWarmup && isFixtureMatch && !shouldShowStandings && !shouldShowPlayoffBracket && !shouldShowRosterPresentation;
 
   const handleTransitionComplete = () => {
     setIsOlympiaTransitioning(false);
@@ -574,12 +632,25 @@ export function FullScoreboard({ className }: { className?: string }) {
                     transition={{ duration: 0.5, delay: 0.3 }}
                     className="h-full"
                   >
-                    {shouldShowWarmupDisplay ? (
-                      <WarmupDisplay
-                        homeLogoDataUrl={homeLogoDataUrl}
-                        awayLogoDataUrl={awayLogoDataUrl}
-                        tournamentLogoId={config.selectedTournamentId}
-                      />
+                    {shouldShowWarmupDisplay || shouldShowRosterPresentation ? (
+                      <div className="relative w-full h-full">
+                        <WarmupDisplay
+                          homeLogoDataUrl={homeLogoDataUrl}
+                          awayLogoDataUrl={awayLogoDataUrl}
+                          tournamentLogoId={config.selectedTournamentId}
+                        />
+                        {shouldShowRosterPresentation && homeTeam && awayTeam && currentTournament && (
+                          <RosterPresentation
+                            homeTeam={homeTeam}
+                            awayTeam={awayTeam}
+                            tournament={currentTournament}
+                            homePresentPlayerIds={homePresentPlayerIds}
+                            awayPresentPlayerIds={awayPresentPlayerIds}
+                            showHomeTeam={homeTeamHasPhotos}
+                            showAwayTeam={awayTeamHasPhotos}
+                          />
+                        )}
+                      </div>
                     ) : shouldShowStandings ? (
                       <WarmupDisplay
                         homeLogoDataUrl={homeLogoDataUrl}

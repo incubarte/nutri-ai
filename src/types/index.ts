@@ -152,22 +152,27 @@ export interface GoalLog {
   gameTime: number;
   periodText: string;
   scorer?: {
+    playerId?: string; // ID del jugador (para evitar problemas con cambios de número)
     playerNumber: string;
     playerName?: string;
   };
   assist?: {
+    playerId?: string; // ID del jugador (para evitar problemas con cambios de número)
     playerNumber: string;
     playerName?: string;
   };
   assist2?: {
+    playerId?: string; // ID del jugador (para evitar problemas con cambios de número)
     playerNumber: string;
     playerName?: string;
   };
   positives?: Array<{
+    playerId?: string; // ID del jugador (para evitar problemas con cambios de número)
     playerNumber: string;
     playerName?: string;
   } | null>;
   negatives?: Array<{
+    playerId?: string; // ID del jugador (para evitar problemas con cambios de número)
     playerNumber: string;
     playerName?: string;
   } | null>;
@@ -176,6 +181,7 @@ export interface GoalLog {
 export interface PenaltyLog {
   id: string;
   team: Team;
+  playerId?: string; // ID del jugador (para evitar problemas con cambios de número)
   playerNumber: string;
   playerName?: string;
   penaltyName?: string;
@@ -286,6 +292,11 @@ export interface ConfigFields { // Interface for easier picking of fields
   autoSyncAfterSummaryEdit: boolean; // Triggers after saving tournament (includes match finish + summary edits)
   enableLiveSync: boolean; // Backup: Upload live.json from local storage to Supabase when clock stops (only works in local mode)
   showPlayerPhotosInGoalCelebration: boolean; // Show player photos during goal celebrations
+  // Roster presentation configuration
+  showRosterPresentation: boolean; // Show roster presentation during last 30s of warmup
+  rosterPresentationDuration: number; // Seconds before warmup ends to start showing roster (default: 30)
+  rosterPresentationMinPhotoPercentage: number; // Minimum percentage of players with photos to enable (0.0-1.0, default: 0.5)
+  rosterPresentationShowIfOnlyOneTeam: boolean; // Show roster even if only one team meets criteria
 }
 
 // Separate type for tournaments data (stored in tournaments.json)

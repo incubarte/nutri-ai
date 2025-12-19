@@ -171,6 +171,7 @@ function AddGoalForm({ team, onGoalAdded, disabled }: { team: Team, onGoalAdded:
         gameTime: state.live.clock.currentTime,
         periodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout),
         scorer: {
+          playerId: selectedPlayer?.id, // Guardar ID del jugador para evitar problemas con cambios de número
           playerNumber: trimmedScorerNumber,
           playerName: selectedPlayer?.name,
         },
@@ -178,6 +179,7 @@ function AddGoalForm({ team, onGoalAdded, disabled }: { team: Team, onGoalAdded:
 
     if (trimmedAssistNumber) {
         payload.assist = {
+            playerId: selectedAssistPlayer?.id, // Guardar ID del jugador para evitar problemas con cambios de número
             playerNumber: trimmedAssistNumber,
             playerName: selectedAssistPlayer?.name,
         };
@@ -185,6 +187,7 @@ function AddGoalForm({ team, onGoalAdded, disabled }: { team: Team, onGoalAdded:
 
     if (trimmedAssist2Number) {
         payload.assist2 = {
+            playerId: selectedAssist2Player?.id, // Guardar ID del jugador para evitar problemas con cambios de número
             playerNumber: trimmedAssist2Number,
             playerName: selectedAssist2Player?.name,
         };
@@ -192,14 +195,22 @@ function AddGoalForm({ team, onGoalAdded, disabled }: { team: Team, onGoalAdded:
 
     // Add positives and negatives
     const positivesData = positives
-      .map((num, idx) => num.trim() ? { playerNumber: num.trim(), playerName: selectedPositivePlayers[idx]?.name } : null)
+      .map((num, idx) => num.trim() ? {
+        playerId: selectedPositivePlayers[idx]?.id,
+        playerNumber: num.trim(),
+        playerName: selectedPositivePlayers[idx]?.name
+      } : null)
       .filter(p => p !== null);
     if (positivesData.length > 0) {
       payload.positives = positivesData;
     }
 
     const negativesData = negatives
-      .map((num, idx) => num.trim() ? { playerNumber: num.trim(), playerName: selectedNegativePlayers[idx]?.name } : null)
+      .map((num, idx) => num.trim() ? {
+        playerId: selectedNegativePlayers[idx]?.id,
+        playerNumber: num.trim(),
+        playerName: selectedNegativePlayers[idx]?.name
+      } : null)
       .filter(p => p !== null);
     if (negativesData.length > 0) {
       payload.negatives = negativesData;
@@ -456,12 +467,20 @@ function EditableGoalItem({ goal }: { goal: GoalLog }) {
     if (newGameTime !== goal.gameTime) updates.gameTime = newGameTime;
     if (periodInput !== goal.periodText) updates.periodText = periodInput;
     if (trimmedScorerNumber !== goal.scorer?.playerNumber) {
-        updates.scorer = { playerNumber: trimmedScorerNumber, playerName: scorerPlayer?.name };
+        updates.scorer = {
+            playerId: scorerPlayer?.id, // Guardar ID del jugador
+            playerNumber: trimmedScorerNumber,
+            playerName: scorerPlayer?.name
+        };
     }
     if (trimmedAssistNumber !== (goal.assist?.playerNumber || '') || (!trimmedAssistNumber && goal.assist)) {
         if (trimmedAssistNumber) {
             const assistPlayer = teamData?.players.find(p => p.number === trimmedAssistNumber);
-            updates.assist = { playerNumber: trimmedAssistNumber, playerName: assistPlayer?.name };
+            updates.assist = {
+                playerId: assistPlayer?.id, // Guardar ID del jugador
+                playerNumber: trimmedAssistNumber,
+                playerName: assistPlayer?.name
+            };
         } else {
             updates.assist = undefined;
         }
@@ -469,7 +488,11 @@ function EditableGoalItem({ goal }: { goal: GoalLog }) {
     if (trimmedAssist2Number !== (goal.assist2?.playerNumber || '') || (!trimmedAssist2Number && goal.assist2)) {
         if (trimmedAssist2Number) {
             const assist2Player = teamData?.players.find(p => p.number === trimmedAssist2Number);
-            updates.assist2 = { playerNumber: trimmedAssist2Number, playerName: assist2Player?.name };
+            updates.assist2 = {
+                playerId: assist2Player?.id, // Guardar ID del jugador
+                playerNumber: trimmedAssist2Number,
+                playerName: assist2Player?.name
+            };
         } else {
             updates.assist2 = undefined;
         }

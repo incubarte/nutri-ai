@@ -13,7 +13,10 @@ export const recalculateAllStatsFromLogs = (partialSummary: Partial<{ goals: { h
 
     // Process goals and assists (use attendance for lookups if available, otherwise roster)
     (partialSummary.goals?.home || []).forEach(goal => {
-        const player = homePlayersToInit.find(p => p.number === goal.scorer?.playerNumber);
+        // Buscar por playerId primero (más confiable), luego por número como fallback
+        const player = goal.scorer?.playerId
+            ? homePlayersToInit.find(p => p.id === goal.scorer?.playerId)
+            : homePlayersToInit.find(p => p.number === goal.scorer?.playerNumber);
         if (player) {
             if (!homePlayerStatsMap.has(player.id)) {
                 // Player not in map yet, create entry
@@ -21,7 +24,9 @@ export const recalculateAllStatsFromLogs = (partialSummary: Partial<{ goals: { h
             }
             homePlayerStatsMap.get(player.id)!.goals++;
         }
-        const assist = homePlayersToInit.find(p => p.number === goal.assist?.playerNumber);
+        const assist = goal.assist?.playerId
+            ? homePlayersToInit.find(p => p.id === goal.assist?.playerId)
+            : homePlayersToInit.find(p => p.number === goal.assist?.playerNumber);
         if (assist) {
             if (!homePlayerStatsMap.has(assist.id)) {
                 homePlayerStatsMap.set(assist.id, { id: assist.id, name: assist.name, number: assist.number, shots: 0, goals: 0, assists: 0 });
@@ -30,14 +35,19 @@ export const recalculateAllStatsFromLogs = (partialSummary: Partial<{ goals: { h
         }
     });
     (partialSummary.goals?.away || []).forEach(goal => {
-        const player = awayPlayersToInit.find(p => p.number === goal.scorer?.playerNumber);
+        // Buscar por playerId primero (más confiable), luego por número como fallback
+        const player = goal.scorer?.playerId
+            ? awayPlayersToInit.find(p => p.id === goal.scorer?.playerId)
+            : awayPlayersToInit.find(p => p.number === goal.scorer?.playerNumber);
         if (player) {
             if (!awayPlayerStatsMap.has(player.id)) {
                 awayPlayerStatsMap.set(player.id, { id: player.id, name: player.name, number: player.number, shots: 0, goals: 0, assists: 0 });
             }
             awayPlayerStatsMap.get(player.id)!.goals++;
         }
-        const assist = awayPlayersToInit.find(p => p.number === goal.assist?.playerNumber);
+        const assist = goal.assist?.playerId
+            ? awayPlayersToInit.find(p => p.id === goal.assist?.playerId)
+            : awayPlayersToInit.find(p => p.number === goal.assist?.playerNumber);
         if (assist) {
             if (!awayPlayerStatsMap.has(assist.id)) {
                 awayPlayerStatsMap.set(assist.id, { id: assist.id, name: assist.name, number: assist.number, shots: 0, goals: 0, assists: 0 });

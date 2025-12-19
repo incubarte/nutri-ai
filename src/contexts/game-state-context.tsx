@@ -167,6 +167,10 @@ const getInitialState = (): GameState => {
       enableOlympiaTransition: IN_CODE_INITIAL_ENABLE_OLYMPIA_TRANSITION,
       enableLiveSync: IN_CODE_INITIAL_ENABLE_LIVE_SYNC,
       showPlayerPhotosInGoalCelebration: false,
+      showRosterPresentation: true,
+      rosterPresentationDuration: 30,
+      rosterPresentationMinPhotoPercentage: 0.5,
+      rosterPresentationShowIfOnlyOneTeam: true,
       tickIntervalMs: 200,
       scoreboardLayout: INITIAL_LAYOUT_SETTINGS,
       scoreboardLayoutProfiles: [defaultInitialLayoutProfile],
@@ -651,7 +655,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const playerDetails = teamDetails?.players.find(p => p.number === playerNumber);
 
       const newPenaltyLog: PenaltyLog = {
-        id: newPenaltyId, team, playerNumber: playerNumber.toUpperCase(), playerName: playerDetails?.name,
+        id: newPenaltyId,
+        team,
+        playerId: playerDetails?.id, // Guardar ID del jugador para evitar problemas con cambios de número
+        playerNumber: playerNumber.toUpperCase(),
+        playerName: playerDetails?.name,
         penaltyName: penaltyDef.name,
         initialDuration: penaltyDef.duration,
         reducesPlayerCount: penaltyDef.reducesPlayerCount,
@@ -2005,6 +2013,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           enableOlympiaTransition: IN_CODE_INITIAL_ENABLE_OLYMPIA_TRANSITION,
           enableLiveSync: IN_CODE_INITIAL_ENABLE_LIVE_SYNC,
           showPlayerPhotosInGoalCelebration: false,
+          showRosterPresentation: true,
+          rosterPresentationDuration: 30,
+          rosterPresentationMinPhotoPercentage: 0.5,
+          rosterPresentationShowIfOnlyOneTeam: true,
           selectedMatchCategory: '', // Resets match category
           tunnel: IN_CODE_INITIAL_TUNNEL_STATE,
           replays: IN_CODE_INITIAL_REPLAYS_SETTINGS,

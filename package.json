@@ -11,7 +11,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "migrate:tournaments": "tsx scripts/migrate-tournaments.ts",
-    "rebuild:manifest": "tsx scripts/rebuild-manifest.ts"
+    "rebuild:manifest": "tsx scripts/rebuild-manifest.ts",
+    "fix:goal-ids": "tsx scripts/fix-goal-player-ids.ts"
   },
   "dependencies": {
     "@genkit-ai/next": "^1.8.0",
