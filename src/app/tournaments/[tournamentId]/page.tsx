@@ -14,6 +14,7 @@ import { FixtureListView } from '@/components/fixture/fixture-list-view';
 import { StandingsTab } from '@/components/tournaments/standings-tab';
 import { PlayerStatsTab } from '@/components/tournaments/player-stats-tab';
 import { TodayMatchesSection } from '@/components/tournaments/today-matches-section';
+import { StaffManagementTab } from '@/components/tournaments/staff-management-tab';
 import { useTournamentLogo } from '@/hooks/use-tournament-logo';
 import Image from 'next/image';
 
@@ -42,9 +43,9 @@ export default function TournamentDetailPage() {
 
   useEffect(() => {
     const newTab = searchParams.get('tab');
-    const validTabs = ['teamsAndCategories', 'fixture', 'standings', 'playerStats'];
+    const validTabs = ['teamsAndCategories', 'staff', 'fixture', 'standings', 'playerStats'];
     if (newTab && validTabs.includes(newTab)) {
-      if (!shouldShowTeams && newTab === 'teamsAndCategories') {
+      if (!shouldShowTeams && (newTab === 'teamsAndCategories' || newTab === 'staff')) {
         setActiveTab('fixture');
       } else {
         setActiveTab(newTab);
@@ -79,14 +80,15 @@ export default function TournamentDetailPage() {
   // Calculate grid columns based on enabled tabs
   const getGridColsClass = () => {
     let cols = 2; // Fixture + Standings always present
-    if (shouldShowTeams) cols++;
+    if (shouldShowTeams) cols += 2; // Teams + Staff (Staff Metrics integrated into Estadísticas)
     if (state.config.showShotsData) cols++;
 
     // Responsive classes
     if (cols === 2) return "grid-cols-2";
     if (cols === 3) return "grid-cols-2 sm:grid-cols-3";
     if (cols === 4) return "grid-cols-2 sm:grid-cols-4";
-    return "grid-cols-2 sm:grid-cols-4"; // fallback
+    if (cols === 5) return "grid-cols-2 sm:grid-cols-3 md:grid-cols-5";
+    return "grid-cols-2 sm:grid-cols-3 md:grid-cols-5"; // fallback
   };
 
   return (
@@ -111,6 +113,7 @@ export default function TournamentDetailPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className={`grid w-full ${getGridColsClass()} gap-1`}>
           {shouldShowTeams && <TabsTrigger value="teamsAndCategories" className="text-xs sm:text-sm">Equipos</TabsTrigger>}
+          {shouldShowTeams && <TabsTrigger value="staff" className="text-xs sm:text-sm">Staff</TabsTrigger>}
           <TabsTrigger value="fixture" className="text-xs sm:text-sm">Fixture</TabsTrigger>
           <TabsTrigger value="standings" className="text-xs sm:text-sm">Tabla de Posiciones</TabsTrigger>
           {state.config.showShotsData && <TabsTrigger value="playerStats" className="text-xs sm:text-sm">Estadísticas</TabsTrigger>}
@@ -119,6 +122,12 @@ export default function TournamentDetailPage() {
         {shouldShowTeams && (
           <TabsContent value="teamsAndCategories" className="mt-6">
             <TeamsManagementTab />
+          </TabsContent>
+        )}
+
+        {shouldShowTeams && tournamentId && (
+          <TabsContent value="staff" className="mt-6">
+            <StaffManagementTab tournamentId={tournamentId} />
           </TabsContent>
         )}
 

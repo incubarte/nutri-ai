@@ -916,8 +916,16 @@ export default function ControlsPage() {
             timestamp: Date.now(),
             gameTime: currentLive.clock.currentTime,
             periodText: getActualPeriodText(currentLive.clock.currentPeriod, currentLive.clock.periodDisplayOverride, currentConfig.numberOfRegularPeriods, currentLive.shootout),
-            scorer: { playerNumber: scorerNumber, playerName: scorerPlayer?.name },
-            assist: assistNumber ? { playerNumber: assistNumber, playerName: assistPlayer?.name } : undefined,
+            scorer: {
+              playerId: scorerPlayer?.id,
+              playerNumber: scorerNumber,
+              playerName: scorerPlayer?.name
+            },
+            assist: assistNumber ? {
+              playerId: assistPlayer?.id,
+              playerNumber: assistNumber,
+              playerName: assistPlayer?.name
+            } : undefined,
           };
 
           dispatch({ type: 'ADD_GOAL', payload: goalPayload });

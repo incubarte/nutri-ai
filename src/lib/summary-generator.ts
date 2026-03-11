@@ -4,7 +4,8 @@ export const recalculateAllStatsFromLogs = (partialSummary: Partial<{ goals: { h
     const homePlayerStatsMap = new Map<string, SummaryPlayerStats>();
     const awayPlayerStatsMap = new Map<string, SummaryPlayerStats>();
 
-    // Initialize with attendance (players who actually played) if available, otherwise use roster
+    // ALWAYS use attendance data for player info (names and numbers from match state)
+    // Only use roster as fallback if attendance is completely missing (backwards compatibility)
     const homePlayersToInit = partialSummary.attendance?.home || homeTeamRoster;
     const awayPlayersToInit = partialSummary.attendance?.away || awayTeamRoster;
 
@@ -60,10 +61,18 @@ export const recalculateAllStatsFromLogs = (partialSummary: Partial<{ goals: { h
     (partialSummary.home?.homeShotsLog || []).forEach(shot => {
         if (shot.playerId) {
             if (!homePlayerStatsMap.has(shot.playerId)) {
-                // Player not in map (not in attendance), try to find in roster
-                const rosterPlayer = homeTeamRoster.find(p => p.id === shot.playerId);
-                if (rosterPlayer) {
-                    homePlayerStatsMap.set(shot.playerId, { id: rosterPlayer.id, name: rosterPlayer.name, number: rosterPlayer.number, shots: 0, goals: 0, assists: 0 });
+                // Player not in map (not in attendance)
+                // Try to find in attendance first (they might be marked as not present)
+                const attendancePlayer = partialSummary.attendance?.home?.find(p => p.id === shot.playerId);
+                if (attendancePlayer) {
+                    // Use attendance data (match-specific names/numbers)
+                    homePlayerStatsMap.set(shot.playerId, { id: attendancePlayer.id, name: attendancePlayer.name, number: attendancePlayer.number, shots: 0, goals: 0, assists: 0 });
+                } else {
+                    // Only use roster as last resort (backwards compatibility for old matches)
+                    const rosterPlayer = homeTeamRoster.find(p => p.id === shot.playerId);
+                    if (rosterPlayer) {
+                        homePlayerStatsMap.set(shot.playerId, { id: rosterPlayer.id, name: rosterPlayer.name, number: rosterPlayer.number, shots: 0, goals: 0, assists: 0 });
+                    }
                 }
             }
             if (homePlayerStatsMap.has(shot.playerId)) {
@@ -74,10 +83,18 @@ export const recalculateAllStatsFromLogs = (partialSummary: Partial<{ goals: { h
     (partialSummary.away?.awayShotsLog || []).forEach(shot => {
         if (shot.playerId) {
             if (!awayPlayerStatsMap.has(shot.playerId)) {
-                // Player not in map (not in attendance), try to find in roster
-                const rosterPlayer = awayTeamRoster.find(p => p.id === shot.playerId);
-                if (rosterPlayer) {
-                    awayPlayerStatsMap.set(shot.playerId, { id: rosterPlayer.id, name: rosterPlayer.name, number: rosterPlayer.number, shots: 0, goals: 0, assists: 0 });
+                // Player not in map (not in attendance)
+                // Try to find in attendance first (they might be marked as not present)
+                const attendancePlayer = partialSummary.attendance?.away?.find(p => p.id === shot.playerId);
+                if (attendancePlayer) {
+                    // Use attendance data (match-specific names/numbers)
+                    awayPlayerStatsMap.set(shot.playerId, { id: attendancePlayer.id, name: attendancePlayer.name, number: attendancePlayer.number, shots: 0, goals: 0, assists: 0 });
+                } else {
+                    // Only use roster as last resort (backwards compatibility for old matches)
+                    const rosterPlayer = awayTeamRoster.find(p => p.id === shot.playerId);
+                    if (rosterPlayer) {
+                        awayPlayerStatsMap.set(shot.playerId, { id: rosterPlayer.id, name: rosterPlayer.name, number: rosterPlayer.number, shots: 0, goals: 0, assists: 0 });
+                    }
                 }
             }
             if (awayPlayerStatsMap.has(shot.playerId)) {
@@ -194,33 +211,34 @@ export const generateSummaryData = (state: GameState, voiceEvents?: VoiceGameEve
         // Add shots from voice events
         console.log(`[DEBUG Summary] 🎯 Processing voice events for period ${periodText}:`, {
             totalVoiceEvents: voiceEventsForPeriod.length,
-            homeRosterCount: homeTeamRoster.length,
-            awayRosterCount: awayTeamRoster.length,
+            homeAttendanceCount: live.attendance?.home?.length || 0,
+            awayAttendanceCount: live.attendance?.away?.length || 0,
             homeStatsCount: periodData.playerStats.home.length,
             awayStatsCount: periodData.playerStats.away.length
         });
 
         voiceEventsForPeriod.forEach((event, index) => {
             const isHome = event.data.team === 'home';
-            const roster = isHome ? homeTeamRoster : awayTeamRoster;
+            // Use attendance data (match-specific) instead of roster
+            const attendanceList = isHome ? (live.attendance?.home || []) : (live.attendance?.away || []);
             const statsArray = isHome ? periodData.playerStats.home : periodData.playerStats.away;
 
             console.log(`[DEBUG Summary] 🎯 Processing voice event ${index + 1}/${voiceEventsForPeriod.length}:`, {
                 team: event.data.team,
                 playerNumber: event.data.playerNumber,
                 hasPlayerNumber: 'playerNumber' in event.data,
-                rosterSize: roster.length
+                attendanceSize: attendanceList.length
             });
 
             // Find player by number (only for shot events with playerNumber)
             if ('playerNumber' in event.data) {
-                const player = roster.find(p => p.number === event.data.playerNumber);
+                const player = attendanceList.find(p => p.number === event.data.playerNumber);
                 console.log(`[DEBUG Summary] 🎯 Player search result:`, {
                     searchingFor: event.data.playerNumber,
                     playerFound: !!player,
                     playerId: player?.id,
                     playerName: player?.name,
-                    rosterNumbers: roster.map(p => p.number).slice(0, 10) // First 10 numbers for reference
+                    attendanceNumbers: attendanceList.map(p => p.number).slice(0, 10) // First 10 numbers for reference
                 });
 
                 if (player) {
@@ -293,7 +311,10 @@ export const generateSummaryData = (state: GameState, voiceEvents?: VoiceGameEve
             };
         }
 
-        return { period: periodText, stats: periodData, goalkeeperChangesLog, periodDuration };
+        // Add period start timestamp if available
+        const startTimestamp = live.periodStartTimestamps?.[periodText];
+
+        return { period: periodText, stats: periodData, goalkeeperChangesLog, periodDuration, startTimestamp };
     });
 
     // Create the base summary object.
@@ -314,6 +335,44 @@ export const generateSummaryData = (state: GameState, voiceEvents?: VoiceGameEve
     // Include voice events in the summary for historical record
     if (voiceEvents && voiceEvents.length > 0) {
         (finalSummary as any).voiceEvents = voiceEvents;
+    }
+
+    // Include staff assignment in summary
+    if (live.assignedStaff && currentTournament?.staff) {
+        const mesaStaffInfo = live.assignedStaff.mesa
+            .map((id, index) => {
+                if (id === null) return null;
+                const staff = currentTournament.staff?.find(s => s.id === id);
+                if (!staff) return null;
+                return {
+                    id: staff.id,
+                    firstName: staff.firstName,
+                    lastName: staff.lastName,
+                    order: index + 1  // 1 = Principal, 2 = Segundo, 3 = Tercero
+                };
+            })
+            .filter((s): s is { id: string; firstName: string; lastName: string; order: number } => s !== null);
+
+        const refereesStaffInfo = live.assignedStaff.referees
+            .map((id, index) => {
+                if (id === null) return null;
+                const staff = currentTournament.staff?.find(s => s.id === id);
+                if (!staff) return null;
+                return {
+                    id: staff.id,
+                    firstName: staff.firstName,
+                    lastName: staff.lastName,
+                    order: index + 1  // 1 = Principal, 2 = Segundo, 3 = Tercero
+                };
+            })
+            .filter((s): s is { id: string; firstName: string; lastName: string; order: number } => s !== null);
+
+        if (mesaStaffInfo.length > 0 || refereesStaffInfo.length > 0) {
+            finalSummary.staff = {
+                mesa: mesaStaffInfo,
+                referees: refereesStaffInfo
+            };
+        }
     }
 
     return finalSummary;

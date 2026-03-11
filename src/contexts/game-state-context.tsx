@@ -4,7 +4,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react';
-import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, ShootoutState, ShotLog, SummaryPlayerStats, Tournament, MatchData, PeriodSummary, ReplaySettings, ShootoutAttempt, GoalkeeperChangeLog } from '@/types';
+import type { Penalty, Team, TeamData, PlayerData, CategoryData, ConfigState, LiveState, FormatAndTimingsProfile, FormatAndTimingsProfileData, ScoreboardLayoutSettings, ScoreboardLayoutProfile, GameSummary, GoalLog, PenaltyLog, PreTimeoutState, PeriodDisplayOverrideType, ClockState, ScoreState, PenaltiesState, GameState, GameAction, TunnelState, PenaltyTypeDefinition, AttendedPlayerInfo, ShootoutState, ShotLog, PlayerSubstitutionLog, SummaryPlayerStats, Tournament, MatchData, PeriodSummary, ReplaySettings, ShootoutAttempt, GoalkeeperChangeLog } from '@/types';
 import { useToast as showToast } from '@/hooks/use-toast';
 import isEqual from 'lodash.isequal';
 import { updateConfigOnServer, updateGameStateOnServer, saveTournamentOnServer } from '@/app/actions';
@@ -96,6 +96,8 @@ const INITIAL_LIVE_DATA: LiveState = {
   goals: { home: [], away: [] },
   penaltiesLog: { home: [], away: [] },
   shotsLog: { home: [], away: [] },
+  substitutionsLog: { home: [], away: [] },
+  playersOnField: { home: [], away: [] },
   attendance: { home: [], away: [] },
   goalkeeperChangesLog: { home: [], away: [] },
   homeActiveGoalkeeperId: null,
@@ -413,9 +415,18 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         periodOverride = (hasPlayedPeriods || (!isComingFromPreWarmup && state.live.clock.currentPeriod > 0)) ? 'Warm-up' : 'Pre Warm-up';
       }
 
+      // Track period start timestamps
+      const periodText = periodOverride || getPeriodText(newPeriod, numberOfRegularPeriods);
+      const updatedTimestamps = {
+        ...(state.live.periodStartTimestamps || {}),
+        [periodText]: new Date().toISOString()
+      };
+
       newState = {
         ...state, live: {
-          ...state.live, clock: {
+          ...state.live,
+          periodStartTimestamps: updatedTimestamps,
+          clock: {
             ...state.live.clock,
             currentPeriod: newPeriod,
             periodDisplayOverride: periodOverride,
@@ -625,6 +636,48 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       break;
     }
     case 'SET_PLAYER_SHOTS': {
+      break;
+    }
+    case 'PLAYER_SUBSTITUTION': {
+      const { team, playerId, playerNumber, playerName, action: substitutionAction } = action.payload;
+
+      const newSubstitutionLog: PlayerSubstitutionLog = {
+        id: safeUUID(),
+        team,
+        timestamp: Date.now(),
+        gameTime: state.live.clock.currentTime,
+        periodText: getActualPeriodText(state.live.clock.currentPeriod, state.live.clock.periodDisplayOverride, state.config.numberOfRegularPeriods, state.live.shootout),
+        playerId,
+        playerNumber,
+        playerName,
+        action: substitutionAction,
+      };
+
+      const newSubstitutionsLog = { ...state.live.substitutionsLog };
+      newSubstitutionsLog[team] = [...(newSubstitutionsLog[team] || []), newSubstitutionLog];
+
+      // Update players on field
+      const newPlayersOnField = { ...state.live.playersOnField };
+      if (substitutionAction === 'enter') {
+        // Add player to field if not already there
+        const currentOnField = newPlayersOnField[team] || [];
+        if (!currentOnField.includes(playerId)) {
+          newPlayersOnField[team] = [...currentOnField, playerId];
+        }
+      } else {
+        // Remove player from field
+        const currentOnField = newPlayersOnField[team] || [];
+        newPlayersOnField[team] = currentOnField.filter(id => id !== playerId);
+      }
+
+      newState = {
+        ...state,
+        live: {
+          ...state.live,
+          substitutionsLog: newSubstitutionsLog,
+          playersOnField: newPlayersOnField,
+        }
+      };
       break;
     }
     case 'FINISH_GAME_WITH_OT_GOAL': {
@@ -1873,6 +1926,74 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
       break;
     }
+    case 'ADD_STAFF_TO_TOURNAMENT': {
+      const { tournamentId, staff } = action.payload;
+      const staffId = staff.id || safeUUID();
+      newState = {
+        ...state,
+        config: {
+          ...state.config,
+          tournaments: state.config.tournaments.map(t =>
+            t.id === tournamentId
+              ? { ...t, staff: [...(t.staff || []), { ...staff, id: staffId }] }
+              : t
+          ),
+        },
+      };
+      toastMessage = {
+        title: "Staff Agregado",
+        description: `${staff.firstName} ${staff.lastName} ha sido agregado.`
+      };
+      break;
+    }
+    case 'UPDATE_STAFF_IN_TOURNAMENT': {
+      const { tournamentId, staffId, updates } = action.payload;
+      newState = {
+        ...state,
+        config: {
+          ...state.config,
+          tournaments: state.config.tournaments.map(t =>
+            t.id === tournamentId
+              ? {
+                ...t,
+                staff: (t.staff || []).map(s =>
+                  s.id === staffId ? { ...s, ...updates } : s
+                ),
+              }
+              : t
+          ),
+        },
+      };
+      toastMessage = { title: "Staff Actualizado" };
+      break;
+    }
+    case 'REMOVE_STAFF_FROM_TOURNAMENT': {
+      const { tournamentId, staffId } = action.payload;
+      newState = {
+        ...state,
+        config: {
+          ...state.config,
+          tournaments: state.config.tournaments.map(t =>
+            t.id === tournamentId
+              ? { ...t, staff: (t.staff || []).filter(s => s.id !== staffId) }
+              : t
+          ),
+        },
+      };
+      toastMessage = { title: "Staff Eliminado" };
+      break;
+    }
+    case 'SET_MATCH_STAFF': {
+      const { assignment } = action.payload;
+      newState = {
+        ...state,
+        live: {
+          ...state.live,
+          assignedStaff: assignment,
+        },
+      };
+      break;
+    }
     case 'SET_TEAM_ATTENDANCE': {
       const { team, playerIds } = action.payload;
       const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
@@ -1903,6 +2024,31 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
             [team]: attendedPlayerInfo,
           },
         },
+      };
+      break;
+    }
+    case 'UPDATE_ATTENDANCE_PLAYER': {
+      const { team, playerId, updates } = action.payload;
+
+      newState = {
+        ...state,
+        live: {
+          ...state.live,
+          attendance: {
+            ...state.live.attendance,
+            [team]: state.live.attendance[team].map(player =>
+              player.id === playerId
+                ? { ...player, ...updates }
+                : player
+            ),
+          },
+        },
+      };
+
+      const updatedPlayer = newState.live.attendance[team].find(p => p.id === playerId);
+      toastMessage = {
+        title: "Jugador Actualizado",
+        description: `${updatedPlayer?.name || 'Jugador'} actualizado${updates.number ? ` a #${updates.number}` : ''}`
       };
       break;
     }

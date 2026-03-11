@@ -24,8 +24,8 @@ export function PlayersControlCard({ team, teamName }: PlayersControlCardProps) 
 
   // Get team data
   const teamData = useMemo(() => {
-    const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
-    if (!selectedTournament) return null;
+    const selectedTournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
+    if (!selectedTournament || !selectedTournament.teams) return null;
 
     const teamNameToMatch = state.live[`${team}TeamName`];
     const teamSubNameToMatch = state.live[`${team}TeamSubName`];
@@ -161,20 +161,14 @@ export function PlayersControlCard({ team, teamName }: PlayersControlCardProps) 
       return;
     }
 
-    if (!teamData) return;
-
+    // Update attendance only (match state), not team roster
     dispatch({
-      type: 'UPDATE_PLAYER_IN_TEAM',
+      type: 'UPDATE_ATTENDANCE_PLAYER',
       payload: {
-        teamId: teamData.id,
+        team,
         playerId,
         updates: { number: newNumber }
       }
-    });
-
-    toast({
-      title: "Número Actualizado",
-      description: `Número de camiseta actualizado a ${newNumber || '(sin número)'}`
     });
 
     setEditingNumbers(prev => {

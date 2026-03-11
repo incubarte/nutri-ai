@@ -131,7 +131,11 @@ export async function writeTournament(tournament: Tournament): Promise<void> {
     const fixtureKey = `${tournamentPrefix}fixture.json`;
 
     try {
-        const teamsData = { categories: tournament.categories || [], teams: tournament.teams || [] };
+        const teamsData = {
+            categories: tournament.categories || [],
+            teams: tournament.teams || [],
+            staff: tournament.staff || []
+        };
         const fixtureMatches: Omit<MatchData, 'summary'>[] = [];
 
         // NOTE: We do NOT write summaries here anymore

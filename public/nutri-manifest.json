@@ -1,0 +1,30 @@
+{
+    "name": "NutriAI - Asistente Nutricional",
+    "short_name": "NutriAI",
+    "description": "Tu asistente nutricional con IA: calculá tus macros, registrá comidas por voz y foto, y seguí tu progreso.",
+    "start_url": "/nutri",
+    "display": "standalone",
+    "orientation": "portrait",
+    "theme_color": "#0d1117",
+    "background_color": "#0d1117",
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "health",
+        "fitness",
+        "food"
+    ],
+    "lang": "es"
+}

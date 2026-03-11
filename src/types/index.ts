@@ -64,6 +64,27 @@ export interface TeamData {
   category: string;
 }
 
+export type StaffRole = 'mesa' | 'referee';
+
+export interface StaffMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  roles: StaffRole[];  // Can have both roles
+}
+
+export interface MatchStaffAssignment {
+  mesa: (string | null)[];  // Staff IDs assigned to mesa [required, optional, optional]
+  referees: (string | null)[];  // Staff IDs assigned as referees [required, optional, optional]
+}
+
+export interface AssignedStaffInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  order: number;  // 1 = Principal, 2 = Segundo, 3 = Tercero
+}
+
 export interface Tournament {
   id: string;
   name: string;
@@ -71,6 +92,7 @@ export interface Tournament {
   teams: TeamData[];
   categories: CategoryData[];
   matches: MatchData[];
+  staff?: StaffMember[];  // Optional for backwards compatibility
 }
 
 export interface CategoryData {
@@ -218,6 +240,18 @@ export interface AttendedPlayerInfo {
   isPresent?: boolean; // Whether the player is actually present (optional for backwards compatibility, defaults to true if not set)
 }
 
+export interface PlayerSubstitutionLog {
+  id: string;
+  team: Team;
+  timestamp: number; // Wall clock timestamp
+  gameTime: number; // Game time in centiseconds
+  periodText: string; // Period when the substitution occurred
+  playerId: string;
+  playerNumber: string;
+  playerName?: string;
+  action: 'enter' | 'exit'; // 'enter' = player enters the field, 'exit' = player exits the field
+}
+
 export interface GoalkeeperChangeLog {
   timestamp: number; // Wall clock timestamp
   gameTime: number; // Game time in centiseconds
@@ -238,6 +272,7 @@ export interface PeriodSummary {
   stats: PeriodStats;
   goalkeeperChangesLog?: { home: GoalkeeperChangeLog[], away: GoalkeeperChangeLog[] };
   periodDuration?: number; // Duration of the period in centiseconds
+  startTimestamp?: string; // ISO timestamp when period started
 }
 
 // This is the model for post-game summaries. It should be self-contained.
@@ -250,6 +285,10 @@ export interface GameSummary {
   statsByPeriod?: PeriodSummary[];
   overTimeOrShootouts?: boolean;
   playedPeriods: string[];
+  staff?: {
+    mesa: AssignedStaffInfo[];
+    referees: AssignedStaffInfo[];
+  };
 }
 
 
@@ -511,6 +550,8 @@ export interface LiveState {
   goals: { home: GoalLog[], away: GoalLog[] };
   penaltiesLog: { home: PenaltyLog[], away: PenaltyLog[] };
   shotsLog: { home: ShotLog[], away: ShotLog[] };
+  substitutionsLog: { home: PlayerSubstitutionLog[], away: PlayerSubstitutionLog[] }; // Log of player substitutions
+  playersOnField: { home: string[], away: string[] }; // IDs of players currently on the field
   attendance: { home: AttendedPlayerInfo[], away: AttendedPlayerInfo[] };
   goalkeeperChangesLog: { home: GoalkeeperChangeLog[], away: GoalkeeperChangeLog[] }; // Log of goalkeeper changes during the match
   homeActiveGoalkeeperId: string | null; // ID of the currently active home goalkeeper
@@ -546,6 +587,8 @@ export interface LiveState {
   } | null;
   matchId: string | null;
   playedPeriods: string[];
+  assignedStaff?: MatchStaffAssignment;  // Staff assigned to this match
+  periodStartTimestamps?: Record<string, string>;  // Period name -> ISO timestamp when it started
 }
 
 export interface LiveGameState extends LiveState {
@@ -607,6 +650,8 @@ export type GameAction =
   | { type: 'EDIT_GOAL'; payload: { goalId: string; updates: Partial<GoalLog> } }
   | { type: 'DELETE_GOAL'; payload: { goalId: string } }
   | { type: 'ADD_PLAYER_SHOT'; payload: { team: Team; playerNumber: string } }
+  | { type: 'REMOVE_SHOT'; payload: { team: Team; shotIndex: number } }
+  | { type: 'PLAYER_SUBSTITUTION'; payload: { team: Team; playerId: string; playerNumber: string; playerName?: string; action: 'enter' | 'exit' } }
   | { type: 'FINISH_GAME_WITH_OT_GOAL'; payload: Omit<GoalLog, 'id'> }
   | { type: 'ADD_PENALTY'; payload: { team: Team; penalty: { playerNumber: string; penaltyTypeId: string; }, addGameTime?: number, addPeriodText?: string } }
   | { type: 'REMOVE_PENALTY'; payload: { team: Team; penaltyId: string } }
@@ -677,6 +722,11 @@ export type GameAction =
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number' | 'photoFileName'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } }
+  | { type: 'UPDATE_ATTENDANCE_PLAYER'; payload: { team: Team; playerId: string; updates: Partial<Pick<AttendedPlayerInfo, 'name' | 'number'>> } }
+  | { type: 'ADD_STAFF_TO_TOURNAMENT'; payload: { tournamentId: string; staff: Omit<StaffMember, 'id'> & { id?: string } } }
+  | { type: 'UPDATE_STAFF_IN_TOURNAMENT'; payload: { tournamentId: string; staffId: string; updates: Partial<Omit<StaffMember, 'id'>> } }
+  | { type: 'REMOVE_STAFF_FROM_TOURNAMENT'; payload: { tournamentId: string; staffId: string } }
+  | { type: 'SET_MATCH_STAFF'; payload: { assignment: MatchStaffAssignment } }
   | { type: 'SET_PLAYER_SHOTS'; payload: { team: Team; playerId: string; periodText: string; shotCount: number } };
 
 

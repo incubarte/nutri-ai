@@ -7,11 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Info, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePlayerStats } from '@/hooks/use-player-stats';
 import { useGoalkeeperStats } from '@/hooks/use-goalkeeper-stats';
+import { useRefereeStats, useMesaStats } from '@/hooks/use-staff-stats';
+import type { StaffMatchStats } from '@/hooks/use-staff-stats';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Flag, Users } from 'lucide-react';
 
 const ALL_CATEGORIES = "__ALL__";
 
@@ -29,6 +32,8 @@ export function PlayerStatsTab() {
 
   const playerStats = usePlayerStats(selectedTournament, categoryFilter === ALL_CATEGORIES ? null : categoryFilter);
   const goalkeeperStats = useGoalkeeperStats(selectedTournament, categoryFilter === ALL_CATEGORIES ? null : categoryFilter);
+  const refereeStats = useRefereeStats(selectedTournament, categoryFilter === ALL_CATEGORIES ? undefined : categoryFilter);
+  const mesaStats = useMesaStats(selectedTournament, categoryFilter === ALL_CATEGORIES ? undefined : categoryFilter);
 
   const toggleGoalkeeperExpanded = (playerId: string) => {
     setExpandedGoalkeepers(prev => {
@@ -78,9 +83,10 @@ export function PlayerStatsTab() {
 
       {/* Tabs for Players and Goalkeepers */}
       <Tabs value={activeStatsTab} onValueChange={setActiveStatsTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="players">Jugadores</TabsTrigger>
           <TabsTrigger value="goalkeepers">Arqueros</TabsTrigger>
+          <TabsTrigger value="staff">Staff</TabsTrigger>
         </TabsList>
 
         {/* Players Tab */}
@@ -103,6 +109,7 @@ export function PlayerStatsTab() {
                     <TableHead className="text-center">G</TableHead>
                     <TableHead className="text-center">A</TableHead>
                     <TableHead className="text-center">Tiros</TableHead>
+                    <TableHead className="text-center">Efect. %</TableHead>
                     <TableHead className="text-center"># Pen.</TableHead>
                     <TableHead className="text-center">T. Pen. (min)</TableHead>
                     <TableHead className="text-center font-bold">Puntos</TableHead>
@@ -118,6 +125,7 @@ export function PlayerStatsTab() {
                       <TableCell className="text-center font-mono">{stat.goals}</TableCell>
                       <TableCell className="text-center font-mono">{stat.assists}</TableCell>
                       <TableCell className="text-center font-mono">{stat.shots}</TableCell>
+                      <TableCell className="text-center font-mono text-primary font-semibold">{stat.shootingPercentage}%</TableCell>
                       <TableCell className="text-center font-mono">{stat.penaltyCount}</TableCell>
                       <TableCell className="text-center font-mono">{stat.penaltyMinutes}</TableCell>
                       <TableCell className="text-center font-bold text-lg">{stat.points}</TableCell>
@@ -125,7 +133,7 @@ export function PlayerStatsTab() {
                   ))}
                   {playerStats.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={10} className="h-24 text-center">No hay estadísticas para mostrar.</TableCell>
+                      <TableCell colSpan={11} className="h-24 text-center">No hay estadísticas para mostrar.</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -253,6 +261,109 @@ export function PlayerStatsTab() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Staff Tab */}
+        <TabsContent value="staff" className="mt-6 space-y-6">
+          {!selectedTournament.staff || selectedTournament.staff.length === 0 ? (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center text-muted-foreground">
+                  No hay staff registrado en este torneo. Agrega staff desde la pestaña "Staff".
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Referee Stats Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Flag className="h-5 w-5" />
+                    Estadísticas de Árbitros
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {refereeStats.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      No hay datos disponibles{categoryFilter !== ALL_CATEGORIES ? " para la categoría seleccionada" : ""}.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nombre</TableHead>
+                            <TableHead className="text-center">Partidos</TableHead>
+                            <TableHead className="text-center">Principal/2º</TableHead>
+                            <TableHead className="text-center">3º</TableHead>
+                            <TableHead className="text-center">Goles</TableHead>
+                            <TableHead className="text-center">Faltas</TableHead>
+                            <TableHead className="text-center">Goles/Partido</TableHead>
+                            <TableHead className="text-center">Faltas/Partido</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {refereeStats.map((stat) => (
+                            <TableRow key={stat.staffId}>
+                              <TableCell className="font-medium">{stat.staffName}</TableCell>
+                              <TableCell className="text-center">{stat.totalMatches}</TableCell>
+                              <TableCell className="text-center">{stat.asPrincipal + stat.asSecond}</TableCell>
+                              <TableCell className="text-center">{stat.asThird}</TableCell>
+                              <TableCell className="text-center">{stat.totalGoals}</TableCell>
+                              <TableCell className="text-center">{stat.totalPenalties}</TableCell>
+                              <TableCell className="text-center">{stat.avgGoalsPerMatch.toFixed(1)}</TableCell>
+                              <TableCell className="text-center">{stat.avgPenaltiesPerMatch.toFixed(1)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Mesa Stats Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Estadísticas de Mesa
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {mesaStats.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      No hay datos disponibles{categoryFilter !== ALL_CATEGORIES ? " para la categoría seleccionada" : ""}.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nombre</TableHead>
+                            <TableHead className="text-center">Partidos</TableHead>
+                            <TableHead className="text-center">Principal</TableHead>
+                            <TableHead className="text-center">2º/3º</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {mesaStats.map((stat) => (
+                            <TableRow key={stat.staffId}>
+                              <TableCell className="font-medium">{stat.staffName}</TableCell>
+                              <TableCell className="text-center">{stat.totalMatches}</TableCell>
+                              <TableCell className="text-center">{stat.asPrincipal}</TableCell>
+                              <TableCell className="text-center">{stat.asSecond + stat.asThird}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
       </Tabs>
     </div>

@@ -42,12 +42,15 @@ export const TodayMatchesSection: React.FC<TodayMatchesSectionProps> = ({ tourna
   const liveMatch = useMemo(() => {
     // Check if there's a live match (matchId in live state matches one of today's matches)
     if (!state.live.matchId) return null;
-    return todayMatches.find(m => m.id === state.live.matchId);
+    const match = todayMatches.find(m => m.id === state.live.matchId);
+    // Only consider it live if it doesn't have a summary (not finished yet)
+    if (match && match.summary) return null;
+    return match;
   }, [state.live.matchId, todayMatches]);
 
   const finishedMatches = useMemo(() => {
-    return todayMatches.filter(m => m.summary && m.id !== state.live.matchId);
-  }, [todayMatches, state.live.matchId]);
+    return todayMatches.filter(m => m.summary);
+  }, [todayMatches]);
 
   const getTeamName = (teamId: string | undefined) => {
     if (!teamId) return 'TBD';

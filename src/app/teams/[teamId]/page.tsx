@@ -320,8 +320,15 @@ export default function ManageTeamPage() {
                               </div>
                               <div className="space-y-1 text-[9px]">
                                 <div className="flex justify-between px-1.5 py-1 bg-background/30 rounded">
-                                  <span className="text-muted-foreground">Tiros</span>
-                                  <span className="font-semibold">{stats.shots}</span>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-muted-foreground">Tiros</span>
+                                    <span className="font-semibold">{stats.shots}</span>
+                                  </div>
+                                  {stats.shots > 0 && (
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-primary font-semibold">{stats.shootingPercentage}%</span>
+                                    </div>
+                                  )}
                                 </div>
                                 {stats.penaltyCount > 0 && (
                                   <div className="flex justify-between px-1.5 py-1 bg-orange-100 dark:bg-orange-950 rounded">

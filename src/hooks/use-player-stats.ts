@@ -14,6 +14,7 @@ interface PlayerStats {
   assists: number;
   points: number;
   shots: number;
+  shootingPercentage: number;
   penaltyCount: number;
   penaltyMinutes: number;
 }
@@ -48,6 +49,7 @@ export function usePlayerStats(tournament: Tournament | null | undefined, catego
                         assists: 0,
                         points: 0,
                         shots: 0,
+                        shootingPercentage: 0,
                         penaltyCount: 0,
                         penaltyMinutes: 0
                     });
@@ -67,23 +69,32 @@ export function usePlayerStats(tournament: Tournament | null | undefined, catego
 
                 // Process goals and assists
                 (period.stats.goals[teamStr as 'home' | 'away'] || []).forEach(goal => {
-                    const scorer = team.players.find(p => p.number === goal.scorer?.playerNumber);
-                    if (scorer && statsMap.has(scorer.id)) {
-                        statsMap.get(scorer.id)!.goals++;
+                    // Only use playerId - no fallback to number to avoid mismatches
+                    if (goal.scorer?.playerId) {
+                        const scorer = team.players.find(p => p.id === goal.scorer?.playerId);
+                        if (scorer && statsMap.has(scorer.id)) {
+                            statsMap.get(scorer.id)!.goals++;
+                        }
                     }
-                    const assist = team.players.find(p => p.number === goal.assist?.playerNumber);
-                    if (assist && statsMap.has(assist.id)) {
-                        statsMap.get(assist.id)!.assists++;
+                    // Only use playerId for assist - no fallback to number
+                    if (goal.assist?.playerId) {
+                        const assist = team.players.find(p => p.id === goal.assist?.playerId);
+                        if (assist && statsMap.has(assist.id)) {
+                            statsMap.get(assist.id)!.assists++;
+                        }
                     }
                 });
 
                 // Process penalties
                  (period.stats.penalties[teamStr as 'home' | 'away'] || []).forEach(penalty => {
-                    const player = team.players.find(p => p.number === penalty.playerNumber);
-                     if (player && statsMap.has(player.id)) {
-                        const stat = statsMap.get(player.id)!;
-                        stat.penaltyCount++;
-                        stat.penaltyMinutes += (penalty.initialDuration || 0) / 60;
+                    // Only use playerId - no fallback to number to avoid mismatches
+                    if (penalty.playerId) {
+                        const player = team.players.find(p => p.id === penalty.playerId);
+                        if (player && statsMap.has(player.id)) {
+                            const stat = statsMap.get(player.id)!;
+                            stat.penaltyCount++;
+                            stat.penaltyMinutes += (penalty.initialDuration || 0) / 60;
+                        }
                     }
                 });
 
@@ -98,10 +109,11 @@ export function usePlayerStats(tournament: Tournament | null | undefined, catego
         });
     });
 
-    // Calculate points and create array
+    // Calculate points, shooting percentage and create array
     const statsArray = Array.from(statsMap.values()).map(stat => ({
       ...stat,
       points: (stat.goals * 2) + stat.assists,
+      shootingPercentage: stat.shots > 0 ? Math.round((stat.goals / stat.shots) * 100) : 0,
       penaltyMinutes: Math.round(stat.penaltyMinutes),
     }));
 
