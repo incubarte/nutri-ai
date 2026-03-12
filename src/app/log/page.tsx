@@ -165,7 +165,7 @@ export default function NutriLogPage() {
         }
 
         localStorage.setItem(`nutri_log_${key}`, JSON.stringify(dayLog));
-        router.push('/nutri/dashboard');
+        router.push('/');
     };
 
     const resetView = () => {

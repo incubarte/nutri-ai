@@ -122,7 +122,7 @@ export default function NutriSetupPage() {
             const macros = await res.json();
             localStorage.setItem('nutri_profile', JSON.stringify(profile));
             localStorage.setItem('nutri_macros', JSON.stringify(macros));
-            router.push('/nutri/dashboard');
+            router.push('/');
         } catch {
             showToast('❌ Error al calcular. Intentá de nuevo.');
             setLoading(false);

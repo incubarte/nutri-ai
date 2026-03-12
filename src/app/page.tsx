@@ -117,7 +117,7 @@ export default function NutriDashboard() {
 
     useEffect(() => {
         const profileRaw = localStorage.getItem('nutri_profile');
-        if (!profileRaw) { router.push('/nutri/setup'); return; }
+        if (!profileRaw) { router.push('/setup'); return; }
         const macrosRaw = localStorage.getItem('nutri_macros');
         if (macrosRaw) setMacros(JSON.parse(macrosRaw));
 
@@ -252,7 +252,7 @@ export default function NutriDashboard() {
                     <div className="nutri-topbar-date">
                         {today.getDate()} {MONTHS_ES[today.getMonth()]} · {DAYS_ES[today.getDay()]}
                     </div>
-                    <button id="btn-profile" onClick={() => router.push('/nutri/setup')}
+                    <button id="btn-profile" onClick={() => router.push('/setup')}
                         style={{ background: 'transparent', border: 'none', fontSize: 22, cursor: 'pointer', padding: 4 }}>⚙️</button>
                 </div>
             </div>
@@ -425,7 +425,7 @@ export default function NutriDashboard() {
                                         <div className="nutri-empty-icon">🍽️</div>
                                         <div className="nutri-empty-title">Día sin comidas</div>
                                         <div className="nutri-empty-desc">Empezamos a trackear hoy?</div>
-                                        <button className="nutri-btn nutri-btn-primary" style={{ marginTop: 10 }} onClick={() => router.push('/nutri/log')}>🎙️ Registrar ahora</button>
+                                        <button className="nutri-btn nutri-btn-primary" style={{ marginTop: 10 }} onClick={() => router.push('/log')}>🎙️ Registrar ahora</button>
                                     </div>
                                 ) : (
                                     <div className="nutri-meal-list">
@@ -541,8 +541,8 @@ export default function NutriDashboard() {
             <div className="nutri-bottom-nav">
                 <div className="nutri-bottom-nav-inner">
                     <button className={`nutri-nav-item ${tab === 'day' ? 'active' : ''}`} onClick={() => setTab('day')}>🏠 <span className="nutri-nav-item-label">Inicio</span></button>
-                    <button className="nutri-nav-fab" onClick={() => router.push('/nutri/log')}><div className="nutri-nav-fab-btn">+</div><span className="nutri-nav-fab-label">Registrar</span></button>
-                    <button className="nutri-nav-item" onClick={() => router.push('/nutri/setup')}>👤 <span className="nutri-nav-item-label">Perfil</span></button>
+                    <button className="nutri-nav-fab" onClick={() => router.push('/log')}><div className="nutri-nav-fab-btn">+</div><span className="nutri-nav-fab-label">Registrar</span></button>
+                    <button className="nutri-nav-item" onClick={() => router.push('/setup')}>👤 <span className="nutri-nav-item-label">Perfil</span></button>
                 </div>
             </div>
         </div>

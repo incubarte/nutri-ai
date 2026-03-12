@@ -2,7 +2,7 @@
     "name": "NutriAI",
     "short_name": "NutriAI",
     "description": "Tu asistente de nutrición inteligente",
-    "start_url": "/nutri/dashboard",
+    "start_url": "/",
     "display": "standalone",
     "background_color": "#0d1117",
     "theme_color": "#0d1117",
