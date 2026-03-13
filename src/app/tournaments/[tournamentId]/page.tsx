@@ -121,7 +121,7 @@ export default function TournamentDetailPage() {
 
         {shouldShowTeams && (
           <TabsContent value="teamsAndCategories" className="mt-6">
-            <TeamsManagementTab />
+            <TeamsManagementTab tournamentId={tournamentId} />
           </TabsContent>
         )}
 
@@ -138,19 +138,19 @@ export default function TournamentDetailPage() {
               <TabsTrigger value="list">Vista Lista</TabsTrigger>
             </TabsList>
             <TabsContent value="calendar" className="mt-6">
-              <FixtureCalendarView />
+              <FixtureCalendarView tournamentId={tournamentId} />
             </TabsContent>
             <TabsContent value="list" className="mt-6">
-              <FixtureListView />
+              <FixtureListView tournamentId={tournamentId} />
             </TabsContent>
           </Tabs>
         </TabsContent>
         <TabsContent value="standings" className="mt-6">
-          <StandingsTab />
+          <StandingsTab tournamentId={tournamentId} />
         </TabsContent>
         {state.config.showShotsData && (
           <TabsContent value="playerStats" className="mt-6">
-            <PlayerStatsTab />
+            <PlayerStatsTab tournamentId={tournamentId} />
           </TabsContent>
         )}
       </Tabs>

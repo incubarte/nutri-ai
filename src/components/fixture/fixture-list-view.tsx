@@ -92,9 +92,10 @@ interface FixtureListViewProps {
   teamFilter?: string; // Optional team ID to filter matches
   hideFilters?: boolean; // Hide filter controls
   hideTitle?: boolean; // Hide title
+  tournamentId?: string; // Tournament ID to display
 }
 
-export function FixtureListView({ teamFilter, hideFilters = false, hideTitle = false }: FixtureListViewProps = {}) {
+export function FixtureListView({ teamFilter, hideFilters = false, hideTitle = false, tournamentId }: FixtureListViewProps = {}) {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -102,7 +103,7 @@ export function FixtureListView({ teamFilter, hideFilters = false, hideTitle = f
   const { selectedTournamentId, tournaments } = state.config;
 
   const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
-  
+
   const [isAddEditDialogOpen, setIsAddEditDialogOpen] = useState(false);
   const [matchToEdit, setMatchToEdit] = useState<MatchData | null>(null);
   const [matchToDelete, setMatchToDelete] = useState<MatchData | null>(null);
@@ -127,9 +128,12 @@ export function FixtureListView({ teamFilter, hideFilters = false, hideTitle = f
     }
   }, [searchParams]);
 
+  // Use tournamentId prop if provided, otherwise fall back to selectedTournamentId from state
+  const activeTournamentId = tournamentId || selectedTournamentId;
+
   const selectedTournament = useMemo(() => {
-    return tournaments.find(t => t.id === selectedTournamentId);
-  }, [tournaments, selectedTournamentId]);
+    return tournaments.find(t => t.id === activeTournamentId);
+  }, [tournaments, activeTournamentId]);
 
   const sortedMatches = useMemo(() => {
     if (!selectedTournament?.matches) return [];
@@ -187,14 +191,14 @@ export function FixtureListView({ teamFilter, hideFilters = false, hideTitle = f
   };
   
   const handleDeleteMatch = async () => {
-    if (isReadOnly || !matchToDelete || !selectedTournamentId) return;
+    if (isReadOnly || !matchToDelete || !activeTournamentId) return;
 
     try {
       // Move summary to deleted-matches folder (server-side)
-      await deleteMatchWithSummary(selectedTournamentId, matchToDelete.id);
+      await deleteMatchWithSummary(activeTournamentId, matchToDelete.id);
 
       // Update state
-      dispatch({ type: 'DELETE_MATCH_FROM_TOURNAMENT', payload: { tournamentId: selectedTournamentId, matchId: matchToDelete.id }});
+      dispatch({ type: 'DELETE_MATCH_FROM_TOURNAMENT', payload: { tournamentId: activeTournamentId, matchId: matchToDelete.id }});
       toast({ title: 'Partido Eliminado', description: 'El partido ha sido eliminado del fixture.' });
     } catch (error) {
       console.error('[DELETE_MATCH] Error:', error);
@@ -205,14 +209,14 @@ export function FixtureListView({ teamFilter, hideFilters = false, hideTitle = f
   };
 
   const handleCleanMatch = async () => {
-    if (isReadOnly || !matchToClean || !selectedTournamentId) return;
+    if (isReadOnly || !matchToClean || !activeTournamentId) return;
 
     try {
       // Move summary to deleted-summaries folder (server-side)
-      await cleanMatchSummary(selectedTournamentId, matchToClean.id);
+      await cleanMatchSummary(activeTournamentId, matchToClean.id);
 
       // Update state
-      dispatch({ type: 'CLEAN_MATCH_SUMMARY', payload: { tournamentId: selectedTournamentId, matchId: matchToClean.id }});
+      dispatch({ type: 'CLEAN_MATCH_SUMMARY', payload: { tournamentId: activeTournamentId, matchId: matchToClean.id }});
       toast({ title: 'Partido Limpiado', description: 'El resumen del partido ha sido eliminado.' });
     } catch (error) {
       console.error('[CLEAN_MATCH] Error:', error);

@@ -561,13 +561,20 @@ const PlayoffBracket = ({ categoryName, categoryId, tournament }: { categoryName
     );
 };
 
-export function StandingsTab() {
+interface StandingsTabProps {
+    tournamentId?: string;
+}
+
+export function StandingsTab({ tournamentId }: StandingsTabProps = {}) {
     const { state } = useGameState();
     const { tournaments, selectedTournamentId } = state.config;
 
+    // Use tournamentId prop if provided, otherwise fall back to selectedTournamentId from state
+    const activeTournamentId = tournamentId || selectedTournamentId;
+
     const selectedTournament = useMemo(() => {
-        return (tournaments || []).find(t => t.id === selectedTournamentId);
-    }, [tournaments, selectedTournamentId]);
+        return (tournaments || []).find(t => t.id === activeTournamentId);
+    }, [tournaments, activeTournamentId]);
 
     const categoriesWithTeams = useMemo(() => {
         if (!selectedTournament) return [];

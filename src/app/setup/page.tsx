@@ -1,471 +1,596 @@
-'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+"use client";
 
-interface Profile {
-    gender: 'male' | 'female' | 'other';
-    age: number;
-    weight: number;
-    height: number;
-    activityLevel: number;
-    goal: string;
-    apiKey?: string;
-}
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useGameState, type FormatAndTimingsProfileData } from '@/contexts/game-state-context';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import type { TeamData, MatchData } from '@/types';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Check, ChevronsUpDown, CalendarCheck, ArrowLeft, AlertTriangle, Calendar as CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DurationSettingsCard } from '@/components/config/duration-settings-card';
+import { PenaltySettingsCard } from '@/components/config/penalty-settings-card';
+import { StoppedTimeAlertCard } from '@/components/config/stopped-time-alert-card';
+import { isToday, format, isSameDay } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { generateMatchId } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+import { clearVoiceEventsOnServer } from '@/app/actions';
+import { StaffSelector } from '@/components/setup/staff-selector';
+import type { MatchStaffAssignment } from '@/types';
 
-const GOALS = [
-    { id: 'weight_loss', icon: '🔥', label: 'Bajar\nde peso' },
-    { id: 'muscle_gain', icon: '💪', label: 'Ganar\nmúsculo' },
-    { id: 'both', icon: '⚡', label: 'Ambas\ncosas' },
-    { id: 'maintenance', icon: '⚖️', label: 'Mantener\npeso' },
-    { id: 'health', icon: '❤️', label: 'Salud\ngeneral' },
-    { id: 'sport', icon: '🏃', label: 'Rendimiento\ndeportivo' },
-];
-
-const ACTIVITY_LABELS = [
-    'Sedentario (poco o nada)',
-    'Ligero (1-2 días/sem)',
-    'Moderado (3-4 días/sem)',
-    'Activo (5 días/sem)',
-    'Muy activo (6-7 días/sem)',
-    'Atleta (2x día)',
-];
-
-export default function NutriSetupPage() {
-    const router = useRouter();
-    const [step, setStep] = useState(0);
-    const [loading, setLoading] = useState(false);
-    const [toast, setToast] = useState('');
-
-    const [profile, setProfile] = useState<Profile>({
-        gender: 'male',
-        age: 28,
-        weight: 75,
-        height: 175,
-        activityLevel: 2,
-        goal: 'weight_loss',
-        apiKey: '',
-    });
-
-    const [checkingKey, setCheckingKey] = useState(false);
-    const [keyStatus, setKeyStatus] = useState<'none' | 'valid' | 'invalid'>('none');
-
-    useEffect(() => {
-        const saved = localStorage.getItem('nutri_profile');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                setProfile(prev => ({ ...prev, ...parsed }));
-            } catch (e) {
-                console.error('Error loading saved profile', e);
-            }
-        }
-    }, []);
-
-    // Persist profile on every change
-    useEffect(() => {
-        localStorage.setItem('nutri_profile', JSON.stringify(profile));
-    }, [profile]);
-
-    const totalSteps = 5;
-    const progress = ((step + 1) / totalSteps) * 100;
-
-    const showToast = (msg: string) => {
-        setToast(msg);
-        setTimeout(() => setToast(''), 2500);
-    };
-
-    const handleNext = () => {
-        if (step < totalSteps - 1) setStep(s => s + 1);
-    };
-
-    const testApiKey = async () => {
-        if (!profile.apiKey) return;
-        setCheckingKey(true);
-        setKeyStatus('none');
-        try {
-            const res = await fetch('/api/nutri/test-api-key', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ apiKey: profile.apiKey }),
-            });
-            const data = await res.json();
-            if (res.ok && data.success) {
-                setKeyStatus('valid');
-                showToast('✅ ¡API Key válida!');
-            } else {
-                setKeyStatus('invalid');
-                showToast(`❌ ${data.message || 'API Key inválida'}`);
-            }
-        } catch (err: any) {
-            setKeyStatus('invalid');
-            showToast('❌ Error de conexión');
-            console.error(err);
-        } finally {
-            setCheckingKey(false);
-        }
-    };
-
-    const handleBack = () => {
-        if (step > 0) setStep(s => s - 1);
-    };
-
-    const handleFinish = useCallback(async () => {
-        setLoading(true);
-        try {
-            const res = await fetch('/api/nutri/calculate-macros', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(profile),
-            });
-            if (!res.ok) throw new Error('Error al calcular macros');
-            const macros = await res.json();
-            localStorage.setItem('nutri_profile', JSON.stringify(profile));
-            localStorage.setItem('nutri_macros', JSON.stringify(macros));
-            router.push('/');
-        } catch {
-            showToast('❌ Error al calcular. Intentá de nuevo.');
-            setLoading(false);
-        }
-    }, [profile, router]);
+const TeamSelector = ({
+    label,
+    teams,
+    selectedTeamId,
+    onSelectTeam,
+    disabledTeamId,
+    disabled
+}: {
+    label: string;
+    teams: TeamData[];
+    selectedTeamId: string;
+    onSelectTeam: (teamId: string) => void;
+    disabledTeamId?: string;
+    disabled?: boolean;
+}) => {
+    const [open, setOpen] = useState(false);
+    const selectedTeam = teams.find(t => t.id === selectedTeamId);
 
     return (
-        <div className="nutri-app">
-            {/* Background orbs */}
-            <div className="nutri-bg-orb nutri-bg-orb-1" />
-            <div className="nutri-bg-orb nutri-bg-orb-2" />
-            <div className="nutri-bg-orb nutri-bg-orb-3" />
+        <div className="space-y-2">
+            <Label>{label}</Label>
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className="w-full justify-between h-11"
+                        disabled={disabled || teams.length === 0}
+                    >
+                        <span className="truncate">
+                          {selectedTeam
+                            ? `${selectedTeam.name}${selectedTeam.subName ? ` (${selectedTeam.subName})` : ''}`
+                            : (teams.length > 0 ? "Seleccionar equipo..." : "Sin equipos en categoría")}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                        <CommandInput placeholder="Buscar equipo..." />
+                        <CommandList>
+                            <CommandEmpty>No se encontró el equipo.</CommandEmpty>
+                            <CommandGroup>
+                                {teams.map((team) => (
+                                    <CommandItem
+                                        key={team.id}
+                                        value={`${team.name}${team.subName || ''}`}
+                                        onSelect={() => {
+                                            onSelectTeam(team.id);
+                                            setOpen(false);
+                                        }}
+                                        disabled={team.id === disabledTeamId}
+                                    >
+                                        <Check className={cn("mr-2 h-4 w-4", selectedTeamId === team.id ? "opacity-100" : "opacity-0")} />
+                                        <span className="truncate">{team.name}{team.subName ? ` (${team.subName})` : ''}</span>
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
+        </div>
+    );
+};
 
-            {/* Loading overlay */}
-            {loading && (
-                <div className="nutri-loading-overlay">
-                    <div className="nutri-spinner" />
-                    <p className="nutri-loading-text">La IA está calculando tus macros personalizados...</p>
+function SetupPageContent() {
+    const { state, dispatch } = useGameState();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const { toast } = useToast();
+
+    const [activeTab, setActiveTab] = useState('teams');
+    
+    const { selectedTournamentId, tournaments } = state.config;
+    const selectedTournament = useMemo(() => tournaments.find(t => t.id === selectedTournamentId), [tournaments, selectedTournamentId]);
+    
+    const [isTournamentMatch, setIsTournamentMatch] = useState(true);
+    const [manualHomeTeamName, setManualHomeTeamName] = useState('Local');
+    const [manualAwayTeamName, setManualAwayTeamName] = useState('Visitante');
+    const [localCategoryId, setLocalCategoryId] = useState('');
+    const [homeTeamId, setHomeTeamId] = useState('');
+    const [awayTeamId, setAwayTeamId] = useState('');
+    
+    const [tempFormatSettings, setTempFormatSettings] = useState<Partial<FormatAndTimingsProfileData>>({});
+
+    const [todaysMatches, setTodaysMatches] = useState<MatchData[]>([]);
+    const [pendingMatchConfig, setPendingMatchConfig] = useState<{ matchId: string } | null>(null);
+    const [staffAssignment, setStaffAssignment] = useState<MatchStaffAssignment>({
+        mesa: [null, null, null],
+        referees: [null, null, null]
+    });
+    const [selectedMatchDate, setSelectedMatchDate] = useState<Date>(new Date());
+
+
+    const availableCategories = useMemo(() => selectedTournament?.categories || [], [selectedTournament]);
+
+    const teamsInCategory = useMemo(() => {
+        if (!selectedTournament || !selectedTournament.teams || !localCategoryId) return [];
+        return selectedTournament.teams.filter(t => t.category === localCategoryId);
+    }, [selectedTournament, localCategoryId]);
+
+    const tournamentStaff = useMemo(() => {
+        if (!selectedTournament || !selectedTournament.staff) return [];
+        return selectedTournament.staff;
+    }, [selectedTournament]);
+
+    useEffect(() => {
+        const selectedTournament = (state.config.tournaments || []).find(t => t.id === state.config.selectedTournamentId);
+        if (!selectedTournament || !selectedTournament.matches || selectedTournament.matches.length === 0) {
+            setTodaysMatches([]);
+            return;
+        }
+
+        const matchesForDate = selectedTournament.matches.filter(match =>
+            isSameDay(new Date(match.date), selectedMatchDate)
+        );
+        setTodaysMatches(matchesForDate);
+    }, [state.config.tournaments, state.config.selectedTournamentId, selectedMatchDate]);
+
+     useEffect(() => {
+        setLocalCategoryId(state.config.selectedMatchCategory || availableCategories[0]?.id || '');
+        const currentProfile = state.config.formatAndTimingsProfiles.find(p => p.id === state.config.selectedFormatAndTimingsProfileId) || state.config;
+        setTempFormatSettings(currentProfile);
+    }, [state.config.selectedTournamentId, state.config.selectedMatchCategory, state.config.formatAndTimingsProfiles, state.config.selectedFormatAndTimingsProfileId, availableCategories]);
+
+    const handleLoadMatchConfig = useCallback((match: MatchData) => {
+        // Al cargar un partido existente, siempre es de torneo
+        setIsTournamentMatch(true);
+        setLocalCategoryId(match.categoryId);
+        setHomeTeamId(match.homeTeamId);
+        setAwayTeamId(match.awayTeamId);
+        setPendingMatchConfig({ matchId: match.id });
+        setActiveTab('rules');
+    }, []);
+
+    // Handle URL parameters for direct match loading
+    useEffect(() => {
+        const matchId = searchParams.get('matchId');
+        const step = searchParams.get('step');
+
+        // If matchId is provided, load that match
+        if (matchId && selectedTournament?.matches) {
+            const match = selectedTournament.matches.find(m => m.id === matchId);
+            if (match) {
+                handleLoadMatchConfig(match);
+
+                // If step is provided, navigate to that step after loading
+                if (step === '2') {
+                    // Step 2 = rules tab
+                    setActiveTab('rules');
+                } else if (step === '3') {
+                    setActiveTab('summary');
+                }
+            }
+        } else if (step === '2') {
+            // If only step is provided without matchId, just navigate to that step
+            setActiveTab('rules');
+        } else if (step === '3') {
+            setActiveTab('summary');
+        }
+    }, [searchParams, selectedTournament?.matches, handleLoadMatchConfig]);
+    
+    const handleNextStep = (nextTab: 'rules' | 'summary') => {
+        if (activeTab === 'teams') {
+            if (!isTournamentMatch) {
+                const homeName = manualHomeTeamName.trim() || 'Local';
+                const awayName = manualAwayTeamName.trim() || 'Visitante';
+                if (homeName.toLowerCase() === awayName.toLowerCase()) {
+                    toast({ title: "Nombres Iguales", description: "Los nombres de los equipos no pueden ser el mismo.", variant: "destructive" });
+                    return;
+                }
+                setPendingMatchConfig(null);
+            } else {
+                 if (!homeTeamId || !awayTeamId || !localCategoryId) {
+                    toast({ title: "Datos Incompletos", description: "Por favor, selecciona una categoría y ambos equipos para continuar.", variant: "destructive" });
+                    return;
+                }
+                const matchDate = new Date();
+                const newMatch: MatchData = {
+                    id: generateMatchId(matchDate),
+                    date: matchDate.toISOString(),
+                    categoryId: localCategoryId,
+                    homeTeamId: homeTeamId,
+                    awayTeamId: awayTeamId,
+                    playersPerTeam: parseInt(String(tempFormatSettings.playersPerTeamOnIce) || '5', 10)
+                };
+                if (selectedTournamentId) {
+                    dispatch({ type: 'ADD_MATCH_TO_TOURNAMENT', payload: { tournamentId: selectedTournamentId, match: newMatch } });
+                }
+                
+                setPendingMatchConfig({ matchId: newMatch.id });
+            }
+        }
+        setActiveTab(nextTab);
+    };
+  
+    const handleConfirmAndStart = async () => {
+        // Capture the current matchId BEFORE resetting
+        const previousMatchId = state.live.matchId;
+
+        dispatch({ type: 'RESET_GAME_STATE' });
+
+        // Clear voice events from the previous match
+        if (previousMatchId) {
+            await clearVoiceEventsOnServer(previousMatchId);
+        }
+
+        // Clear voice control messages from localStorage
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('voice-control-messages');
+        }
+
+        let matchIdToSet: string | null = null;
+        
+        if (!isTournamentMatch) {
+            const homeName = manualHomeTeamName.trim() || 'Local';
+            const awayName = manualAwayTeamName.trim() || 'Visitante';
+            dispatch({ type: 'SET_HOME_TEAM_NAME', payload: homeName });
+            dispatch({ type: 'SET_AWAY_TEAM_NAME', payload: awayName });
+            dispatch({ type: 'SET_HOME_TEAM_SUB_NAME', payload: undefined });
+            dispatch({ type: 'SET_AWAY_TEAM_SUB_NAME', payload: undefined });
+            dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'home', playerIds: [] }});
+            dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'away', playerIds: [] }});
+        } else {
+            const homeTeam = teamsInCategory.find(t => t.id === homeTeamId);
+            const awayTeam = teamsInCategory.find(t => t.id === awayTeamId);
+
+            if (!homeTeam || !awayTeam) {
+                toast({ title: "Error", description: "No se pudieron encontrar los datos de los equipos.", variant: "destructive" });
+                return;
+            }
+
+            dispatch({ type: 'SET_SELECTED_MATCH_CATEGORY', payload: localCategoryId });
+            dispatch({ type: 'SET_HOME_TEAM_NAME', payload: homeTeam.name });
+            dispatch({ type: 'SET_HOME_TEAM_SUB_NAME', payload: homeTeam.subName });
+            dispatch({ type: 'SET_AWAY_TEAM_NAME', payload: awayTeam.name });
+            dispatch({ type: 'SET_AWAY_TEAM_SUB_NAME', payload: awayTeam.subName });
+            // Initialize attendance with all roster players marked as not present (empty playerIds array)
+            dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'home', playerIds: [] }});
+            dispatch({ type: 'SET_TEAM_ATTENDANCE', payload: { team: 'away', playerIds: [] }});
+            
+            if (pendingMatchConfig) {
+              matchIdToSet = pendingMatchConfig.matchId;
+            }
+        }
+
+        dispatch({ type: 'UPDATE_SELECTED_FT_PROFILE_DATA', payload: tempFormatSettings });
+        dispatch({ type: 'UPDATE_LIVE_STATE', payload: { matchId: matchIdToSet } });
+
+        // Set staff assignment for tournament matches
+        // Staff is saved in live.assignedStaff and will be included in the summary when the match ends
+        if (isTournamentMatch) {
+            dispatch({ type: 'SET_MATCH_STAFF', payload: { assignment: staffAssignment } });
+        }
+
+        toast({ title: "¡Partido Listo!", description: "Se ha configurado un nuevo partido. Redirigiendo a controles..." });
+        
+        router.push('/controls');
+    }
+
+    return (
+        <div className="w-full max-w-4xl mx-auto py-8 space-y-6">
+            <Button variant="outline" onClick={() => router.push('/controls')}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Controles
+            </Button>
+            <div className="border bg-card rounded-lg p-6">
+                <div className="mb-4">
+                    <h1 className="text-3xl font-bold">Configurar Nuevo Partido</h1>
+                    <p className="text-muted-foreground">Configura los equipos y las reglas para el próximo partido.</p>
                 </div>
-            )}
-
-            {/* Toast */}
-            {toast && <div className="nutri-toast error">{toast}</div>}
-
-            {/* Topbar */}
-            <div className="nutri-topbar" style={{ position: 'sticky', top: 0, zIndex: 100 }}>
-                <div className="nutri-topbar-inner">
-                    <button id="btn-profile-back" onClick={() => router.back()} style={{ background: 'transparent', border: 'none', color: 'var(--nutri-text-muted)', fontSize: 16, cursor: 'pointer' }}>← Volver</button>
-                    <span style={{ fontWeight: 800 }}>{step === 0 ? 'Configuración' : 'Paso ' + (step + 1)}</span>
-                    <div style={{ width: 60 }} />
-                </div>
-            </div>
-
-            <div className="nutri-screen" style={{ paddingBottom: 32 }}>
-                {/* Hero */}
-                {step === 0 && (
-                    <div className="nutri-setup-hero nutri-anim-up">
-                        <span className="nutri-setup-hero-icon">🥗</span>
-                        <h1 className="nutri-setup-hero-title">Bienvenido a NutriAI</h1>
-                        <p className="nutri-setup-hero-subtitle">
-                            Configuremos tu perfil para<br />calcular tus macros ideales con IA
-                        </p>
-                    </div>
-                )}
-
-                {/* Progress bar */}
-                <div className="nutri-container" style={{ paddingTop: step === 0 ? 0 : 24 }}>
-                    {/* Step indicator */}
-                    <div className="nutri-flex-between nutri-mb-16" style={{ opacity: 0.7 }}>
-                        <span className="nutri-text-sm nutri-text-muted">Paso {step + 1} de {totalSteps}</span>
-                        <span className="nutri-text-sm nutri-text-muted">{Math.round(progress)}%</span>
-                    </div>
-                    <div style={{
-                        height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 100, marginBottom: 28, overflow: 'hidden',
-                    }}>
-                        <div style={{
-                            height: '100%', width: `${progress}%`, borderRadius: 100,
-                            background: 'linear-gradient(90deg, #39d353, #58a6ff)',
-                            transition: 'width 0.4s ease',
-                        }} />
-                    </div>
-
-                    {/* STEP 0: API KEY */}
-                    {step === 0 && (
-                        <div className="nutri-setup-steps nutri-anim-up">
-                            <div className="nutri-step-card">
-                                <div className="nutri-step-header">
-                                    <div className="nutri-step-number">🔑</div>
-                                    <div className="nutri-step-title">Configuración de IA</div>
-                                </div>
-                                <p style={{ fontSize: 13, color: 'var(--nutri-text-muted)', marginBottom: 16 }}>
-                                    Para que NutriAI sea 100% tuyo y privado, te recomendamos usar tu propia clave de Google Gemini. Es gratuita (nivel estándar).
-                                </p>
-                                <div className="nutri-form-group">
-                                    <label className="nutri-label">Gemini API Key</label>
-                                    <div style={{ display: 'flex', gap: 10 }}>
-                                        <input
-                                            id="api-key-input"
-                                            type="password"
-                                            className="nutri-input"
-                                            placeholder="AIzaSy..."
-                                            value={profile.apiKey}
-                                            onChange={e => {
-                                                setProfile(p => ({ ...p, apiKey: e.target.value.trim() }));
-                                                setKeyStatus('none');
-                                            }}
-                                            style={{ flex: 1, borderColor: keyStatus === 'valid' ? 'var(--nutri-green)' : keyStatus === 'invalid' ? '#e74c3c' : undefined }}
-                                        />
-                                        <button
-                                            className="nutri-btn nutri-btn-ghost"
-                                            onClick={testApiKey}
-                                            disabled={checkingKey || !profile.apiKey}
-                                            style={{ width: 80, fontSize: 12, padding: 0 }}
-                                        >
-                                            {checkingKey ? '...' : 'Probar'}
-                                        </button>
-                                    </div>
-                                    {keyStatus === 'valid' && <div style={{ fontSize: 11, color: 'var(--nutri-green)', marginTop: 6 }}>✓ Conexión establecida correctamente</div>}
-                                    {keyStatus === 'invalid' && <div style={{ fontSize: 11, color: '#e74c3c', marginTop: 6 }}>✗ Clave inválida o error de conexión</div>}
-                                </div>
-                                <p style={{ fontSize: 11, color: 'var(--nutri-text-muted)', marginTop: 20 }}>
-                                    Si la dejás vacía, se usará la clave por defecto del sistema (sujeto a disponibilidad).
-                                </p>
+                
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="teams">Paso 1: Equipos</TabsTrigger>
+                        <TabsTrigger value="rules">Paso 2: Reglas</TabsTrigger>
+                        <TabsTrigger value="summary">Paso 3: Resumen</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="teams" className="py-4 space-y-6">
+                        <div className="space-y-3 p-4 border-2 border-dashed rounded-lg bg-muted/30">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold flex items-center gap-2">
+                                    <CalendarCheck className="h-5 w-5 text-primary"/>
+                                    Partidos de la Fecha
+                                </h3>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" size="sm" className={cn("text-xs", !selectedMatchDate && "text-muted-foreground")}>
+                                            <CalendarIcon className="mr-1 h-3 w-3" />
+                                            {selectedMatchDate ? format(selectedMatchDate, "dd/MM/yy", { locale: es }) : <span>Seleccionar</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="end">
+                                        <Calendar mode="single" selected={selectedMatchDate} onSelect={(date) => date && setSelectedMatchDate(date)} initialFocus locale={es} />
+                                    </PopoverContent>
+                                </Popover>
                             </div>
+                            {todaysMatches.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-2">
+                                    {todaysMatches.map(match => {
+                                        const homeTeam = selectedTournament?.teams.find(t => t.id === match.homeTeamId);
+                                        const awayTeam = selectedTournament?.teams.find(t => t.id === match.awayTeamId);
+
+                                        return (
+                                            <Button
+                                                key={match.id}
+                                                variant="outline"
+                                                className="w-full justify-start h-auto text-left py-2"
+                                                onClick={() => handleLoadMatchConfig(match)}
+                                            >
+                                                <div className="flex flex-col">
+                                                    <span className="font-semibold">{format(new Date(match.date), 'HH:mm')}hs - {homeTeam?.name || '?'} vs {awayTeam?.name || '?'}</span>
+                                                    <span className="text-xs text-muted-foreground">Cat: {availableCategories.find(c => c.id === match.categoryId)?.name || 'N/A'}</span>
+                                                </div>
+                                            </Button>
+                                        )
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="text-center py-6 text-muted-foreground text-sm">
+                                    No hay partidos programados para el {format(selectedMatchDate, "dd/MM/yyyy", { locale: es })}
+                                </div>
+                            )}
                         </div>
-                    )}
-
-                    {/* STEP 1: Género + Edad */}
-                    {step === 1 && (
-                        <div className="nutri-setup-steps nutri-anim-up-1">
-                            <div className="nutri-step-card">
-                                <div className="nutri-step-header">
-                                    <div className="nutri-step-number">1</div>
-                                    <div className="nutri-step-title">Sexo biológico</div>
-                                </div>
-                                <div className="nutri-option-grid nutri-option-grid-3">
-                                    {[
-                                        { id: 'male', icon: '♂️', label: 'Hombre' },
-                                        { id: 'female', icon: '♀️', label: 'Mujer' },
-                                        { id: 'other', icon: '⚧️', label: 'Otro' },
-                                    ].map(g => (
-                                        <button
-                                            key={g.id}
-                                            id={`gender-${g.id}`}
-                                            className={`nutri-option-btn ${profile.gender === g.id ? 'selected' : ''}`}
-                                            onClick={() => setProfile(p => ({ ...p, gender: g.id as Profile['gender'] }))}
-                                        >
-                                            <span className="nutri-option-btn-icon">{g.icon}</span>
-                                            <span className="nutri-option-btn-label">{g.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
+                        
+                        <Separator />
+                        
+                        <div className="space-y-4">
+                             <h3 className="text-lg font-semibold flex items-center gap-2">
+                                Configurar Partido Manualmente
+                            </h3>
+                            <div className="flex items-center space-x-2 pt-2">
+                                <Switch id="is-tournament-match-switch" checked={isTournamentMatch} onCheckedChange={setIsTournamentMatch} />
+                                <Label htmlFor="is-tournament-match-switch">Es un Partido de Torneo</Label>
                             </div>
-
-                            <div className="nutri-step-card">
-                                <div className="nutri-step-header">
-                                    <div className="nutri-step-number">2</div>
-                                    <div className="nutri-step-title">¿Cuántos años tenés?</div>
-                                </div>
-                                <div className="nutri-slider-wrap">
-                                    <div className="nutri-slider-value-display">{profile.age} años</div>
-                                    <input
-                                        id="age-slider"
-                                        type="range" min={15} max={80} step={1}
-                                        value={profile.age}
-                                        onChange={e => setProfile(p => ({ ...p, age: +e.target.value }))}
-                                        className="nutri-slider"
-                                    />
-                                    <div className="nutri-slider-labels">
-                                        <span className="nutri-slider-label">15</span>
-                                        <span className="nutri-slider-label">80</span>
+                            
+                            {!isTournamentMatch && (
+                                <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive-foreground">
+                                    <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0"/>
+                                    <div>
+                                        <p className="text-sm font-semibold text-destructive">Los partidos que NO son de torneo no generan un resumen de estadísticas.</p>
                                     </div>
                                 </div>
-                            </div>
+                            )}
+
+                            {isTournamentMatch ? (
+                                <div className="space-y-4 pt-2 border-t mt-4">
+                                    <div className="space-y-2">
+                                        <Label>Categoría</Label>
+                                        <Select value={localCategoryId} onValueChange={setLocalCategoryId}>
+                                            <SelectTrigger className="w-full h-11">
+                                                <SelectValue placeholder={availableCategories.length > 0 ? "Seleccionar categoría..." : "Sin categorías"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {availableCategories.map(cat => (
+                                                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <TeamSelector label="Equipo Local" teams={teamsInCategory} selectedTeamId={homeTeamId} onSelectTeam={setHomeTeamId} disabledTeamId={awayTeamId} disabled={!localCategoryId} />
+                                    <TeamSelector label="Equipo Visitante" teams={teamsInCategory} selectedTeamId={awayTeamId} onSelectTeam={setAwayTeamId} disabledTeamId={homeTeamId} disabled={!localCategoryId} />
+                                </div>
+                            ) : (
+                                <div className="space-y-4 pt-2 border-t mt-4">
+                                    <div className="grid w-full items-center gap-1.5">
+                                        <Label htmlFor="manual-home-name">Nombre del Equipo Local</Label>
+                                        <Input id="manual-home-name" value={manualHomeTeamName} onChange={(e) => setManualHomeTeamName(e.target.value)} />
+                                    </div>
+                                    <div className="grid w-full items-center gap-1.5">
+                                        <Label htmlFor="manual-away-name">Nombre del Equipo Visitante</Label>
+                                        <Input id="manual-away-name" value={manualAwayTeamName} onChange={(e) => setManualAwayTeamName(e.target.value)} />
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    )}
 
-                    {/* STEP 1: Peso + Altura */}
-                    {step === 2 && (
-                        <div className="nutri-setup-steps nutri-anim-up">
-                            <div className="nutri-step-card">
-                                <div className="nutri-step-header">
-                                    <div className="nutri-step-number">3</div>
-                                    <div className="nutri-step-title">Tu peso actual</div>
-                                </div>
-                                <div className="nutri-slider-wrap">
-                                    <div className="nutri-slider-value-display">{profile.weight} kg</div>
-                                    <input
-                                        id="weight-slider"
-                                        type="range" min={40} max={200} step={0.5}
-                                        value={profile.weight}
-                                        onChange={e => setProfile(p => ({ ...p, weight: +e.target.value }))}
-                                        className="nutri-slider"
-                                    />
-                                    <div className="nutri-slider-labels">
-                                        <span className="nutri-slider-label">40 kg</span>
-                                        <span className="nutri-slider-label">200 kg</span>
-                                    </div>
-                                </div>
-                                <div className="nutri-form-group" style={{ marginTop: 16 }}>
-                                    <label className="nutri-label">O ingresalo exacto</label>
-                                    <input
-                                        id="weight-input"
-                                        type="number"
-                                        className="nutri-input"
-                                        value={profile.weight}
-                                        onChange={e => setProfile(p => ({ ...p, weight: +e.target.value }))}
-                                        min={40} max={200} step={0.1}
-                                    />
-                                </div>
-                            </div>
+                    </TabsContent>
 
-                            <div className="nutri-step-card">
-                                <div className="nutri-step-header">
-                                    <div className="nutri-step-number">4</div>
-                                    <div className="nutri-step-title">Tu altura</div>
-                                </div>
-                                <div className="nutri-slider-wrap">
-                                    <div className="nutri-slider-value-display">{profile.height} cm</div>
-                                    <input
-                                        id="height-slider"
-                                        type="range" min={140} max={220} step={1}
-                                        value={profile.height}
-                                        onChange={e => setProfile(p => ({ ...p, height: +e.target.value }))}
-                                        className="nutri-slider"
+                    <TabsContent value="rules" className="py-4 max-h-[60vh] overflow-y-auto">
+                        <div className="space-y-6">
+                            {/* Staff Assignment Section - Only for tournament matches */}
+                            {isTournamentMatch && (
+                                <>
+                                    <StaffSelector
+                                        tournamentStaff={tournamentStaff}
+                                        assignment={staffAssignment}
+                                        onAssignmentChange={setStaffAssignment}
                                     />
-                                    <div className="nutri-slider-labels">
-                                        <span className="nutri-slider-label">140 cm</span>
-                                        <span className="nutri-slider-label">220 cm</span>
+                                    <Separator />
+                                </>
+                            )}
+                            {/* Match Info Summary - Readonly */}
+                            <div className="rounded-lg border bg-muted/40 p-4 space-y-3">
+                                <h3 className="text-lg font-semibold">Información del Partido</h3>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <span className="text-muted-foreground font-medium">Equipo Local:</span>
+                                        <p className="font-semibold">
+                                            {!isTournamentMatch
+                                                ? manualHomeTeamName
+                                                : (teamsInCategory.find(t => t.id === homeTeamId)?.name || 'N/A')}
+                                        </p>
                                     </div>
-                                </div>
-                                <div className="nutri-form-group" style={{ marginTop: 16 }}>
-                                    <label className="nutri-label">O ingresala exacta</label>
-                                    <input
-                                        id="height-input"
-                                        type="number"
-                                        className="nutri-input"
-                                        value={profile.height}
-                                        onChange={e => setProfile(p => ({ ...p, height: +e.target.value }))}
-                                        min={140} max={220}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* STEP 2: Nivel de actividad */}
-                    {step === 3 && (
-                        <div className="nutri-setup-steps nutri-anim-up">
-                            <div className="nutri-step-card">
-                                <div className="nutri-step-header">
-                                    <div className="nutri-step-number">5</div>
-                                    <div className="nutri-step-title">¿Cuánto entrenás por semana?</div>
-                                </div>
-                                <div className="nutri-slider-wrap">
-                                    <div className="nutri-slider-value-display" style={{ fontSize: 22, lineHeight: 1.3, marginBottom: 8 }}>
-                                        {ACTIVITY_LABELS[profile.activityLevel]}
+                                    <div>
+                                        <span className="text-muted-foreground font-medium">Equipo Visitante:</span>
+                                        <p className="font-semibold">
+                                            {!isTournamentMatch
+                                                ? manualAwayTeamName
+                                                : (teamsInCategory.find(t => t.id === awayTeamId)?.name || 'N/A')}
+                                        </p>
                                     </div>
-                                    <input
-                                        id="activity-slider"
-                                        type="range" min={0} max={5} step={1}
-                                        value={profile.activityLevel}
-                                        onChange={e => setProfile(p => ({ ...p, activityLevel: +e.target.value }))}
-                                        className="nutri-slider"
-                                    />
-                                    <div className="nutri-slider-labels">
-                                        <span className="nutri-slider-label">Quieto/a</span>
-                                        <span className="nutri-slider-label">Atleta</span>
+                                    <div>
+                                        <span className="text-muted-foreground font-medium">Tipo de Partido:</span>
+                                        <p className="font-semibold">{isTournamentMatch ? 'Partido de Torneo' : 'Partido Amistoso'}</p>
                                     </div>
-                                </div>
-
-                                {/* Visual cards */}
-                                <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    {ACTIVITY_LABELS.map((label, i) => (
-                                        <div
-                                            key={i}
-                                            onClick={() => setProfile(p => ({ ...p, activityLevel: i }))}
-                                            style={{
-                                                padding: '12px 14px',
-                                                borderRadius: 12,
-                                                border: `1.5px solid ${profile.activityLevel === i ? 'var(--nutri-green)' : 'var(--nutri-border)'}`,
-                                                background: profile.activityLevel === i ? 'var(--nutri-green-dim)' : 'var(--nutri-surface-2)',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 10,
-                                            }}
-                                        >
-                                            <span style={{ fontSize: 18 }}>
-                                                {['🛋️', '🚶', '🤸', '🏋️', '🏃', '🏆'][i]}
-                                            </span>
-                                            <span style={{ fontSize: 13, fontWeight: 500 }}>{label}</span>
+                                    {isTournamentMatch && (
+                                        <div>
+                                            <span className="text-muted-foreground font-medium">Categoría:</span>
+                                            <p className="font-semibold">{availableCategories.find(c => c.id === localCategoryId)?.name || 'N/A'}</p>
                                         </div>
-                                    ))}
+                                    )}
+                                    {pendingMatchConfig && (
+                                        <>
+                                            <div>
+                                                <span className="text-muted-foreground font-medium">ID del Partido:</span>
+                                                <p className="font-mono text-xs">{pendingMatchConfig.matchId}</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-muted-foreground font-medium">Fecha:</span>
+                                                <p className="font-semibold">
+                                                    {(() => {
+                                                        const match = selectedTournament?.matches?.find(m => m.id === pendingMatchConfig.matchId);
+                                                        return match ? format(new Date(match.date), "PPP 'a las' HH:mm", { locale: es }) : 'N/A';
+                                                    })()}
+                                                </p>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
+                            </div>
+
+                            <Separator />
+
+                            <DurationSettingsCard isDialogMode={true} tempSettings={tempFormatSettings} onSettingsChange={setTempFormatSettings} />
+                            <Separator />
+                            <div className="flex flex-col gap-6">
+                                <PenaltySettingsCard isDialogMode={true} tempSettings={tempFormatSettings} onSettingsChange={setTempFormatSettings} />
+                                <StoppedTimeAlertCard isDialogMode={true} tempSettings={tempFormatSettings} onSettingsChange={setTempFormatSettings} />
                             </div>
                         </div>
-                    )}
+                    </TabsContent>
 
-                    {/* STEP 3: Objetivo */}
-                    {step === 4 && (
-                        <div className="nutri-setup-steps nutri-anim-up">
-                            <div className="nutri-step-card">
-                                <div className="nutri-step-header">
-                                    <div className="nutri-step-number">6</div>
-                                    <div className="nutri-step-title">¿Cuál es tu objetivo?</div>
-                                </div>
-                                <div className="nutri-option-grid nutri-option-grid-2" style={{ gap: 10 }}>
-                                    {GOALS.map(g => (
-                                        <button
-                                            key={g.id}
-                                            id={`goal-${g.id}`}
-                                            className={`nutri-option-btn ${profile.goal === g.id ? 'selected' : ''}`}
-                                            style={{ minHeight: 90 }}
-                                            onClick={() => setProfile(p => ({ ...p, goal: g.id }))}
-                                        >
-                                            <span className="nutri-option-btn-icon">{g.icon}</span>
-                                            <span className="nutri-option-btn-label">{g.label}</span>
-                                        </button>
-                                    ))}
+                    <TabsContent value="summary" className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                        <h3 className="text-lg font-semibold">Resumen de Configuración</h3>
+
+                        {!isTournamentMatch && (
+                            <div className="flex items-start gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive-foreground">
+                                <AlertTriangle className="h-6 w-6 text-destructive mt-1"/>
+                                <div>
+                                    <h4 className="font-bold text-destructive">¡ATENCIÓN!</h4>
+                                    <p className="text-sm">Este es un partido amistoso (no de torneo). <strong className="font-semibold">NO SE GENERARÁ UN ARCHIVO DE RESUMEN</strong> al finalizar. Si es un partido oficial, vuelve al paso anterior y selecciona "Es un Partido de Torneo".</p>
                                 </div>
                             </div>
+                        )}
 
-                            {/* Summary */}
-                            <div className="nutri-card" style={{ borderColor: 'rgba(57,211,83,0.2)', background: 'linear-gradient(135deg, rgba(57,211,83,0.06), rgba(88,166,255,0.06))' }}>
-                                <div className="nutri-section-title">Tu resumen</div>
-                                <div className="nutri-stat-grid">
-                                    {[
-                                        { label: 'Edad', value: `${profile.age}`, unit: 'años' },
-                                        { label: 'Peso', value: `${profile.weight}`, unit: 'kg' },
-                                        { label: 'Altura', value: `${profile.height}`, unit: 'cm' },
-                                        { label: 'Sexo', value: profile.gender === 'male' ? 'Hombre' : profile.gender === 'female' ? 'Mujer' : 'Otro', unit: '' },
-                                    ].map(s => (
-                                        <div key={s.label} className="nutri-stat-card">
-                                            <span className="nutri-stat-label">{s.label}</span>
-                                            <span className="nutri-stat-value">{s.value}<span className="nutri-stat-unit"> {s.unit}</span></span>
+                        <div className="space-y-4 rounded-md border p-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <h4 className="font-medium">Equipo Local</h4>
+                                    <p className="text-muted-foreground">{!isTournamentMatch ? manualHomeTeamName : teamsInCategory.find(t => t.id === homeTeamId)?.name || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <h4 className="font-medium">Equipo Visitante</h4>
+                                    <p className="text-muted-foreground">{!isTournamentMatch ? manualAwayTeamName : teamsInCategory.find(t => t.id === awayTeamId)?.name || 'N/A'}</p>
+                                </div>
+                            </div>
+                            {isTournamentMatch && (
+                                <div>
+                                    <h4 className="font-medium">Categoría</h4>
+                                    <p className="text-muted-foreground">{availableCategories.find(c => c.id === localCategoryId)?.name || 'N/A'}</p>
+                                </div>
+                            )}
+                            {isTournamentMatch && (
+                                <>
+                                    <Separator />
+                                    <div className="space-y-3">
+                                        <h4 className="font-medium">Personal del Partido</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-sm font-medium text-muted-foreground">Árbitros</p>
+                                                <ul className="text-sm space-y-1 mt-1">
+                                                    {staffAssignment.referees.map((refId, idx) => {
+                                                        if (!refId) return null;
+                                                        const staff = tournamentStaff.find(s => s.id === refId);
+                                                        if (!staff) return null;
+                                                        const labels = ['Principal', '2º Árbitro', '3º Árbitro'];
+                                                        return (
+                                                            <li key={idx} className="text-muted-foreground">
+                                                                {labels[idx]}: {staff.firstName} {staff.lastName}
+                                                            </li>
+                                                        );
+                                                    })}
+                                                    {staffAssignment.referees.every(r => !r) && (
+                                                        <li className="text-destructive text-xs">⚠️ No asignado</li>
+                                                    )}
+                                                </ul>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-muted-foreground">Mesa</p>
+                                                <ul className="text-sm space-y-1 mt-1">
+                                                    {staffAssignment.mesa.map((mesaId, idx) => {
+                                                        if (!mesaId) return null;
+                                                        const staff = tournamentStaff.find(s => s.id === mesaId);
+                                                        if (!staff) return null;
+                                                        const labels = ['Principal', '2º Mesa', '3º Mesa'];
+                                                        return (
+                                                            <li key={idx} className="text-muted-foreground">
+                                                                {labels[idx]}: {staff.firstName} {staff.lastName}
+                                                            </li>
+                                                        );
+                                                    })}
+                                                    {staffAssignment.mesa.every(m => !m) && (
+                                                        <li className="text-destructive text-xs">⚠️ No asignado</li>
+                                                    )}
+                                                </ul>
+                                            </div>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                </>
+                            )}
+                            <Separator />
+                            <div>
+                                <h4 className="font-medium">Reglas del Partido</h4>
+                                <ul className="list-disc list-inside text-muted-foreground text-sm mt-2 space-y-1">
+                                    <li>Períodos: {tempFormatSettings.numberOfRegularPeriods} de {tempFormatSettings.defaultPeriodDuration! / 6000} min</li>
+                                    <li>Overtime: {tempFormatSettings.numberOfOvertimePeriods} de {tempFormatSettings.defaultOTPeriodDuration! / 6000} min</li>
+                                    <li>Jugadores en cancha: {tempFormatSettings.playersPerTeamOnIce}</li>
+                                    <li>Penalidades concurrentes: {tempFormatSettings.maxConcurrentPenalties}</li>
+                                    <li>Modo de Tiempo: {tempFormatSettings.gameTimeMode === 'running' ? 'Corrido' : 'Pausado'}</li>
+                                </ul>
                             </div>
                         </div>
-                    )}
-
-                    {/* Navigation */}
-                    <div className="nutri-flex" style={{ gap: 10, marginTop: 8 }}>
-                        {step > 0 && (
-                            <button id="btn-back" className="nutri-btn nutri-btn-ghost" style={{ flex: 1 }} onClick={handleBack}>
-                                ← Atrás
-                            </button>
-                        )}
-                        {step < totalSteps - 1 ? (
-                            <button id="btn-next" className="nutri-btn nutri-btn-primary" style={{ flex: 2 }} onClick={handleNext}>
-                                Continuar →
-                            </button>
-                        ) : (
-                            <button id="btn-finish" className="nutri-btn nutri-btn-primary" style={{ flex: 2 }} onClick={handleFinish}>
-                                🚀 Calcular mis macros
-                            </button>
-                        )}
-                    </div>
+                    </TabsContent>
+                </Tabs>
+            
+                <div className="flex justify-end mt-4">
+                    {activeTab === "teams" && <Button onClick={() => handleNextStep('rules')}>Siguiente</Button>}
+                    {activeTab === "rules" && <Button onClick={() => handleNextStep('summary')}>Ir a Resumen</Button>}
+                    {activeTab === "summary" && <Button onClick={handleConfirmAndStart}>Confirmar e Iniciar Partido</Button>}
                 </div>
             </div>
         </div>
     );
 }
+
+export default function SetupPage() {
+    return (
+        <Suspense fallback={<div className="w-full max-w-4xl mx-auto py-8 text-center">Cargando...</div>}>
+            <SetupPageContent />
+        </Suspense>
+    );
+}
+

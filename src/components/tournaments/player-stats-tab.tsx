@@ -18,13 +18,20 @@ import { Flag, Users } from 'lucide-react';
 
 const ALL_CATEGORIES = "__ALL__";
 
-export function PlayerStatsTab() {
+interface PlayerStatsTabProps {
+  tournamentId?: string;
+}
+
+export function PlayerStatsTab({ tournamentId }: PlayerStatsTabProps = {}) {
   const { state } = useGameState();
   const { tournaments, selectedTournamentId } = state.config;
 
+  // Use tournamentId prop if provided, otherwise fall back to selectedTournamentId from state
+  const activeTournamentId = tournamentId || selectedTournamentId;
+
   const selectedTournament = useMemo(() => {
-    return (tournaments || []).find(t => t.id === selectedTournamentId);
-  }, [tournaments, selectedTournamentId]);
+    return (tournaments || []).find(t => t.id === activeTournamentId);
+  }, [tournaments, activeTournamentId]);
 
   const [categoryFilter, setCategoryFilter] = useState<string>(ALL_CATEGORIES);
   const [activeStatsTab, setActiveStatsTab] = useState('players');

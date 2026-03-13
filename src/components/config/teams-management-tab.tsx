@@ -35,7 +35,11 @@ import { ImportTeamsDialog } from "@/components/teams/import-teams-dialog";
 const ALL_CATEGORIES_FILTER_KEY = "__ALL_CATEGORIES_FILTER_KEY__";
 const NO_CATEGORIES_PLACEHOLDER_VALUE_TAB = "__NO_CATEGORIES_DEFINED_TAB__";
 
-export function TeamsManagementTab() {
+interface TeamsManagementTabProps {
+  tournamentId?: string;
+}
+
+export function TeamsManagementTab({ tournamentId }: TeamsManagementTabProps = {}) {
   const { state, dispatch, isLoading } = useGameState();
   const { tournaments, selectedTournamentId } = state.config;
   const router = useRouter();
@@ -43,9 +47,12 @@ export function TeamsManagementTab() {
 
   const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
 
+  // Use tournamentId prop if provided, otherwise fall back to selectedTournamentId from state
+  const activeTournamentId = tournamentId || selectedTournamentId;
+
   const selectedTournament = useMemo(() => {
-    return tournaments.find(t => t.id === selectedTournamentId);
-  }, [tournaments, selectedTournamentId]);
+    return tournaments.find(t => t.id === activeTournamentId);
+  }, [tournaments, activeTournamentId]);
 
   const teams = selectedTournament?.teams || [];
   const availableCategories = selectedTournament?.categories || [];
@@ -126,9 +133,9 @@ export function TeamsManagementTab() {
   };
 
   const handleConfirmMassDelete = () => {
-    if (selectedTeamIdsForDeletion.length === 0 || !selectedTournamentId) return;
+    if (selectedTeamIdsForDeletion.length === 0 || !activeTournamentId) return;
 
-    dispatch({ type: "DELETE_TEAMS_FROM_TOURNAMENT", payload: { tournamentId: selectedTournamentId, teamIds: selectedTeamIdsForDeletion } });
+    dispatch({ type: "DELETE_TEAMS_FROM_TOURNAMENT", payload: { tournamentId: activeTournamentId, teamIds: selectedTeamIdsForDeletion } });
 
     toast({
       title: "Equipos Eliminados",

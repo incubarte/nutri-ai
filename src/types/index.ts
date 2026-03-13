@@ -52,6 +52,7 @@ export interface MatchData {
   playoffType?: PlayoffMatchType; // Solo para partidos de playoffs
   playoffMatchup?: PlayoffMatchup; // Solo para semifinales - indica qué posiciones juegan (ej: '1vs4')
   // Note: Score and overtime info are calculated from summary using match-helpers
+  // Note: Staff is stored in summary.staff, not in MatchData
 }
 
 

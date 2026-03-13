@@ -53,15 +53,28 @@ export function PlayersControlCard({ team, teamName }: PlayersControlCardProps) 
   const [newPlayerNumber, setNewPlayerNumber] = useState('');
   const [newPlayerType, setNewPlayerType] = useState<'player' | 'goalkeeper'>('player');
 
-  // Sort players: goalkeepers first, then by name
+  // Sort players: merge roster with attendance to get updated numbers for this match
   const sortedPlayers = useMemo(() => {
     if (!teamData?.players) return [];
-    return [...teamData.players].sort((a, b) => {
+
+    // Create a map of attendance data for quick lookup
+    const attendanceMap = new Map(attendance.map(a => [a.id, a]));
+
+    // Merge roster with attendance, preferring attendance data for numbers
+    return teamData.players.map(player => {
+      const attendancePlayer = attendanceMap.get(player.id);
+      return {
+        ...player,
+        // Use number from attendance if it exists (match-specific), otherwise use roster number
+        number: attendancePlayer?.number || player.number,
+        name: attendancePlayer?.name || player.name
+      };
+    }).sort((a, b) => {
       if (a.type === 'goalkeeper' && b.type !== 'goalkeeper') return -1;
       if (a.type !== 'goalkeeper' && b.type === 'goalkeeper') return 1;
       return a.name.localeCompare(b.name);
     });
-  }, [teamData]);
+  }, [teamData, attendance]);
 
   // Check if new player number is duplicate
   const isNewPlayerNumberDuplicate = useMemo(() => {

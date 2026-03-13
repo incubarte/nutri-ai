@@ -88,7 +88,11 @@ function getMatchupDisplay(match: MatchData, teams: TeamData[] | undefined): { h
   };
 }
 
-export function FixtureCalendarView() {
+interface FixtureCalendarViewProps {
+  tournamentId?: string;
+}
+
+export function FixtureCalendarView({ tournamentId }: FixtureCalendarViewProps = {}) {
   const { state, dispatch } = useGameState();
   const { toast } = useToast();
   const router = useRouter();
@@ -110,9 +114,12 @@ export function FixtureCalendarView() {
   const isReadOnly = process.env.NEXT_PUBLIC_READ_ONLY === 'true';
   const isMobile = useMediaQuery('(max-width: 768px)');
 
+  // Use tournamentId prop if provided, otherwise fall back to selectedTournamentId from state
+  const activeTournamentId = tournamentId || selectedTournamentId;
+
   const selectedTournament = useMemo(() => {
-    return tournaments.find(t => t.id === selectedTournamentId);
-  }, [tournaments, selectedTournamentId]);
+    return tournaments.find(t => t.id === activeTournamentId);
+  }, [tournaments, activeTournamentId]);
 
   const matches = useMemo(() => {
     return selectedTournament?.matches || [];
@@ -155,8 +162,8 @@ export function FixtureCalendarView() {
   };
   
   const handleDeleteMatch = () => {
-    if (isReadOnly || !matchToDelete || !selectedTournamentId) return;
-    dispatch({ type: 'DELETE_MATCH_FROM_TOURNAMENT', payload: { tournamentId: selectedTournamentId, matchId: matchToDelete.id }});
+    if (isReadOnly || !matchToDelete || !activeTournamentId) return;
+    dispatch({ type: 'DELETE_MATCH_FROM_TOURNAMENT', payload: { tournamentId: activeTournamentId, matchId: matchToDelete.id }});
     toast({ title: 'Partido Eliminado', description: 'El partido ha sido eliminado del fixture.' });
     setMatchToDelete(null);
   };
