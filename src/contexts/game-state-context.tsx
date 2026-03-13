@@ -187,7 +187,6 @@ const getInitialState = (): GameState => {
       autoSyncEnabled: false,
       autoSyncResolveConflicts: false,
       autoSyncSkipDuringMatch: true,
-      autoSyncAfterMatch: false,
       autoSyncAfterSummaryEdit: false,
     },
     live: {
@@ -412,7 +411,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       if (newPeriod === 0) {
         const hasPlayedPeriods = state.live.playedPeriods && state.live.playedPeriods.length > 0;
         const isComingFromPreWarmup = state.live.clock.periodDisplayOverride === 'Pre Warm-up';
-        periodOverride = (hasPlayedPeriods || (!isComingFromPreWarmup && state.live.clock.currentPeriod > 0)) ? 'Warm-up' : 'Pre Warm-up';
+        periodOverride = (hasPlayedPeriods || (!isComingFromPreWarmup && state.live.clock.currentPeriod > 0)) ? 'Warm-up' : 'Pre Warm-up' as PeriodDisplayOverrideType;
       }
 
       // Track period start timestamps
@@ -918,7 +917,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     case 'ACTIVATE_PENDING_PUCK_PENALTIES': {
       const activate = (penalties: Penalty[]) => penalties.map(p => {
         if (p._status === 'pending_puck') {
-          return { ...p, _status: 'pending_concurrent' };
+          return { ...p, _status: 'pending_concurrent' as 'pending_concurrent' };
         }
         return p;
       });
@@ -1626,7 +1625,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         ...state,
         _pendingSummaryGeneration: {
           matchId: action.payload.matchId,
-          tournamentId: state.config.selectedTournamentId
+          tournamentId: state.config.selectedTournamentId as string
         }
       };
       break;
@@ -1858,6 +1857,10 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'ADD_PLAYER_TO_TEAM': {
       const { teamId, player } = action.payload;
+      const newPlayerId = player.id || safeUUID();
+      const newPlayer = { ...player, id: newPlayerId };
+
+      // 1. Update permanent config
       newState = {
         ...state, config: {
           ...state.config, tournaments: state.config.tournaments.map(t => {
@@ -1866,13 +1869,54 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
               ...t,
               teams: t.teams.map(team =>
                 team.id === teamId
-                  ? { ...team, players: [...(team.players || []), { ...player, id: safeUUID() }] }
+                  ? { ...team, players: [...(team.players || []), newPlayer] }
                   : team
               )
             };
           })
         }
       };
+
+      // 2. Also add to live attendance if this team is in the current match
+      const homeTeam = state.config.tournaments
+        .flatMap(t => t.teams)
+        .find(t => t?.name === state.live.homeTeamName &&
+          (t.subName || undefined) === (state.live.homeTeamSubName || undefined) &&
+          t.category === state.config.selectedMatchCategory);
+
+      const awayTeam = state.config.tournaments
+        .flatMap(t => t.teams)
+        .find(t => t?.name === state.live.awayTeamName &&
+          (t.subName || undefined) === (state.live.awayTeamSubName || undefined) &&
+          t.category === state.config.selectedMatchCategory);
+
+      let teamType: 'home' | 'away' | null = null;
+      if (homeTeam?.id === teamId) teamType = 'home';
+      else if (awayTeam?.id === teamId) teamType = 'away';
+
+      if (teamType) {
+        const currentAttendanceList = newState.live.attendance[teamType] || [];
+        // Only add if not already there (safety check)
+        if (!currentAttendanceList.some(p => p.id === newPlayerId)) {
+          newState = {
+            ...newState,
+            live: {
+              ...newState.live,
+              attendance: {
+                ...newState.live.attendance,
+                [teamType]: [...currentAttendanceList, {
+                  id: newPlayerId,
+                  name: newPlayer.name,
+                  number: newPlayer.number,
+                  type: newPlayer.type,
+                  isPresent: true // Newly added players in controls are usually present
+                }]
+              }
+            }
+          };
+        }
+      }
+
       toastMessage = { title: "Jugador Añadido", description: `Jugador ${player.number ? `#${player.number} ` : ''}${player.name} añadido.` };
       break;
     }
@@ -1996,21 +2040,45 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'SET_TEAM_ATTENDANCE': {
       const { team, playerIds } = action.payload;
-      const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
+      const tournamentId = state.config.selectedTournamentId;
+      const selectedTournament = state.config.tournaments.find(t => t.id === tournamentId);
       const teamData = selectedTournament?.teams.find(t =>
         t.name === state.live[`${team}TeamName`] &&
         (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) &&
         t.category === state.config.selectedMatchCategory
       );
 
+      const currentAttendance = state.live.attendance[team] || [];
+
       let attendedPlayerInfo: AttendedPlayerInfo[] = [];
       if (teamData) {
-        // Include ALL players from roster, marking isPresent based on playerIds
-        attendedPlayerInfo = teamData.players.map(p => ({
-          id: p.id,
-          number: p.number,
-          name: p.name,
-          type: p.type,
+        // Map from roster but preserve match-specific overrides if they exist in current attendance
+        attendedPlayerInfo = teamData.players.map(p => {
+          const existing = currentAttendance.find(a => a.id === p.id);
+          return {
+            id: p.id,
+            number: existing?.number || p.number,
+            name: existing?.name || p.name,
+            type: existing?.type || p.type,
+            isPresent: playerIds.includes(p.id)
+          };
+        });
+
+        // Also preserve ad-hoc players that might have been added during game but are not in roster
+        const adHocPlayers = currentAttendance.filter(a => !teamData.players.some(p => p.id === a.id));
+        if (adHocPlayers.length > 0) {
+          attendedPlayerInfo = [
+            ...attendedPlayerInfo,
+            ...adHocPlayers.map(a => ({
+              ...a,
+              isPresent: playerIds.includes(a.id) || a.isPresent
+            }))
+          ];
+        }
+      } else {
+        // If no team data found, just update isPresent for current attendance
+        attendedPlayerInfo = currentAttendance.map(p => ({
+          ...p,
           isPresent: playerIds.includes(p.id)
         }));
       }
@@ -2029,6 +2097,47 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
     }
     case 'UPDATE_ATTENDANCE_PLAYER': {
       const { team, playerId, updates } = action.payload;
+      const currentAttendance = state.live.attendance[team] || [];
+      const playerIndex = currentAttendance.findIndex(p => p.id === playerId);
+
+      let newAttendanceList;
+      if (playerIndex !== -1) {
+        newAttendanceList = currentAttendance.map(player =>
+          player.id === playerId
+            ? { ...player, ...updates }
+            : player
+        );
+      } else {
+        // Find player in roster to initialize their data if they're not in attendance yet
+        const tournamentId = state.config.selectedTournamentId;
+        const selectedTournament = state.config.tournaments.find(t => t.id === tournamentId);
+        const teamData = selectedTournament?.teams.find(t =>
+          t.name === state.live[`${team}TeamName`] &&
+          (t.subName || undefined) === (state.live[`${team}TeamSubName`] || undefined) &&
+          t.category === state.config.selectedMatchCategory
+        );
+        const rosterPlayer = teamData?.players.find(p => p.id === playerId);
+
+        if (rosterPlayer) {
+          newAttendanceList = [...currentAttendance, {
+            id: rosterPlayer.id,
+            name: rosterPlayer.name,
+            number: rosterPlayer.number,
+            type: rosterPlayer.type,
+            isPresent: false,
+            ...updates
+          }];
+        } else {
+          // Absolute fallback - shouldn't happen from typical UI
+          newAttendanceList = [...currentAttendance, {
+            id: playerId,
+            name: 'Jugador',
+            number: '',
+            isPresent: false,
+            ...updates
+          } as AttendedPlayerInfo];
+        }
+      }
 
       newState = {
         ...state,
@@ -2036,11 +2145,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           ...state.live,
           attendance: {
             ...state.live.attendance,
-            [team]: state.live.attendance[team].map(player =>
-              player.id === playerId
-                ? { ...player, ...updates }
-                : player
-            ),
+            [team]: newAttendanceList,
           },
         },
       };
@@ -2351,9 +2456,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
         }
         const hasConfigChanged = !isEqual(state.config, oldState.config);
         if (hasConfigChanged) {
-          const { tournaments, ...baseConfig } = state.config;
-          const tournamentsMeta = (tournaments || []).map(t => ({ id: t.id, name: t.name, status: t.status }));
-          updateConfigOnServer({ ...baseConfig, tournaments: tournamentsMeta });
+          updateConfigOnServer(state.config);
         }
         // Logic to save individual tournament if it changes
         // BUT skip if the last action was SAVE_MATCH_SUMMARY or TRIGGER_SUMMARY_GENERATION

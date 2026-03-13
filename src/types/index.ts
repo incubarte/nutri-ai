@@ -719,7 +719,7 @@ export type GameAction =
   | { type: 'ADD_TEAM_TO_TOURNAMENT'; payload: { tournamentId: string, team: Omit<TeamData, 'id'> & { id?: string } } }
   | { type: 'DELETE_TEAMS_FROM_TOURNAMENT'; payload: { tournamentId: string, teamIds: string[] } }
   | { type: 'UPDATE_TEAM_DETAILS'; payload: { teamId: string; name: string; subName?: string; category: string; logoDataUrl?: string | null } }
-  | { type: 'ADD_PLAYER_TO_TEAM'; payload: { teamId: string; player: Omit<PlayerData, 'id'> } }
+  | { type: 'ADD_PLAYER_TO_TEAM'; payload: { teamId: string; player: Omit<PlayerData, 'id'> & { id?: string } } }
   | { type: 'UPDATE_PLAYER_IN_TEAM'; payload: { teamId: string; playerId: string; updates: Partial<Pick<PlayerData, 'name' | 'number' | 'photoFileName'>> } }
   | { type: 'REMOVE_PLAYER_FROM_TEAM'; payload: { teamId: string; playerId: string } }
   | { type: 'SET_TEAM_ATTENDANCE'; payload: { team: Team; playerIds: string[] } }
@@ -728,7 +728,11 @@ export type GameAction =
   | { type: 'UPDATE_STAFF_IN_TOURNAMENT'; payload: { tournamentId: string; staffId: string; updates: Partial<Omit<StaffMember, 'id'>> } }
   | { type: 'REMOVE_STAFF_FROM_TOURNAMENT'; payload: { tournamentId: string; staffId: string } }
   | { type: 'SET_MATCH_STAFF'; payload: { assignment: MatchStaffAssignment } }
-  | { type: 'SET_PLAYER_SHOTS'; payload: { team: Team; playerId: string; periodText: string; shotCount: number } };
+  | { type: 'SET_PLAYER_SHOTS'; payload: { team: Team; playerId: string; periodText: string; shotCount: number } }
+  | { type: 'SET_ACTIVE_GOALKEEPER'; payload: { team: Team; playerId: string | null } }
+  | { type: 'TRIGGER_SUMMARY_GENERATION'; payload: { matchId: string; tournamentId: string } }
+  | { type: 'CLEAR_PENDING_SUMMARY_GENERATION' }
+  | { type: 'UPDATE_MATCH_SUMMARY_IN_STATE'; payload: { matchId: string; summary: GameSummary } };
 
 
 export interface GameState {
@@ -736,12 +740,14 @@ export interface GameState {
   live: LiveState;
   _initialConfigLoadComplete: boolean;
   _lastActionOriginator?: string;
+  _lastActionType?: string;
   _lastUpdatedTimestamp?: number;
   _lastToastMessage?: {
     title: string;
     description?: string;
     variant?: "default" | "destructive";
   } | null;
+  _pendingSummaryGeneration?: { matchId: string; tournamentId: string } | null;
 }
 
 

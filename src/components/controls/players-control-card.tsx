@@ -53,23 +53,27 @@ export function PlayersControlCard({ team, teamName }: PlayersControlCardProps) 
   const [newPlayerNumber, setNewPlayerNumber] = useState('');
   const [newPlayerType, setNewPlayerType] = useState<'player' | 'goalkeeper'>('player');
 
-  // Sort players: merge roster with attendance to get updated numbers for this match
+  // Sort players: use attendance (match roster) as primary source
   const sortedPlayers = useMemo(() => {
-    if (!teamData?.players) return [];
+    // Start with match attendance
+    const players = [...attendance];
 
-    // Create a map of attendance data for quick lookup
-    const attendanceMap = new Map(attendance.map(a => [a.id, a]));
+    // Also include any players from the team roster that aren't in attendance yet
+    if (teamData?.players) {
+      teamData.players.forEach(rosterPlayer => {
+        if (!players.some(p => p.id === rosterPlayer.id)) {
+          players.push({
+            id: rosterPlayer.id,
+            number: rosterPlayer.number,
+            name: rosterPlayer.name,
+            type: rosterPlayer.type,
+            isPresent: false
+          });
+        }
+      });
+    }
 
-    // Merge roster with attendance, preferring attendance data for numbers
-    return teamData.players.map(player => {
-      const attendancePlayer = attendanceMap.get(player.id);
-      return {
-        ...player,
-        // Use number from attendance if it exists (match-specific), otherwise use roster number
-        number: attendancePlayer?.number || player.number,
-        name: attendancePlayer?.name || player.name
-      };
-    }).sort((a, b) => {
+    return players.sort((a, b) => {
       if (a.type === 'goalkeeper' && b.type !== 'goalkeeper') return -1;
       if (a.type !== 'goalkeeper' && b.type === 'goalkeeper') return 1;
       return a.name.localeCompare(b.name);

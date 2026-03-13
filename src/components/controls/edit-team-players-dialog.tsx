@@ -16,8 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { useGameState, type Team } from "@/contexts/game-state-context";
-import type { PlayerData, AttendedPlayerInfo } from "@/types";
+import { useGameState } from "@/contexts/game-state-context";
+import type { PlayerData, AttendedPlayerInfo, Team } from "@/types";
 import { User, Shield, Save, X, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -54,7 +54,7 @@ export function EditTeamPlayersDialog({
   const [newPlayerNumber, setNewPlayerNumber] = useState('');
   const [newPlayerType, setNewPlayerType] = useState<'player' | 'goalkeeper'>('player');
   const [justAddedPlayerId, setJustAddedPlayerId] = useState<string | null>(null);
-  
+
   const teamDetails = useMemo(() => {
     if (!state.config || !state.config.tournaments) return null;
     const selectedTournament = state.config.tournaments.find(t => t.id === state.config.selectedTournamentId);
@@ -183,7 +183,7 @@ export function EditTeamPlayersDialog({
     });
     return duplicates;
   }, [editablePlayers]);
-  
+
   const handleAttendanceChange = (playerId: string, isAttending: boolean) => {
     setAttendedPlayerIds(prevIds => {
       const newIds = new Set(prevIds);
@@ -313,7 +313,7 @@ export function EditTeamPlayersDialog({
 
     let numberChangesCount = 0;
     let hasError = false;
-    
+
     const finalPlayerNumbersMap = new Map<string, string[]>();
 
     editablePlayers.forEach(p => {
@@ -360,10 +360,11 @@ export function EditTeamPlayersDialog({
       if (player.isModified) {
         const newNumber = player.localNumber;
         if (newNumber !== player.number) {
+          // Update attendance only (match state), not team roster
           dispatch({
-            type: "UPDATE_PLAYER_IN_TEAM",
+            type: "UPDATE_ATTENDANCE_PLAYER",
             payload: {
-              teamId: teamId,
+              team: teamType,
               playerId: player.id,
               updates: { number: newNumber },
             },
@@ -377,10 +378,10 @@ export function EditTeamPlayersDialog({
     const attendanceChanged = !(attendedPlayerIds.size === originalAttendedIds.size && [...attendedPlayerIds].every(id => originalAttendedIds.has(id)));
 
     if (attendanceChanged) {
-        dispatch({
-          type: 'SET_TEAM_ATTENDANCE',
-          payload: { team: teamType, playerIds: Array.from(attendedPlayerIds) }
-        });
+      dispatch({
+        type: 'SET_TEAM_ATTENDANCE',
+        payload: { team: teamType, playerIds: Array.from(attendedPlayerIds) }
+      });
     }
 
     // Check if active goalkeeper changed
@@ -390,33 +391,33 @@ export function EditTeamPlayersDialog({
     const activeGoalkeeperChanged = originalActiveGoalkeeperId !== activeGoalkeeperId;
 
     if (activeGoalkeeperChanged) {
-        dispatch({
-          type: 'SET_ACTIVE_GOALKEEPER',
-          payload: { team: teamType, playerId: activeGoalkeeperId }
-        });
+      dispatch({
+        type: 'SET_ACTIVE_GOALKEEPER',
+        payload: { team: teamType, playerId: activeGoalkeeperId }
+      });
     }
-    
+
     if (numberChangesCount > 0 && attendanceChanged) {
-        toast({
-            title: "Cambios Guardados",
-            description: "Se actualizaron los números de los jugadores y la lista de asistencia.",
-        });
+      toast({
+        title: "Cambios Guardados",
+        description: "Se actualizaron los números de los jugadores y la lista de asistencia.",
+      });
     } else if (numberChangesCount > 0) {
-        toast({
-            title: "Números Actualizados",
-            description: `Se actualizaron los números de ${numberChangesCount} jugador(es).`,
-        });
+      toast({
+        title: "Números Actualizados",
+        description: `Se actualizaron los números de ${numberChangesCount} jugador(es).`,
+      });
     } else if (attendanceChanged) {
-        toast({
-            title: "Asistencia Guardada",
-            description: `La lista de asistencia para "${teamName}" ha sido guardada.`,
-        });
+      toast({
+        title: "Asistencia Guardada",
+        description: `La lista de asistencia para "${teamName}" ha sido guardada.`,
+      });
     } else {
-        toast({
-            title: "Sin Cambios",
-            description: "No se detectaron modificaciones.",
-            variant: "default",
-        });
+      toast({
+        title: "Sin Cambios",
+        description: "No se detectaron modificaciones.",
+        variant: "default",
+      });
     }
 
     onOpenChange(false);
@@ -439,59 +440,57 @@ export function EditTeamPlayersDialog({
           <div className="space-y-3 py-2">
             {editablePlayers.map(player => (
               <div key={player.id} className="flex items-center gap-3 p-2 border rounded-md bg-card shadow-sm">
-                 <div className="flex flex-col items-center justify-center space-y-1">
-                    <Label htmlFor={`attendance-${player.id}`} className="text-xs text-muted-foreground cursor-pointer">
-                        Asistió
-                    </Label>
-                    <Checkbox
-                      id={`attendance-${player.id}`}
-                      checked={attendedPlayerIds.has(player.id)}
-                      onCheckedChange={(checked) => handleAttendanceChange(player.id, !!checked)}
-                      className="h-5 w-5"
-                    />
+                <div className="flex flex-col items-center justify-center space-y-1">
+                  <Label htmlFor={`attendance-${player.id}`} className="text-xs text-muted-foreground cursor-pointer">
+                    Asistió
+                  </Label>
+                  <Checkbox
+                    id={`attendance-${player.id}`}
+                    checked={attendedPlayerIds.has(player.id)}
+                    onCheckedChange={(checked) => handleAttendanceChange(player.id, !!checked)}
+                    className="h-5 w-5"
+                  />
                 </div>
 
                 <div className="self-stretch border-l border-border/50"></div>
 
                 <div
-                  className={`flex items-center gap-3 flex-1 min-w-0 ${
-                    player.type === "goalkeeper" && attendedPlayerIds.has(player.id)
-                      ? 'cursor-pointer'
-                      : ''
-                  }`}
+                  className={`flex items-center gap-3 flex-1 min-w-0 ${player.type === "goalkeeper" && attendedPlayerIds.has(player.id)
+                    ? 'cursor-pointer'
+                    : ''
+                    }`}
                   onClick={() => player.type === "goalkeeper" && handleGoalkeeperClick(player.id, player.type)}
                   title={
                     player.type === "goalkeeper"
                       ? activeGoalkeeperId === player.id
                         ? 'Arquero activo (click para desactivar)'
                         : attendedPlayerIds.has(player.id)
-                        ? 'Click para activar arquero'
-                        : 'Marca asistencia primero'
+                          ? 'Click para activar arquero'
+                          : 'Marca asistencia primero'
                       : ''
                   }
                 >
-                    {player.type === "goalkeeper" ? (
-                      <Shield
-                        className={`h-5 w-5 shrink-0 transition-colors ${
-                          activeGoalkeeperId === player.id
-                            ? 'text-green-600 fill-green-600'
-                            : attendedPlayerIds.has(player.id)
-                            ? 'text-muted-foreground hover:text-green-500'
-                            : 'text-muted-foreground/30'
+                  {player.type === "goalkeeper" ? (
+                    <Shield
+                      className={`h-5 w-5 shrink-0 transition-colors ${activeGoalkeeperId === player.id
+                        ? 'text-green-600 fill-green-600'
+                        : attendedPlayerIds.has(player.id)
+                          ? 'text-muted-foreground hover:text-green-500'
+                          : 'text-muted-foreground/30'
                         }`}
-                      />
-                    ) : (
-                      <User className="h-5 w-5 text-primary shrink-0" />
-                    )}
-                    <Label htmlFor={`player-num-${player.id}`} className="flex-1 min-w-0 pointer-events-none">
-                      <span className="font-medium truncate" title={player.name}>{player.name}</span>
-                      <span className="text-xs text-muted-foreground ml-1">({player.type === "goalkeeper" ? "Arquero" : "Jugador"})</span>
-                    </Label>
+                    />
+                  ) : (
+                    <User className="h-5 w-5 text-primary shrink-0" />
+                  )}
+                  <Label htmlFor={`player-num-${player.id}`} className="flex-1 min-w-0 pointer-events-none">
+                    <span className="font-medium truncate" title={player.name}>{player.name}</span>
+                    <span className="text-xs text-muted-foreground ml-1">({player.type === "goalkeeper" ? "Arquero" : "Jugador"})</span>
+                  </Label>
                 </div>
-                
+
                 <div className="flex items-baseline gap-1 w-24">
-                   <span className="text-sm text-muted-foreground self-center">#</span>
-                   <Input
+                  <span className="text-sm text-muted-foreground self-center">#</span>
+                  <Input
                     id={`player-num-${player.id}`}
                     type="text"
                     inputMode="numeric"
@@ -505,7 +504,7 @@ export function EditTeamPlayersDialog({
               </div>
             ))}
             {editablePlayers.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Este equipo no tiene jugadores.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">Este equipo no tiene jugadores.</p>
             )}
 
             {/* Add New Player Section */}
