@@ -8,7 +8,7 @@ import { PageShell } from '@/components/layout/page-shell';
 import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
-  title: 'NutriAI - Tu asistente inteligente',
+  title: 'IceVision - Hockey Scoreboard',
   description: 'Ice hockey game dashboard with real-time scores, clock, and penalty tracking.',
 };
 
